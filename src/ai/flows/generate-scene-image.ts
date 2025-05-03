@@ -1,4 +1,4 @@
-// use server'
+'use server';
 
 /**
  * @fileOverview Generates an image based on a textual scene description.
@@ -30,24 +30,8 @@ export async function generateSceneImage(input: GenerateSceneImageInput): Promis
   return generateSceneImageFlow(input);
 }
 
-const generateSceneImagePrompt = ai.definePrompt({
-  name: 'generateSceneImagePrompt',
-  input: {
-    schema: z.object({
-      sceneDescription: z
-        .string()
-        .describe('A description of the scene to generate an image for.'),
-    }),
-  },
-  output: {
-    schema: z.object({
-      imageUrl: z.string().describe('The generated image as a data URI.'),
-    }),
-  },
-  prompt: `Generate a detailed image of the following scene, focusing on visual elements and atmosphere. Return the image as a data URI. Consider composition, color, and lighting to create an engaging visual representation.
-
-Scene Description: {{{sceneDescription}}}`, // Ensure the prompt is well-formatted and utilizes the scene description effectively.
-});
+// Note: ai.definePrompt is not directly used here as image generation uses ai.generate directly.
+// If more complex logic or structured output was needed alongside the image, a prompt might be used.
 
 const generateSceneImageFlow = ai.defineFlow<
   typeof GenerateSceneImageInputSchema,
@@ -59,14 +43,22 @@ const generateSceneImageFlow = ai.defineFlow<
     outputSchema: GenerateSceneImageOutputSchema,
   },
   async input => {
+    // Use ai.generate for image generation with the specified experimental model
     const {media} = await ai.generate({
+      // IMPORTANT: Use the correct model for image generation
       model: 'googleai/gemini-2.0-flash-exp',
-      prompt: input.sceneDescription,
+      prompt: input.sceneDescription, // Pass the scene description directly
       config: {
+        // IMPORTANT: Must specify both TEXT and IMAGE modalities
         responseModalities: ['TEXT', 'IMAGE'],
       },
     });
 
-    return {imageUrl: media.url!};
+    // Ensure media and URL exist before returning
+    if (!media?.url) {
+        throw new Error("Image generation failed or returned no URL.");
+    }
+
+    return {imageUrl: media.url};
   }
 );
