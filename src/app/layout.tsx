@@ -1,17 +1,11 @@
 import type { Metadata } from 'next';
-import { Geist_Sans, Geist_Mono } from 'next/font/google'; // Corrected import
+import { GeistSans } from 'geist/font/sans'; // Import GeistSans correctly
+import { GeistMono } from 'geist/font/mono';   // Import GeistMono correctly
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster'; // Added Toaster import
 
-const geistSans = Geist_Sans({ // Corrected font function call
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({ // Corrected font function call
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+const geistSans = GeistSans; // Assign directly
+const geistMono = GeistMono; // Assign directly
 
 export const metadata: Metadata = {
   title: 'Aventurier Textuel', // Updated title
@@ -25,6 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr"> {/* Changed lang to fr */}
+      {/* Apply font variables directly to the html tag */}
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <Toaster /> {/* Added Toaster component */}
