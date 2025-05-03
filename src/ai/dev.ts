@@ -1,1 +1,3 @@
-// Flows will be imported for their side effects in this file.
+import '@/ai/flows/generate-adventure.ts';
+import '@/ai/flows/generate-scene-image.ts';
+import '@/ai/flows/translate-text.ts';
