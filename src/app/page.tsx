@@ -16,6 +16,11 @@ import { AdventureDisplay } from '@/components/adventure-display';
 import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
 
+// Import AI functions here in the Server Component
+import { generateAdventure } from "@/ai/flows/generate-adventure";
+import { generateSceneImage } from "@/ai/flows/generate-scene-image";
+import { translateText } from "@/ai/flows/translate-text";
+
 export default function Home() {
   return (
     <SidebarProvider defaultOpen>
@@ -63,7 +68,8 @@ export default function Home() {
         <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
           <SidebarTrigger />
           <div className="flex items-center space-x-2">
-            <LanguageSelector />
+            {/* Pass translateText function as prop */}
+            <LanguageSelector translateTextAction={translateText} />
              <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -77,7 +83,11 @@ export default function Home() {
           </div>
         </header>
         <main className="flex-1 overflow-hidden flex flex-col p-4">
-          <AdventureDisplay />
+           {/* Pass AI functions as props */}
+          <AdventureDisplay
+            generateAdventureAction={generateAdventure}
+            generateSceneImageAction={generateSceneImage}
+          />
         </main>
       </SidebarInset>
     </SidebarProvider>

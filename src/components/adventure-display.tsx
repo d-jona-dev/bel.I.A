@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2 } from "lucide-react"; // Added Map, Wand2
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateAdventure, GenerateAdventureInput } from "@/ai/flows/generate-adventure";
-import { generateSceneImage } from "@/ai/flows/generate-scene-image";
+import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
+import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
 
 // Mock data for initial state and characters
@@ -21,8 +21,14 @@ const initialCharacters = [
     "Kentaro: Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina."
 ];
 
+// Define prop types for the AI functions
+interface AdventureDisplayProps {
+    generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
+    generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+}
 
-export function AdventureDisplay() {
+
+export function AdventureDisplay({ generateAdventureAction, generateSceneImageAction }: AdventureDisplayProps) {
   const [narrative, setNarrative] = React.useState<string>(initialSituation);
   const [userAction, setUserAction] = React.useState<string>("");
   const [choices, setChoices] = React.useState<string[]>([]); // For multiple-choice buttons
@@ -50,8 +56,8 @@ export function AdventureDisplay() {
             userAction: userAction,
         };
 
-        // Call the AI function
-        const result = await generateAdventure(input);
+        // Call the AI function passed via props
+        const result = await generateAdventureAction(input);
         setNarrative(prev => prev + `\n${result.narrative}`);
         setUserAction(""); // Clear input field
         // TODO: Potentially generate new choices based on the result.narrative
@@ -78,8 +84,12 @@ export function AdventureDisplay() {
 
     try {
         // Use the current narrative (or a summary) as the scene description
-        const sceneDescription = narrative.split('\n').slice(-5).join('\n'); // Example: use last 5 lines
-        const result = await generateSceneImage({ sceneDescription });
+        // Take the last 5 lines or max 500 characters, whichever is shorter
+        const narrativeLines = narrative.split('\n');
+        const lastLines = narrativeLines.slice(-5).join('\n');
+        const sceneDescription = lastLines.length > 500 ? lastLines.slice(-500) : lastLines;
+
+        const result = await generateSceneImageAction({ sceneDescription });
         setImageUrl(result.imageUrl);
          toast({
             title: "Image Générée",
@@ -109,9 +119,13 @@ export function AdventureDisplay() {
    // Scroll to bottom when narrative updates
   React.useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      // Use querySelector for potentially nested viewport
+      const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
       if(scrollElement) {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
+          // Use setTimeout to allow DOM update before scrolling
+          setTimeout(() => {
+             scrollElement.scrollTop = scrollElement.scrollHeight;
+          }, 0);
       }
     }
   }, [narrative]);
@@ -131,14 +145,15 @@ export function AdventureDisplay() {
             <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardContent className="flex-1 overflow-hidden p-0">
                     <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
-                    <pre className="text-sm whitespace-pre-wrap break-words font-sans">
+                    {/* Using a div with whitespace-pre-wrap for better rendering */}
+                    <div className="text-sm whitespace-pre-wrap break-words font-sans">
                         {narrative}
                         {isLoading && (
-                            <span className="flex items-center text-muted-foreground">
+                            <span className="flex items-center text-muted-foreground mt-2">
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
                             </span>
                         )}
-                    </pre>
+                    </div>
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
@@ -201,9 +216,10 @@ export function AdventureDisplay() {
                             <Image
                                 src={imageUrl}
                                 alt="Generated Scene"
-                                layout="fill"
-                                objectFit="contain"
+                                fill // Use fill instead of layout="fill" and objectFit
+                                style={{ objectFit: 'contain' }} // Use style for objectFit
                                 data-ai-hint="adventure scene"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw" // Add sizes prop for responsiveness
                             />
                         </div>
                     ) : (
