@@ -38,9 +38,10 @@ interface PageStructureProps {
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-  handleEditMessage: (messageId: string, newContent: string) => void; // Added edit handler prop
-  handleRewindToMessage: (messageId: string) => void; // Added rewind handler prop
-  handleUndoLastMessage: () => void; // Added undo handler prop
+  handleEditMessage: (messageId: string, newContent: string) => void;
+  handleRewindToMessage: (messageId: string) => void;
+  handleUndoLastMessage: () => void;
+  handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
 }
 
 export function PageStructure({
@@ -58,9 +59,10 @@ export function PageStructure({
   translateTextAction,
   generateAdventureAction,
   generateSceneImageAction,
-  handleEditMessage, // Added prop
-  handleRewindToMessage, // Added prop
-  handleUndoLastMessage, // Added prop
+  handleEditMessage,
+  handleRewindToMessage,
+  handleUndoLastMessage,
+  handleRegenerateLastResponse, // Added prop
 }: PageStructureProps) {
   return (
     <>
@@ -126,6 +128,21 @@ export function PageStructure({
                      </Tooltip>
                   </TooltipProvider>
               </nav>
+
+               {/* AI Configuration in Left Sidebar */}
+               <Accordion type="single" collapsible className="w-full">
+                 <AccordionItem value="ai-config-accordion">
+                   <AccordionTrigger>
+                     <div className="flex items-center gap-2">
+                       <BrainCircuit className="h-5 w-5" />
+                       <span className="group-data-[collapsible=icon]:hidden">Configuration IA</span>
+                     </div>
+                   </AccordionTrigger>
+                   <AccordionContent className="pt-2 px-0"> {/* Adjusted padding */}
+                       <ModelLoader />
+                   </AccordionContent>
+                 </AccordionItem>
+               </Accordion>
 
           </SidebarContent>
         </ScrollArea>
@@ -203,20 +220,22 @@ export function PageStructure({
                 initialMessages={narrativeMessages} // Pass the message array
                 onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
                 rpgMode={adventureSettings.rpgMode}
-                onEditMessage={handleEditMessage} // Pass edit handler
-                onRewindToMessage={handleRewindToMessage} // Pass rewind handler
-                onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
+                onEditMessage={handleEditMessage}
+                onRewindToMessage={handleRewindToMessage}
+                onUndoLastMessage={handleUndoLastMessage}
+                onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
              />
         </main>
       </SidebarInset>
 
-      {/* Right Sidebar: Config, Characters, AI */}
+      {/* Right Sidebar: Config, Characters */}
        <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
                  <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
              </SidebarHeader>
              <ScrollArea className="flex-1">
                  <SidebarContent className="p-4 space-y-6">
+                      {/* Adventure Configuration */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
                          <AccordionItem value="adventure-config-accordion">
                              <AccordionTrigger>
@@ -232,6 +251,7 @@ export function PageStructure({
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
+                     {/* Characters */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
                          <AccordionItem value="characters-accordion">
                              <AccordionTrigger>
@@ -247,18 +267,6 @@ export function PageStructure({
                                      rpgMode={adventureSettings.rpgMode}
                                  />
                              </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
-                     <Accordion type="single" collapsible className="w-full" defaultValue="ai-config-accordion">
-                          <AccordionItem value="ai-config-accordion">
-                              <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
-                                 </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2">
-                                  <ModelLoader />
-                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
                  </SidebarContent>

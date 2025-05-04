@@ -10,6 +10,7 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
+import type { GenerateAdventureInput } from "@/ai/flows/generate-adventure"; // Import input type
 
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
      { id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }
   ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
+  const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regeneration loading
   const { toast } = useToast();
 
   // --- Callback Functions ---
@@ -69,9 +71,9 @@ export default function Home() {
             maxHitPoints: newSettings.enableRpgMode ? (existingChar?.maxHitPoints || characters.find(ec => ec.id === id)?.maxHitPoints || 10) : undefined,
             armorClass: newSettings.enableRpgMode ? (existingChar?.armorClass || characters.find(ec => ec.id === id)?.armorClass || 10) : undefined,
             skills: newSettings.enableRpgMode ? (existingChar?.skills || characters.find(ec => ec.id === id)?.skills || {}) : undefined,
-            spells: newSettings.enableRpgMode ? (existingChar?.spells || characters.find(ec => ec.id === id)?.spells || []) : undefined,
-            techniques: newSettings.enableRpgMode ? (existingChar?.techniques || characters.find(ec => ec.id === id)?.techniques || []) : undefined,
-            passiveAbilities: newSettings.enableRpgMode ? (existingChar?.passiveAbilities || characters.find(ec => ec.id === id)?.passiveAbilities || []) : undefined,
+            spells: newSettings.enableRpgMode ? (c.spells || []) : undefined,
+            techniques: newSettings.enableRpgMode ? (c.techniques || []) : undefined,
+            passiveAbilities: newSettings.enableRpgMode ? (c.passiveAbilities || []) : undefined,
 
         };
     });
@@ -133,6 +135,79 @@ export default function Home() {
         setNarrative(prev => prev.slice(0, -1));
         toast({ title: "Dernier Message Annulé" });
     };
+
+    // Handler for regenerating the last AI response
+    const handleRegenerateLastResponse = async () => {
+         if (isRegenerating) return;
+
+         // Find the last AI message and the user message before it
+         let lastAiIndex = -1;
+         let lastUserIndex = -1;
+         for (let i = narrative.length - 1; i >= 0; i--) {
+             if (narrative[i].type === 'ai' && lastAiIndex === -1) {
+                 lastAiIndex = i;
+             } else if (narrative[i].type === 'user' && lastUserIndex === -1 && lastAiIndex !== -1) {
+                 lastUserIndex = i;
+                 break; // Found the relevant user action
+             } else if (lastAiIndex !== -1 && lastUserIndex !== -1) {
+                break; // Already found both
+             }
+         }
+
+         if (lastAiIndex === -1 || lastUserIndex === -1) {
+             toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente trouvée pour régénérer.", variant: "destructive" });
+             return;
+         }
+
+         const lastUserAction = narrative[lastUserIndex].content;
+
+         setIsRegenerating(true);
+         toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." });
+
+         // Remove the last AI message optimistically
+         setNarrative(prev => prev.slice(0, lastAiIndex));
+
+         try {
+             // Get context from messages *before* the user action that triggered the AI response we're replacing
+             const contextMessages = narrative.slice(Math.max(0, lastUserIndex - 4), lastUserIndex); // Context before the trigger user action
+             const narrativeContext = contextMessages.map(msg =>
+                 msg.type === 'user' ? `> ${msg.content}` : msg.content
+             ).join('\n\n') + `\n\n> ${lastUserAction}\n`; // Re-append the user action
+
+
+             const input: GenerateAdventureInput = {
+                 world: adventureSettings.world,
+                 initialSituation: narrativeContext,
+                 secondaryCharacters: characters.map(c => `${c.name}: ${c.details}`),
+                 userAction: lastUserAction, // Use the same user action
+                 promptConfig: adventureSettings.rpgMode ? {
+                    rpgContext: {
+                        playerStats: { /* Player stats placeholder */ },
+                        characterDetails: characters.map(c => ({ name: c.name, stats: c.stats, inventory: c.inventory })),
+                        mode: 'exploration', // TODO: Make mode dynamic if needed
+                    }
+                 } : undefined,
+             };
+
+             const result = await generateAdventure(input);
+
+             // Add the *new* AI response
+             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage);
+
+             toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });
+
+         } catch (error) {
+             console.error("Error regenerating adventure:", error);
+             toast({
+                 title: "Erreur de Régénération",
+                 description: "Impossible de générer une nouvelle réponse. Veuillez réessayer.",
+                 variant: "destructive",
+             });
+             // Optionally add back the removed AI message or handle error state
+         } finally {
+             setIsRegenerating(false);
+         }
+     };
 
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
@@ -262,9 +337,10 @@ export default function Home() {
         translateTextAction={translateText}
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
-        handleEditMessage={handleEditMessage} // Pass edit handler
-        handleRewindToMessage={handleRewindToMessage} // Pass rewind handler
-        handleUndoLastMessage={handleUndoLastMessage} // Pass undo handler
+        handleEditMessage={handleEditMessage}
+        handleRewindToMessage={handleRewindToMessage}
+        handleUndoLastMessage={handleUndoLastMessage}
+        handleRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
       />
   );
 }

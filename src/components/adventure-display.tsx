@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo, Users } from "lucide-react"; // Added Users
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added Avatar import
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo, Users, RefreshCw } from "lucide-react"; // Added RefreshCw
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
@@ -24,7 +24,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label";
 
@@ -41,6 +40,7 @@ interface AdventureDisplayProps {
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
     onUndoLastMessage: () => void; // Callback for undoing the last message
+    onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
 }
 
 
@@ -52,9 +52,10 @@ export function AdventureDisplay({
     initialMessages, // Use initialMessages
     onNarrativeChange, // Use the updated handler
     rpgMode,
-    onEditMessage, // New handler
-    onRewindToMessage, // New handler
-    onUndoLastMessage, // New handler
+    onEditMessage,
+    onRewindToMessage,
+    onUndoLastMessage,
+    onRegenerateLastResponse, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -62,6 +63,7 @@ export function AdventureDisplay({
   const [choices, setChoices] = React.useState<string[]>([]); // For multiple-choice buttons
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
+  const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regenerate loading
   const [imageUrl, setImageUrl] = React.useState<string | null>(null); // State for the generated image URL
   const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration"); // Added combat mode
   const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null); // State for image prompt
@@ -83,7 +85,7 @@ export function AdventureDisplay({
 
   // Function to handle sending user action
   const handleSendAction = async () => {
-    if (!userAction.trim() || isLoading) return;
+    if (!userAction.trim() || isLoading || isRegenerating) return;
 
     setIsLoading(true);
     const userMessageContent = userAction.trim();
@@ -151,9 +153,24 @@ export function AdventureDisplay({
     }
   };
 
+  // Function to handle regenerating the last response
+  const handleRegenerate = async () => {
+    if (isLoading || isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+        await onRegenerateLastResponse(); // Call the function passed from parent
+    } catch (error) {
+        // Error handling is likely done in the parent, but log here too
+        console.error("Error during regeneration triggered from display:", error);
+    } finally {
+        setIsRegenerating(false);
+    }
+  };
+
+
   // Function to handle generating scene image
   const handleGenerateImage = async () => {
-     if (isImageLoading || !currentSceneDescription) {
+     if (isImageLoading || !currentSceneDescription || isLoading || isRegenerating) {
          if (!currentSceneDescription) {
             toast({
                 title: "Description manquante",
@@ -249,114 +266,142 @@ export function AdventureDisplay({
                 <CardContent className="flex-1 overflow-hidden p-0">
                     <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
                         <div className="space-y-4">
-                            {messages.map((message, index) => (
-                                <div key={message.id} className="group relative flex flex-col">
-                                    <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
-                                       {message.type !== 'user' && message.type !== 'system' && (
-                                          <Avatar className="h-8 w-8 border">
-                                              <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                          </Avatar>
-                                       )}
-                                       <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
-                                            message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground')
-                                        }`}>
-                                            {message.content}
+                            {messages.map((message, index) => {
+                                const isLastMessage = index === messages.length - 1;
+                                const isLastAiMessage = isLastMessage && message.type === 'ai';
 
-                                             {/* Action buttons on hover */}
-                                            <div className={`absolute top-0 mt-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                {/* Rewind Button (show on non-last messages) */}
-                                                {index < messages.length - 1 && message.type !== 'system' && (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                             <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-                                                                            <RotateCcw className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent side="top">Revenir ici</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
+                                return (
+                                    <div key={message.id} className="group relative flex flex-col">
+                                        <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
+                                        {message.type !== 'user' && message.type !== 'system' && (
+                                            <Avatar className="h-8 w-8 border">
+                                                <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                        <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
+                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground')
+                                            }`}>
+                                                {message.content}
+
+                                                {/* Action buttons on hover - positioned outside the bubble */}
+                                                <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                    {/* Rewind Button (show on non-last messages) */}
+                                                    {index < messages.length - 1 && message.type !== 'system' && (
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                                                                <RotateCcw className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Revenir ici</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
+                                                                </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                    {/* Edit Button (allow editing user and AI messages, not system) */}
+                                                    {message.type !== 'system' && (
+                                                        <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
+                                                            <AlertDialogTrigger asChild>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
+                                                                                <Edit className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Modifier</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                            <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
-                                                            </AlertDialogDescription>
+                                                                <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                Modifiez le contenu du message ci-dessous.
+                                                                </AlertDialogDescription>
                                                             </AlertDialogHeader>
+                                                            <Textarea
+                                                                    value={editContent}
+                                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                                    rows={10}
+                                                                    className="my-4"
+                                                                />
                                                             <AlertDialogFooter>
-                                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
+                                                                <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
                                                             </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                )}
-                                                {/* Edit Button (allow editing user and AI messages, not system) */}
-                                                {message.type !== 'system' && (
-                                                    <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
-                                                        <AlertDialogTrigger asChild>
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
-                                                                            <Edit className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent side="top">Modifier</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                            Modifiez le contenu du message ci-dessous.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <Textarea
-                                                                value={editContent}
-                                                                onChange={(e) => setEditContent(e.target.value)}
-                                                                rows={10}
-                                                                className="my-4"
-                                                            />
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                )}
-                                                {/* Copy Button */}
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
-                                                                <Copy className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="top">Copier</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        </div>
-                                        {message.type === 'user' && (
-                                          <Avatar className="h-8 w-8 border">
-                                              <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                          </Avatar>
-                                       )}
-                                    </div>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                    {/* Copy Button */}
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
+                                                                    <Copy className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top">Copier</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
 
-                                </div>
-                            ))}
-                            {isLoading && (
+                                                    {/* Regenerate Button (only on last AI message) */}
+                                                    {isLastAiMessage && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading || isRegenerating}>
+                                                                        {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top">Régénérer</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {message.type === 'user' && (
+                                                <Avatar className="h-8 w-8 border">
+                                                    <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {isLoading && !isRegenerating && ( // Don't show "writing" if regenerating
                                 <div className="flex items-center justify-start gap-3">
                                      <Avatar className="h-8 w-8 border">
                                          <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                      </Avatar>
                                      <span className="flex items-center text-muted-foreground italic p-3">
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
+                                    </span>
+                                </div>
+                            )}
+                             {isRegenerating && ( // Show regenerating indicator separately
+                                <div className="flex items-center justify-start gap-3">
+                                    <Avatar className="h-8 w-8 border">
+                                        <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                    </Avatar>
+                                    <span className="flex items-center text-muted-foreground italic p-3">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Régénération...
                                     </span>
                                 </div>
                             )}
@@ -368,7 +413,7 @@ export function AdventureDisplay({
                     {choices.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2">
                             {choices.map((choice, index) => (
-                                <Button key={index} variant="outline" size="sm" onClick={() => setUserAction(choice)} disabled={isLoading}>
+                                <Button key={index} variant="outline" size="sm" onClick={() => setUserAction(choice)} disabled={isLoading || isRegenerating}>
                                     {choice}
                                 </Button>
                             ))}
@@ -380,15 +425,15 @@ export function AdventureDisplay({
                         <div className="flex flex-wrap gap-2 mb-2">
                              <TooltipProvider>
                                 <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading}><Shield className="h-4 w-4 mr-1"/>Défendre</Button></TooltipTrigger>
+                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading || isRegenerating}><Shield className="h-4 w-4 mr-1"/>Défendre</Button></TooltipTrigger>
                                     <TooltipContent>Action de combat : Se défendre.</TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading}><Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.</Button></TooltipTrigger>
+                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading || isRegenerating}><Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.</Button></TooltipTrigger>
                                     <TooltipContent>Ouvrir le menu des sorts et compétences.</TooltipContent>
                                 </Tooltip>
                                  <Tooltip>
-                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading}><ScrollText className="h-4 w-4 mr-1"/>Inventaire</Button></TooltipTrigger>
+                                    <TooltipTrigger asChild><Button variant="secondary" size="sm" disabled={isLoading || isRegenerating}><ScrollText className="h-4 w-4 mr-1"/>Inventaire</Button></TooltipTrigger>
                                     <TooltipContent>Ouvrir l'inventaire.</TooltipContent>
                                 </Tooltip>
                                 {/* Add more RPG actions as needed */}
@@ -403,7 +448,7 @@ export function AdventureDisplay({
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || messages.length <= 1}>
+                                    <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || isRegenerating || messages.length <= 1}>
                                          <Undo className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
@@ -418,13 +463,13 @@ export function AdventureDisplay({
                             onKeyPress={handleKeyPress}
                             rows={1}
                             className="min-h-[40px] max-h-[150px] resize-y flex-1" // Added flex-1
-                            disabled={isLoading}
+                            disabled={isLoading || isRegenerating}
                         />
                          {/* Send Button */}
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendAction} disabled={isLoading || !userAction.trim()}>
+                                    <Button type="button" size="icon" onClick={handleSendAction} disabled={isLoading || isRegenerating || !userAction.trim()}>
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
@@ -465,7 +510,7 @@ export function AdventureDisplay({
                     <TooltipProvider>
                         <Tooltip>
                              <TooltipTrigger asChild>
-                                <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
+                                <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || isRegenerating || !currentSceneDescription}>
                                     <Wand2 className="mr-2 h-4 w-4" />
                                     Générer Image Scène
                                 </Button>
