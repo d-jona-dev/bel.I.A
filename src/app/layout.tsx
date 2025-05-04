@@ -1,15 +1,16 @@
+
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
-import { Toaster } from '@/components/ui/toaster'; // Added Toaster import
+import { Toaster } from '@/components/ui/toaster';
 
 const geistSans = GeistSans;
 const geistMono = GeistMono;
 
 export const metadata: Metadata = {
-  title: 'Aventurier Textuel', // Updated title
-  description: 'Généré par Firebase Studio', // Updated description
+  title: 'Aventurier Textuel',
+  description: 'Généré par Firebase Studio',
 };
 
 export default function RootLayout({
@@ -18,11 +19,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Apply font variables directly to the html tag
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
+      {/* Apply font variables directly to the html tag */}
       <body className={`antialiased`}>
         {children}
-        <Toaster /> {/* Added Toaster component */}
+        <Toaster />
       </body>
     </html>
   );

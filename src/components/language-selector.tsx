@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -8,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Languages } from "lucide-react";
+import { Languages, Loader2 } from "lucide-react"; // Added Loader2
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text"; // Import types only
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,50 +19,64 @@ const availableLanguages = [
   { code: "en", name: "English" },
   { code: "es", name: "Español" },
   { code: "de", name: "Deutsch" },
+  // Add more languages as needed
 ];
 
-// Define prop types for the AI function
+// Define prop types for the AI function and state management
 interface LanguageSelectorProps {
     translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
+    currentText: string; // The text content to potentially translate
+    onLanguageChange: (newLangCode: string) => void; // Callback to update parent state
+    currentLanguage: string; // Current language code from parent state
 }
 
 
-// TODO: Connect this component to the actual narrative state
-// For now, it just simulates the translation request
-
-export function LanguageSelector({ translateTextAction }: LanguageSelectorProps) {
-  const [selectedLanguage, setSelectedLanguage] = React.useState<string>("fr");
+export function LanguageSelector({
+    translateTextAction,
+    currentText,
+    onLanguageChange,
+    currentLanguage,
+}: LanguageSelectorProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const { toast } = useToast();
 
-  const handleLanguageChange = async (newLang: string) => {
-     if (isLoading || newLang === selectedLanguage) return;
+  const handleLanguageChange = async (newLangCode: string) => {
+     if (isLoading || newLangCode === currentLanguage) return;
 
     setIsLoading(true);
-    setSelectedLanguage(newLang); // Update UI immediately
+    const targetLanguageName = availableLanguages.find(l => l.code === newLangCode)?.name || newLangCode;
 
     toast({
       title: "Traduction en cours...",
-      description: `Changement de la langue vers ${availableLanguages.find(l => l.code === newLang)?.name || newLang}.`,
+      description: `Changement de la langue vers ${targetLanguageName}.`,
     });
 
     try {
-      // *** Placeholder: In a real app, get the text to translate from the adventure state ***
-      const textToTranslate = "Ceci est un texte d'exemple à traduire.";
+       // Only translate if there's text to translate
+       if (currentText.trim()) {
+            const input: TranslateTextInput = {
+                text: currentText, // Translate the actual current narrative/text
+                language: targetLanguageName, // Use full language name for the AI
+            };
 
-      const input: TranslateTextInput = {
-        text: textToTranslate,
-        language: availableLanguages.find(l => l.code === newLang)?.name || newLang, // Use full language name for the AI
-      };
+            // Call the AI translation function passed via props
+            const result = await translateTextAction(input);
 
-      // Call the AI translation function passed via props
-      const result = await translateTextAction(input);
+            // TODO: The parent component should handle updating the narrative
+            //       with result.translatedText when language actually changes.
+            //       This component only signals the change.
+            console.log("Translated text preview:", result.translatedText); // For debugging
+       } else {
+           console.log("No text to translate, just changing language setting.");
+       }
 
-      // *** Placeholder: Update the adventure narrative with the translated text ***
-      console.log("Translated text:", result.translatedText);
+
+       // Update the language in the parent component's state via callback
+       onLanguageChange(newLangCode);
+
        toast({
-        title: "Traduction Réussie",
-        description: `L'aventure est maintenant affichée en ${availableLanguages.find(l => l.code === newLang)?.name || newLang}.`,
+        title: "Langue Changée",
+        description: `L'affichage est maintenant en ${targetLanguageName}.`, // Indicate language change applied
         });
 
 
@@ -69,11 +84,10 @@ export function LanguageSelector({ translateTextAction }: LanguageSelectorProps)
       console.error("Error translating text:", error);
        toast({
         title: "Erreur de Traduction",
-        description: "Impossible de traduire le texte. Veuillez réessayer.",
+        description: "Impossible de traduire le texte ou de changer la langue. Veuillez réessayer.",
         variant: "destructive",
        });
-      // Revert language selection on error? Optional.
-      // setSelectedLanguage(selectedLanguage);
+      // Don't revert language selection optimistically, let parent handle state
     } finally {
       setIsLoading(false);
     }
@@ -82,13 +96,13 @@ export function LanguageSelector({ translateTextAction }: LanguageSelectorProps)
 
   return (
     <Select
-        value={selectedLanguage}
+        value={currentLanguage} // Controlled by parent state
         onValueChange={handleLanguageChange}
         disabled={isLoading}
     >
       <SelectTrigger className="w-[150px]">
         <div className="flex items-center gap-2">
-             <Languages className="h-4 w-4" />
+             {isLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Languages className="h-4 w-4" />}
              <SelectValue placeholder="Langue" />
         </div>
       </SelectTrigger>
