@@ -114,8 +114,8 @@ export function AdventureDisplay({
     try {
         // Get context from the current messages state
         // Sending last 5 messages for context. Adjust number as needed.
-        // Get the most up-to-date message list before making the call
-        const currentMessages = initialMessages; // Use the prop directly to get latest state
+        // Use the prop directly to get latest state from parent
+        const currentMessages = initialMessages;
         const contextMessages = currentMessages.slice(-5);
         const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${msg.content}` : msg.content
@@ -261,11 +261,8 @@ export function AdventureDisplay({
         }
     };
 
-    // Function to handle undoing the last message
-    const handleUndo = () => {
-        if (isLoading || isRegenerating) return;
-        onUndoLastMessage(); // Call the handler passed from parent
-    };
+    // Removed handleRewind function
+
 
   // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -320,7 +317,7 @@ export function AdventureDisplay({
                                                 {/* Only show actions for non-system messages and not the very first one */}
                                                 {message.type !== 'system' && !isFirstMessage && (
                                                     <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                         {/* Rewind button removed */}
+                                                        {/* Rewind button removed */}
 
                                                         {/* Edit Button */}
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
@@ -457,7 +454,7 @@ export function AdventureDisplay({
                          <TooltipProvider>
                              <Tooltip>
                                  <TooltipTrigger asChild>
-                                     <Button type="button" variant="outline" size="icon" onClick={handleUndo} disabled={isLoading || isRegenerating || !canUndo}>
+                                     <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || isRegenerating || !canUndo}>
                                          <Undo2 className="h-5 w-5" />
                                      </Button>
                                  </TooltipTrigger>

@@ -44,11 +44,12 @@ export default function Home() {
     console.log("Updating global settings:", newSettings);
     const oldInitialSituation = adventureSettings.initialSituation;
     const newRPGMode = newSettings.enableRpgMode ?? false;
-    setAdventureSettings({
+    const updatedSettings = {
         world: newSettings.world,
         initialSituation: newSettings.initialSituation,
         rpgMode: newRPGMode,
-    });
+    };
+    setAdventureSettings(updatedSettings);
     // Update character list from form and store this as the "initial" set for resets
      const initialCharsFromForm = newSettings.characters.map((c: any) => {
         // Try to find existing character by name if ID is missing or new
@@ -91,17 +92,20 @@ export default function Home() {
     if (newSettings.initialSituation !== oldInitialSituation) {
          setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: newSettings.initialSituation, timestamp: Date.now() }]);
     }
+
+     // Show toast after settings update (wrapped in setTimeout)
+     setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
   };
 
    // Effect to show toast when settings change, avoiding initial mount
-   React.useEffect(() => {
-     if (isInitialMount.current) {
-       isInitialMount.current = false;
-     } else {
-        // Need to delay this slightly to avoid the 'update during render' error
-        setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
-     }
-   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
+//   React.useEffect(() => {
+//     if (isInitialMount.current) {
+//       isInitialMount.current = false;
+//     } else {
+//       // Show toast after settings update (wrapped in setTimeout)
+//        setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
+//     }
+//   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
 
 
    // Updated to handle Message objects and scene description
@@ -221,7 +225,8 @@ export default function Home() {
         // This removes dynamically added characters and resets stats/history of initial ones.
         setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings)));
 
-        toast({ title: "Aventure Recommencée", description: "L'histoire et les personnages ont été réinitialisés." });
+        // Show toast after state updates (wrapped in setTimeout)
+        setTimeout(() => toast({ title: "Aventure Recommencée", description: "L'histoire et les personnages ont été réinitialisés." }), 0);
    };
 
    // Function to undo the last message (user or AI)
@@ -250,8 +255,9 @@ export default function Home() {
          let lastAiIndex = -1;
 
          // Iterate backwards to find the last AI message and the user action before it
-         for (let i = narrative.length - 1; i >= 0; i--) {
-             const message = narrative[i];
+         const currentNarrative = [...narrative]; // Work with a copy
+         for (let i = currentNarrative.length - 1; i >= 0; i--) {
+             const message = currentNarrative[i];
              if (message.type === 'ai' && !lastAiMessage) {
                  lastAiMessage = message;
                  lastAiIndex = i;
@@ -260,7 +266,7 @@ export default function Home() {
                  // Gather context messages *before* this user action
                  const contextEndIndex = i;
                  const contextStartIndex = Math.max(0, contextEndIndex - 4); // Get up to 4 previous messages
-                 contextMessages = narrative.slice(contextStartIndex, contextEndIndex);
+                 contextMessages = currentNarrative.slice(contextStartIndex, contextEndIndex);
                  break; // Found both needed messages
              }
          }
