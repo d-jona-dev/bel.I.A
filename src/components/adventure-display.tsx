@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Added Avatar imports
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added Avatar imports
 import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot } from "lucide-react"; // Added new icons
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -252,10 +252,89 @@ export function AdventureDisplay({
                                               <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                           </Avatar>
                                        )}
-                                       <div className={`rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
+                                       <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
                                             message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground')
                                         }`}>
                                             {message.content}
+
+                                             {/* Action buttons on hover */}
+                                            <div className={`absolute top-0 mt-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                {/* Rewind Button (show on non-last messages) */}
+                                                {index < messages.length - 1 && message.type !== 'system' && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                             <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                                                            <RotateCcw className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top">Revenir ici</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                            <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
+                                                            </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
+                                                {/* Edit Button (allow editing user and AI messages, not system) */}
+                                                {message.type !== 'system' && (
+                                                    <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
+                                                        <AlertDialogTrigger asChild>
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
+                                                                            <Edit className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top">Modifier</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                            Modifiez le contenu du message ci-dessous.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <Textarea
+                                                                value={editContent}
+                                                                onChange={(e) => setEditContent(e.target.value)}
+                                                                rows={10}
+                                                                className="my-4"
+                                                            />
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
+                                                {/* Copy Button */}
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
+                                                                <Copy className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">Copier</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
                                         </div>
                                         {message.type === 'user' && (
                                           <Avatar className="h-8 w-8 border">
@@ -263,61 +342,7 @@ export function AdventureDisplay({
                                           </Avatar>
                                        )}
                                     </div>
-                                    {/* Action buttons on hover */}
-                                    <div className={`absolute top-0 mt-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                        {/* Rewind Button (show on non-last messages) */}
-                                         {index < messages.length - 1 && (
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-                                                        <RotateCcw className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                    <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
-                                                    </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        )}
-                                         {/* Edit Button */}
-                                        <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
-                                           <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                           </AlertDialogTrigger>
-                                           <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Modifiez le contenu du message ci-dessous.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                               <Textarea
-                                                    value={editContent}
-                                                    onChange={(e) => setEditContent(e.target.value)}
-                                                    rows={10}
-                                                    className="my-4"
-                                                />
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
-                                              </AlertDialogFooter>
-                                           </AlertDialogContent>
-                                        </AlertDialog>
-                                        {/* Copy Button */}
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+
                                 </div>
                             ))}
                             {isLoading && (
@@ -451,5 +476,6 @@ declare module "@/ai/flows/generate-adventure" {
     };
   }
 }
+
 
     
