@@ -8,10 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Ensure Avatar components are imported
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo, Users, RefreshCw } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash } from "lucide-react"; // Removed Undo, RotateCcw; Added Trash
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added CharacterUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
 import type { Message, Character } from "@/types"; // Import Message and Character types
@@ -38,10 +38,9 @@ interface AdventureDisplayProps {
     initialMessages: Message[]; // Changed from initialNarrative: string
     onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Callback for adding new messages, include optional sceneDesc
     onNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Callback for adding new characters detected by AI
+    onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Callback for history updates
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
-    onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
-    onUndoLastMessage: () => void; // Callback for undoing the last message
     onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
 }
 
@@ -54,10 +53,9 @@ export function AdventureDisplay({
     initialMessages, // Use initialMessages
     onNarrativeChange, // Use the updated handler
     onNewCharacters, // Add the new callback
+    onCharacterHistoryUpdate, // Add history update handler
     rpgMode,
     onEditMessage,
-    onRewindToMessage,
-    onUndoLastMessage,
     onRegenerateLastResponse, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
@@ -154,6 +152,11 @@ export function AdventureDisplay({
         if (result.newCharacters && result.newCharacters.length > 0) {
             onNewCharacters(result.newCharacters);
         }
+         // Call the callback to update character histories
+        if (result.characterUpdates && result.characterUpdates.length > 0) {
+            onCharacterHistoryUpdate(result.characterUpdates);
+        }
+
 
         // Update local scene description state for image generation button enablement
         setCurrentSceneDescription(result.sceneDescriptionForImage || null);
@@ -253,11 +256,6 @@ export function AdventureDisplay({
         }
     };
 
-    // Function to confirm and rewind
-    const handleConfirmRewind = (messageId: string) => {
-        onRewindToMessage(messageId); // Call the parent handler directly
-    };
-
 
   // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -307,37 +305,8 @@ export function AdventureDisplay({
                                                 {/* Only show actions for non-system messages */}
                                                 {message.type !== 'system' && (
                                                     <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                        {/* Rewind Button */}
-                                                        {/* Do not show rewind on the very last message */}
-                                                        {index < messages.length - 1 && (
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <TooltipProvider>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-                                                                                    <RotateCcw className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent side="top">Revenir ici</TooltipContent>
-                                                                        </Tooltip>
-                                                                    </TooltipProvider>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
-                                                                    </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                                    {/* Call the handler directly */}
-                                                                    <AlertDialogAction onClick={() => handleConfirmRewind(message.id)}>Confirmer</AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        )}
+                                                         {/* REMOVED REWIND BUTTON */}
+
                                                         {/* Edit Button */}
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <AlertDialogTrigger asChild>
@@ -469,18 +438,7 @@ export function AdventureDisplay({
 
                     {/* User Input Textarea */}
                     <div className="flex gap-2">
-                         {/* Undo Button */}
-                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    {/* Call parent's undo handler */}
-                                    <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || isRegenerating || messages.length <= 1}>
-                                         <Undo className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Annuler le dernier message/action</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        {/* REMOVED UNDO BUTTON */}
 
                         <Textarea
                             placeholder={currentMode === 'exploration' ? "Que faites-vous ? Décrivez votre action..." : (currentMode === 'combat' ? "Décrivez votre action de combat..." : "Votre message...")}

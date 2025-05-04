@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2 } from "lucide-react"; // Added more RPG icons
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save } from "lucide-react"; // Added Save icon
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Image generation types
 import { useToast } from "@/hooks/use-toast";
@@ -22,18 +22,28 @@ import type { Character } from "@/types"; // Import shared Character type
 interface CharacterSidebarProps {
     characters: Character[];
     onCharacterUpdate: (updatedCharacter: Character) => void; // Callback to update parent state
+    onSaveNewCharacter: (character: Character) => void; // Callback to save a new character globally
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>; // For portraits
     rpgMode: boolean; // To show/hide RPG elements
+    // isNew?: boolean; // Optional flag to identify characters not yet saved globally
 }
 
 export function CharacterSidebar({
     characters,
     onCharacterUpdate,
+    onSaveNewCharacter,
     generateImageAction,
     rpgMode,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
+  const [isClient, setIsClient] = React.useState(false); // State to track client-side rendering
   const { toast } = useToast();
+
+  // Set isClient to true only on the client-side after mount
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const handleGeneratePortrait = async (character: Character) => {
     if (imageLoadingStates[character.id]) return;
@@ -143,7 +153,9 @@ export function CharacterSidebar({
     const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-             const value = prompt(`Ajouter un nouvel élément à ${field} :`);
+             let promptMessage = `Ajouter un nouvel élément à ${field} :`;
+             if (field === 'history') promptMessage = "Ajouter une entrée à l'historique (action, citation...):"
+             const value = prompt(promptMessage);
              if (value) {
                  const currentArray = character[field] || [];
                  onCharacterUpdate({ ...character, [field]: [...currentArray, value] });
@@ -213,19 +225,22 @@ export function CharacterSidebar({
          <Card className="bg-muted/30 border">
              <CardContent className="p-3 space-y-2">
                  {data && data.length > 0 ? (
-                     data.map((item, index) => (
-                         <div key={index} className="flex items-center gap-2">
-                             <Input
-                                 value={item}
-                                 onChange={(e) => handleArrayFieldChange(charId, field, index, e.target.value)}
-                                 className="h-8 text-sm flex-1"
-                                 placeholder={`Élément ${index + 1}`}
-                             />
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeArrayFieldItem(charId, field, index)}>
-                                 <Trash2 className="h-4 w-4" />
-                             </Button>
-                         </div>
-                     ))
+                      <ScrollArea className="h-32"> {/* Make history scrollable */}
+                        {data.map((item, index) => (
+                            <div key={index} className="flex items-center gap-2 mb-1">
+                                <Textarea // Use Textarea for history
+                                    value={item}
+                                    onChange={(e) => handleArrayFieldChange(charId, field, index, e.target.value)}
+                                    className="text-sm flex-1 bg-background border"
+                                    placeholder={`Entrée ${index + 1}`}
+                                    rows={1} // Start with 1 row, auto-grow
+                                />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => removeArrayFieldItem(charId, field, index)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                     </ScrollArea>
                  ) : (
                      <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} ajouté(e).</p>
                  )}
@@ -245,7 +260,12 @@ export function CharacterSidebar({
             <p className="p-4 text-sm text-muted-foreground">Aucun personnage secondaire défini.</p>
         ) : (
             <Accordion type="multiple" className="w-full">
-                {characters.map((char) => (
+                {characters.map((char) => {
+                    // Determine if this character might be considered "new"
+                    // Only check localStorage on the client side
+                    const isPotentiallyNew = isClient && !localStorage.getItem(`character_${char.name.toLowerCase()}`);
+
+                    return (
                     <AccordionItem value={char.id} key={char.id}>
                         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50"> {/* Adjusted hover */}
                             <div className="flex items-center gap-3">
@@ -259,9 +279,25 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
+                                {/* Optional: Add a small badge/icon if 'isNew' or potentially new */}
+                                {isPotentiallyNew && <Star className="h-3 w-3 text-yellow-500 ml-1" />}
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> {/* Ensure background for content */}
+                           {/* Save New Character Button - Only render if potentially new and on client */}
+                            {isClient && isPotentiallyNew && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => onSaveNewCharacter(char)}>
+                                                <Save className="h-4 w-4 mr-1" /> Sauvegarder Globalement
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Sauvegarder ce personnage pour le réutiliser dans d'autres aventures.</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+
                            {/* Portrait Generation */}
                            <div className="flex flex-col items-center gap-2">
                                 <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
@@ -349,26 +385,16 @@ export function CharacterSidebar({
 
                             <Separator />
 
-                            {/* History (Read-only for now, populated by AI/narrative analysis) */}
-                             <div className="space-y-2">
-                                 <Label className="flex items-center gap-1"><History className="h-4 w-4"/> Historique Narratif</Label>
-                                <ScrollArea className="h-24 w-full rounded-md border bg-muted/30 p-2">
-                                    {char.history && char.history.length > 0 ? (
-                                        char.history.map((entry, index) => (
-                                            <p key={index} className="text-xs text-muted-foreground mb-1 leading-tight">{`- ${entry}`}</p>
-                                        ))
-                                    ) : (
-                                         <p className="text-xs text-muted-foreground italic">Aucun historique enregistré.</p>
-                                    )}
-                                </ScrollArea>
-                             </div>
+                            {/* History (Editable List) */}
+                             <ArrayEditableCard charId={char.id} field="history" title="Historique Narratif" icon={History} data={char.history} addLabel="Ajouter Entrée Historique" />
 
                             {/* Opinion (Editable) */}
                             <NestedEditableCard charId={char.id} field="opinion" title="Opinions" icon={Brain} data={char.opinion} addLabel="Ajouter Opinion"/>
 
                         </AccordionContent>
                     </AccordionItem>
-                ))}
+                    )
+                })}
             </Accordion>
         )}
     </div>

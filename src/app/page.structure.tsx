@@ -10,11 +10,22 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RotateCcw, Trash } from 'lucide-react'; // Added RotateCcw, Trash
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
-import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog" // Import AlertDialog components
 
 // Import sub-components used in the structure
 import { AdventureForm } from '@/components/adventure-form';
@@ -33,6 +44,8 @@ interface PageStructureProps {
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Added prop for new characters
+  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
+  handleSaveNewCharacter: (character: Character) => void; // Added prop for saving new chars
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
@@ -40,8 +53,7 @@ interface PageStructureProps {
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
-  handleRewindToMessage: (messageId: string) => void;
-  handleUndoLastMessage: () => void;
+  handleRestartAdventure: () => void; // New handler for restarting
   handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
 }
 
@@ -55,6 +67,8 @@ export function PageStructure({
   handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters, // Destructure new prop
+  handleCharacterHistoryUpdate, // Destructure new prop
+  handleSaveNewCharacter, // Destructure new prop
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -62,8 +76,7 @@ export function PageStructure({
   generateAdventureAction,
   generateSceneImageAction,
   handleEditMessage,
-  handleRewindToMessage,
-  handleUndoLastMessage,
+  handleRestartAdventure, // Added prop
   handleRegenerateLastResponse, // Added prop
 }: PageStructureProps) {
   return (
@@ -134,6 +147,35 @@ export function PageStructure({
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+            {/* Restart Adventure Button */}
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="destructive" className="w-full justify-start group-data-[collapsible=icon]:justify-center">
+                                    <Trash className="h-5 w-5" />
+                                    <span className="ml-2 group-data-[collapsible=icon]:hidden">Recommencer</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" align="center">Recommencer l'aventure depuis le début</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Cette action est irréversible et effacera toute la progression actuelle de l'histoire. Les paramètres et les personnages seront conservés.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRestartAdventure}>Confirmer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* Load Button */}
             <TooltipProvider>
                  <Tooltip>
@@ -207,10 +249,9 @@ export function PageStructure({
                 initialMessages={narrativeMessages} // Pass the message array
                 onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
                 onNewCharacters={handleNewCharacters} // Pass the new characters handler
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
-                onRewindToMessage={handleRewindToMessage}
-                onUndoLastMessage={handleUndoLastMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
              />
         </main>
@@ -267,6 +308,7 @@ export function PageStructure({
                                  <CharacterSidebar
                                      characters={characters}
                                      onCharacterUpdate={handleCharacterUpdate}
+                                     onSaveNewCharacter={handleSaveNewCharacter} // Pass save handler
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={adventureSettings.rpgMode}
                                  />

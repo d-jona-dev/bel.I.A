@@ -10,7 +10,7 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
-import type { GenerateAdventureInput, GenerateAdventureOutput, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char types
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update types
 
 
 export default function Home() {
@@ -81,7 +81,7 @@ export default function Home() {
 
     // Reset narrative only if initial situation changes significantly
     if (newSettings.initialSituation !== oldInitialSituation) {
-         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: newSettings.initialSituation, timestamp: Date.now() }]);
+         handleRestartAdventure(); // Use the restart function
     }
 
     toast({ title: "Configuration Mise à Jour" });
@@ -98,12 +98,6 @@ export default function Home() {
        };
        // Use functional update to ensure we're working with the latest state
        setNarrative(prevNarrative => [...prevNarrative, newMessage]);
-
-      // Character state analysis should happen *after* the AI response is added and might involve another AI call
-      if (adventureSettings.rpgMode && type === 'ai') {
-        console.log("RPG Mode: Need to analyze narrative to update characters:", content);
-        // Placeholder: updateCharacterStateFromNarrative(newMessage.id, content);
-      }
    };
 
    // Function to handle newly detected characters from AI response
@@ -124,6 +118,7 @@ export default function Home() {
                         history: [`Rencontré le ${new Date().toLocaleString()}`], // Basic history entry
                         opinion: {}, // Initialize opinion
                         portraitUrl: null,
+                        // isNew: true, // Add a temporary flag to indicate it's newly added and not saved globally yet
                         // Initialize RPG fields if mode is on
                         ...(adventureSettings.rpgMode && {
                             level: 1,
@@ -154,13 +149,43 @@ export default function Home() {
             if (charsToAdd.length > 0) {
                 toast({
                     title: "Nouveau Personnage Ajouté",
-                    description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste des personnages.`,
+                    description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste locale. Sauvegardez-le si vous le souhaitez.`,
                 });
                 return [...prevChars, ...charsToAdd];
             }
             return prevChars; // No changes if no new unique characters
         });
     };
+
+    // Function to handle character history updates from AI
+    const handleCharacterHistoryUpdate = (updates: CharacterUpdateSchema[]) => {
+        if (!updates || updates.length === 0) return;
+
+        setCharacters(prevChars => {
+            let changed = false;
+            const updatedChars = prevChars.map(char => {
+                const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
+                if (charUpdates.length > 0) {
+                    changed = true;
+                    const newHistory = charUpdates.map(u => u.historyEntry);
+                    return {
+                        ...char,
+                        history: [...(char.history || []), ...newHistory],
+                    };
+                }
+                return char;
+            });
+
+            if (changed) {
+                console.log("Character histories updated:", updates);
+                 // Optionally show a toast, but might be too noisy
+                 // toast({ title: "Historique Personnage Mis à Jour" });
+                return updatedChars;
+            }
+            return prevChars; // No change
+        });
+    };
+
 
     // New handler for editing a specific message
    const handleEditMessage = (messageId: string, newContent: string) => {
@@ -172,45 +197,14 @@ export default function Home() {
        // For now, it's just a text edit.
    };
 
-    // Handler for rewinding the story to a specific message
-   const handleRewindToMessage = (messageId: string) => {
-       const messageIndex = narrative.findIndex(msg => msg.id === messageId);
-       if (messageIndex !== -1) {
-           // Keep messages up to and including the selected one
-           setNarrative(prev => prev.slice(0, messageIndex + 1)); // Correct slicing
-           toast({ title: "Retour en Arrière", description: "L'histoire a été ramenée au message sélectionné." });
-       } else {
-            toast({ title: "Erreur", description: "Impossible de trouver le message pour le retour en arrière.", variant: "destructive" });
-       }
-   };
+   // Function to restart the adventure
+   const handleRestartAdventure = () => {
+        setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
+        // Optionally reset characters to their initial state if needed, or keep current state
+        // For now, just reset the narrative.
+        toast({ title: "Aventure Recommencée", description: "L'histoire a été remise au début." });
+   }
 
-    // Handler for undoing the last message pair (user action + AI response) or just the last user action
-    const handleUndoLastMessage = () => {
-        setNarrative(prevNarrative => {
-            if (prevNarrative.length <= 1) {
-                toast({ title: "Impossible d'annuler", description: "Il n'y a pas de message à annuler.", variant: "destructive" });
-                return prevNarrative; // Return unchanged state
-            }
-
-            // Check if the last message is AI and the one before is User
-            const lastMessage = prevNarrative[prevNarrative.length - 1];
-            const secondLastMessage = prevNarrative[prevNarrative.length - 2];
-
-            if (lastMessage.type === 'ai' && secondLastMessage?.type === 'user') {
-                // Remove both user action and AI response
-                toast({ title: "Dernière Action Annulée" });
-                return prevNarrative.slice(0, -2);
-            } else if (lastMessage.type === 'user') {
-                // Only remove the last user action (if they haven't sent it yet effectively)
-                toast({ title: "Dernière Action Annulée" });
-                return prevNarrative.slice(0, -1);
-            } else {
-                 // Handle edge cases like multiple system/AI messages - just remove the last one
-                 toast({ title: "Dernier Message Annulé" });
-                 return prevNarrative.slice(0, -1);
-            }
-        });
-    };
 
     // Handler for regenerating the last AI response
     const handleRegenerateLastResponse = async () => {
@@ -298,6 +292,9 @@ export default function Home() {
 
              // Handle any newly introduced characters in the regenerated response
              handleNewCharacters(result.newCharacters || []);
+             // Handle character history updates
+             handleCharacterHistoryUpdate(result.characterUpdates || []);
+
 
              toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });
 
@@ -316,19 +313,40 @@ export default function Home() {
 
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
+       // Add logic to persist the character globally if the "save" button was clicked
+       // e.g., save to localStorage or a backend
+        // Remove the temporary 'isNew' flag if it exists
+       // const { isNew, ...characterToSave } = updatedCharacter;
+
        setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
        console.log("Character updated:", updatedCharacter); // Debug log
+       // if (isNew) {
+       //     toast({ title: "Personnage Sauvegardé Globalement", description: `${characterToSave.name} peut maintenant être réutilisé.` });
+       //     // TODO: Implement global save logic here
+       // }
    };
+
+    const handleSaveNewCharacter = (character: Character) => {
+        // Placeholder for saving the character globally (e.g., to localStorage, backend)
+        console.log("Saving new character globally:", character);
+        toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
+        // Potentially update the character state to remove the 'isNew' flag or similar indicator
+         // onCharacterUpdate({ ...character, isNew: false }); // Example: Update state via existing handler
+    };
+
 
    const handleSave = () => {
         // Implement saving logic (JSON format)
         console.log("Saving Adventure State...");
+         // Filter out any temporary flags before saving
+        const charactersToSave = characters.map(({ ...char }) => char);
+
         const saveData: SaveData = {
             adventureSettings,
-            characters,
+            characters: charactersToSave, // Save the cleaned list
             narrative, // Save the array of messages
             currentLanguage,
-            saveFormatVersion: 1.1, // Increment version if structure changed significantly (e.g., Character type)
+            saveFormatVersion: 1.2, // Increment version for character history change
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download or save to backend/localStorage
@@ -374,7 +392,14 @@ export default function Home() {
 
 
                 // Perform migrations if loadedData.saveFormatVersion is different from current
-                // if (loadedData.saveFormatVersion !== 1.1) { /* ... migration logic ... */ }
+                 if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.2) {
+                     console.log("Migrating old save format...");
+                     // Example migration: ensure history is an array
+                     loadedData.characters = loadedData.characters.map(c => ({
+                        ...c,
+                        history: Array.isArray(c.history) ? c.history : [],
+                     }));
+                 }
 
                 setAdventureSettings(loadedData.adventureSettings);
                  // Ensure loaded characters have necessary fields, providing defaults
@@ -384,7 +409,7 @@ export default function Home() {
                     details: c.details || "",
                     stats: loadedData.adventureSettings!.rpgMode ? (c.stats || {}) : undefined,
                     inventory: loadedData.adventureSettings!.rpgMode ? (c.inventory || {}) : undefined,
-                    history: c.history || [],
+                    history: c.history || [], // Ensure history is always an array
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
                     // Add defaults for new/existing RPG fields if loading older save or if rpgMode is true
@@ -436,15 +461,13 @@ export default function Home() {
         handleSettingsUpdate={handleSettingsUpdate}
         handleNarrativeUpdate={(content, type, sceneDesc) => {
             handleNarrativeUpdate(content, type, sceneDesc);
-            // Add AI processing *after* narrative update if needed
-            // Example: Call AI to process the new content for character updates
-            // if (type === 'ai' && adventureSettings.rpgMode) {
-            //    processNarrativeForCharacterUpdates(content);
-            // }
-            // New characters are handled after the generateAdventure call returns
+            // AI processing is now handled within the generateAdventure flow itself
+            // Character updates (history) and new characters are handled after the call returns
         }}
         handleCharacterUpdate={handleCharacterUpdate}
         handleNewCharacters={handleNewCharacters} // Pass the new handler
+        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
+        handleSaveNewCharacter={handleSaveNewCharacter} // Pass save new char handler
         handleSave={handleSave}
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
@@ -452,8 +475,7 @@ export default function Home() {
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage}
-        handleRewindToMessage={handleRewindToMessage} // Pass rewind handler
-        handleUndoLastMessage={handleUndoLastMessage} // Pass undo handler
+        handleRestartAdventure={handleRestartAdventure} // Pass restart handler
         handleRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
       />
   );

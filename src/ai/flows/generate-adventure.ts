@@ -4,7 +4,7 @@
 /**
  * @fileOverview Generates adventure narratives based on world, initial situation, characters, and user actions.
  * Includes optional RPG context handling and provides scene descriptions for image generation.
- * Detects newly introduced characters.
+ * Detects newly introduced characters and logs significant character events/quotes.
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -47,7 +47,13 @@ const NewCharacterSchema = z.object({
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context."),
 });
 
-// Update Output Schema to include sceneDescriptionForImage and newCharacters
+// Define schema for character history updates
+const CharacterUpdateSchema = z.object({
+    characterName: z.string().describe("The name of the known character involved."),
+    historyEntry: z.string().describe("A concise summary of a significant action or quote by this character in the current narrative segment."),
+});
+
+// Update Output Schema to include sceneDescriptionForImage, newCharacters, and characterUpdates
 const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation.'),
   sceneDescriptionForImage: z
@@ -58,6 +64,10 @@ const GenerateAdventureOutputSchema = z.object({
     .array(NewCharacterSchema)
     .optional()
     .describe('List of characters newly introduced in this narrative segment.'),
+  characterUpdates: z
+    .array(CharacterUpdateSchema)
+    .optional()
+    .describe('List of significant events or quotes involving known characters in this narrative segment, for logging in their history.'),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -108,6 +118,7 @@ Tasks:
 1.  Generate the next part of the story ("Narrative Continuation") based on all the context and the user's action. Be creative and engaging.
 2.  Analyze the "Narrative Continuation" you just generated. Identify any characters mentioned by name that are NOT in the "Known Characters" list above. List these newly introduced characters in the 'newCharacters' output field, including their name and a brief description derived from the context if available.
 3.  Based ONLY on the "Narrative Continuation", provide a concise visual description suitable for generating an image of the scene. Focus on the key visual elements, setting, mood, and any characters present. IMPORTANT: Describe any characters using their physical appearance or role (e.g., "a tall man with blond hair", "the bartender", "a young woman with brown hair") INSTEAD of their names. Place this description in the 'sceneDescriptionForImage' output field. If the narrative is purely dialogue or internal monologue with no strong visual scene, you can omit this field or provide a very brief summary like "Character thinking".
+4.  Analyze the "Narrative Continuation" again. For each **KNOWN character** (from the input list) involved in a significant action or who says a memorable quote, create a brief entry summarizing it (e.g., "Defended the group from goblins", "Said 'I will never betray you.'"). Add these entries to the 'characterUpdates' output field, specifying the character's name and the summary.
 
 Narrative Continuation:
 [Generate the next part of the story here.]
@@ -143,7 +154,7 @@ const generateAdventureFlow = ai.defineFlow<
     }
     console.log("AI Output:", JSON.stringify(output, null, 2)); // Log the full output
 
-    // Return the full output including the optional scene description and new characters
+    // Return the full output including scene description, new characters, and character updates
     return output;
   }
 );

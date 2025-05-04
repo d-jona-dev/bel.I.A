@@ -18,7 +18,7 @@ export interface Character {
   // RPG specific fields (optional based on rpgMode)
   stats?: Record<string, number | string>; // e.g., { HP: 10, STR: 5, Class: 'Warrior' }
   inventory?: Record<string, number>; // e.g., { Gold: 100, Sword: 1 }
-  history?: string[]; // Log of important events/interactions
+  history?: string[]; // Log of significant events, actions, or quotes involving the character
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
   portraitUrl?: string | null; // URL for generated portrait
 
@@ -60,7 +60,6 @@ export interface SaveData {
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
-    saveFormatVersion?: number;
+    saveFormatVersion?: number; // Changed to 1.1 previously, keep or increment as needed
     timestamp?: string;
 }
-```
