@@ -98,11 +98,10 @@ export default function Home() {
      if (isInitialMount.current) {
        isInitialMount.current = false;
      } else {
-       // Only show toast after the initial mount and when settings actually change
-       // Need to delay this slightly to avoid the 'update during render' error
+        // Need to delay this slightly to avoid the 'update during render' error
         setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
      }
-   }, [adventureSettings, initialCharactersFromSettings]); // Depend on settings and initial chars
+   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
 
 
    // Updated to handle Message objects and scene description
@@ -215,16 +214,30 @@ export default function Home() {
 
    // Function to restart the adventure
    const handleRestartAdventure = () => {
-        // 1. Reset the narrative to the initial situation
+        // 1. Reset the narrative to only the initial system message based on current settings
         setNarrative([{ id: `msg-reset-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
 
-        // 2. Reset characters: Revert to the deep copy of the initial characters from settings
-        // This ensures newly added characters during the session are removed,
-        // and stats/history of initial characters are reset.
+        // 2. Reset characters: Revert to the deep copy of the initial characters saved when settings were last updated/loaded.
+        // This removes dynamically added characters and resets stats/history of initial ones.
         setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings)));
 
         toast({ title: "Aventure Recommencée", description: "L'histoire et les personnages ont été réinitialisés." });
    };
+
+   // Function to undo the last message (user or AI)
+    const handleUndoLastMessage = () => {
+        setNarrative(prevNarrative => {
+            if (prevNarrative.length <= 1) {
+                 // Cannot undo the very first message
+                 setTimeout(() => toast({ title: "Impossible d'annuler", description: "Aucun message à annuler.", variant: "destructive" }), 0);
+                 return prevNarrative;
+            }
+            const newNarrative = prevNarrative.slice(0, -1);
+             setTimeout(() => toast({ title: "Dernier message annulé" }), 0);
+            return newNarrative;
+        });
+         // Optionally, could try to revert character state changes associated with the last message, but that's complex.
+    };
 
 
     // Handler for regenerating the last AI response
@@ -254,12 +267,12 @@ export default function Home() {
 
 
          if (!lastAiMessage || !lastUserAction) {
-             toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" });
+              setTimeout(() => toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" }), 0);
              return;
          }
 
          setIsRegenerating(true);
-         toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." });
+         setTimeout(() => toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }), 0);
 
          // Prepare context for the AI regeneration
          const narrativeContext = contextMessages.map(msg =>
@@ -315,15 +328,15 @@ export default function Home() {
              handleCharacterHistoryUpdate(result.characterUpdates || []);
 
 
-             toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });
+              setTimeout(() => toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." }), 0);
 
          } catch (error) {
              console.error("Error regenerating adventure:", error);
-             toast({
+              setTimeout(() => toast({
                  title: "Erreur de Régénération",
                  description: `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`,
                  variant: "destructive",
-             });
+             }), 0);
          } finally {
              setIsRegenerating(false);
          }
@@ -355,17 +368,17 @@ export default function Home() {
                 }
 
                 localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
-                toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
+                 setTimeout(() => toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` }), 0);
                 // Trigger a re-render in CharacterSidebar by updating the character slightly (e.g., timestamp)
                 // This helps remove the 'isPotentiallyNew' state visually.
                  handleCharacterUpdate({ ...character, _lastSaved: Date.now() } as any); // Add a dummy field or update timestamp
 
             } catch (error) {
                  console.error("Failed to save character to localStorage:", error);
-                 toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" });
+                  setTimeout(() => toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }), 0);
             }
         } else {
-             toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" });
+              setTimeout(() => toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" }), 0);
         }
     };
 
@@ -392,7 +405,7 @@ export default function Home() {
         a.download = `aventurier_textuel_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
+         setTimeout(() => toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." }), 0);
     };
 
     const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -474,10 +487,10 @@ export default function Home() {
                 setNarrative(loadedData.narrative as Message[]);
                 setCurrentLanguage(loadedData.currentLanguage || "fr");
 
-                toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
+                 setTimeout(() => toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." }), 0);
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
-                toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" });
+                 setTimeout(() => toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" }), 0);
             }
         };
         reader.readAsText(file);
@@ -511,6 +524,7 @@ export default function Home() {
         handleEditMessage={handleEditMessage}
         handleRestartAdventure={handleRestartAdventure}
         handleRegenerateLastResponse={handleRegenerateLastResponse}
+        handleUndoLastMessage={handleUndoLastMessage} // Pass the undo handler
       />
   );
 }

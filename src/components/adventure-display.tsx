@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Ensure Avatar components are imported
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash } from "lucide-react"; // Removed Undo, RotateCcw; Added Trash
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, RotateCcw, Undo2 } from "lucide-react"; // Added RotateCcw, Undo2
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added CharacterUpdateSchema
@@ -24,7 +24,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Import AlertDialogTrigger
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label";
 
@@ -42,6 +42,8 @@ interface AdventureDisplayProps {
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
+    onRestartAdventure: () => void; // Callback to restart the adventure
+    onUndoLastMessage: () => void; // Callback to undo the last message
 }
 
 
@@ -57,6 +59,8 @@ export function AdventureDisplay({
     rpgMode,
     onEditMessage,
     onRegenerateLastResponse, // New handler
+    onRestartAdventure, // New handler
+    onUndoLastMessage, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -110,7 +114,8 @@ export function AdventureDisplay({
     try {
         // Get context from the current messages state
         // Sending last 5 messages for context. Adjust number as needed.
-        const currentMessages = messages; // Read the latest state directly if useEffect hasn't updated yet
+        // Get the most up-to-date message list before making the call
+        const currentMessages = initialMessages; // Use the prop directly to get latest state
         const contextMessages = currentMessages.slice(-5);
         const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${msg.content}` : msg.content
@@ -256,6 +261,11 @@ export function AdventureDisplay({
         }
     };
 
+    // Function to handle undoing the last message
+    const handleUndo = () => {
+        if (isLoading || isRegenerating) return;
+        onUndoLastMessage(); // Call the handler passed from parent
+    };
 
   // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -264,6 +274,9 @@ export function AdventureDisplay({
       handleSendAction();
     }
   };
+
+  // Determine if the undo button should be disabled
+  const canUndo = messages.length > 1; // Cannot undo the very first system message
 
   // --- Render ---
   return (
@@ -287,6 +300,8 @@ export function AdventureDisplay({
                                 const isLastMessage = index === messages.length - 1;
                                 // Determine if this is the very last AI message in the current list
                                 const isLastAiMessage = isLastMessage && message.type === 'ai';
+                                // Determine if this is the very first message
+                                const isFirstMessage = index === 0;
 
                                 return (
                                     <div key={message.id} className="group relative flex flex-col">
@@ -302,10 +317,10 @@ export function AdventureDisplay({
                                                 {message.content}
 
                                                 {/* Action buttons on hover - positioned outside the bubble */}
-                                                {/* Only show actions for non-system messages */}
-                                                {message.type !== 'system' && (
+                                                {/* Only show actions for non-system messages and not the very first one */}
+                                                {message.type !== 'system' && !isFirstMessage && (
                                                     <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                         {/* REMOVED REWIND BUTTON */}
+                                                         {/* Rewind button removed */}
 
                                                         {/* Edit Button */}
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
@@ -436,9 +451,19 @@ export function AdventureDisplay({
                     )}
 
 
-                    {/* User Input Textarea */}
+                    {/* User Input Textarea and Action Buttons */}
                     <div className="flex gap-2">
-                        {/* REMOVED UNDO BUTTON */}
+                         {/* Undo Button */}
+                         <TooltipProvider>
+                             <Tooltip>
+                                 <TooltipTrigger asChild>
+                                     <Button type="button" variant="outline" size="icon" onClick={handleUndo} disabled={isLoading || isRegenerating || !canUndo}>
+                                         <Undo2 className="h-5 w-5" />
+                                     </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent>Annuler le dernier message</TooltipContent>
+                             </Tooltip>
+                         </TooltipProvider>
 
                         <Textarea
                             placeholder={currentMode === 'exploration' ? "Que faites-vous ? Décrivez votre action..." : (currentMode === 'combat' ? "Décrivez votre action de combat..." : "Votre message...")}
@@ -460,6 +485,34 @@ export function AdventureDisplay({
                                 <TooltipContent>Envoyer</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
+
+                         {/* Restart Button - Moved here */}
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="destructive" size="icon" disabled={isLoading || isRegenerating}>
+                                                <RotateCcw className="h-5 w-5" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Recommencer l'aventure</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Cette action est irréversible et effacera toute la progression actuelle de l'histoire. Les paramètres et les personnages définis initialement seront conservés.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={onRestartAdventure}>Confirmer</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </CardFooter>
             </Card>

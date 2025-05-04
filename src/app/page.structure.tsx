@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RotateCcw, Trash } from 'lucide-react'; // Added RotateCcw, Trash
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react'; // Removed RotateCcw, Trash
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema
@@ -55,6 +55,7 @@ interface PageStructureProps {
   handleEditMessage: (messageId: string, newContent: string) => void;
   handleRestartAdventure: () => void; // New handler for restarting
   handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
+  handleUndoLastMessage: () => void; // Added undo handler prop
 }
 
 export function PageStructure({
@@ -78,6 +79,7 @@ export function PageStructure({
   handleEditMessage,
   handleRestartAdventure, // Added prop
   handleRegenerateLastResponse, // Added prop
+  handleUndoLastMessage, // Added prop
 }: PageStructureProps) {
   return (
     <>
@@ -147,34 +149,7 @@ export function PageStructure({
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-            {/* Restart Adventure Button */}
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="destructive" className="w-full justify-start group-data-[collapsible=icon]:justify-center">
-                                    <Trash className="h-5 w-5" />
-                                    <span className="ml-2 group-data-[collapsible=icon]:hidden">Recommencer</span>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" align="center">Recommencer l'aventure depuis le début</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Cette action est irréversible et effacera toute la progression actuelle de l'histoire. Les paramètres et les personnages seront conservés.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRestartAdventure}>Confirmer</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Restart Adventure Button removed from here */}
 
             {/* Load Button */}
             <TooltipProvider>
@@ -253,6 +228,8 @@ export function PageStructure({
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
+                onRestartAdventure={handleRestartAdventure} // Pass restart handler
+                onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
              />
         </main>
       </SidebarInset>
