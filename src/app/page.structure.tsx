@@ -53,7 +53,7 @@ interface PageStructureProps {
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
-  handleRestartAdventure: () => void; // New handler for restarting
+  // handleRestartAdventure: () => void; // Removed handler for restarting
   handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
   handleUndoLastMessage: () => void; // Added undo handler prop
 }
@@ -77,7 +77,7 @@ export function PageStructure({
   generateAdventureAction,
   generateSceneImageAction,
   handleEditMessage,
-  handleRestartAdventure, // Added prop
+  // handleRestartAdventure, // Removed prop
   handleRegenerateLastResponse, // Added prop
   handleUndoLastMessage, // Added prop
 }: PageStructureProps) {
@@ -228,7 +228,7 @@ export function PageStructure({
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
-                onRestartAdventure={handleRestartAdventure} // Pass restart handler
+                // onRestartAdventure={handleRestartAdventure} // Removed handler
                 onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
              />
         </main>

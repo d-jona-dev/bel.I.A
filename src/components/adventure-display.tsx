@@ -42,7 +42,7 @@ interface AdventureDisplayProps {
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
-    onRestartAdventure: () => void; // Callback to restart the adventure
+    // onRestartAdventure: () => void; // Removed restart callback
     onUndoLastMessage: () => void; // Callback to undo the last message
 }
 
@@ -59,7 +59,7 @@ export function AdventureDisplay({
     rpgMode,
     onEditMessage,
     onRegenerateLastResponse, // New handler
-    onRestartAdventure, // New handler
+    // onRestartAdventure, // Removed handler
     onUndoLastMessage, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
@@ -483,33 +483,8 @@ export function AdventureDisplay({
                             </Tooltip>
                         </TooltipProvider>
 
-                         {/* Restart Button - Moved here */}
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="destructive" size="icon" disabled={isLoading || isRegenerating}>
-                                                <RotateCcw className="h-5 w-5" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Recommencer l'aventure</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Cette action est irréversible et effacera toute la progression actuelle de l'histoire. Les paramètres et les personnages définis initialement seront conservés.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={onRestartAdventure}>Confirmer</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                         {/* Restart Button Removed */}
+
                     </div>
                 </CardFooter>
             </Card>
