@@ -1,5 +1,7 @@
 
 // src/app/personnages/layout.tsx
+"use client"; // Add 'use client' directive
+
 import * as React from 'react';
 import Link from 'next/link';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
