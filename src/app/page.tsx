@@ -102,7 +102,8 @@ export default function Home() {
        // Need to delay this slightly to avoid the 'update during render' error
         setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
      }
-   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
+   }, [adventureSettings, initialCharactersFromSettings]); // Depend on settings and initial chars
+
 
    // Updated to handle Message objects and scene description
    const handleNarrativeUpdate = (content: string, type: 'user' | 'ai', sceneDesc?: string) => {
@@ -163,10 +164,11 @@ export default function Home() {
             });
 
             if (charsToAdd.length > 0) {
-                toast({
+                // Wrap toast in setTimeout to avoid calling setState during render
+                setTimeout(() => toast({
                     title: "Nouveau Personnage Ajouté",
                     description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste locale. Sauvegardez-le si vous le souhaitez.`,
-                });
+                }), 0);
                 return [...prevChars, ...charsToAdd];
             }
             return prevChars; // No changes if no new unique characters
@@ -216,48 +218,10 @@ export default function Home() {
         // 1. Reset the narrative to the initial situation
         setNarrative([{ id: `msg-reset-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
 
-        // 2. Reset characters: Keep the ones defined initially, reset runtime data
-        setCharacters(prevChars => {
-            const initialCharIds = new Set(initialCharactersFromSettings.map(c => c.id));
-            const resetChars = initialCharactersFromSettings.map(initialChar => {
-                // Find the corresponding character in the *initial* settings state
-                 const originalDefinition = initialCharactersFromSettings.find(ic => ic.id === initialChar.id);
-                 if (!originalDefinition) return initialChar; // Should not happen if logic is correct
-
-                 // Reset runtime/RPG fields to their initial state or defaults
-                 return {
-                    ...originalDefinition, // Start with the original definition (name, details)
-                    history: [], // Clear history
-                    opinion: {}, // Clear opinions
-                    // Keep portraitUrl? Optional. Let's keep it for now.
-                    portraitUrl: originalDefinition.portraitUrl,
-                    // Reset RPG fields ONLY if RPG mode is currently active
-                     ...(adventureSettings.rpgMode && {
-                        level: 1,
-                        experience: 0,
-                        characterClass: originalDefinition.characterClass || '',
-                        stats: originalDefinition.stats || {}, // Revert to original stats if they existed
-                        inventory: {}, // Clear inventory
-                        skills: originalDefinition.skills || {}, // Revert to original skills
-                        spells: [], // Clear learned spells
-                        techniques: [], // Clear learned techniques
-                        passiveAbilities: originalDefinition.passiveAbilities || [], // Revert to original passives
-                        // Reset core D&D stats to defaults or original definition if available
-                        strength: originalDefinition.strength ?? 10,
-                        dexterity: originalDefinition.dexterity ?? 10,
-                        constitution: originalDefinition.constitution ?? 10,
-                        intelligence: originalDefinition.intelligence ?? 10,
-                        wisdom: originalDefinition.wisdom ?? 10,
-                        charisma: originalDefinition.charisma ?? 10,
-                        hitPoints: originalDefinition.maxHitPoints ?? 10, // Reset HP to Max HP or default
-                        maxHitPoints: originalDefinition.maxHitPoints ?? 10,
-                        armorClass: originalDefinition.armorClass ?? 10,
-                     }),
-                 };
-            });
-             return resetChars;
-        });
-
+        // 2. Reset characters: Revert to the deep copy of the initial characters from settings
+        // This ensures newly added characters during the session are removed,
+        // and stats/history of initial characters are reset.
+        setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings)));
 
         toast({ title: "Aventure Recommencée", description: "L'histoire et les personnages ont été réinitialisés." });
    };
