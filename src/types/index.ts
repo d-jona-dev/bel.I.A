@@ -6,6 +6,7 @@ export interface Message {
   type: 'user' | 'ai' | 'system'; // system for initial setup messages
   content: string;
   timestamp: number; // For ordering and potential display
+  sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
 }
 
 
@@ -62,3 +63,4 @@ export interface SaveData {
     saveFormatVersion?: number;
     timestamp?: string;
 }
+```

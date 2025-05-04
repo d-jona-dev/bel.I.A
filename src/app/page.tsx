@@ -85,13 +85,14 @@ export default function Home() {
     toast({ title: "Configuration Mise à Jour" });
   };
 
-   // Updated to handle Message objects
-   const handleNarrativeUpdate = (content: string, type: 'user' | 'ai') => {
+   // Updated to handle Message objects and scene description
+   const handleNarrativeUpdate = (content: string, type: 'user' | 'ai', sceneDesc?: string) => {
        const newMessage: Message = {
             id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`, // More unique ID
             type: type,
             content: content,
             timestamp: Date.now(),
+            sceneDescription: type === 'ai' ? sceneDesc : undefined, // Add scene desc only to AI messages
        };
        setNarrative(prev => [...prev, newMessage]);
 
@@ -185,6 +186,7 @@ export default function Home() {
                     ['user', 'ai', 'system'].includes(msg.type) &&
                     typeof msg.content === 'string' &&
                     typeof msg.timestamp === 'number'
+                    // sceneDescription is optional
                 );
                 if (!isValidNarrative) {
                     throw new Error("Structure des messages narratifs invalide.");

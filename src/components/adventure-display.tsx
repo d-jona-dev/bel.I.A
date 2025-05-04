@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added Avatar imports
-import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo } from "lucide-react"; // Added new icons
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo, Users } from "lucide-react"; // Removed BrainCircuit, added Users
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
@@ -36,7 +36,7 @@ interface AdventureDisplayProps {
     world: string;
     characters: Character[];
     initialMessages: Message[]; // Changed from initialNarrative: string
-    onNarrativeChange: (content: string, type: 'user' | 'ai') => void; // Callback for adding new messages
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Callback for adding new messages, include optional sceneDesc
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
@@ -64,6 +64,7 @@ export function AdventureDisplay({
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   const [imageUrl, setImageUrl] = React.useState<string | null>(null); // State for the generated image URL
   const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration"); // Added combat mode
+  const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null); // State for image prompt
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
@@ -74,6 +75,9 @@ export function AdventureDisplay({
    // Effect to update internal messages state when prop changes
     React.useEffect(() => {
         setMessages(initialMessages);
+        // Find the scene description associated with the latest AI message
+        const latestAiMessage = [...initialMessages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
+        setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
     }, [initialMessages]);
 
 
@@ -91,34 +95,32 @@ export function AdventureDisplay({
 
     try {
         // Combine current messages content for context
-        const narrativeContext = messages.map(msg =>
+        // Send only the last few messages for context to avoid overly large inputs
+        const contextMessages = messages.slice(-5); // Adjust number as needed
+        const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${msg.content}` : msg.content
         ).join('\n\n') + `\n\n> ${userMessageContent}\n`; // Append new user action
 
         // Prepare input for the AI
         const input: GenerateAdventureInput = {
             world: world,
-            initialSituation: narrativeContext, // Use the *current* full narrative + action
+            // Use limited context for initialSituation
+            initialSituation: narrativeContext,
              // Map characters to strings for the basic AI flow
              // TODO: Adapt AI flow to potentially accept structured character data
              secondaryCharacters: characters.map(c => `${c.name}: ${c.details}`),
             userAction: userMessageContent, // Send only the current user action
-             // TODO: Add context about current mode (exploration/dialogue/combat)
-             // TODO: Add context about RPG stats/inventory if rpgMode is true
         };
 
         // Add RPG context if enabled
         if (rpgMode) {
-            // This is a placeholder. The actual prompt needs to be designed
-            // to understand and utilize this structured data effectively.
-             input.promptConfig = { // Example of adding extra config
+             input.promptConfig = {
                  rpgContext: {
-                    playerStats: { /* Player stats */ },
+                    playerStats: { /* Player stats placeholder */ },
                     characterDetails: characters.map(c => ({
                         name: c.name,
                         stats: c.stats,
                         inventory: c.inventory,
-                        // Maybe recent history or current opinion?
                     })),
                     mode: currentMode,
                  }
@@ -129,9 +131,9 @@ export function AdventureDisplay({
         // Call the AI function passed via props
         const result = await generateAdventureAction(input);
 
-        // Call the callback to update the parent state with the AI's response
-        onNarrativeChange(result.narrative, 'ai');
-         // Update local state - handled by useEffect on initialMessages change
+        // Call the callback to update the parent state with the AI's response and scene description
+        onNarrativeChange(result.narrative, 'ai', result.sceneDescriptionForImage);
+        setCurrentSceneDescription(result.sceneDescriptionForImage || null); // Update local state too
 
         // TODO: Potentially generate new choices based on the result.narrative
         setChoices([]); // Clear old choices
@@ -143,12 +145,7 @@ export function AdventureDisplay({
             description: "Impossible de générer la suite de l'aventure. Veuillez réessayer.",
             variant: "destructive",
         });
-         // Update local state with error message
-         const errorMsgContent = "[Erreur lors de la génération de la suite.]";
-         // Don't add error as a user/ai message, maybe log it differently?
-         // Or add as system message? For now, just toast.
-         // onNarrativeChange(errorMsgContent, 'system'); // Example if adding as system message
-
+         // Don't add error as a message, just toast.
     } finally {
         setIsLoading(false);
     }
@@ -156,16 +153,22 @@ export function AdventureDisplay({
 
   // Function to handle generating scene image
   const handleGenerateImage = async () => {
-     if (isImageLoading) return;
+     if (isImageLoading || !currentSceneDescription) {
+         if (!currentSceneDescription) {
+            toast({
+                title: "Description manquante",
+                description: "Impossible de générer une image car la description de la scène n'est pas disponible.",
+                variant: "destructive",
+            });
+         }
+         return;
+     };
      setIsImageLoading(true);
      setImageUrl(null);
 
     try {
-        // Use the content of the last few messages
-        const recentMessagesContent = messages.slice(-5).map(m => m.content).join('\n');
-        const sceneDescription = recentMessagesContent.length > 500 ? recentMessagesContent.slice(-500) : recentMessagesContent;
-
-        const result = await generateSceneImageAction({ sceneDescription });
+        // Use the scene description provided by the main LLM
+        const result = await generateSceneImageAction({ sceneDescription: currentSceneDescription });
         setImageUrl(result.imageUrl);
          toast({
             title: "Image Générée",
@@ -432,7 +435,7 @@ export function AdventureDisplay({
                 </CardFooter>
             </Card>
 
-             {/* Image Generation Section (remains the same) */}
+             {/* Image Generation Section */}
             <Card className="w-1/3 lg:w-1/4 hidden md:flex flex-col overflow-hidden">
                 <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
                     {isImageLoading ? (
@@ -462,12 +465,12 @@ export function AdventureDisplay({
                     <TooltipProvider>
                         <Tooltip>
                              <TooltipTrigger asChild>
-                                <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading}>
+                                <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
                                     <Wand2 className="mr-2 h-4 w-4" />
                                     Générer Image Scène
                                 </Button>
                              </TooltipTrigger>
-                             <TooltipContent>Utilise l'IA pour générer une image basée sur la description actuelle.</TooltipContent>
+                             <TooltipContent>Utilise l'IA pour générer une image basée sur la description actuelle (si disponible).</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </CardFooter>
@@ -480,6 +483,7 @@ export function AdventureDisplay({
 }
 
 // Helper type for potential prompt configuration
+// This ensures the GenerateAdventureInput type is augmented correctly.
 declare module "@/ai/flows/generate-adventure" {
   interface GenerateAdventureInput {
     promptConfig?: {
@@ -491,3 +495,4 @@ declare module "@/ai/flows/generate-adventure" {
     };
   }
 }
+```

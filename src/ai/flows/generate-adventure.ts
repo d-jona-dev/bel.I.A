@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Generates adventure narratives based on world, initial situation, characters, and user actions.
- * Includes optional RPG context handling.
+ * Includes optional RPG context handling and provides scene descriptions for image generation.
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -40,9 +40,10 @@ const GenerateAdventureInputSchema = z.object({
 });
 export type GenerateAdventureInput = z.infer<typeof GenerateAdventureInputSchema>;
 
-// Output schema remains the same
+// Update Output Schema to include sceneDescriptionForImage
 const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation.'),
+  sceneDescriptionForImage: z.string().optional().describe('A concise description of the current scene, suitable for an image generation prompt.'),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -54,12 +55,12 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
 const prompt = ai.definePrompt({
   name: 'generateAdventurePrompt',
   input: {
-    schema: GenerateAdventureInputSchema, // Use the updated schema
+    schema: GenerateAdventureInputSchema, // Use the updated input schema
   },
   output: {
-    schema: GenerateAdventureOutputSchema,
+    schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Updated Handlebars prompt to conditionally include RPG context
+  // Updated Handlebars prompt to conditionally include RPG context and request scene description
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context.
 
 World: {{{world}}}
@@ -83,11 +84,16 @@ Relevant Characters:
 ---
 {{/if}}
 
-Narrative Continuation:`,
+Narrative Continuation:
+[Generate the next part of the story here.]
+
+---
+Based ONLY on the "Narrative Continuation" you just generated, provide a concise visual description suitable for generating an image of the scene. Focus on the key visual elements, characters present, setting, and mood. Place this description in the 'sceneDescriptionForImage' output field. If the narrative is purely dialogue or internal monologue with no strong visual scene, you can omit this field or provide a very brief summary like "Character thinking".
+`,
 });
 
 
-// Flow definition remains largely the same, just uses the updated prompt
+// Flow definition remains largely the same, just uses the updated prompt and schema
 const generateAdventureFlow = ai.defineFlow<
   typeof GenerateAdventureInputSchema,
   typeof GenerateAdventureOutputSchema
@@ -108,10 +114,12 @@ const generateAdventureFlow = ai.defineFlow<
     // TODO: Post-process output if needed, e.g., extracting structured data
     // if the prompt was asked to generate choices, stats changes, etc.
 
-    if (!output) {
+    if (!output?.narrative) { // Check specifically for narrative
         throw new Error("AI failed to generate a narrative.");
     }
+    console.log("AI Output:", JSON.stringify(output, null, 2)); // Log the full output
 
+    // Return the full output including the optional scene description
     return output;
   }
 );

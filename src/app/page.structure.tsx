@@ -30,7 +30,7 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: any) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai') => void; // Updated signature
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
