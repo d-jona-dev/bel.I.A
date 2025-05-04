@@ -14,37 +14,26 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"; // Added TooltipContent import
-import { Save, Upload, Image as ImageIcon, Bot, Languages, Users, Map, Wand2, Settings, BookUser, Scroll } from 'lucide-react'; // Added Scroll for History
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Save, Upload, Image as ImageIcon, Bot, Languages, Users, Map, Wand2, Settings, BookUser, Scroll, BrainCircuit, PanelRight } from 'lucide-react'; // Added Scroll, BrainCircuit, PanelRight
 import { AdventureForm } from '@/components/adventure-form';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar"; // Import CharacterSidebar
 import { useToast } from "@/hooks/use-toast"; // Import useToast
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"; // Added Accordion
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import type { Character, AdventureSettings, SaveData } from "@/types"; // Import shared types
 
 // Import AI functions here
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
 
-// Define types for shared state (consider moving to a dedicated types file)
-interface Character {
-  id: string; // Unique ID for the character
-  name: string;
-  details: string; // Base description from the form
-  // RPG specific fields (optional based on rpgMode)
-  stats?: Record<string, number | string>; // e.g., { HP: 10, STR: 5, Class: 'Warrior' }
-  inventory?: Record<string, number>; // e.g., { Gold: 100, Sword: 1 }
-  history?: string[]; // Log of important events/interactions
-  opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
-  portraitUrl?: string | null; // URL for generated portrait
-}
 
 export default function Home() {
   // State Management (moved to client component)
-  const [adventureSettings, setAdventureSettings] = React.useState({
+  const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
     rpgMode: false,
@@ -81,6 +70,24 @@ export default function Home() {
             stats: newSettings.enableRpgMode ? (existingChar?.stats || characters.find(ec => ec.id === id)?.stats || {}) : undefined,
             inventory: newSettings.enableRpgMode ? (existingChar?.inventory || characters.find(ec => ec.id === id)?.inventory || {}) : undefined,
             portraitUrl: existingChar?.portraitUrl || characters.find(ec => ec.id === id)?.portraitUrl || null,
+            // Add other RPG fields with defaults if rpgMode is enabled
+            level: newSettings.enableRpgMode ? (existingChar?.level || characters.find(ec => ec.id === id)?.level || 1) : undefined,
+            experience: newSettings.enableRpgMode ? (existingChar?.experience || characters.find(ec => ec.id === id)?.experience || 0) : undefined,
+            characterClass: newSettings.enableRpgMode ? (existingChar?.characterClass || characters.find(ec => ec.id === id)?.characterClass || '') : undefined,
+            strength: newSettings.enableRpgMode ? (existingChar?.strength || characters.find(ec => ec.id === id)?.strength || 10) : undefined,
+            dexterity: newSettings.enableRpgMode ? (existingChar?.dexterity || characters.find(ec => ec.id === id)?.dexterity || 10) : undefined,
+            constitution: newSettings.enableRpgMode ? (existingChar?.constitution || characters.find(ec => ec.id === id)?.constitution || 10) : undefined,
+            intelligence: newSettings.enableRpgMode ? (existingChar?.intelligence || characters.find(ec => ec.id === id)?.intelligence || 10) : undefined,
+            wisdom: newSettings.enableRpgMode ? (existingChar?.wisdom || characters.find(ec => ec.id === id)?.wisdom || 10) : undefined,
+            charisma: newSettings.enableRpgMode ? (existingChar?.charisma || characters.find(ec => ec.id === id)?.charisma || 10) : undefined,
+            hitPoints: newSettings.enableRpgMode ? (existingChar?.hitPoints || characters.find(ec => ec.id === id)?.hitPoints || 10) : undefined,
+            maxHitPoints: newSettings.enableRpgMode ? (existingChar?.maxHitPoints || characters.find(ec => ec.id === id)?.maxHitPoints || 10) : undefined,
+            armorClass: newSettings.enableRpgMode ? (existingChar?.armorClass || characters.find(ec => ec.id === id)?.armorClass || 10) : undefined,
+            skills: newSettings.enableRpgMode ? (existingChar?.skills || characters.find(ec => ec.id === id)?.skills || {}) : undefined,
+            spells: newSettings.enableRpgMode ? (existingChar?.spells || characters.find(ec => ec.id === id)?.spells || []) : undefined,
+            techniques: newSettings.enableRpgMode ? (existingChar?.techniques || characters.find(ec => ec.id === id)?.techniques || []) : undefined,
+            passiveAbilities: newSettings.enableRpgMode ? (existingChar?.passiveAbilities || characters.find(ec => ec.id === id)?.passiveAbilities || []) : undefined,
+
         };
     });
     setCharacters(updatedChars);
@@ -99,23 +106,25 @@ export default function Home() {
       if (adventureSettings.rpgMode) {
         // Call an AI flow here to parse the narrative and update character state
         console.log("RPG Mode: Need to analyze narrative to update characters:", newNarrativePart);
-        // updateCharacterStateFromNarrative(newNarrativePart);
+        // updateCharacterStateFromNarrative(newNarrativePart); // Placeholder for future AI analysis
       }
    };
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
        setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
+       console.log("Character updated:", updatedCharacter); // Debug log
    };
 
    const handleSave = () => {
         // Implement saving logic (JSON format)
         console.log("Saving Adventure State...");
-        const saveData = {
+        const saveData: SaveData = {
             adventureSettings,
             characters,
             narrative,
             currentLanguage,
-            // timestamp?
+            saveFormatVersion: 1, // Add versioning
+            timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download or save to backend/localStorage
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -123,7 +132,7 @@ export default function Home() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `aventurier_textuel_${new Date().toISOString()}.json`;
+        a.download = `aventurier_textuel_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
         toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
@@ -138,24 +147,44 @@ export default function Home() {
         reader.onload = (e) => {
             try {
                 const jsonString = e.target?.result as string;
-                const loadedData = JSON.parse(jsonString);
+                const loadedData: Partial<SaveData> = JSON.parse(jsonString); // Use partial type
 
                 // Add validation for loadedData structure
-                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative) {
-                    throw new Error("Invalid save file structure.");
+                 if (!loadedData.adventureSettings || !loadedData.characters || loadedData.narrative === undefined) {
+                    throw new Error("Structure de fichier de sauvegarde invalide.");
                  }
 
+                // Perform migrations if loadedData.saveFormatVersion is different from current
+                // if (loadedData.saveFormatVersion !== 1) { /* ... migration logic ... */ }
+
                 setAdventureSettings(loadedData.adventureSettings);
-                 // Ensure loaded characters have necessary fields
+                 // Ensure loaded characters have necessary fields, providing defaults
                 const validatedCharacters = loadedData.characters.map((c: any) => ({
                     id: c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-                    name: c.name || "Unknown",
+                    name: c.name || "Inconnu",
                     details: c.details || "",
-                    stats: loadedData.adventureSettings.rpgMode ? (c.stats || {}) : undefined,
-                    inventory: loadedData.adventureSettings.rpgMode ? (c.inventory || {}) : undefined,
+                    stats: loadedData.adventureSettings!.rpgMode ? (c.stats || {}) : undefined,
+                    inventory: loadedData.adventureSettings!.rpgMode ? (c.inventory || {}) : undefined,
                     history: c.history || [],
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
+                    // Add defaults for new RPG fields if loading older save
+                    level: loadedData.adventureSettings!.rpgMode ? (c.level || 1) : undefined,
+                    experience: loadedData.adventureSettings!.rpgMode ? (c.experience || 0) : undefined,
+                    characterClass: loadedData.adventureSettings!.rpgMode ? (c.characterClass || '') : undefined,
+                    strength: loadedData.adventureSettings!.rpgMode ? (c.strength || 10) : undefined,
+                    dexterity: loadedData.adventureSettings!.rpgMode ? (c.dexterity || 10) : undefined,
+                    constitution: loadedData.adventureSettings!.rpgMode ? (c.constitution || 10) : undefined,
+                    intelligence: loadedData.adventureSettings!.rpgMode ? (c.intelligence || 10) : undefined,
+                    wisdom: loadedData.adventureSettings!.rpgMode ? (c.wisdom || 10) : undefined,
+                    charisma: loadedData.adventureSettings!.rpgMode ? (c.charisma || 10) : undefined,
+                    hitPoints: loadedData.adventureSettings!.rpgMode ? (c.hitPoints || 10) : undefined,
+                    maxHitPoints: loadedData.adventureSettings!.rpgMode ? (c.maxHitPoints || 10) : undefined,
+                    armorClass: loadedData.adventureSettings!.rpgMode ? (c.armorClass || 10) : undefined,
+                    skills: loadedData.adventureSettings!.rpgMode ? (c.skills || {}) : undefined,
+                    spells: loadedData.adventureSettings!.rpgMode ? (c.spells || []) : undefined,
+                    techniques: loadedData.adventureSettings!.rpgMode ? (c.techniques || []) : undefined,
+                    passiveAbilities: loadedData.adventureSettings!.rpgMode ? (c.passiveAbilities || []) : undefined,
                 }));
                 setCharacters(validatedCharacters);
                 setNarrative(loadedData.narrative);
@@ -179,7 +208,7 @@ export default function Home() {
   // --- Render ---
   return (
     <SidebarProvider defaultOpen>
-       {/* Left Sidebar: Configuration & Global Elements */}
+       {/* Left Sidebar: Configuration & Global Actions */}
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
@@ -188,28 +217,9 @@ export default function Home() {
            <SidebarContent className="p-4 space-y-4">
              {/* Pass state and callback to AdventureForm */}
             <AdventureForm
-                initialValues={{ ...adventureSettings, characters: characters }} // Pass full initial state including characters
+                initialValues={{ ...adventureSettings, characters: characters.map(({ name, details, id }) => ({ name, details, id })) }} // Pass only necessary initial form values
                 onSettingsChange={handleSettingsUpdate} // Pass update callback
             />
-            <ModelLoader /> {/* Model Loader moved here */}
-
-             {/* Characters Section moved to Left Sidebar */}
-            <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
-               <AccordionItem value="characters-accordion">
-                <AccordionTrigger>Personnages Secondaires</AccordionTrigger>
-                <AccordionContent>
-                    {/* Use CharacterSidebar component directly */}
-                     <CharacterSidebar
-                        characters={characters}
-                        onCharacterUpdate={handleCharacterUpdate}
-                        generateImageAction={generateSceneImage} // Pass image generation for portraits
-                        rpgMode={adventureSettings.rpgMode} // Pass RPG mode status
-                        // Indicate it's embedded in the left sidebar for styling/layout adjustments if needed
-                        // embedded={true} // Example prop
-                    />
-                 </AccordionContent>
-              </AccordionItem>
-            </Accordion>
 
           </SidebarContent>
         </ScrollArea>
@@ -234,16 +244,16 @@ export default function Home() {
                 onChange={handleLoad}
                 className="hidden"
             />
-           {/* Settings Button */}
+           {/* Settings Button (placeholder) */}
            <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center">
+                <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" disabled>
                   <Settings className="h-5 w-5" />
                   <span className="ml-2 group-data-[collapsible=icon]:hidden">Paramètres (Future)</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" align="center">Paramètres Globaux</TooltipContent>
+              <TooltipContent side="right" align="center">Paramètres Globaux (non implémenté)</TooltipContent>
             </Tooltip>
            </TooltipProvider>
         </SidebarFooter>
@@ -274,13 +284,13 @@ export default function Home() {
                  <TooltipContent>Sauvegarder l'Aventure (JSON)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-             {/* Right Sidebar Trigger REMOVED as CharacterSidebar is now on the left */}
-             {/* <SidebarTrigger data-sidebar-target="character-sidebar" /> */}
+             {/* Right Sidebar Trigger */}
+             <SidebarTrigger data-sidebar-target="right-sidebar">
+                 <PanelRight className="h-5 w-5" />
+             </SidebarTrigger>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden p-4"> {/* Removed flex-row */}
-           {/* Adventure Display takes full space */}
-           {/* <div className="flex-1 overflow-hidden p-4"> */}
+        <main className="flex-1 overflow-hidden p-4">
              <AdventureDisplay
                 generateAdventureAction={generateAdventure}
                 generateSceneImageAction={generateSceneImage}
@@ -290,14 +300,56 @@ export default function Home() {
                 onNarrativeChange={handleNarrativeUpdate} // Pass narrative update callback
                 rpgMode={adventureSettings.rpgMode} // Pass RPG mode status
              />
-           {/* </div> */}
-
-            {/* Right Sidebar REMOVED */}
-            {/* <CharacterSidebar ... /> */}
         </main>
       </SidebarInset>
+
+      {/* Right Sidebar: Characters & AI Config */}
+       <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas"> {/* Use collapsible="offcanvas" */}
+            <SidebarHeader className="p-4 border-b border-sidebar-border">
+                 <h2 className="text-lg font-semibold text-sidebar-foreground">Détails</h2>
+             </SidebarHeader>
+             <ScrollArea className="flex-1">
+                 <SidebarContent className="p-4 space-y-6"> {/* Increased space */}
+                     {/* Characters Section */}
+                     <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
+                         <AccordionItem value="characters-accordion">
+                             <AccordionTrigger>
+                                 <div className="flex items-center gap-2">
+                                     <Users className="h-5 w-5" /> Personnages Secondaires
+                                 </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="pt-2"> {/* Added padding top */}
+                                 <CharacterSidebar
+                                     characters={characters}
+                                     onCharacterUpdate={handleCharacterUpdate}
+                                     generateImageAction={generateSceneImage}
+                                     rpgMode={adventureSettings.rpgMode}
+                                 />
+                             </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
+                     {/* AI Configuration Section */}
+                     <Accordion type="single" collapsible className="w-full" defaultValue="ai-config-accordion">
+                          <AccordionItem value="ai-config-accordion">
+                              <AccordionTrigger>
+                                 <div className="flex items-center gap-2">
+                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
+                                 </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2"> {/* Added padding top */}
+                                  <ModelLoader />
+                              </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
+                 </SidebarContent>
+             </ScrollArea>
+             {/* Optional Footer for Right Sidebar */}
+             {/* <SidebarFooter className="p-4 border-t border-sidebar-border">
+                 </SidebarFooter> */}
+       </Sidebar>
+
     </SidebarProvider>
   );
 }
-
-    
