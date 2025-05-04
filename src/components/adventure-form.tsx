@@ -98,20 +98,17 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     <Form {...form}>
       {/* No onSubmit needed here as updates happen via watch -> onSettingsChange */}
       <form className="space-y-4">
-        <Card>
-          <CardHeader>
-             <div className="flex justify-between items-center">
-                 <CardTitle>Configuration de l'Aventure</CardTitle>
-                 {/* Keep Load Prompt button functional */}
+        {/* Removed outer Card component */}
+        {/* <CardHeader> ... </CardHeader> */}
+        {/* <CardContent className="space-y-4"> ... </CardContent> */}
+
+        <div className="space-y-4"> {/* Replaced CardContent with a simple div */}
+            <div className="flex justify-end"> {/* Moved Load button */}
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Example
                 </Button>
             </div>
-            <CardDescription>
-              Définissez les paramètres de base de votre aventure textuelle.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+
              <FormField
               control={form.control}
               name="enableRpgMode"
@@ -144,6 +141,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                       placeholder="Décrivez l'univers de votre aventure..."
                       {...field}
                       rows={4}
+                      className="bg-background border"
                     />
                   </FormControl>
                   <FormMessage />
@@ -162,6 +160,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                       placeholder="Comment commence l'aventure pour le héros ?"
                       {...field}
                       rows={3}
+                      className="bg-background border"
                     />
                   </FormControl>
                   <FormMessage />
@@ -170,14 +169,14 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
             />
 
              {/* Character definition fields (kept in the form for adding/removing) */}
-             <Accordion type="single" collapsible className="w-full">
+             <Accordion type="single" collapsible className="w-full border-t pt-4"> {/* Added border top */}
                <AccordionItem value="character-definitions">
-                <AccordionTrigger>Définir les Personnages</AccordionTrigger>
+                <AccordionTrigger>Définir les Personnages Initiaux</AccordionTrigger>
                 <AccordionContent>
                  <ScrollArea className="h-48 pr-3">
                     <div className="space-y-4">
                     {fields.map((field, index) => (
-                    <Card key={field.id} className="relative pt-6">
+                    <Card key={field.id} className="relative pt-6 bg-muted/30 border"> {/* Slightly different bg */}
                          <Button
                             type="button"
                             variant="ghost"
@@ -196,7 +195,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nom" {...field} />
+                                <Input placeholder="Nom" {...field} className="bg-background border"/>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -213,6 +212,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                                   placeholder="Caractère, physique, rôle initial..."
                                   {...field}
                                   rows={3}
+                                  className="bg-background border"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -241,11 +241,8 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
               </AccordionItem>
             </Accordion>
 
-          </CardContent>
-        </Card>
+          </div>
       </form>
     </Form>
   );
 }
-
-    

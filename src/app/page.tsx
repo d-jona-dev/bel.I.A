@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Save, Upload, Image as ImageIcon, Bot, Languages, Users, Map, Wand2, Settings, BookUser, Scroll, BrainCircuit, PanelRight } from 'lucide-react'; // Added Scroll, BrainCircuit, PanelRight
+import { Save, Upload, Image as ImageIcon, Bot, Languages, Users, Map, Wand2, Settings, BookUser, Scroll, BrainCircuit, PanelRight, FileCog } from 'lucide-react'; // Added FileCog
 import { AdventureForm } from '@/components/adventure-form';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { ModelLoader } from '@/components/model-loader';
@@ -208,19 +208,17 @@ export default function Home() {
   // --- Render ---
   return (
     <SidebarProvider defaultOpen>
-       {/* Left Sidebar: Configuration & Global Actions */}
+       {/* Left Sidebar: Global Actions */}
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
         </SidebarHeader>
         <ScrollArea className="flex-1">
            <SidebarContent className="p-4 space-y-4">
-             {/* Pass state and callback to AdventureForm */}
-            <AdventureForm
-                initialValues={{ ...adventureSettings, characters: characters.map(({ name, details, id }) => ({ name, details, id })) }} // Pass only necessary initial form values
-                onSettingsChange={handleSettingsUpdate} // Pass update callback
-            />
-
+             {/* Left sidebar content (if any) can go here, or remove if empty */}
+                <p className="text-sm text-muted-foreground text-center group-data-[collapsible=icon]:hidden">
+                    Configuration et détails dans la barre de droite.
+                </p>
           </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
@@ -303,13 +301,32 @@ export default function Home() {
         </main>
       </SidebarInset>
 
-      {/* Right Sidebar: Characters & AI Config */}
+      {/* Right Sidebar: Characters, AI Config, Adventure Config */}
        <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas"> {/* Use collapsible="offcanvas" */}
             <SidebarHeader className="p-4 border-b border-sidebar-border">
-                 <h2 className="text-lg font-semibold text-sidebar-foreground">Détails</h2>
+                 <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
              </SidebarHeader>
              <ScrollArea className="flex-1">
                  <SidebarContent className="p-4 space-y-6"> {/* Increased space */}
+
+                      {/* Adventure Configuration Section */}
+                     <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
+                         <AccordionItem value="adventure-config-accordion">
+                             <AccordionTrigger>
+                                 <div className="flex items-center gap-2">
+                                     <FileCog className="h-5 w-5" /> Configuration de l'Aventure
+                                 </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="pt-2">
+                                 {/* Pass state and callback to AdventureForm */}
+                                <AdventureForm
+                                    initialValues={{ ...adventureSettings, characters: characters.map(({ name, details, id }) => ({ name, details, id })) }} // Pass only necessary initial form values
+                                    onSettingsChange={handleSettingsUpdate} // Pass update callback
+                                />
+                             </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
                      {/* Characters Section */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
                          <AccordionItem value="characters-accordion">
