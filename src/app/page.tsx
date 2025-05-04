@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData } from "@/types"; // Import shared types
+import type { Character, AdventureSettings, SaveData, Message } from "@/types"; // Import shared types including Message
 import { PageStructure } from "./page.structure"; // Import the layout structure component
 
 // Import AI functions here
@@ -23,7 +23,10 @@ export default function Home() {
       { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {} },
       { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {} }
   ]);
-  const [narrative, setNarrative] = React.useState<string>(adventureSettings.initialSituation);
+  // Narrative is now an array of Message objects
+  const [narrative, setNarrative] = React.useState<Message[]>([
+     { id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }
+  ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
   const { toast } = useToast();
 
@@ -31,9 +34,10 @@ export default function Home() {
 
   const handleSettingsUpdate = (newSettings: any /* Type from AdventureForm */) => {
     console.log("Updating global settings:", newSettings);
+    const oldInitialSituation = adventureSettings.initialSituation;
     setAdventureSettings({
         world: newSettings.world,
-        initialSituation: newSettings.initialSituation, // Potentially reset narrative if situation changes?
+        initialSituation: newSettings.initialSituation,
         rpgMode: newSettings.enableRpgMode ?? false,
     });
     // Update character list from form (simple overwrite for now)
@@ -74,22 +78,50 @@ export default function Home() {
     setCharacters(updatedChars);
 
     // Reset narrative only if initial situation changes significantly
-    if (newSettings.initialSituation !== adventureSettings.initialSituation) {
-         setNarrative(newSettings.initialSituation);
+    if (newSettings.initialSituation !== oldInitialSituation) {
+         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: newSettings.initialSituation, timestamp: Date.now() }]);
     }
 
     toast({ title: "Configuration Mise à Jour" });
   };
 
-   const handleNarrativeUpdate = (newNarrativePart: string, isUserAction: boolean = false) => {
-     setNarrative(prev => prev + (isUserAction ? `\n\n> ${newNarrativePart}\n` : `\n${newNarrativePart}`));
+   // Updated to handle Message objects
+   const handleNarrativeUpdate = (content: string, type: 'user' | 'ai') => {
+       const newMessage: Message = {
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`, // More unique ID
+            type: type,
+            content: content,
+            timestamp: Date.now(),
+       };
+       setNarrative(prev => [...prev, newMessage]);
+
       // TODO: Analyze newNarrativePart with LLM to update character history, opinion, inventory, stats if RPG mode is on.
-      if (adventureSettings.rpgMode) {
+      if (adventureSettings.rpgMode && type === 'ai') { // Only analyze AI responses for now
         // Call an AI flow here to parse the narrative and update character state
-        console.log("RPG Mode: Need to analyze narrative to update characters:", newNarrativePart);
+        console.log("RPG Mode: Need to analyze narrative to update characters:", content);
         // updateCharacterStateFromNarrative(newNarrativePart); // Placeholder for future AI analysis
       }
    };
+
+    // New handler for editing a specific message
+   const handleEditMessage = (messageId: string, newContent: string) => {
+       setNarrative(prev => prev.map(msg =>
+           msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
+       ));
+       toast({ title: "Message Modifié" });
+       // Potentially re-run AI from this point if needed? Or just allow text edit.
+   };
+
+    // New handler for rewinding the story to a specific message
+   const handleRewindToMessage = (messageId: string) => {
+       const messageIndex = narrative.findIndex(msg => msg.id === messageId);
+       if (messageIndex !== -1) {
+           // Keep messages up to and including the selected one
+           setNarrative(prev => prev.slice(0, messageIndex + 1));
+           toast({ title: "Retour en Arrière", description: "L'histoire a été ramenée au message sélectionné." });
+       }
+   };
+
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
        setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
@@ -102,7 +134,7 @@ export default function Home() {
         const saveData: SaveData = {
             adventureSettings,
             characters,
-            narrative,
+            narrative, // Save the array of messages
             currentLanguage,
             saveFormatVersion: 1, // Add versioning
             timestamp: new Date().toISOString(),
@@ -131,9 +163,22 @@ export default function Home() {
                 const loadedData: Partial<SaveData> = JSON.parse(jsonString); // Use partial type
 
                 // Add validation for loadedData structure
-                 if (!loadedData.adventureSettings || !loadedData.characters || loadedData.narrative === undefined) {
+                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
                     throw new Error("Structure de fichier de sauvegarde invalide.");
                  }
+
+                 // Basic validation for narrative messages
+                const isValidNarrative = loadedData.narrative.every(msg =>
+                    typeof msg === 'object' && msg !== null &&
+                    typeof msg.id === 'string' &&
+                    ['user', 'ai', 'system'].includes(msg.type) &&
+                    typeof msg.content === 'string' &&
+                    typeof msg.timestamp === 'number'
+                );
+                if (!isValidNarrative) {
+                    throw new Error("Structure des messages narratifs invalide.");
+                }
+
 
                 // Perform migrations if loadedData.saveFormatVersion is different from current
                 // if (loadedData.saveFormatVersion !== 1) { /* ... migration logic ... */ }
@@ -168,7 +213,7 @@ export default function Home() {
                     passiveAbilities: loadedData.adventureSettings!.rpgMode ? (c.passiveAbilities || []) : undefined,
                 }));
                 setCharacters(validatedCharacters);
-                setNarrative(loadedData.narrative);
+                setNarrative(loadedData.narrative as Message[]); // Set the array of messages
                 setCurrentLanguage(loadedData.currentLanguage || "fr");
 
                 toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
@@ -192,7 +237,7 @@ export default function Home() {
       <PageStructure
         adventureSettings={adventureSettings}
         characters={characters}
-        narrative={narrative}
+        narrativeMessages={narrative} // Pass the message array
         currentLanguage={currentLanguage}
         fileInputRef={fileInputRef}
         handleSettingsUpdate={handleSettingsUpdate}
@@ -204,6 +249,8 @@ export default function Home() {
         translateTextAction={translateText}
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
+        handleEditMessage={handleEditMessage} // Pass edit handler
+        handleRewindToMessage={handleRewindToMessage} // Pass rewind handler
       />
   );
 }

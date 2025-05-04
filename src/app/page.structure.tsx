@@ -12,7 +12,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings } from "@/types";
+import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
 import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 
@@ -26,11 +26,11 @@ import { CharacterSidebar } from "@/components/character-sidebar";
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
   characters: Character[];
-  narrative: string;
+  narrativeMessages: Message[]; // Changed from narrative: string
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: any) => void;
-  handleNarrativeUpdate: (newNarrativePart: string, isUserAction?: boolean) => void;
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai') => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -38,12 +38,14 @@ interface PageStructureProps {
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+  handleEditMessage: (messageId: string, newContent: string) => void; // Added edit handler prop
+  handleRewindToMessage: (messageId: string) => void; // Added rewind handler prop
 }
 
 export function PageStructure({
   adventureSettings,
   characters,
-  narrative,
+  narrativeMessages, // Use narrativeMessages
   currentLanguage,
   fileInputRef,
   handleSettingsUpdate,
@@ -55,6 +57,8 @@ export function PageStructure({
   translateTextAction,
   generateAdventureAction,
   generateSceneImageAction,
+  handleEditMessage, // Added prop
+  handleRewindToMessage, // Added prop
 }: PageStructureProps) {
   return (
     <>
@@ -71,7 +75,7 @@ export function PageStructure({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Link href="/">
-                          <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Aventure Actuelle">
+                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Aventure Actuelle"> {/* Active style */}
                             <HomeIcon className="h-5 w-5" />
                             <span className="ml-2 group-data-[collapsible=icon]:hidden">Aventure</span>
                           </Button>
@@ -107,18 +111,18 @@ export function PageStructure({
                     </Tooltip>
                  </TooltipProvider>
                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                         <Link href="/personnages">
-                           <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires">
-                               <Users2 className="h-5 w-5" />
-                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
-                           </Button>
-                         </Link>
-                       </TooltipTrigger>
-                       <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
-                    </Tooltip>
-                 </TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/personnages">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires">
+                                <Users2 className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
               </nav>
 
           </SidebarContent>
@@ -169,7 +173,7 @@ export function PageStructure({
           <div className="flex items-center space-x-2">
             <LanguageSelector
                 translateTextAction={translateTextAction}
-                currentText={narrative}
+                currentText={narrativeMessages.map(m => m.content).join('\n\n')} // Join message content for translation context
                 onLanguageChange={setCurrentLanguage}
                 currentLanguage={currentLanguage}
             />
@@ -194,9 +198,11 @@ export function PageStructure({
                 generateSceneImageAction={generateSceneImageAction}
                 world={adventureSettings.world}
                 characters={characters}
-                initialNarrative={narrative}
-                onNarrativeChange={handleNarrativeUpdate}
+                initialMessages={narrativeMessages} // Pass the message array
+                onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
                 rpgMode={adventureSettings.rpgMode}
+                onEditMessage={handleEditMessage} // Pass edit handler
+                onRewindToMessage={handleRewindToMessage} // Pass rewind handler
              />
         </main>
       </SidebarInset>

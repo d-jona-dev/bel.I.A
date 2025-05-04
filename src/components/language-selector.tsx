@@ -25,7 +25,7 @@ const availableLanguages = [
 // Define prop types for the AI function and state management
 interface LanguageSelectorProps {
     translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
-    currentText: string; // The text content to potentially translate
+    currentText: string; // The text content to potentially translate (concatenated narrative)
     onLanguageChange: (newLangCode: string) => void; // Callback to update parent state
     currentLanguage: string; // Current language code from parent state
 }
@@ -46,51 +46,75 @@ export function LanguageSelector({
     setIsLoading(true);
     const targetLanguageName = availableLanguages.find(l => l.code === newLangCode)?.name || newLangCode;
 
+    // Show initial toast immediately
     toast({
-      title: "Traduction en cours...",
-      description: `Changement de la langue vers ${targetLanguageName}.`,
+      title: "Changement de langue...",
+      description: `Passage à ${targetLanguageName}.`,
     });
 
+    // Update the language in the parent component's state via callback
+    // We do this *before* translation so the UI feels responsive.
+    // The parent needs to handle the actual translation logic if desired.
+    onLanguageChange(newLangCode);
+
+    // For now, we just update the setting and don't automatically translate
+    // existing content. The parent component could decide to trigger translation
+    // based on the onLanguageChange callback if needed.
+    console.log("Language setting changed to:", newLangCode);
+
+    toast({
+        title: "Langue Changée",
+        description: `L'affichage est maintenant en ${targetLanguageName}.`,
+    });
+
+
+    // Optional: Trigger translation of existing content (requires parent implementation)
+    /*
     try {
        // Only translate if there's text to translate
        if (currentText.trim()) {
             const input: TranslateTextInput = {
-                text: currentText, // Translate the actual current narrative/text
+                text: currentText, // Translate the concatenated narrative
                 language: targetLanguageName, // Use full language name for the AI
             };
 
             // Call the AI translation function passed via props
             const result = await translateTextAction(input);
 
-            // TODO: The parent component should handle updating the narrative
-            //       with result.translatedText when language actually changes.
-            //       This component only signals the change.
-            console.log("Translated text preview:", result.translatedText); // For debugging
+            // The parent component should handle updating the narrative
+            // messages with result.translatedText based on the language change.
+            // This component only signals the change and potentially provides the translation.
+            console.log("Translated text (requires parent handling):", result.translatedText);
+
+             toast({
+                title: "Traduction Terminée",
+                description: `Le contenu existant a été traduit en ${targetLanguageName}.`,
+            });
+
+
        } else {
            console.log("No text to translate, just changing language setting.");
+           toast({
+                title: "Langue Changée",
+                description: `L'affichage est maintenant en ${targetLanguageName}.`,
+            });
        }
-
-
-       // Update the language in the parent component's state via callback
-       onLanguageChange(newLangCode);
-
-       toast({
-        title: "Langue Changée",
-        description: `L'affichage est maintenant en ${targetLanguageName}.`, // Indicate language change applied
-        });
-
 
     } catch (error) {
       console.error("Error translating text:", error);
        toast({
         title: "Erreur de Traduction",
-        description: "Impossible de traduire le texte ou de changer la langue. Veuillez réessayer.",
+        description: "Impossible de traduire le texte existant. La langue a été changée.",
         variant: "destructive",
        });
       // Don't revert language selection optimistically, let parent handle state
     } finally {
       setIsLoading(false);
     }
+    */
+
+    // Remove loading state immediately after signaling change
+     setIsLoading(false);
   };
 
 

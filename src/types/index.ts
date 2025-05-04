@@ -1,5 +1,12 @@
-
 // src/types/index.ts
+
+export interface Message {
+  id: string; // Unique ID for the message
+  type: 'user' | 'ai' | 'system'; // system for initial setup messages
+  content: string;
+  timestamp: number; // For ordering and potential display
+}
+
 
 export interface Character {
   id: string; // Unique ID for the character
@@ -48,11 +55,9 @@ export interface AdventureSettings {
 export interface SaveData {
     adventureSettings: AdventureSettings;
     characters: Character[];
-    narrative: string;
+    narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
     saveFormatVersion?: number;
     timestamp?: string;
 }
-
-    

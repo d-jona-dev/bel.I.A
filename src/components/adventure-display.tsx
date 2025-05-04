@@ -7,34 +7,38 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText } from "lucide-react"; // Added RPG icons
+import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot } from "lucide-react"; // Added new icons
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
+import type { Message, Character } from "@/types"; // Import Message and Character types
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Label } from "@/components/ui/label";
 
-// Define Character type locally or import if shared
-interface Character {
-  id: string;
-  name: string;
-  details: string;
-  // RPG fields are optional
-  stats?: Record<string, number | string>;
-  inventory?: Record<string, number>;
-  // ... other potential fields
-}
 
-
-// Define prop types including new props
+// Define prop types including new props for message handling
 interface AdventureDisplayProps {
     generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    world: string; // New prop
-    characters: Character[]; // New prop - Use the detailed Character type
-    initialNarrative: string; // New prop
-    onNarrativeChange: (newNarrativePart: string, isUserAction?: boolean) => void; // Callback for narrative updates
-    rpgMode: boolean; // New prop to control RPG UI elements
+    world: string;
+    characters: Character[];
+    initialMessages: Message[]; // Changed from initialNarrative: string
+    onNarrativeChange: (content: string, type: 'user' | 'ai') => void; // Callback for adding new messages
+    rpgMode: boolean;
+    onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
+    onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
 }
 
 
@@ -43,12 +47,14 @@ export function AdventureDisplay({
     generateSceneImageAction,
     world,
     characters,
-    initialNarrative,
-    onNarrativeChange,
+    initialMessages, // Use initialMessages
+    onNarrativeChange, // Use the updated handler
     rpgMode,
+    onEditMessage, // New handler
+    onRewindToMessage, // New handler
 }: AdventureDisplayProps) {
-  // Local state derived from props or specific to this component
-  const [narrativeContent, setNarrativeContent] = React.useState<string>(initialNarrative); // Internal display state
+  // Local state for messages derived from props
+  const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
   const [choices, setChoices] = React.useState<string[]>([]); // For multiple-choice buttons
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -56,13 +62,16 @@ export function AdventureDisplay({
   const [imageUrl, setImageUrl] = React.useState<string | null>(null); // State for the generated image URL
   const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration"); // Added combat mode
 
+  const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
+  const [editContent, setEditContent] = React.useState<string>("");
+
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-   // Effect to update internal narrative state when prop changes
+   // Effect to update internal messages state when prop changes
     React.useEffect(() => {
-        setNarrativeContent(initialNarrative);
-    }, [initialNarrative]);
+        setMessages(initialMessages);
+    }, [initialMessages]);
 
 
   // Function to handle sending user action
@@ -70,20 +79,27 @@ export function AdventureDisplay({
     if (!userAction.trim() || isLoading) return;
 
     setIsLoading(true);
+    const userMessageContent = userAction.trim();
+    setUserAction(""); // Clear input immediately
+
     // Call the callback to update the parent state immediately for user action
-    onNarrativeChange(userAction, true);
-    // Update local state immediately as well
-    setNarrativeContent(prev => prev + `\n\n> ${userAction}\n`);
+    onNarrativeChange(userMessageContent, 'user');
+    // Update local state immediately as well - handled by useEffect on initialMessages change
 
     try {
+        // Combine current messages content for context
+        const narrativeContext = messages.map(msg =>
+            msg.type === 'user' ? `> ${msg.content}` : msg.content
+        ).join('\n\n') + `\n\n> ${userMessageContent}\n`; // Append new user action
+
         // Prepare input for the AI
         const input: GenerateAdventureInput = {
             world: world,
-            initialSituation: narrativeContent + `\n\n> ${userAction}\n`, // Use the *current* full narrative + action
+            initialSituation: narrativeContext, // Use the *current* full narrative + action
              // Map characters to strings for the basic AI flow
              // TODO: Adapt AI flow to potentially accept structured character data
              secondaryCharacters: characters.map(c => `${c.name}: ${c.details}`),
-            userAction: userAction,
+            userAction: userMessageContent, // Send only the current user action
              // TODO: Add context about current mode (exploration/dialogue/combat)
              // TODO: Add context about RPG stats/inventory if rpgMode is true
         };
@@ -111,11 +127,9 @@ export function AdventureDisplay({
         const result = await generateAdventureAction(input);
 
         // Call the callback to update the parent state with the AI's response
-        onNarrativeChange(result.narrative);
-         // Update local state
-        setNarrativeContent(prev => prev + `\n${result.narrative}`);
+        onNarrativeChange(result.narrative, 'ai');
+         // Update local state - handled by useEffect on initialMessages change
 
-        setUserAction(""); // Clear input field
         // TODO: Potentially generate new choices based on the result.narrative
         setChoices([]); // Clear old choices
 
@@ -127,27 +141,26 @@ export function AdventureDisplay({
             variant: "destructive",
         });
          // Update local state with error message
-         const errorMsg = "\n\n[Erreur lors de la génération de la suite.]";
-         setNarrativeContent(prev => prev + errorMsg);
-         // Also inform parent component about the error state in narrative
-         onNarrativeChange(errorMsg);
+         const errorMsgContent = "[Erreur lors de la génération de la suite.]";
+         // Don't add error as a user/ai message, maybe log it differently?
+         // Or add as system message? For now, just toast.
+         // onNarrativeChange(errorMsgContent, 'system'); // Example if adding as system message
 
     } finally {
         setIsLoading(false);
     }
   };
 
-  // Function to handle generating scene image (remains largely the same)
+  // Function to handle generating scene image
   const handleGenerateImage = async () => {
      if (isImageLoading) return;
      setIsImageLoading(true);
      setImageUrl(null);
 
     try {
-        // Use the current narrative content
-        const narrativeLines = narrativeContent.split('\n');
-        const lastLines = narrativeLines.slice(-5).join('\n');
-        const sceneDescription = lastLines.length > 500 ? lastLines.slice(-500) : lastLines;
+        // Use the content of the last few messages
+        const recentMessagesContent = messages.slice(-5).map(m => m.content).join('\n');
+        const sceneDescription = recentMessagesContent.length > 500 ? recentMessagesContent.slice(-500) : recentMessagesContent;
 
         const result = await generateSceneImageAction({ sceneDescription });
         setImageUrl(result.imageUrl);
@@ -167,8 +180,32 @@ export function AdventureDisplay({
     }
   };
 
+   // Function to handle copying message content
+   const handleCopyMessage = (content: string) => {
+        navigator.clipboard.writeText(content).then(() => {
+            toast({ title: "Copié", description: "Message copié dans le presse-papiers." });
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            toast({ title: "Erreur", description: "Impossible de copier le message.", variant: "destructive" });
+        });
+   };
 
-  // Handle Enter key press in textarea (remains the same)
+    // Function to open the edit dialog
+    const openEditDialog = (message: Message) => {
+        setEditingMessage(message);
+        setEditContent(message.content);
+    };
+
+    // Function to handle saving the edited message
+    const handleSaveChanges = () => {
+        if (editingMessage && editContent.trim()) {
+            onEditMessage(editingMessage.id, editContent.trim());
+            setEditingMessage(null);
+        }
+    };
+
+
+  // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -176,17 +213,17 @@ export function AdventureDisplay({
     }
   };
 
-   // Scroll to bottom when narrative updates (remains the same)
+   // Scroll to bottom when messages update
   React.useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
       if(scrollElement) {
           setTimeout(() => {
              scrollElement.scrollTop = scrollElement.scrollHeight;
-          }, 0);
+          }, 100); // Small delay to ensure rendering is complete
       }
     }
-  }, [narrativeContent]); // Depends on the local narrative content
+  }, [messages]); // Depends on the messages array
 
 
   return (
@@ -205,12 +242,92 @@ export function AdventureDisplay({
             <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardContent className="flex-1 overflow-hidden p-0">
                     <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
-                        <div className="text-sm whitespace-pre-wrap break-words font-sans">
-                            {narrativeContent} {/* Display local narrative content */}
+                        <div className="space-y-4">
+                            {messages.map((message, index) => (
+                                <div key={message.id} className="group relative flex flex-col">
+                                    <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
+                                       {message.type !== 'user' && message.type !== 'system' && (
+                                          <Avatar className="h-8 w-8 border">
+                                              <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                          </Avatar>
+                                       )}
+                                       <div className={`rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
+                                            message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground')
+                                        }`}>
+                                            {message.content}
+                                        </div>
+                                        {message.type === 'user' && (
+                                          <Avatar className="h-8 w-8 border">
+                                              <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                          </Avatar>
+                                       )}
+                                    </div>
+                                    {/* Action buttons on hover */}
+                                    <div className={`absolute top-0 mt-1 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                        {/* Rewind Button (show on non-last messages) */}
+                                         {index < messages.length - 1 && (
+                                             <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                                        <RotateCcw className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                    <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
+                                                    </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                         {/* Edit Button */}
+                                        <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
+                                           <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                           </AlertDialogTrigger>
+                                           <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Modifiez le contenu du message ci-dessous.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                               <Textarea
+                                                    value={editContent}
+                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                    rows={10}
+                                                    className="my-4"
+                                                />
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
+                                              </AlertDialogFooter>
+                                           </AlertDialogContent>
+                                        </AlertDialog>
+                                        {/* Copy Button */}
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
                             {isLoading && (
-                                <span className="flex items-center text-muted-foreground mt-2">
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
-                                </span>
+                                <div className="flex items-center justify-start gap-3">
+                                     <Avatar className="h-8 w-8 border">
+                                         <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                     </Avatar>
+                                     <span className="flex items-center text-muted-foreground italic p-3">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
+                                    </span>
+                                </div>
                             )}
                         </div>
                     </ScrollArea>
