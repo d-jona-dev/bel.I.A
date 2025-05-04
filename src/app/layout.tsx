@@ -4,6 +4,7 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
 
 const geistSans = GeistSans;
 const geistMono = GeistMono;
@@ -20,9 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
-      {/* Apply font variables directly to the html tag */}
       <body className={`antialiased`}>
-        {children}
+         {/* Wrap the entire application content with SidebarProvider */}
+         <SidebarProvider defaultOpen>
+            {children}
+        </SidebarProvider>
         <Toaster />
       </body>
     </html>

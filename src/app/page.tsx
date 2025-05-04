@@ -1,29 +1,10 @@
 
 "use client"; // Mark page as Client Component to manage state
 
-import * as React from "react"; // Import React
-import Image from "next/image";
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Save, Upload, Image as ImageIcon, Bot, Languages, Users, Map, Wand2, Settings, BookUser, Scroll, BrainCircuit, PanelRight, FileCog } from 'lucide-react'; // Added FileCog
-import { AdventureForm } from '@/components/adventure-form';
-import { AdventureDisplay } from '@/components/adventure-display';
-import { ModelLoader } from '@/components/model-loader';
-import { LanguageSelector } from "@/components/language-selector";
-import { CharacterSidebar } from "@/components/character-sidebar"; // Import CharacterSidebar
-import { useToast } from "@/hooks/use-toast"; // Import useToast
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import * as React from "react";
+import { useToast } from "@/hooks/use-toast";
 import type { Character, AdventureSettings, SaveData } from "@/types"; // Import shared types
+import { PageStructure } from "./page.structure"; // Import the layout structure component
 
 // Import AI functions here
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -32,7 +13,7 @@ import { translateText } from "@/ai/flows/translate-text";
 
 
 export default function Home() {
-  // State Management (moved to client component)
+  // State Management
   const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
@@ -206,167 +187,23 @@ export default function Home() {
 
 
   // --- Render ---
+  // Pass all state and handlers to the PageStructure component
   return (
-    <SidebarProvider defaultOpen>
-       {/* Left Sidebar: Global Actions */}
-      <Sidebar side="left" variant="sidebar" collapsible="icon">
-        <SidebarHeader className="p-4 border-b border-sidebar-border">
-          <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
-        </SidebarHeader>
-        <ScrollArea className="flex-1">
-           <SidebarContent className="p-4 space-y-4">
-             {/* Left sidebar content (if any) can go here, or remove if empty */}
-                <p className="text-sm text-muted-foreground text-center group-data-[collapsible=icon]:hidden">
-                    Configuration et détails dans la barre de droite.
-                </p>
-          </SidebarContent>
-        </ScrollArea>
-        <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-            {/* Load Button */}
-            <TooltipProvider>
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                         <Button variant="outline" className="w-full justify-start group-data-[collapsible=icon]:justify-center" onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-5 w-5" />
-                            <span className="ml-2 group-data-[collapsible=icon]:hidden">Charger</span>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" align="center">Charger une Aventure (JSON)</TooltipContent>
-                 </Tooltip>
-            </TooltipProvider>
-            {/* Hidden file input */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                accept=".json"
-                onChange={handleLoad}
-                className="hidden"
-            />
-           {/* Settings Button (placeholder) */}
-           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" disabled>
-                  <Settings className="h-5 w-5" />
-                  <span className="ml-2 group-data-[collapsible=icon]:hidden">Paramètres (Future)</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" align="center">Paramètres Globaux (non implémenté)</TooltipContent>
-            </Tooltip>
-           </TooltipProvider>
-        </SidebarFooter>
-      </Sidebar>
-
-       {/* Main Content Area */}
-      <SidebarInset className="flex flex-col h-screen">
-        <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
-           <div className="flex items-center space-x-2">
-             <SidebarTrigger /> {/* Trigger for Left Sidebar */}
-             <span className="font-semibold">Aventure</span>
-           </div>
-          <div className="flex items-center space-x-2">
-            {/* Pass translateText function and current language state */}
-            <LanguageSelector
-                translateTextAction={translateText}
-                currentText={narrative} // Pass current narrative for translation context
-                onLanguageChange={setCurrentLanguage} // Update language state
-                currentLanguage={currentLanguage}
-            />
-             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={handleSave}>
-                    <Save className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                 <TooltipContent>Sauvegarder l'Aventure (JSON)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-             {/* Right Sidebar Trigger */}
-             <SidebarTrigger data-sidebar-target="right-sidebar">
-                 <PanelRight className="h-5 w-5" />
-             </SidebarTrigger>
-          </div>
-        </header>
-        <main className="flex-1 overflow-hidden p-4">
-             <AdventureDisplay
-                generateAdventureAction={generateAdventure}
-                generateSceneImageAction={generateSceneImage}
-                world={adventureSettings.world} // Pass world setting
-                characters={characters} // Pass characters array (needed for context)
-                initialNarrative={narrative} // Pass initial narrative
-                onNarrativeChange={handleNarrativeUpdate} // Pass narrative update callback
-                rpgMode={adventureSettings.rpgMode} // Pass RPG mode status
-             />
-        </main>
-      </SidebarInset>
-
-      {/* Right Sidebar: Characters, AI Config, Adventure Config */}
-       <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas"> {/* Use collapsible="offcanvas" */}
-            <SidebarHeader className="p-4 border-b border-sidebar-border">
-                 <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
-             </SidebarHeader>
-             <ScrollArea className="flex-1">
-                 <SidebarContent className="p-4 space-y-6"> {/* Increased space */}
-
-                      {/* Adventure Configuration Section */}
-                     <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
-                         <AccordionItem value="adventure-config-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <FileCog className="h-5 w-5" /> Configuration de l'Aventure
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2">
-                                 {/* Pass state and callback to AdventureForm */}
-                                <AdventureForm
-                                    initialValues={{ ...adventureSettings, characters: characters.map(({ name, details, id }) => ({ name, details, id })) }} // Pass only necessary initial form values
-                                    onSettingsChange={handleSettingsUpdate} // Pass update callback
-                                />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
-
-                     {/* Characters Section */}
-                     <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
-                         <AccordionItem value="characters-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <Users className="h-5 w-5" /> Personnages Secondaires
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2"> {/* Added padding top */}
-                                 <CharacterSidebar
-                                     characters={characters}
-                                     onCharacterUpdate={handleCharacterUpdate}
-                                     generateImageAction={generateSceneImage}
-                                     rpgMode={adventureSettings.rpgMode}
-                                 />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
-
-                     {/* AI Configuration Section */}
-                     <Accordion type="single" collapsible className="w-full" defaultValue="ai-config-accordion">
-                          <AccordionItem value="ai-config-accordion">
-                              <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
-                                 </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2"> {/* Added padding top */}
-                                  <ModelLoader />
-                              </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
-
-                 </SidebarContent>
-             </ScrollArea>
-             {/* Optional Footer for Right Sidebar */}
-             {/* <SidebarFooter className="p-4 border-t border-sidebar-border">
-                 </SidebarFooter> */}
-       </Sidebar>
-
-    </SidebarProvider>
+      <PageStructure
+        adventureSettings={adventureSettings}
+        characters={characters}
+        narrative={narrative}
+        currentLanguage={currentLanguage}
+        fileInputRef={fileInputRef}
+        handleSettingsUpdate={handleSettingsUpdate}
+        handleNarrativeUpdate={handleNarrativeUpdate}
+        handleCharacterUpdate={handleCharacterUpdate}
+        handleSave={handleSave}
+        handleLoad={handleLoad}
+        setCurrentLanguage={setCurrentLanguage}
+        translateTextAction={translateText}
+        generateAdventureAction={generateAdventure}
+        generateSceneImageAction={generateSceneImage}
+      />
   );
 }
