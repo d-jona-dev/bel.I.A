@@ -31,50 +31,52 @@ export default function Home() {
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regeneration loading
   const { toast } = useToast();
+  const isInitialMount = React.useRef(true); // Ref to track initial mount
 
   // --- Callback Functions ---
 
   const handleSettingsUpdate = (newSettings: any /* Type from AdventureForm */) => {
     console.log("Updating global settings:", newSettings);
     const oldInitialSituation = adventureSettings.initialSituation;
+    const newRPGMode = newSettings.enableRpgMode ?? false;
     setAdventureSettings({
         world: newSettings.world,
         initialSituation: newSettings.initialSituation,
-        rpgMode: newSettings.enableRpgMode ?? false,
+        rpgMode: newRPGMode,
     });
     // Update character list from form (simple overwrite for now)
-     const updatedChars = newSettings.characters.map((c: any, index: number) => {
+     const updatedChars = newSettings.characters.map((c: any) => {
         // Try to find existing character by name if ID is missing or new
         const existingChar = characters.find(ec => ec.name === c.name);
-        const id = existingChar?.id || characters.find(ec => ec.name === c.name)?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`; // More unique ID
+        const id = existingChar?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`; // More unique ID
         return {
             id: id,
             name: c.name,
             details: c.details,
-            // Keep existing RPG fields if they exist, otherwise initialize
-            history: existingChar?.history || characters.find(ec => ec.id === id)?.history || [],
-            opinion: existingChar?.opinion || characters.find(ec => ec.id === id)?.opinion || {},
-            stats: newSettings.enableRpgMode ? (existingChar?.stats || characters.find(ec => ec.id === id)?.stats || {}) : undefined,
-            inventory: newSettings.enableRpgMode ? (existingChar?.inventory || characters.find(ec => ec.id === id)?.inventory || {}) : undefined,
-            portraitUrl: existingChar?.portraitUrl || characters.find(ec => ec.id === id)?.portraitUrl || null,
-            // Add other RPG fields with defaults if rpgMode is enabled
-            level: newSettings.enableRpgMode ? (existingChar?.level || characters.find(ec => ec.id === id)?.level || 1) : undefined,
-            experience: newSettings.enableRpgMode ? (existingChar?.experience || characters.find(ec => ec.id === id)?.experience || 0) : undefined,
-            characterClass: newSettings.enableRpgMode ? (existingChar?.characterClass || characters.find(ec => ec.id === id)?.characterClass || '') : undefined,
-            strength: newSettings.enableRpgMode ? (existingChar?.strength || characters.find(ec => ec.id === id)?.strength || 10) : undefined,
-            dexterity: newSettings.enableRpgMode ? (existingChar?.dexterity || characters.find(ec => ec.id === id)?.dexterity || 10) : undefined,
-            constitution: newSettings.enableRpgMode ? (existingChar?.constitution || characters.find(ec => ec.id === id)?.constitution || 10) : undefined,
-            intelligence: newSettings.enableRpgMode ? (existingChar?.intelligence || characters.find(ec => ec.id === id)?.intelligence || 10) : undefined,
-            wisdom: newSettings.enableRpgMode ? (existingChar?.wisdom || characters.find(ec => ec.id === id)?.wisdom || 10) : undefined,
-            charisma: newSettings.enableRpgMode ? (existingChar?.charisma || characters.find(ec => ec.id === id)?.charisma || 10) : undefined,
-            hitPoints: newSettings.enableRpgMode ? (existingChar?.hitPoints || characters.find(ec => ec.id === id)?.hitPoints || 10) : undefined,
-            maxHitPoints: newSettings.enableRpgMode ? (existingChar?.maxHitPoints || characters.find(ec => ec.id === id)?.maxHitPoints || 10) : undefined,
-            armorClass: newSettings.enableRpgMode ? (existingChar?.armorClass || characters.find(ec => ec.id === id)?.armorClass || 10) : undefined,
-            skills: newSettings.enableRpgMode ? (existingChar?.skills || characters.find(ec => ec.id === id)?.skills || {}) : undefined,
-            spells: newSettings.enableRpgMode ? (c.spells || []) : undefined,
-            techniques: newSettings.enableRpgMode ? (c.techniques || []) : undefined,
-            passiveAbilities: newSettings.enableRpgMode ? (c.passiveAbilities || []) : undefined,
-
+            history: existingChar?.history || [],
+            opinion: existingChar?.opinion || {},
+            portraitUrl: existingChar?.portraitUrl || null,
+            // Add RPG fields only if rpgMode is enabled
+            ...(newRPGMode && {
+                level: existingChar?.level || 1,
+                experience: existingChar?.experience || 0,
+                characterClass: existingChar?.characterClass || '',
+                stats: existingChar?.stats || {},
+                inventory: existingChar?.inventory || {},
+                skills: existingChar?.skills || {},
+                spells: existingChar?.spells || [],
+                techniques: existingChar?.techniques || [],
+                passiveAbilities: existingChar?.passiveAbilities || [],
+                strength: existingChar?.strength || 10,
+                dexterity: existingChar?.dexterity || 10,
+                constitution: existingChar?.constitution || 10,
+                intelligence: existingChar?.intelligence || 10,
+                wisdom: existingChar?.wisdom || 10,
+                charisma: existingChar?.charisma || 10,
+                hitPoints: existingChar?.hitPoints || 10,
+                maxHitPoints: existingChar?.maxHitPoints || 10,
+                armorClass: existingChar?.armorClass || 10,
+            })
         };
     });
     setCharacters(updatedChars);
@@ -84,8 +86,19 @@ export default function Home() {
          handleRestartAdventure(); // Use the restart function
     }
 
-    toast({ title: "Configuration Mise à Jour" });
+    // REMOVED toast call from here to prevent update during render
+    // toast({ title: "Configuration Mise à Jour" });
   };
+
+   // Effect to show toast when settings change, avoiding initial mount
+   React.useEffect(() => {
+     if (isInitialMount.current) {
+       isInitialMount.current = false;
+     } else {
+       // Only show toast after the initial mount and when settings actually change
+       toast({ title: "Configuration Mise à Jour" });
+     }
+   }, [adventureSettings, toast]); // Depend on adventureSettings and toast
 
    // Updated to handle Message objects and scene description
    const handleNarrativeUpdate = (content: string, type: 'user' | 'ai', sceneDesc?: string) => {
@@ -118,7 +131,6 @@ export default function Home() {
                         history: [`Rencontré le ${new Date().toLocaleString()}`], // Basic history entry
                         opinion: {}, // Initialize opinion
                         portraitUrl: null,
-                        // isNew: true, // Add a temporary flag to indicate it's newly added and not saved globally yet
                         // Initialize RPG fields if mode is on
                         ...(adventureSettings.rpgMode && {
                             level: 1,
@@ -178,8 +190,6 @@ export default function Home() {
 
             if (changed) {
                 console.log("Character histories updated:", updates);
-                 // Optionally show a toast, but might be too noisy
-                 // toast({ title: "Historique Personnage Mis à Jour" });
                 return updatedChars;
             }
             return prevChars; // No change
@@ -228,8 +238,6 @@ export default function Home() {
                  const contextStartIndex = Math.max(0, contextEndIndex - 4); // Get up to 4 previous messages
                  contextMessages = narrative.slice(contextStartIndex, contextEndIndex);
                  break; // Found both needed messages
-             } else if (lastAiMessage && lastUserAction) {
-                 break; // Should already have exited loop
              }
          }
 
@@ -305,7 +313,6 @@ export default function Home() {
                  description: `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`,
                  variant: "destructive",
              });
-             // State was not changed optimistically, so no need to revert here
          } finally {
              setIsRegenerating(false);
          }
@@ -313,43 +320,40 @@ export default function Home() {
 
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
-       // Add logic to persist the character globally if the "save" button was clicked
-       // e.g., save to localStorage or a backend
-        // Remove the temporary 'isNew' flag if it exists
-       // const { isNew, ...characterToSave } = updatedCharacter;
-
        setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
        console.log("Character updated:", updatedCharacter); // Debug log
-       // if (isNew) {
-       //     toast({ title: "Personnage Sauvegardé Globalement", description: `${characterToSave.name} peut maintenant être réutilisé.` });
-       //     // TODO: Implement global save logic here
-       // }
    };
 
     const handleSaveNewCharacter = (character: Character) => {
         // Placeholder for saving the character globally (e.g., to localStorage, backend)
         console.log("Saving new character globally:", character);
-        toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
-        // Potentially update the character state to remove the 'isNew' flag or similar indicator
-         // onCharacterUpdate({ ...character, isNew: false }); // Example: Update state via existing handler
+        // Example using localStorage - ensure this runs only on client
+        try {
+            localStorage.setItem(`character_${character.name.toLowerCase()}`, JSON.stringify(character));
+            toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
+             // Update the character state locally to potentially remove the 'isNew' indicator if used
+             // onCharacterUpdate({ ...character }); // Trigger re-render if needed
+        } catch (error) {
+             console.error("Failed to save character to localStorage:", error);
+             toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" });
+        }
     };
 
 
    const handleSave = () => {
         // Implement saving logic (JSON format)
         console.log("Saving Adventure State...");
-         // Filter out any temporary flags before saving
         const charactersToSave = characters.map(({ ...char }) => char);
 
         const saveData: SaveData = {
             adventureSettings,
-            characters: charactersToSave, // Save the cleaned list
-            narrative, // Save the array of messages
+            characters: charactersToSave,
+            narrative,
             currentLanguage,
-            saveFormatVersion: 1.2, // Increment version for character history change
+            saveFormatVersion: 1.2, // Current format version
             timestamp: new Date().toISOString(),
         };
-        // Convert to JSON and offer download or save to backend/localStorage
+        // Convert to JSON and offer download
         const jsonString = JSON.stringify(saveData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -362,7 +366,6 @@ export default function Home() {
     };
 
     const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
-        // Implement loading logic from JSON file
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -370,68 +373,63 @@ export default function Home() {
         reader.onload = (e) => {
             try {
                 const jsonString = e.target?.result as string;
-                const loadedData: Partial<SaveData> = JSON.parse(jsonString); // Use partial type
+                const loadedData: Partial<SaveData> = JSON.parse(jsonString);
 
-                // Add validation for loadedData structure
-                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
-                    throw new Error("Structure de fichier de sauvegarde invalide ou manquante (paramètres, personnages, ou narration).");
-                 }
+                if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
+                    throw new Error("Structure de fichier de sauvegarde invalide ou manquante.");
+                }
 
-                 // Basic validation for narrative messages
                 const isValidNarrative = loadedData.narrative.every(msg =>
                     typeof msg === 'object' && msg !== null &&
                     typeof msg.id === 'string' &&
                     ['user', 'ai', 'system'].includes(msg.type) &&
                     typeof msg.content === 'string' &&
                     typeof msg.timestamp === 'number'
-                    // sceneDescription is optional
                 );
                 if (!isValidNarrative) {
                     throw new Error("Structure des messages narratifs invalide.");
                 }
 
-
-                // Perform migrations if loadedData.saveFormatVersion is different from current
-                 if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.2) {
+                if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.2) {
                      console.log("Migrating old save format...");
-                     // Example migration: ensure history is an array
                      loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         history: Array.isArray(c.history) ? c.history : [],
                      }));
-                 }
+                }
 
                 setAdventureSettings(loadedData.adventureSettings);
-                 // Ensure loaded characters have necessary fields, providing defaults
+                const rpgModeActive = loadedData.adventureSettings.rpgMode;
                 const validatedCharacters = loadedData.characters.map((c: any) => ({
                     id: c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                     name: c.name || "Inconnu",
                     details: c.details || "",
-                    stats: loadedData.adventureSettings!.rpgMode ? (c.stats || {}) : undefined,
-                    inventory: loadedData.adventureSettings!.rpgMode ? (c.inventory || {}) : undefined,
-                    history: c.history || [], // Ensure history is always an array
+                    history: c.history || [],
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
-                    // Add defaults for new/existing RPG fields if loading older save or if rpgMode is true
-                    level: loadedData.adventureSettings!.rpgMode ? (c.level || 1) : undefined,
-                    experience: loadedData.adventureSettings!.rpgMode ? (c.experience || 0) : undefined,
-                    characterClass: loadedData.adventureSettings!.rpgMode ? (c.characterClass || '') : undefined,
-                    strength: loadedData.adventureSettings!.rpgMode ? (c.strength || 10) : undefined,
-                    dexterity: loadedData.adventureSettings!.rpgMode ? (c.dexterity || 10) : undefined,
-                    constitution: loadedData.adventureSettings!.rpgMode ? (c.constitution || 10) : undefined,
-                    intelligence: loadedData.adventureSettings!.rpgMode ? (c.intelligence || 10) : undefined,
-                    wisdom: loadedData.adventureSettings!.rpgMode ? (c.wisdom || 10) : undefined,
-                    charisma: loadedData.adventureSettings!.rpgMode ? (c.charisma || 10) : undefined,
-                    hitPoints: loadedData.adventureSettings!.rpgMode ? (c.hitPoints || 10) : undefined,
-                    maxHitPoints: loadedData.adventureSettings!.rpgMode ? (c.maxHitPoints || 10) : undefined,
-                    armorClass: loadedData.adventureSettings!.rpgMode ? (c.armorClass || 10) : undefined,
-                    skills: loadedData.adventureSettings!.rpgMode ? (c.skills || {}) : undefined,
-                    spells: loadedData.adventureSettings!.rpgMode ? (c.spells || []) : undefined,
-                    techniques: loadedData.adventureSettings!.rpgMode ? (c.techniques || []) : undefined,
-                    passiveAbilities: loadedData.adventureSettings!.rpgMode ? (c.passiveAbilities || []) : undefined,
+                    ...(rpgModeActive && {
+                        level: c.level ?? 1,
+                        experience: c.experience ?? 0,
+                        characterClass: c.characterClass ?? '',
+                        stats: c.stats ?? {},
+                        inventory: c.inventory ?? {},
+                        skills: c.skills ?? {},
+                        spells: c.spells ?? [],
+                        techniques: c.techniques ?? [],
+                        passiveAbilities: c.passiveAbilities ?? [],
+                        strength: c.strength ?? 10,
+                        dexterity: c.dexterity ?? 10,
+                        constitution: c.constitution ?? 10,
+                        intelligence: c.intelligence ?? 10,
+                        wisdom: c.wisdom ?? 10,
+                        charisma: c.charisma ?? 10,
+                        hitPoints: c.hitPoints ?? 10,
+                        maxHitPoints: c.maxHitPoints ?? 10,
+                        armorClass: c.armorClass ?? 10,
+                    }),
                 }));
                 setCharacters(validatedCharacters);
-                setNarrative(loadedData.narrative as Message[]); // Set the array of messages
+                setNarrative(loadedData.narrative as Message[]);
                 setCurrentLanguage(loadedData.currentLanguage || "fr");
 
                 toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
@@ -441,7 +439,6 @@ export default function Home() {
             }
         };
         reader.readAsText(file);
-        // Reset input value to allow loading the same file again
         event.target.value = '';
     };
 
@@ -450,24 +447,19 @@ export default function Home() {
 
 
   // --- Render ---
-  // Pass all state and handlers to the PageStructure component
   return (
       <PageStructure
         adventureSettings={adventureSettings}
         characters={characters}
-        narrativeMessages={narrative} // Pass the message array
+        narrativeMessages={narrative}
         currentLanguage={currentLanguage}
         fileInputRef={fileInputRef}
         handleSettingsUpdate={handleSettingsUpdate}
-        handleNarrativeUpdate={(content, type, sceneDesc) => {
-            handleNarrativeUpdate(content, type, sceneDesc);
-            // AI processing is now handled within the generateAdventure flow itself
-            // Character updates (history) and new characters are handled after the call returns
-        }}
+        handleNarrativeUpdate={handleNarrativeUpdate}
         handleCharacterUpdate={handleCharacterUpdate}
-        handleNewCharacters={handleNewCharacters} // Pass the new handler
-        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
-        handleSaveNewCharacter={handleSaveNewCharacter} // Pass save new char handler
+        handleNewCharacters={handleNewCharacters}
+        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+        handleSaveNewCharacter={handleSaveNewCharacter}
         handleSave={handleSave}
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
@@ -475,8 +467,8 @@ export default function Home() {
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage}
-        handleRestartAdventure={handleRestartAdventure} // Pass restart handler
-        handleRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
+        handleRestartAdventure={handleRestartAdventure}
+        handleRegenerateLastResponse={handleRegenerateLastResponse}
       />
   );
 }
