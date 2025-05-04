@@ -112,7 +112,7 @@ export default function Home() {
        // Potentially re-run AI from this point if needed? Or just allow text edit.
    };
 
-    // New handler for rewinding the story to a specific message
+    // Handler for rewinding the story to a specific message
    const handleRewindToMessage = (messageId: string) => {
        const messageIndex = narrative.findIndex(msg => msg.id === messageId);
        if (messageIndex !== -1) {
@@ -121,6 +121,17 @@ export default function Home() {
            toast({ title: "Retour en Arrière", description: "L'histoire a été ramenée au message sélectionné." });
        }
    };
+
+    // Handler for undoing the last message
+    const handleUndoLastMessage = () => {
+        // Cannot undo the initial system message
+        if (narrative.length <= 1) {
+            toast({ title: "Impossible d'annuler", description: "Il n'y a pas de message à annuler.", variant: "destructive" });
+            return;
+        }
+        setNarrative(prev => prev.slice(0, -1));
+        toast({ title: "Dernier Message Annulé" });
+    };
 
 
    const handleCharacterUpdate = (updatedCharacter: Character) => {
@@ -251,6 +262,7 @@ export default function Home() {
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage} // Pass edit handler
         handleRewindToMessage={handleRewindToMessage} // Pass rewind handler
+        handleUndoLastMessage={handleUndoLastMessage} // Pass undo handler
       />
   );
 }

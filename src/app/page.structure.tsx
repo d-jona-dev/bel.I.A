@@ -40,6 +40,7 @@ interface PageStructureProps {
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void; // Added edit handler prop
   handleRewindToMessage: (messageId: string) => void; // Added rewind handler prop
+  handleUndoLastMessage: () => void; // Added undo handler prop
 }
 
 export function PageStructure({
@@ -59,6 +60,7 @@ export function PageStructure({
   generateSceneImageAction,
   handleEditMessage, // Added prop
   handleRewindToMessage, // Added prop
+  handleUndoLastMessage, // Added prop
 }: PageStructureProps) {
   return (
     <>
@@ -203,6 +205,7 @@ export function PageStructure({
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage} // Pass edit handler
                 onRewindToMessage={handleRewindToMessage} // Pass rewind handler
+                onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
              />
         </main>
       </SidebarInset>

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added Avatar imports
-import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot } from "lucide-react"; // Added new icons
+import { Image as ImageIcon, Send, BrainCircuit, Users, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo } from "lucide-react"; // Added new icons
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput } from "@/ai/flows/generate-adventure"; // Import types only
@@ -40,6 +40,7 @@ interface AdventureDisplayProps {
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
+    onUndoLastMessage: () => void; // Callback for undoing the last message
 }
 
 
@@ -53,6 +54,7 @@ export function AdventureDisplay({
     rpgMode,
     onEditMessage, // New handler
     onRewindToMessage, // New handler
+    onUndoLastMessage, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -394,15 +396,28 @@ export function AdventureDisplay({
 
                     {/* User Input Textarea */}
                     <div className="flex gap-2">
+                         {/* Undo Button */}
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || messages.length <= 1}>
+                                         <Undo className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Annuler le dernier message</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
                         <Textarea
                             placeholder={currentMode === 'exploration' ? "Que faites-vous ? Décrivez votre action..." : (currentMode === 'combat' ? "Décrivez votre action de combat..." : "Votre message...")}
                             value={userAction}
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
                             rows={1}
-                            className="min-h-[40px] max-h-[150px] resize-y"
+                            className="min-h-[40px] max-h-[150px] resize-y flex-1" // Added flex-1
                             disabled={isLoading}
                         />
+                         {/* Send Button */}
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -476,6 +491,3 @@ declare module "@/ai/flows/generate-adventure" {
     };
   }
 }
-
-
-    
