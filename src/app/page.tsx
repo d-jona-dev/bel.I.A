@@ -24,6 +24,11 @@ export default function Home() {
       { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {} },
       { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {} }
   ]);
+  // Store the initial characters defined in settings separately for reset purposes
+  const [initialCharactersFromSettings, setInitialCharactersFromSettings] = React.useState<Character[]>([
+      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {} },
+      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {} }
+  ]);
   // Narrative is now an array of Message objects
   const [narrative, setNarrative] = React.useState<Message[]>([
      { id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }
@@ -44,8 +49,8 @@ export default function Home() {
         initialSituation: newSettings.initialSituation,
         rpgMode: newRPGMode,
     });
-    // Update character list from form (simple overwrite for now)
-     const updatedChars = newSettings.characters.map((c: any) => {
+    // Update character list from form and store this as the "initial" set for resets
+     const initialCharsFromForm = newSettings.characters.map((c: any) => {
         // Try to find existing character by name if ID is missing or new
         const existingChar = characters.find(ec => ec.name === c.name);
         const id = existingChar?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`; // More unique ID
@@ -53,10 +58,10 @@ export default function Home() {
             id: id,
             name: c.name,
             details: c.details,
-            history: existingChar?.history || [],
-            opinion: existingChar?.opinion || {},
+            history: existingChar?.history || [], // Keep history for now, might be reset later
+            opinion: existingChar?.opinion || {}, // Keep opinion for now
             portraitUrl: existingChar?.portraitUrl || null,
-            // Add RPG fields only if rpgMode is enabled
+            // Initialize RPG fields based on whether RPG mode is *currently* enabled
             ...(newRPGMode && {
                 level: existingChar?.level || 1,
                 experience: existingChar?.experience || 0,
@@ -67,27 +72,25 @@ export default function Home() {
                 spells: existingChar?.spells || [],
                 techniques: existingChar?.techniques || [],
                 passiveAbilities: existingChar?.passiveAbilities || [],
-                strength: existingChar?.strength || 10,
-                dexterity: existingChar?.dexterity || 10,
-                constitution: existingChar?.constitution || 10,
-                intelligence: existingChar?.intelligence || 10,
-                wisdom: existingChar?.wisdom || 10,
-                charisma: existingChar?.charisma || 10,
-                hitPoints: existingChar?.hitPoints || 10,
-                maxHitPoints: existingChar?.maxHitPoints || 10,
-                armorClass: existingChar?.armorClass || 10,
+                strength: existingChar?.strength ?? 10, // Use nullish coalescing
+                dexterity: existingChar?.dexterity ?? 10,
+                constitution: existingChar?.constitution ?? 10,
+                intelligence: existingChar?.intelligence ?? 10,
+                wisdom: existingChar?.wisdom ?? 10,
+                charisma: existingChar?.charisma ?? 10,
+                hitPoints: existingChar?.hitPoints ?? 10,
+                maxHitPoints: existingChar?.maxHitPoints ?? 10,
+                armorClass: existingChar?.armorClass ?? 10,
             })
         };
     });
-    setCharacters(updatedChars);
+    setCharacters(initialCharsFromForm); // Set the current characters
+    setInitialCharactersFromSettings(JSON.parse(JSON.stringify(initialCharsFromForm))); // Store a deep copy for resetting
 
-    // Reset narrative only if initial situation changes significantly
+    // Reset narrative only if initial situation changes
     if (newSettings.initialSituation !== oldInitialSituation) {
-         handleRestartAdventure(); // Use the restart function
+         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: newSettings.initialSituation, timestamp: Date.now() }]);
     }
-
-    // REMOVED toast call from here to prevent update during render
-    // toast({ title: "Configuration Mise à Jour" });
   };
 
    // Effect to show toast when settings change, avoiding initial mount
@@ -96,9 +99,10 @@ export default function Home() {
        isInitialMount.current = false;
      } else {
        // Only show toast after the initial mount and when settings actually change
-       toast({ title: "Configuration Mise à Jour" });
+       // Need to delay this slightly to avoid the 'update during render' error
+        setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
      }
-   }, [adventureSettings, toast]); // Depend on adventureSettings and toast
+   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
 
    // Updated to handle Message objects and scene description
    const handleNarrativeUpdate = (content: string, type: 'user' | 'ai', sceneDesc?: string) => {
@@ -209,11 +213,54 @@ export default function Home() {
 
    // Function to restart the adventure
    const handleRestartAdventure = () => {
-        setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
-        // Optionally reset characters to their initial state if needed, or keep current state
-        // For now, just reset the narrative.
-        toast({ title: "Aventure Recommencée", description: "L'histoire a été remise au début." });
-   }
+        // 1. Reset the narrative to the initial situation
+        setNarrative([{ id: `msg-reset-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
+
+        // 2. Reset characters: Keep the ones defined initially, reset runtime data
+        setCharacters(prevChars => {
+            const initialCharIds = new Set(initialCharactersFromSettings.map(c => c.id));
+            const resetChars = initialCharactersFromSettings.map(initialChar => {
+                // Find the corresponding character in the *initial* settings state
+                 const originalDefinition = initialCharactersFromSettings.find(ic => ic.id === initialChar.id);
+                 if (!originalDefinition) return initialChar; // Should not happen if logic is correct
+
+                 // Reset runtime/RPG fields to their initial state or defaults
+                 return {
+                    ...originalDefinition, // Start with the original definition (name, details)
+                    history: [], // Clear history
+                    opinion: {}, // Clear opinions
+                    // Keep portraitUrl? Optional. Let's keep it for now.
+                    portraitUrl: originalDefinition.portraitUrl,
+                    // Reset RPG fields ONLY if RPG mode is currently active
+                     ...(adventureSettings.rpgMode && {
+                        level: 1,
+                        experience: 0,
+                        characterClass: originalDefinition.characterClass || '',
+                        stats: originalDefinition.stats || {}, // Revert to original stats if they existed
+                        inventory: {}, // Clear inventory
+                        skills: originalDefinition.skills || {}, // Revert to original skills
+                        spells: [], // Clear learned spells
+                        techniques: [], // Clear learned techniques
+                        passiveAbilities: originalDefinition.passiveAbilities || [], // Revert to original passives
+                        // Reset core D&D stats to defaults or original definition if available
+                        strength: originalDefinition.strength ?? 10,
+                        dexterity: originalDefinition.dexterity ?? 10,
+                        constitution: originalDefinition.constitution ?? 10,
+                        intelligence: originalDefinition.intelligence ?? 10,
+                        wisdom: originalDefinition.wisdom ?? 10,
+                        charisma: originalDefinition.charisma ?? 10,
+                        hitPoints: originalDefinition.maxHitPoints ?? 10, // Reset HP to Max HP or default
+                        maxHitPoints: originalDefinition.maxHitPoints ?? 10,
+                        armorClass: originalDefinition.armorClass ?? 10,
+                     }),
+                 };
+            });
+             return resetChars;
+        });
+
+
+        toast({ title: "Aventure Recommencée", description: "L'histoire et les personnages ont été réinitialisés." });
+   };
 
 
     // Handler for regenerating the last AI response
@@ -328,14 +375,33 @@ export default function Home() {
         // Placeholder for saving the character globally (e.g., to localStorage, backend)
         console.log("Saving new character globally:", character);
         // Example using localStorage - ensure this runs only on client
-        try {
-            localStorage.setItem(`character_${character.name.toLowerCase()}`, JSON.stringify(character));
-            toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
-             // Update the character state locally to potentially remove the 'isNew' indicator if used
-             // onCharacterUpdate({ ...character }); // Trigger re-render if needed
-        } catch (error) {
-             console.error("Failed to save character to localStorage:", error);
-             toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" });
+        if (typeof window !== 'undefined') {
+            try {
+                const existingCharsStr = localStorage.getItem('globalCharacters');
+                const existingChars: Character[] = existingCharsStr ? JSON.parse(existingCharsStr) : [];
+
+                // Check if character with the same name already exists globally
+                const charIndex = existingChars.findIndex(c => c.name.toLowerCase() === character.name.toLowerCase());
+                if (charIndex > -1) {
+                    // Update existing global character
+                    existingChars[charIndex] = character;
+                } else {
+                    // Add new global character
+                    existingChars.push(character);
+                }
+
+                localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
+                toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
+                // Trigger a re-render in CharacterSidebar by updating the character slightly (e.g., timestamp)
+                // This helps remove the 'isPotentiallyNew' state visually.
+                 handleCharacterUpdate({ ...character, _lastSaved: Date.now() } as any); // Add a dummy field or update timestamp
+
+            } catch (error) {
+                 console.error("Failed to save character to localStorage:", error);
+                 toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" });
+            }
+        } else {
+             toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" });
         }
     };
 
@@ -387,14 +453,24 @@ export default function Home() {
                     typeof msg.timestamp === 'number'
                 );
                 if (!isValidNarrative) {
-                    throw new Error("Structure des messages narratifs invalide.");
+                     // Attempt migration from old string format
+                    if (typeof loadedData.narrative === 'string') {
+                        console.warn("Migrating old string narrative format to message array.");
+                        loadedData.narrative = [
+                            { id: `migrated-${Date.now()}`, type: 'system', content: loadedData.narrative, timestamp: Date.now() }
+                        ];
+                    } else {
+                        throw new Error("Structure des messages narratifs invalide.");
+                    }
                 }
+
 
                 if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.2) {
                      console.log("Migrating old save format...");
                      loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         history: Array.isArray(c.history) ? c.history : [],
+                        opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {}, // Ensure opinion is an object
                      }));
                 }
 
@@ -429,6 +505,8 @@ export default function Home() {
                     }),
                 }));
                 setCharacters(validatedCharacters);
+                 // Store the loaded characters as the new initial state for resets
+                setInitialCharactersFromSettings(JSON.parse(JSON.stringify(validatedCharacters)));
                 setNarrative(loadedData.narrative as Message[]);
                 setCurrentLanguage(loadedData.currentLanguage || "fr");
 
