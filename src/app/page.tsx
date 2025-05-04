@@ -10,7 +10,7 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
-import type { GenerateAdventureInput } from "@/ai/flows/generate-adventure"; // Import input type
+import type { GenerateAdventureInput, GenerateAdventureOutput, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char types
 
 
 export default function Home() {
@@ -46,7 +46,7 @@ export default function Home() {
      const updatedChars = newSettings.characters.map((c: any, index: number) => {
         // Try to find existing character by name if ID is missing or new
         const existingChar = characters.find(ec => ec.name === c.name);
-        const id = existingChar?.id || characters[index]?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        const id = existingChar?.id || characters.find(ec => ec.name === c.name)?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`; // More unique ID
         return {
             id: id,
             name: c.name,
@@ -96,15 +96,71 @@ export default function Home() {
             timestamp: Date.now(),
             sceneDescription: type === 'ai' ? sceneDesc : undefined, // Add scene desc only to AI messages
        };
-       setNarrative(prev => [...prev, newMessage]);
+       // Use functional update to ensure we're working with the latest state
+       setNarrative(prevNarrative => [...prevNarrative, newMessage]);
 
-      // TODO: Analyze newNarrativePart with LLM to update character history, opinion, inventory, stats if RPG mode is on.
-      if (adventureSettings.rpgMode && type === 'ai') { // Only analyze AI responses for now
-        // Call an AI flow here to parse the narrative and update character state
+      // Character state analysis should happen *after* the AI response is added and might involve another AI call
+      if (adventureSettings.rpgMode && type === 'ai') {
         console.log("RPG Mode: Need to analyze narrative to update characters:", content);
-        // updateCharacterStateFromNarrative(newNarrativePart); // Placeholder for future AI analysis
+        // Placeholder: updateCharacterStateFromNarrative(newMessage.id, content);
       }
    };
+
+   // Function to handle newly detected characters from AI response
+   const handleNewCharacters = (newChars: Array<{ name: string; details?: string }>) => {
+        if (!newChars || newChars.length === 0) return;
+
+        setCharacters(prevChars => {
+            const currentNames = new Set(prevChars.map(c => c.name.toLowerCase()));
+            const charsToAdd: Character[] = [];
+
+            newChars.forEach(newCharData => {
+                if (!currentNames.has(newCharData.name.toLowerCase())) {
+                    const newId = `${newCharData.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                    const characterToAdd: Character = {
+                        id: newId,
+                        name: newCharData.name,
+                        details: newCharData.details || "Rencontré récemment.",
+                        history: [`Rencontré le ${new Date().toLocaleString()}`], // Basic history entry
+                        opinion: {}, // Initialize opinion
+                        portraitUrl: null,
+                        // Initialize RPG fields if mode is on
+                        ...(adventureSettings.rpgMode && {
+                            level: 1,
+                            experience: 0,
+                            characterClass: '',
+                            stats: {},
+                            inventory: {},
+                            skills: {},
+                            spells: [],
+                            techniques: [],
+                            passiveAbilities: [],
+                            strength: 10,
+                            dexterity: 10,
+                            constitution: 10,
+                            intelligence: 10,
+                            wisdom: 10,
+                            charisma: 10,
+                            hitPoints: 10,
+                            maxHitPoints: 10,
+                            armorClass: 10,
+                        })
+                    };
+                    charsToAdd.push(characterToAdd);
+                    currentNames.add(newCharData.name.toLowerCase()); // Add to set to prevent duplicates within the same batch
+                }
+            });
+
+            if (charsToAdd.length > 0) {
+                toast({
+                    title: "Nouveau Personnage Ajouté",
+                    description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste des personnages.`,
+                });
+                return [...prevChars, ...charsToAdd];
+            }
+            return prevChars; // No changes if no new unique characters
+        });
+    };
 
     // New handler for editing a specific message
    const handleEditMessage = (messageId: string, newContent: string) => {
@@ -112,7 +168,8 @@ export default function Home() {
            msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
        ));
        toast({ title: "Message Modifié" });
-       // Potentially re-run AI from this point if needed? Or just allow text edit.
+       // TODO: Decide if editing should trigger AI regeneration from that point.
+       // For now, it's just a text edit.
    };
 
     // Handler for rewinding the story to a specific message
@@ -120,79 +177,127 @@ export default function Home() {
        const messageIndex = narrative.findIndex(msg => msg.id === messageId);
        if (messageIndex !== -1) {
            // Keep messages up to and including the selected one
-           setNarrative(prev => prev.slice(0, messageIndex + 1));
+           setNarrative(prev => prev.slice(0, messageIndex + 1)); // Correct slicing
            toast({ title: "Retour en Arrière", description: "L'histoire a été ramenée au message sélectionné." });
+       } else {
+            toast({ title: "Erreur", description: "Impossible de trouver le message pour le retour en arrière.", variant: "destructive" });
        }
    };
 
-    // Handler for undoing the last message
+    // Handler for undoing the last message pair (user action + AI response) or just the last user action
     const handleUndoLastMessage = () => {
-        // Cannot undo the initial system message
-        if (narrative.length <= 1) {
-            toast({ title: "Impossible d'annuler", description: "Il n'y a pas de message à annuler.", variant: "destructive" });
-            return;
-        }
-        setNarrative(prev => prev.slice(0, -1));
-        toast({ title: "Dernier Message Annulé" });
+        setNarrative(prevNarrative => {
+            if (prevNarrative.length <= 1) {
+                toast({ title: "Impossible d'annuler", description: "Il n'y a pas de message à annuler.", variant: "destructive" });
+                return prevNarrative; // Return unchanged state
+            }
+
+            // Check if the last message is AI and the one before is User
+            const lastMessage = prevNarrative[prevNarrative.length - 1];
+            const secondLastMessage = prevNarrative[prevNarrative.length - 2];
+
+            if (lastMessage.type === 'ai' && secondLastMessage?.type === 'user') {
+                // Remove both user action and AI response
+                toast({ title: "Dernière Action Annulée" });
+                return prevNarrative.slice(0, -2);
+            } else if (lastMessage.type === 'user') {
+                // Only remove the last user action (if they haven't sent it yet effectively)
+                toast({ title: "Dernière Action Annulée" });
+                return prevNarrative.slice(0, -1);
+            } else {
+                 // Handle edge cases like multiple system/AI messages - just remove the last one
+                 toast({ title: "Dernier Message Annulé" });
+                 return prevNarrative.slice(0, -1);
+            }
+        });
     };
 
     // Handler for regenerating the last AI response
     const handleRegenerateLastResponse = async () => {
          if (isRegenerating) return;
 
-         // Find the last AI message and the user message before it
+         let lastAiMessage: Message | undefined;
+         let lastUserAction: string | undefined;
+         let contextMessages: Message[] = [];
          let lastAiIndex = -1;
-         let lastUserIndex = -1;
+
+         // Iterate backwards to find the last AI message and the user action before it
          for (let i = narrative.length - 1; i >= 0; i--) {
-             if (narrative[i].type === 'ai' && lastAiIndex === -1) {
+             const message = narrative[i];
+             if (message.type === 'ai' && !lastAiMessage) {
+                 lastAiMessage = message;
                  lastAiIndex = i;
-             } else if (narrative[i].type === 'user' && lastUserIndex === -1 && lastAiIndex !== -1) {
-                 lastUserIndex = i;
-                 break; // Found the relevant user action
-             } else if (lastAiIndex !== -1 && lastUserIndex !== -1) {
-                break; // Already found both
+             } else if (message.type === 'user' && lastAiMessage) {
+                 lastUserAction = message.content;
+                 // Gather context messages *before* this user action
+                 const contextEndIndex = i;
+                 const contextStartIndex = Math.max(0, contextEndIndex - 4); // Get up to 4 previous messages
+                 contextMessages = narrative.slice(contextStartIndex, contextEndIndex);
+                 break; // Found both needed messages
+             } else if (lastAiMessage && lastUserAction) {
+                 break; // Should already have exited loop
              }
          }
 
-         if (lastAiIndex === -1 || lastUserIndex === -1) {
-             toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente trouvée pour régénérer.", variant: "destructive" });
+
+         if (!lastAiMessage || !lastUserAction) {
+             toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" });
              return;
          }
-
-         const lastUserAction = narrative[lastUserIndex].content;
 
          setIsRegenerating(true);
          toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." });
 
-         // Remove the last AI message optimistically
-         setNarrative(prev => prev.slice(0, lastAiIndex));
+         // Prepare context for the AI regeneration
+         const narrativeContext = contextMessages.map(msg =>
+                 msg.type === 'user' ? `> ${msg.content}` : msg.content
+             ).join('\n\n') + `\n\n> ${lastUserAction}\n`; // Re-append the crucial user action
 
          try {
-             // Get context from messages *before* the user action that triggered the AI response we're replacing
-             const contextMessages = narrative.slice(Math.max(0, lastUserIndex - 4), lastUserIndex); // Context before the trigger user action
-             const narrativeContext = contextMessages.map(msg =>
-                 msg.type === 'user' ? `> ${msg.content}` : msg.content
-             ).join('\n\n') + `\n\n> ${lastUserAction}\n`; // Re-append the user action
-
-
              const input: GenerateAdventureInput = {
                  world: adventureSettings.world,
-                 initialSituation: narrativeContext,
-                 secondaryCharacters: characters.map(c => `${c.name}: ${c.details}`),
+                 initialSituation: narrativeContext, // Provide the reconstructed context
+                 characters: characters, // Pass current full character objects
                  userAction: lastUserAction, // Use the same user action
                  promptConfig: adventureSettings.rpgMode ? {
                     rpgContext: {
-                        playerStats: { /* Player stats placeholder */ },
-                        characterDetails: characters.map(c => ({ name: c.name, stats: c.stats, inventory: c.inventory })),
-                        mode: 'exploration', // TODO: Make mode dynamic if needed
+                        playerStats: { /* TODO: Player stats placeholder */ },
+                        // Pass relevant details from current character state
+                        characterDetails: characters.map(c => ({
+                             name: c.name,
+                             details: c.details,
+                             stats: c.stats,
+                             inventory: c.inventory
+                        })),
+                        mode: 'exploration', // TODO: Determine mode dynamically if needed
                     }
                  } : undefined,
              };
 
              const result = await generateAdventure(input);
 
-             // Add the *new* AI response
-             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage);
+             // Update the narrative: replace the old AI message with the new one
+             setNarrative(prev => {
+                const newNarrative = [...prev];
+                const newAiMessage: Message = {
+                     id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                     type: 'ai',
+                     content: result.narrative,
+                     timestamp: Date.now(),
+                     sceneDescription: result.sceneDescriptionForImage,
+                 };
+                 if (lastAiIndex !== -1) {
+                    newNarrative.splice(lastAiIndex, 1, newAiMessage); // Replace the old AI message
+                 } else {
+                    // Fallback: should not happen based on logic above, but safety first
+                    newNarrative.push(newAiMessage);
+                 }
+
+                return newNarrative;
+             });
+
+             // Handle any newly introduced characters in the regenerated response
+             handleNewCharacters(result.newCharacters || []);
 
              toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });
 
@@ -200,10 +305,10 @@ export default function Home() {
              console.error("Error regenerating adventure:", error);
              toast({
                  title: "Erreur de Régénération",
-                 description: "Impossible de générer une nouvelle réponse. Veuillez réessayer.",
+                 description: `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`,
                  variant: "destructive",
              });
-             // Optionally add back the removed AI message or handle error state
+             // State was not changed optimistically, so no need to revert here
          } finally {
              setIsRegenerating(false);
          }
@@ -223,7 +328,7 @@ export default function Home() {
             characters,
             narrative, // Save the array of messages
             currentLanguage,
-            saveFormatVersion: 1, // Add versioning
+            saveFormatVersion: 1.1, // Increment version if structure changed significantly (e.g., Character type)
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download or save to backend/localStorage
@@ -251,7 +356,7 @@ export default function Home() {
 
                 // Add validation for loadedData structure
                  if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
-                    throw new Error("Structure de fichier de sauvegarde invalide.");
+                    throw new Error("Structure de fichier de sauvegarde invalide ou manquante (paramètres, personnages, ou narration).");
                  }
 
                  // Basic validation for narrative messages
@@ -269,12 +374,12 @@ export default function Home() {
 
 
                 // Perform migrations if loadedData.saveFormatVersion is different from current
-                // if (loadedData.saveFormatVersion !== 1) { /* ... migration logic ... */ }
+                // if (loadedData.saveFormatVersion !== 1.1) { /* ... migration logic ... */ }
 
                 setAdventureSettings(loadedData.adventureSettings);
                  // Ensure loaded characters have necessary fields, providing defaults
                 const validatedCharacters = loadedData.characters.map((c: any) => ({
-                    id: c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                    id: c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                     name: c.name || "Inconnu",
                     details: c.details || "",
                     stats: loadedData.adventureSettings!.rpgMode ? (c.stats || {}) : undefined,
@@ -282,7 +387,7 @@ export default function Home() {
                     history: c.history || [],
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
-                    // Add defaults for new RPG fields if loading older save
+                    // Add defaults for new/existing RPG fields if loading older save or if rpgMode is true
                     level: loadedData.adventureSettings!.rpgMode ? (c.level || 1) : undefined,
                     experience: loadedData.adventureSettings!.rpgMode ? (c.experience || 0) : undefined,
                     characterClass: loadedData.adventureSettings!.rpgMode ? (c.characterClass || '') : undefined,
@@ -329,8 +434,17 @@ export default function Home() {
         currentLanguage={currentLanguage}
         fileInputRef={fileInputRef}
         handleSettingsUpdate={handleSettingsUpdate}
-        handleNarrativeUpdate={handleNarrativeUpdate}
+        handleNarrativeUpdate={(content, type, sceneDesc) => {
+            handleNarrativeUpdate(content, type, sceneDesc);
+            // Add AI processing *after* narrative update if needed
+            // Example: Call AI to process the new content for character updates
+            // if (type === 'ai' && adventureSettings.rpgMode) {
+            //    processNarrativeForCharacterUpdates(content);
+            // }
+            // New characters are handled after the generateAdventure call returns
+        }}
         handleCharacterUpdate={handleCharacterUpdate}
+        handleNewCharacters={handleNewCharacters} // Pass the new handler
         handleSave={handleSave}
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
@@ -338,8 +452,8 @@ export default function Home() {
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage}
-        handleRewindToMessage={handleRewindToMessage}
-        handleUndoLastMessage={handleUndoLastMessage}
+        handleRewindToMessage={handleRewindToMessage} // Pass rewind handler
+        handleUndoLastMessage={handleUndoLastMessage} // Pass undo handler
         handleRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
       />
   );

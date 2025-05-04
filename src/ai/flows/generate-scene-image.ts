@@ -1,7 +1,9 @@
+
 'use server';
 
 /**
  * @fileOverview Generates an image based on a textual scene description.
+ * Assumes the input description prioritizes visual details and physical descriptions over names.
  *
  * - generateSceneImage - A function that generates an image of the current scene.
  * - GenerateSceneImageInput - The input type for the generateSceneImage function.
@@ -14,7 +16,7 @@ import {z} from 'genkit';
 const GenerateSceneImageInputSchema = z.object({
   sceneDescription: z
     .string()
-    .describe('A description of the scene to generate an image for.'),
+    .describe('A visual description of the scene to generate an image for. Should prioritize physical descriptions of characters over names.'),
 });
 export type GenerateSceneImageInput = z.infer<typeof GenerateSceneImageInputSchema>;
 
@@ -31,7 +33,7 @@ export async function generateSceneImage(input: GenerateSceneImageInput): Promis
 }
 
 // Note: ai.definePrompt is not directly used here as image generation uses ai.generate directly.
-// If more complex logic or structured output was needed alongside the image, a prompt might be used.
+// The quality of the image depends heavily on the quality of the sceneDescription provided by the calling flow (e.g., generateAdventure).
 
 const generateSceneImageFlow = ai.defineFlow<
   typeof GenerateSceneImageInputSchema,
@@ -47,7 +49,8 @@ const generateSceneImageFlow = ai.defineFlow<
     const {media} = await ai.generate({
       // IMPORTANT: Use the correct model for image generation
       model: 'googleai/gemini-2.0-flash-exp',
-      prompt: input.sceneDescription, // Pass the scene description directly
+      // Pass the scene description directly. It's expected to be well-formatted by the caller.
+      prompt: input.sceneDescription,
       config: {
         // IMPORTANT: Must specify both TEXT and IMAGE modalities
         responseModalities: ['TEXT', 'IMAGE'],
@@ -58,6 +61,8 @@ const generateSceneImageFlow = ai.defineFlow<
     if (!media?.url) {
         throw new Error("Image generation failed or returned no URL.");
     }
+
+    console.log(`Image generated for prompt: "${input.sceneDescription.substring(0, 100)}..."`); // Log truncated prompt
 
     return {imageUrl: media.url};
   }

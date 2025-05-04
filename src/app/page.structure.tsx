@@ -21,7 +21,7 @@ import { AdventureForm } from '@/components/adventure-form';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
-import { CharacterSidebar } from "@/components/character-sidebar";
+import { CharacterSidebar } from "@/components/character-sidebar"; // Ensure this is imported
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
@@ -32,6 +32,7 @@ interface PageStructureProps {
   handleSettingsUpdate: (newSettings: any) => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
+  handleNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Added prop for new characters
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
@@ -53,6 +54,7 @@ export function PageStructure({
   handleSettingsUpdate,
   handleNarrativeUpdate,
   handleCharacterUpdate,
+  handleNewCharacters, // Destructure new prop
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -129,22 +131,7 @@ export function PageStructure({
                   </TooltipProvider>
               </nav>
 
-               {/* AI Configuration in Left Sidebar */}
-               <Accordion type="single" collapsible className="w-full">
-                 <AccordionItem value="ai-config-accordion">
-                   <AccordionTrigger>
-                     <div className="flex items-center gap-2">
-                       <BrainCircuit className="h-5 w-5" />
-                       <span className="group-data-[collapsible=icon]:hidden">Configuration IA</span>
-                     </div>
-                   </AccordionTrigger>
-                   <AccordionContent className="pt-2 px-0"> {/* Adjusted padding */}
-                       <ModelLoader />
-                   </AccordionContent>
-                 </AccordionItem>
-               </Accordion>
-
-          </SidebarContent>
+           </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
             {/* Load Button */}
@@ -219,6 +206,7 @@ export function PageStructure({
                 characters={characters}
                 initialMessages={narrativeMessages} // Pass the message array
                 onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
+                onNewCharacters={handleNewCharacters} // Pass the new characters handler
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRewindToMessage={handleRewindToMessage}
@@ -228,7 +216,7 @@ export function PageStructure({
         </main>
       </SidebarInset>
 
-      {/* Right Sidebar: Config, Characters */}
+      {/* Right Sidebar: Config, Characters, AI Settings */}
        <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
                  <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
@@ -251,6 +239,21 @@ export function PageStructure({
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
+
+                      {/* AI Configuration */}
+                     <Accordion type="single" collapsible className="w-full">
+                         <AccordionItem value="ai-config-accordion">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
+                                </div>
+                             </AccordionTrigger>
+                            <AccordionContent className="pt-2 px-0">
+                                <ModelLoader />
+                            </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
                      {/* Characters */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
                          <AccordionItem value="characters-accordion">
@@ -260,6 +263,7 @@ export function PageStructure({
                                  </div>
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
+                                 {/* Use CharacterSidebar component */}
                                  <CharacterSidebar
                                      characters={characters}
                                      onCharacterUpdate={handleCharacterUpdate}

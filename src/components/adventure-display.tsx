@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Ensure Avatar components are imported
 import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RotateCcw, User as UserIcon, Bot, Undo, Users, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,6 +37,7 @@ interface AdventureDisplayProps {
     characters: Character[];
     initialMessages: Message[]; // Changed from initialNarrative: string
     onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Callback for adding new messages, include optional sceneDesc
+    onNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Callback for adding new characters detected by AI
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRewindToMessage: (messageId: string) => void; // Callback for rewinding to a message
@@ -52,6 +53,7 @@ export function AdventureDisplay({
     characters,
     initialMessages, // Use initialMessages
     onNarrativeChange, // Use the updated handler
+    onNewCharacters, // Add the new callback
     rpgMode,
     onEditMessage,
     onRewindToMessage,
@@ -81,7 +83,18 @@ export function AdventureDisplay({
         // Find the scene description associated with the latest AI message
         const latestAiMessage = [...initialMessages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
         setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
-    }, [initialMessages]);
+
+        // Scroll to bottom after messages update
+        if (scrollAreaRef.current) {
+          const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+          if(scrollElement) {
+              // Use requestAnimationFrame for smoother scrolling after render
+              requestAnimationFrame(() => {
+                 scrollElement.scrollTop = scrollElement.scrollHeight;
+              });
+          }
+        }
+    }, [initialMessages]); // Depends on the messages array
 
 
   // Function to handle sending user action
@@ -94,36 +107,36 @@ export function AdventureDisplay({
 
     // Call the callback to update the parent state immediately for user action
     onNarrativeChange(userMessageContent, 'user');
-    // Update local state immediately as well - handled by useEffect on initialMessages change
+    // Local messages state will update via useEffect when initialMessages changes
 
     try {
-        // Combine current messages content for context
-        // Send only the last few messages for context to avoid overly large inputs
-        const contextMessages = messages.slice(-5); // Adjust number as needed
+        // Get context from the current messages state
+        // Sending last 5 messages for context. Adjust number as needed.
+        const currentMessages = messages; // Read the latest state directly if useEffect hasn't updated yet
+        const contextMessages = currentMessages.slice(-5);
         const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${msg.content}` : msg.content
         ).join('\n\n') + `\n\n> ${userMessageContent}\n`; // Append new user action
 
-        // Prepare input for the AI
+        // Prepare input for the AI, passing full character objects
         const input: GenerateAdventureInput = {
             world: world,
-            // Use limited context for initialSituation
             initialSituation: narrativeContext,
-             // Map characters to strings for the basic AI flow
-             // TODO: Adapt AI flow to potentially accept structured character data
-             secondaryCharacters: characters.map(c => `${c.name}: ${c.details}`),
-            userAction: userMessageContent, // Send only the current user action
+            characters: characters, // Pass current full character objects
+            userAction: userMessageContent,
         };
 
         // Add RPG context if enabled
         if (rpgMode) {
              input.promptConfig = {
                  rpgContext: {
-                    playerStats: { /* Player stats placeholder */ },
+                    playerStats: { /* TODO: Player stats placeholder */ },
+                    // Pass relevant details from current character state
                     characterDetails: characters.map(c => ({
-                        name: c.name,
-                        stats: c.stats,
-                        inventory: c.inventory,
+                         name: c.name,
+                         details: c.details, // Send details for context
+                         stats: c.stats,
+                         inventory: c.inventory
                     })),
                     mode: currentMode,
                  }
@@ -136,7 +149,14 @@ export function AdventureDisplay({
 
         // Call the callback to update the parent state with the AI's response and scene description
         onNarrativeChange(result.narrative, 'ai', result.sceneDescriptionForImage);
-        setCurrentSceneDescription(result.sceneDescriptionForImage || null); // Update local state too
+
+        // Call the callback to handle newly detected characters
+        if (result.newCharacters && result.newCharacters.length > 0) {
+            onNewCharacters(result.newCharacters);
+        }
+
+        // Update local scene description state for image generation button enablement
+        setCurrentSceneDescription(result.sceneDescriptionForImage || null);
 
         // TODO: Potentially generate new choices based on the result.narrative
         setChoices([]); // Clear old choices
@@ -145,10 +165,10 @@ export function AdventureDisplay({
         console.error("Error generating adventure:", error);
         toast({
             title: "Erreur de Génération",
-            description: "Impossible de générer la suite de l'aventure. Veuillez réessayer.",
+            description: `Impossible de générer la suite de l'aventure: ${error instanceof Error ? error.message : 'Unknown error'}. Veuillez réessayer.`,
             variant: "destructive",
         });
-         // Don't add error as a message, just toast.
+         // Narrative update for user action was already called, AI message won't be added due to error.
     } finally {
         setIsLoading(false);
     }
@@ -160,9 +180,11 @@ export function AdventureDisplay({
     setIsRegenerating(true);
     try {
         await onRegenerateLastResponse(); // Call the function passed from parent
+        // Parent handles narrative update and new characters
     } catch (error) {
         // Error handling is likely done in the parent, but log here too
         console.error("Error during regeneration triggered from display:", error);
+        // Toast for error is likely handled in parent as well
     } finally {
         setIsRegenerating(false);
     }
@@ -171,11 +193,14 @@ export function AdventureDisplay({
 
   // Function to handle generating scene image
   const handleGenerateImage = async () => {
-     if (isImageLoading || !currentSceneDescription || isLoading || isRegenerating) {
-         if (!currentSceneDescription) {
+     // Use the currentSceneDescription state which is updated by AI responses
+     const descriptionForImage = currentSceneDescription;
+
+     if (isImageLoading || !descriptionForImage || isLoading || isRegenerating) {
+         if (!descriptionForImage) {
             toast({
                 title: "Description manquante",
-                description: "Impossible de générer une image car la description de la scène n'est pas disponible.",
+                description: "La description visuelle de la scène actuelle n'est pas disponible pour générer une image.",
                 variant: "destructive",
             });
          }
@@ -185,8 +210,8 @@ export function AdventureDisplay({
      setImageUrl(null);
 
     try {
-        // Use the scene description provided by the main LLM
-        const result = await generateSceneImageAction({ sceneDescription: currentSceneDescription });
+        // The description already contains physical descriptions instead of names (handled by the AI prompt)
+        const result = await generateSceneImageAction({ sceneDescription: descriptionForImage });
         setImageUrl(result.imageUrl);
          toast({
             title: "Image Générée",
@@ -196,7 +221,7 @@ export function AdventureDisplay({
         console.error("Error generating scene image:", error);
          toast({
             title: "Erreur de Génération d'Image",
-            description: "Impossible de générer l'image de la scène.",
+            description: `Impossible de générer l'image de la scène: ${error instanceof Error ? error.message : 'Unknown error'}.`,
             variant: "destructive",
         });
     } finally {
@@ -228,6 +253,11 @@ export function AdventureDisplay({
         }
     };
 
+    // Function to confirm and rewind
+    const handleConfirmRewind = (messageId: string) => {
+        onRewindToMessage(messageId); // Call the parent handler directly
+    };
+
 
   // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -237,19 +267,7 @@ export function AdventureDisplay({
     }
   };
 
-   // Scroll to bottom when messages update
-  React.useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
-      if(scrollElement) {
-          setTimeout(() => {
-             scrollElement.scrollTop = scrollElement.scrollHeight;
-          }, 100); // Small delay to ensure rendering is complete
-      }
-    }
-  }, [messages]); // Depends on the messages array
-
-
+  // --- Render ---
   return (
     <div className="flex flex-col h-full overflow-hidden">
        {/* Tabs for different modes */}
@@ -269,6 +287,7 @@ export function AdventureDisplay({
                         <div className="space-y-4">
                             {messages.map((message, index) => {
                                 const isLastMessage = index === messages.length - 1;
+                                // Determine if this is the very last AI message in the current list
                                 const isLastAiMessage = isLastMessage && message.type === 'ai';
 
                                 return (
@@ -285,38 +304,41 @@ export function AdventureDisplay({
                                                 {message.content}
 
                                                 {/* Action buttons on hover - positioned outside the bubble */}
-                                                <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                    {/* Rewind Button (show on non-last messages) */}
-                                                    {index < messages.length - 1 && message.type !== 'system' && (
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-                                                                                <RotateCcw className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top">Revenir ici</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
-                                                                </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => onRewindToMessage(message.id)}>Confirmer</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    )}
-                                                    {/* Edit Button (allow editing user and AI messages, not system) */}
-                                                    {message.type !== 'system' && (
+                                                {/* Only show actions for non-system messages */}
+                                                {message.type !== 'system' && (
+                                                    <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                        {/* Rewind Button */}
+                                                        {/* Do not show rewind on the very last message */}
+                                                        {index < messages.length - 1 && (
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                                                                    <RotateCcw className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent side="top">Revenir ici</TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Revenir à ce message ?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Cela effacera tous les messages suivants dans l'historique de l'aventure. Cette action est irréversible.
+                                                                    </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                    {/* Call the handler directly */}
+                                                                    <AlertDialogAction onClick={() => handleConfirmRewind(message.id)}>Confirmer</AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        )}
+                                                        {/* Edit Button */}
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <AlertDialogTrigger asChild>
                                                                 <TooltipProvider>
@@ -349,33 +371,33 @@ export function AdventureDisplay({
                                                             </AlertDialogFooter>
                                                             </AlertDialogContent>
                                                         </AlertDialog>
-                                                    )}
-                                                    {/* Copy Button */}
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
-                                                                    <Copy className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="top">Copier</TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-
-                                                    {/* Regenerate Button (only on last AI message) */}
-                                                    {isLastAiMessage && (
+                                                        {/* Copy Button */}
                                                         <TooltipProvider>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading || isRegenerating}>
-                                                                        {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
+                                                                        <Copy className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent side="top">Régénérer</TooltipContent>
+                                                                <TooltipContent side="top">Copier</TooltipContent>
                                                             </Tooltip>
                                                         </TooltipProvider>
-                                                    )}
-                                                </div>
+
+                                                        {/* Regenerate Button (only on last AI message) */}
+                                                        {isLastAiMessage && (
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading || isRegenerating}>
+                                                                            {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top">Régénérer</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                             {message.type === 'user' && (
                                                 <Avatar className="h-8 w-8 border">
@@ -386,7 +408,8 @@ export function AdventureDisplay({
                                     </div>
                                 );
                             })}
-                            {isLoading && !isRegenerating && ( // Don't show "writing" if regenerating
+                            {/* Loading indicator when waiting for AI response (but not regenerating) */}
+                            {isLoading && !isRegenerating && (
                                 <div className="flex items-center justify-start gap-3">
                                      <Avatar className="h-8 w-8 border">
                                          <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
@@ -396,7 +419,8 @@ export function AdventureDisplay({
                                     </span>
                                 </div>
                             )}
-                             {isRegenerating && ( // Show regenerating indicator separately
+                             {/* Loading indicator specifically for regeneration */}
+                             {isRegenerating && (
                                 <div className="flex items-center justify-start gap-3">
                                     <Avatar className="h-8 w-8 border">
                                         <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
@@ -449,11 +473,12 @@ export function AdventureDisplay({
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
+                                    {/* Call parent's undo handler */}
                                     <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || isRegenerating || messages.length <= 1}>
                                          <Undo className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Annuler le dernier message</TooltipContent>
+                                <TooltipContent>Annuler le dernier message/action</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
 
@@ -496,8 +521,9 @@ export function AdventureDisplay({
                                 alt="Generated Scene"
                                 fill
                                 style={{ objectFit: 'contain' }}
-                                data-ai-hint="adventure scene"
+                                data-ai-hint="adventure scene visual" // Updated hint
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
+                                // Consider adding unoptimized={true} if Data URIs are very large and causing issues
                             />
                         </div>
                     ) : (
@@ -516,7 +542,7 @@ export function AdventureDisplay({
                                     Générer Image Scène
                                 </Button>
                              </TooltipTrigger>
-                             <TooltipContent>Utilise l'IA pour générer une image basée sur la description actuelle (si disponible).</TooltipContent>
+                             <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </CardFooter>
@@ -528,14 +554,15 @@ export function AdventureDisplay({
   );
 }
 
-// Helper type for potential prompt configuration
-// This ensures the GenerateAdventureInput type is augmented correctly.
+// Declaration merging to augment the imported type (if necessary and module allows)
+// This might not be strictly needed if the input type is correctly inferred,
+// but serves as documentation for expected structure.
 declare module "@/ai/flows/generate-adventure" {
   interface GenerateAdventureInput {
     promptConfig?: {
         rpgContext?: {
             playerStats?: any;
-            characterDetails?: any[];
+            characterDetails?: Array<{ name: string; details?: string; stats?: any; inventory?: any }>; // Match schema
             mode?: string;
         };
     };
