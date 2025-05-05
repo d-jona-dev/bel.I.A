@@ -41,27 +41,28 @@ const BaseCharacterSchema = z.object({
   // For simplicity, relying on passthrough() for less critical fields
 }).passthrough();
 
-// Define a schema specifically for the history summary
-const HistorySummarySchema = z.object({
+// Define a schema specifically for the history summary and pre-processed relations summary
+const ContextSummarySchema = z.object({
     historySummary: z.string().optional().describe('A brief summary of the last few history entries.'),
+    relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relations for prompt context.'), // Added relations summary field
 });
 
-// Combine the base character schema and the history summary schema
-const CharacterWithHistorySummarySchema = z.intersection(
+// Combine the base character schema and the summary schema
+const CharacterWithContextSummarySchema = z.intersection(
     BaseCharacterSchema,
-    HistorySummarySchema
+    ContextSummarySchema
 );
 
 // Define the internal type based on the intersection schema
-type CharacterWithHistorySummary = z.infer<typeof CharacterWithHistorySummarySchema>;
+type CharacterWithContextSummary = z.infer<typeof CharacterWithContextSummarySchema>;
 
 
-// Update Input Schema - include characters with history summary, current language, and player name
+// Update Input Schema - include characters with history and relations summaries, current language, and player name
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue.'),
-  // Pass characters with pre-processed history summary
-  characters: z.array(CharacterWithHistorySummarySchema).describe('Array of currently known characters with their details, including current affinity, relations, and history summary.'),
+  // Pass characters with pre-processed summaries
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relations summary, and history summary.'),
   userAction: z.string().describe('The action taken by the user.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries.'),
   playerName: z.string().describe('The name of the player character.'),
@@ -135,26 +136,26 @@ export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSche
 // The externally exposed function takes the original Character type
 export async function generateAdventure(input: GenerateAdventureInput): Promise<GenerateAdventureOutput> {
     // Pre-process characters before calling the internal flow
-    const processedCharacters: CharacterWithHistorySummary[] = input.characters.map(char => {
+    const processedCharacters: CharacterWithContextSummary[] = input.characters.map(char => {
+        // History Summary
         const history = char.history || [];
         const lastThreeEntries = history.slice(-3);
         const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : 'None';
 
-         // Prepare relations string for context
-         let relationsSummary = "Inconnu";
-         if (char.relations) {
-             const relationEntries = Object.entries(char.relations)
-                 .map(([targetId, description]) => {
-                     const targetName = targetId === 'player'
-                         ? input.playerName // Use provided player name
-                         : input.characters.find(c => c.id === targetId)?.name || targetId;
-                     return `${targetName}: ${description}`;
-                 });
-             if (relationEntries.length > 0) {
-                 relationsSummary = relationEntries.join(', ');
-             }
-         }
-
+        // Relations Summary (replaces the helper function)
+        let relationsSummary = "Aucune définie.";
+        if (char.relations) {
+            const relationEntries = Object.entries(char.relations)
+                .map(([targetId, description]) => {
+                    const targetName = targetId === 'player'
+                        ? input.playerName // Use provided player name
+                        : input.characters.find(c => c.id === targetId)?.name || targetId; // Find name or use ID
+                    return `${targetName}: ${description}`;
+                });
+            if (relationEntries.length > 0) {
+                relationsSummary = relationEntries.join(', ');
+            }
+        }
 
         return {
             ...char, // Spread existing character properties
@@ -162,9 +163,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             affinity: char.affinity ?? 50,
             relations: char.relations || { ['player']: "Inconnu" }, // Ensure relations exist
             historySummary: historySummary,
-            // Include a pre-formatted relations summary for the prompt context
-            // This field is just for passing data to the helper, not part of the schema sent to AI
-            //_relationsSummary: relationsSummary, // This was likely incorrect, helper takes relations obj
+            relationsSummary: relationsSummary, // Add the pre-processed summary
         };
     });
 
@@ -176,21 +175,10 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
   return generateAdventureFlow(flowInput);
 }
 
-// Helper function to resolve character names from IDs for the prompt
-// IMPORTANT: This MUST be defined before `prompt` that uses it.
-function resolveRelationNames(relations: Record<string, string> | undefined, allCharacters: CharacterWithHistorySummary[], playerName: string): string {
-    if (!relations) return "Aucune relation définie.";
-    return Object.entries(relations)
-        .map(([targetId, description]) => {
-            const targetName = targetId === 'player'
-                ? playerName
-                : allCharacters.find(c => c.id === targetId)?.name || targetId; // Find name or use ID
-            return `${targetName}: ${description}`;
-        })
-        .join(', ');
-}
+// Removed the resolveRelationNames helper function as it's replaced by pre-processing
 
-// Update Prompt Definition to use the internal schema with historySummary and relations
+
+// Update Prompt Definition to use the internal schema with historySummary and relationsSummary
 const prompt = ai.definePrompt({
   name: 'generateAdventurePrompt',
   input: {
@@ -199,9 +187,9 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Register the helper function
-  helpers: { resolveRelationNames }, // Ensure the helper is registered here
-  // Updated Handlebars prompt - Include Player Name, Relations, and Relation Update Task
+  // Removed helpers registration
+  // helpers: { resolveRelationNames },
+  // Updated Handlebars prompt - Use pre-processed relationsSummary
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for history entries is {{currentLanguage}}.
 
 World: {{{world}}}
@@ -214,7 +202,7 @@ Known Characters:
 - Name: {{this.name}}
   Description: {{this.details}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards {{../playerName}} on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral. **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
-  Relations: {{#if this.relations}}{{resolveRelationNames this.relations ../characters ../playerName}}{{else}}Aucune définie{{/if}}
+  Relations: {{{this.relationsSummary}}} {{! Use the pre-processed summary }}
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -244,7 +232,7 @@ Tasks:
     *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant.
     *   **71-90 (Loyal):** Warm, supportive, actively helpful and protective. Trusts {{playerName}} and shares information/resources readily. Enjoys {{playerName}}'s company. May defend or assist {{playerName}} proactively. Compliments are genuine and frequent. Dialogue is open and encouraging.
     *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes {{playerName}}'s well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards {{playerName}}. Dialogue is filled with warmth and care.
-    **ALSO CONSIDER** the defined 'Relations' between characters. Their interactions should reflect these relationships (e.g., allies help each other, rivals compete).
+    **ALSO CONSIDER** the defined 'Relations' between characters (summarized in {{{this.relationsSummary}}}). Their interactions should reflect these relationships (e.g., allies help each other, rivals compete).
 
 2.  **Identify New Characters:** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field. Include their name, a brief description derived from the context, and the location/circumstance of meeting (if possible) in the description and/or 'initialHistoryEntry'. Ensure 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
 
