@@ -300,7 +300,8 @@ export function CharacterSidebar({
 
                     return (
                     <AccordionItem value={char.id} key={char.id}>
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50"> {/* Adjusted hover */}
+                        {/* Use AccordionTrigger directly, allowing the tooltip to work */}
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
                             <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Added flex-1 and min-w-0 */}
                                 <Avatar className="h-8 w-8 flex-shrink-0"> {/* Added flex-shrink-0 */}
                                      {imageLoadingStates[char.id] ? (
@@ -317,8 +318,8 @@ export function CharacterSidebar({
                                     <TooltipProvider>
                                         <Tooltip>
                                              {/* Wrap the Star icon in a span */}
-                                             {/* Remove asChild from TooltipTrigger */}
-                                            <TooltipTrigger>
+                                             {/* Use asChild here to avoid nested buttons */}
+                                            <TooltipTrigger asChild>
                                                 <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span> {/* Added flex-shrink-0 */}
                                             </TooltipTrigger>
                                             <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
@@ -462,7 +463,3 @@ export function CharacterSidebar({
     </div>
   );
 }
-
-
-
-    
