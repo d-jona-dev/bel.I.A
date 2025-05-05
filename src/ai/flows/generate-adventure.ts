@@ -163,7 +163,8 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             relations: char.relations || { ['player']: "Inconnu" }, // Ensure relations exist
             historySummary: historySummary,
             // Include a pre-formatted relations summary for the prompt context
-            _relationsSummary: relationsSummary,
+            // This field is just for passing data to the helper, not part of the schema sent to AI
+            //_relationsSummary: relationsSummary, // This was likely incorrect, helper takes relations obj
         };
     });
 
@@ -176,6 +177,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
 }
 
 // Helper function to resolve character names from IDs for the prompt
+// IMPORTANT: This MUST be defined before `prompt` that uses it.
 function resolveRelationNames(relations: Record<string, string> | undefined, allCharacters: CharacterWithHistorySummary[], playerName: string): string {
     if (!relations) return "Aucune relation définie.";
     return Object.entries(relations)
@@ -285,3 +287,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
