@@ -12,11 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save } from "lucide-react"; // Added Save icon
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart } from "lucide-react"; // Added Save icon, Heart icon
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Image generation types
 import { useToast } from "@/hooks/use-toast";
 import type { Character } from "@/types"; // Import shared Character type
+import { Progress } from "@/components/ui/progress"; // Import Progress component
+
 
 // Define props for the CharacterSidebar
 interface CharacterSidebarProps {
@@ -25,7 +27,6 @@ interface CharacterSidebarProps {
     onSaveNewCharacter: (character: Character) => void; // Callback to save a new character globally
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>; // For portraits
     rpgMode: boolean; // To show/hide RPG elements
-    // isNew?: boolean; // Optional flag to identify characters not yet saved globally
 }
 
 export function CharacterSidebar({
@@ -79,12 +80,21 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character) {
             // Basic type checking/conversion for numbers
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass'];
+            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass', 'affinity']; // Added affinity
             if (numberFields.includes(field) && typeof value === 'string') {
-                const numValue = parseInt(value, 10);
-                onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? 0 : numValue }); // Default to 0 if parse fails
+                 let numValue = parseInt(value, 10);
+                 // Clamp affinity between 0 and 100
+                 if (field === 'affinity') {
+                    numValue = Math.max(0, Math.min(100, numValue));
+                 }
+                 onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue }); // Default affinity to 50 if parse fails
             } else {
-                 onCharacterUpdate({ ...character, [field]: value });
+                 // Clamp affinity if it's directly set as a number
+                 let finalValue = value;
+                 if (field === 'affinity' && typeof finalValue === 'number') {
+                    finalValue = Math.max(0, Math.min(100, finalValue));
+                 }
+                 onCharacterUpdate({ ...character, [field]: finalValue });
             }
         }
    };
@@ -172,16 +182,28 @@ export function CharacterSidebar({
         }
     };
 
+    // Helper to get affinity label
+    const getAffinityLabel = (affinity: number | undefined): string => {
+        const value = affinity ?? 50;
+        if (value <= 10) return "Haine profonde";
+        if (value <= 30) return "Hostile";
+        if (value <= 45) return "Méfiant";
+        if (value <= 55) return "Neutre";
+        if (value <= 70) return "Amical";
+        if (value <= 90) return "Loyal";
+        return "Dévoué / Amour";
+    };
+
 
   // --- Sub-components for Readability ---
 
-  const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number }) => (
+  const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows, min, max }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number }) => (
       <div className="space-y-1">
             <Label htmlFor={id}>{label}</Label>
             {rows ? (
                 <Textarea id={id} value={value ?? ""} onChange={onChange} placeholder={placeholder} rows={rows} className="text-sm bg-background border"/>
             ) : (
-                <Input id={id} type={type} value={value ?? ""} onChange={onChange} placeholder={placeholder} className="h-8 text-sm bg-background border"/>
+                <Input id={id} type={type} value={value ?? ""} onChange={onChange} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max}/>
             )}
         </div>
   );
@@ -263,7 +285,17 @@ export function CharacterSidebar({
                 {characters.map((char) => {
                     // Determine if this character might be considered "new"
                     // Only check localStorage on the client side
-                    const isPotentiallyNew = isClient && !localStorage.getItem(`character_${char.name.toLowerCase()}`);
+                    let isPotentiallyNew = false;
+                    if (isClient) {
+                        try {
+                            const globalCharsStr = localStorage.getItem('globalCharacters');
+                            const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
+                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase());
+                        } catch (e) {
+                            console.error("Error accessing localStorage:", e);
+                        }
+                    }
+                    const currentAffinity = char.affinity ?? 50;
 
                     return (
                     <AccordionItem value={char.id} key={char.id}>
@@ -279,8 +311,17 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
-                                {/* Optional: Add a small badge/icon if 'isNew' or potentially new */}
-                                {isPotentiallyNew && <Star className="h-3 w-3 text-yellow-500 ml-1" />}
+                                {/* Optional: Add a small badge/icon if potentially new */}
+                                {isPotentiallyNew && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Star className="h-3 w-3 text-yellow-500 ml-1" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> {/* Ensure background for content */}
@@ -293,7 +334,7 @@ export function CharacterSidebar({
                                                 <Save className="h-4 w-4 mr-1" /> Sauvegarder Globalement
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>Sauvegarder ce personnage pour le réutiliser dans d'autres aventures.</TooltipContent>
+                                        <TooltipContent side="bottom">Sauvegarder ce personnage pour le réutiliser dans d'autres aventures.</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             )}
@@ -331,6 +372,24 @@ export function CharacterSidebar({
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
+
+                             {/* Affinity Section */}
+                             <div className="space-y-2">
+                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> Affinité avec le joueur</Label>
+                                 <div className="flex items-center gap-2">
+                                     <Input
+                                         id={`${char.id}-affinity`}
+                                         type="number"
+                                         min="0"
+                                         max="100"
+                                         value={currentAffinity}
+                                         onChange={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
+                                         className="h-8 text-sm w-20 flex-none"
+                                     />
+                                     <Progress value={currentAffinity} className="flex-1 h-2" />
+                                     <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                                 </div>
+                             </div>
 
 
                             {/* RPG Sections (Conditional & Editable) */}

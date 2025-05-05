@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface Message {
@@ -21,6 +20,7 @@ export interface Character {
   history?: string[]; // Log of significant events, actions, or quotes involving the character
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
   portraitUrl?: string | null; // URL for generated portrait
+  affinity?: number; // Affinity towards the player (0-100)
 
   // Potential future fields for RPG mode (aligned with D&D concepts)
   level?: number;
@@ -60,6 +60,6 @@ export interface SaveData {
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
-    saveFormatVersion?: number; // Changed to 1.1 previously, keep or increment as needed
+    saveFormatVersion?: number; // Bump version for affinity field
     timestamp?: string;
 }

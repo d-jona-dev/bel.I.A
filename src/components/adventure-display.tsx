@@ -8,10 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, RotateCcw, Undo2 } from "lucide-react"; // Added RotateCcw, Undo2
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2 } from "lucide-react"; // Removed RotateCcw
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added CharacterUpdateSchema
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added AffinityUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
 import type { Message, Character } from "@/types"; // Import Message and Character types
@@ -36,13 +36,14 @@ interface AdventureDisplayProps {
     world: string;
     characters: Character[];
     initialMessages: Message[]; // Changed from initialNarrative: string
+    currentLanguage: string; // Pass current language
     onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Callback for adding new messages, include optional sceneDesc
-    onNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Callback for adding new characters detected by AI
+    onNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Callback for adding new characters detected by AI
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Callback for history updates
+    onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Callback for affinity updates
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
-    // onRestartAdventure: () => void; // Removed restart callback
     onUndoLastMessage: () => void; // Callback to undo the last message
 }
 
@@ -53,13 +54,14 @@ export function AdventureDisplay({
     world,
     characters,
     initialMessages, // Use initialMessages
+    currentLanguage, // Use current language
     onNarrativeChange, // Use the updated handler
     onNewCharacters, // Add the new callback
     onCharacterHistoryUpdate, // Add history update handler
+    onAffinityUpdates, // Add affinity update handler
     rpgMode,
     onEditMessage,
     onRegenerateLastResponse, // New handler
-    // onRestartAdventure, // Removed handler
     onUndoLastMessage, // New handler
 }: AdventureDisplayProps) {
   // Local state for messages derived from props
@@ -127,6 +129,7 @@ export function AdventureDisplay({
             initialSituation: narrativeContext,
             characters: characters, // Pass current full character objects
             userAction: userMessageContent,
+            currentLanguage: currentLanguage, // Pass current language
         };
 
         // Add RPG context if enabled
@@ -161,6 +164,10 @@ export function AdventureDisplay({
         if (result.characterUpdates && result.characterUpdates.length > 0) {
             onCharacterHistoryUpdate(result.characterUpdates);
         }
+        // Call the callback to update affinities
+        if (result.affinityUpdates && result.affinityUpdates.length > 0) {
+             onAffinityUpdates(result.affinityUpdates);
+        }
 
 
         // Update local scene description state for image generation button enablement
@@ -188,7 +195,7 @@ export function AdventureDisplay({
     setIsRegenerating(true);
     try {
         await onRegenerateLastResponse(); // Call the function passed from parent
-        // Parent handles narrative update and new characters
+        // Parent handles narrative update and new characters/history/affinity
     } catch (error) {
         // Error handling is likely done in the parent, but log here too
         console.error("Error during regeneration triggered from display:", error);
@@ -261,9 +268,6 @@ export function AdventureDisplay({
         }
     };
 
-    // Removed handleRewind function
-
-
   // Handle Enter key press in textarea
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -317,7 +321,6 @@ export function AdventureDisplay({
                                                 {/* Only show actions for non-system messages and not the very first one */}
                                                 {message.type !== 'system' && !isFirstMessage && (
                                                     <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                        {/* Rewind button removed */}
 
                                                         {/* Edit Button */}
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
@@ -483,8 +486,6 @@ export function AdventureDisplay({
                             </Tooltip>
                         </TooltipProvider>
 
-                         {/* Restart Button Removed */}
-
                     </div>
                 </CardFooter>
             </Card>
@@ -535,19 +536,4 @@ export function AdventureDisplay({
 
     </div>
   );
-}
-
-// Declaration merging to augment the imported type (if necessary and module allows)
-// This might not be strictly needed if the input type is correctly inferred,
-// but serves as documentation for expected structure.
-declare module "@/ai/flows/generate-adventure" {
-  interface GenerateAdventureInput {
-    promptConfig?: {
-        rpgContext?: {
-            playerStats?: any;
-            characterDetails?: Array<{ name: string; details?: string; stats?: any; inventory?: any }>; // Match schema
-            mode?: string;
-        };
-    };
-  }
 }

@@ -10,7 +10,8 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update types
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update/affinity types
+import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 
 
 export default function Home() {
@@ -21,13 +22,13 @@ export default function Home() {
     rpgMode: false,
   });
   const [characters, setCharacters] = React.useState<Character[]>([
-      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {} },
-      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {} }
+      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {}, affinity: 70 }, // Added initial affinity
+      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {}, affinity: 60 } // Added initial affinity
   ]);
   // Store the initial characters defined in settings separately for reset purposes
   const [initialCharactersFromSettings, setInitialCharactersFromSettings] = React.useState<Character[]>([
-      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {} },
-      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {} }
+      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {}, affinity: 70 },
+      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {}, affinity: 60 }
   ]);
   // Narrative is now an array of Message objects
   const [narrative, setNarrative] = React.useState<Message[]>([
@@ -36,7 +37,6 @@ export default function Home() {
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regeneration loading
   const { toast } = useToast();
-  const isInitialMount = React.useRef(true); // Ref to track initial mount
 
   // --- Callback Functions ---
 
@@ -59,9 +59,10 @@ export default function Home() {
             id: id,
             name: c.name,
             details: c.details,
-            history: existingChar?.history || [], // Keep history for now, might be reset later
-            opinion: existingChar?.opinion || {}, // Keep opinion for now
+            history: existingChar?.history || [],
+            opinion: existingChar?.opinion || {},
             portraitUrl: existingChar?.portraitUrl || null,
+            affinity: existingChar?.affinity ?? 50, // Keep existing affinity or default to 50
             // Initialize RPG fields based on whether RPG mode is *currently* enabled
             ...(newRPGMode && {
                 level: existingChar?.level || 1,
@@ -73,7 +74,7 @@ export default function Home() {
                 spells: existingChar?.spells || [],
                 techniques: existingChar?.techniques || [],
                 passiveAbilities: existingChar?.passiveAbilities || [],
-                strength: existingChar?.strength ?? 10, // Use nullish coalescing
+                strength: existingChar?.strength ?? 10,
                 dexterity: existingChar?.dexterity ?? 10,
                 constitution: existingChar?.constitution ?? 10,
                 intelligence: existingChar?.intelligence ?? 10,
@@ -97,16 +98,6 @@ export default function Home() {
      setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
   };
 
-   // Effect to show toast when settings change, avoiding initial mount
-//   React.useEffect(() => {
-//     if (isInitialMount.current) {
-//       isInitialMount.current = false;
-//     } else {
-//       // Show toast after settings update (wrapped in setTimeout)
-//        setTimeout(() => toast({ title: "Configuration Mise à Jour" }), 0);
-//     }
-//   }, [adventureSettings, initialCharactersFromSettings, toast]); // Depend on settings and initial chars
-
 
    // Updated to handle Message objects and scene description
    const handleNarrativeUpdate = (content: string, type: 'user' | 'ai', sceneDesc?: string) => {
@@ -122,7 +113,7 @@ export default function Home() {
    };
 
    // Function to handle newly detected characters from AI response
-   const handleNewCharacters = (newChars: Array<{ name: string; details?: string }>) => {
+   const handleNewCharacters = (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => {
         if (!newChars || newChars.length === 0) return;
 
         setCharacters(prevChars => {
@@ -136,9 +127,10 @@ export default function Home() {
                         id: newId,
                         name: newCharData.name,
                         details: newCharData.details || "Rencontré récemment.",
-                        history: [`Rencontré le ${new Date().toLocaleString()}`], // Basic history entry
+                        history: newCharData.initialHistoryEntry ? [newCharData.initialHistoryEntry] : [`Rencontré le ${new Date().toLocaleString()}`], // Use AI provided entry or default
                         opinion: {}, // Initialize opinion
                         portraitUrl: null,
+                        affinity: 50, // New characters start at neutral affinity
                         // Initialize RPG fields if mode is on
                         ...(adventureSettings.rpgMode && {
                             level: 1,
@@ -170,7 +162,7 @@ export default function Home() {
                 // Wrap toast in setTimeout to avoid calling setState during render
                 setTimeout(() => {
                     toast({
-                        title: "Nouveau Personnage Ajouté",
+                        title: "Nouveau Personnage Rencontré",
                         description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste locale. Sauvegardez-le si vous le souhaitez.`,
                     });
                 }, 0);
@@ -207,6 +199,48 @@ export default function Home() {
         });
     };
 
+    // Function to handle affinity updates from AI
+    const handleAffinityUpdates = (updates: AffinityUpdateSchema[]) => {
+        if (!updates || updates.length === 0) return;
+
+        setCharacters(prevChars => {
+            let changed = false;
+            const updatedChars = prevChars.map(char => {
+                const affinityUpdate = updates.find(u => u.characterName.toLowerCase() === char.name.toLowerCase());
+                if (affinityUpdate) {
+                    changed = true;
+                    const currentAffinity = char.affinity ?? 50;
+                    // Clamp affinity between 0 and 100
+                    const newAffinity = Math.max(0, Math.min(100, currentAffinity + affinityUpdate.change));
+                    console.log(`Affinity update for ${char.name}: ${currentAffinity} -> ${newAffinity} (Change: ${affinityUpdate.change}, Reason: ${affinityUpdate.reason})`);
+                    return {
+                        ...char,
+                        affinity: newAffinity,
+                    };
+                }
+                return char;
+            });
+
+            if (changed) {
+                 // Optionally show a toast for significant affinity changes
+                 updates.forEach(update => {
+                     if (Math.abs(update.change) >= 10) { // Threshold for noticeable change
+                         const charName = update.characterName;
+                         const direction = update.change > 0 ? 'améliorée' : 'détériorée';
+                         setTimeout(() => {
+                             toast({
+                                title: `Affinité Modifiée: ${charName}`,
+                                description: `Votre relation avec ${charName} s'est ${direction}. Raison: ${update.reason || 'Interaction récente'}`,
+                             });
+                         }, 0);
+                     }
+                 });
+                return updatedChars;
+            }
+            return prevChars; // No change
+        });
+    };
+
 
     // New handler for editing a specific message
    const handleEditMessage = (messageId: string, newContent: string) => {
@@ -220,8 +254,6 @@ export default function Home() {
        // TODO: Decide if editing should trigger AI regeneration from that point.
        // For now, it's just a text edit.
    };
-
-   // Function to restart the adventure - Removed
 
 
    // Function to undo the last message (user or AI)
@@ -294,6 +326,7 @@ export default function Home() {
                  initialSituation: narrativeContext, // Provide the reconstructed context
                  characters: characters, // Pass current full character objects
                  userAction: lastUserAction, // Use the same user action
+                 currentLanguage: currentLanguage, // Pass current language
                  promptConfig: adventureSettings.rpgMode ? {
                     rpgContext: {
                         playerStats: { /* TODO: Player stats placeholder */ },
@@ -331,10 +364,10 @@ export default function Home() {
                 return newNarrative;
              });
 
-             // Handle any newly introduced characters in the regenerated response
+             // Handle updates (history, affinity, new chars) for regenerated response
              handleNewCharacters(result.newCharacters || []);
-             // Handle character history updates
              handleCharacterHistoryUpdate(result.characterUpdates || []);
+             handleAffinityUpdates(result.affinityUpdates || []);
 
 
               setTimeout(() => {
@@ -412,7 +445,7 @@ export default function Home() {
             characters: charactersToSave,
             narrative,
             currentLanguage,
-            saveFormatVersion: 1.2, // Current format version
+            saveFormatVersion: 1.3, // Bump version for affinity field
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download
@@ -463,12 +496,13 @@ export default function Home() {
                 }
 
 
-                if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.2) {
+                if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.3) {
                      console.log("Migrating old save format...");
                      loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         history: Array.isArray(c.history) ? c.history : [],
                         opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {}, // Ensure opinion is an object
+                        affinity: c.affinity ?? 50, // Add default affinity if missing
                      }));
                 }
 
@@ -481,6 +515,7 @@ export default function Home() {
                     history: c.history || [],
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
+                    affinity: c.affinity ?? 50, // Load affinity or default
                     ...(rpgModeActive && {
                         level: c.level ?? 1,
                         experience: c.experience ?? 0,
@@ -539,6 +574,7 @@ export default function Home() {
         handleCharacterUpdate={handleCharacterUpdate}
         handleNewCharacters={handleNewCharacters}
         handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+        handleAffinityUpdates={handleAffinityUpdates} // Pass affinity handler
         handleSaveNewCharacter={handleSaveNewCharacter}
         handleSave={handleSave}
         handleLoad={handleLoad}
@@ -547,7 +583,6 @@ export default function Home() {
         generateAdventureAction={generateAdventure}
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage}
-        // handleRestartAdventure={handleRestartAdventure} // Removed
         handleRegenerateLastResponse={handleRegenerateLastResponse}
         handleUndoLastMessage={handleUndoLastMessage} // Pass the undo handler
       />

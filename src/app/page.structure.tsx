@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react'; // Removed RotateCcw, Trash
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -43,8 +43,9 @@ interface PageStructureProps {
   handleSettingsUpdate: (newSettings: any) => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
-  handleNewCharacters: (newChars: Array<{ name: string; details?: string }>) => void; // Added prop for new characters
+  handleNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Added initialHistoryEntry
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
+  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Added prop for affinity updates
   handleSaveNewCharacter: (character: Character) => void; // Added prop for saving new chars
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -53,7 +54,6 @@ interface PageStructureProps {
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
-  // handleRestartAdventure: () => void; // Removed handler for restarting
   handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
   handleUndoLastMessage: () => void; // Added undo handler prop
 }
@@ -69,6 +69,7 @@ export function PageStructure({
   handleCharacterUpdate,
   handleNewCharacters, // Destructure new prop
   handleCharacterHistoryUpdate, // Destructure new prop
+  handleAffinityUpdates, // Destructure new prop
   handleSaveNewCharacter, // Destructure new prop
   handleSave,
   handleLoad,
@@ -77,7 +78,6 @@ export function PageStructure({
   generateAdventureAction,
   generateSceneImageAction,
   handleEditMessage,
-  // handleRestartAdventure, // Removed prop
   handleRegenerateLastResponse, // Added prop
   handleUndoLastMessage, // Added prop
 }: PageStructureProps) {
@@ -222,13 +222,14 @@ export function PageStructure({
                 world={adventureSettings.world}
                 characters={characters}
                 initialMessages={narrativeMessages} // Pass the message array
+                currentLanguage={currentLanguage} // Pass current language
                 onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
                 onNewCharacters={handleNewCharacters} // Pass the new characters handler
                 onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
+                onAffinityUpdates={handleAffinityUpdates} // Pass affinity update handler
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
-                // onRestartAdventure={handleRestartAdventure} // Removed handler
                 onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
              />
         </main>
