@@ -147,7 +147,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Updated Handlebars prompt - use historySummary directly
+  // Updated Handlebars prompt - use historySummary directly and add affinity instructions
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The target language for history entries is {{currentLanguage}}.
 
 World: {{{world}}}
@@ -159,7 +159,7 @@ Known Characters:
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
-  Current Affinity: {{#if this.affinity}}{{this.affinity}}/100{{else}}50/100 (Neutral){{/if}}
+  Current Affinity: {{#if this.affinity}}{{this.affinity}}/100{{else}}50/100 (Neutral){{/if}} (This influences their behavior towards the user: 0=Hate, 50=Neutral, 100=Love/Devotion)
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -180,14 +180,17 @@ Player Stats: {{#each promptConfig.rpgContext.playerStats}}{{@key}}: {{this}} {{
 {{/if}}
 
 Tasks:
-1.  Generate the next part of the story ("Narrative Continuation") based on all the context and the user's action. Be creative and engaging.
+1.  Generate the next part of the story ("Narrative Continuation") based on all the context and the user's action. Be creative and engaging. **CRITICAL: Ensure each known character's behavior, dialogue, and actions reflect their 'Current Affinity' towards the user.**
+    - Low Affinity (0-30): Hostile, uncooperative, distrustful, may act against the user.
+    - Medium Affinity (31-69): Neutral, cautious, potentially helpful but self-interested.
+    - High Affinity (70-100): Friendly, cooperative, helpful, supportive, may take risks for the user.
 2.  Analyze the "Narrative Continuation". Identify any characters mentioned by name that are NOT in the "Known Characters" list above. List these newly introduced characters in the 'newCharacters' output field. Include their name, a brief description derived from the context, and try to identify the location/circumstance of the meeting to include in the description and/or the 'initialHistoryEntry'. Ensure the 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
 3.  Based ONLY on the "Narrative Continuation", provide a concise visual description suitable for generating an image of the scene ('sceneDescriptionForImage'). Focus on the key visual elements, setting, mood, and characters present. IMPORTANT: Describe any characters using their physical appearance or role (e.g., "a tall man with blond hair", "the bartender", "a young woman with brown hair") INSTEAD of their names. If the narrative is purely dialogue or internal monologue with no strong visual scene, omit this field or provide a brief summary like "Character thinking".
 4.  Analyze the "Narrative Continuation" again. For each **KNOWN character** (from the input list) involved in a significant action or who says a memorable quote, create a brief 'historyEntry' summarizing it. This entry MUST be in the target language: {{currentLanguage}}. Add these entries to the 'characterUpdates' output field, specifying the character's name and the summary.
 5.  Analyze the interaction between the user (implied by 'User Action') and the **KNOWN characters** within the "Narrative Continuation". Determine how the user's action and the resulting events affect each known character's affinity towards the user. Affinity scale: 0 (hate) - 50 (neutral) - 100 (love/devotion). For each character whose affinity might change, add an entry to the 'affinityUpdates' field with the character's name and the estimated integer change (e.g., +5 for helping, -10 for insulting, 0 for neutral). Include a brief 'reason'.
 
 Narrative Continuation:
-[Generate the next part of the story here.]
+[Generate the next part of the story here, reflecting character affinities.]
 `,
 });
 
@@ -217,3 +220,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
