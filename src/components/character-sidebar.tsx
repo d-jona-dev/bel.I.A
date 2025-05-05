@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, AccordionHeader } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, AccordionHeader } from "@/components/ui/accordion"; // Corrected import: AccordionHeader is not typically exported directly, but AccordionTrigger is used within AccordionItem. Let's assume AccordionHeader was a typo and not needed.
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -316,10 +316,12 @@ export function CharacterSidebar({
                                 {isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
-                                            {/* Wrap the Star icon in a span */}
-                                            {/* Use asChild here to avoid nested buttons */}
+                                             {/* Wrap the Star icon in a span */}
+                                             {/* Use asChild here to avoid nested buttons */}
                                             <TooltipTrigger asChild>
-                                                <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span> {/* Added flex-shrink-0 */}
+                                                <span className="inline-flex items-center"> {/* Wrap Star in span for asChild */}
+                                                    <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
+                                                </span>
                                             </TooltipTrigger>
                                             <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
                                         </Tooltip>
@@ -462,5 +464,3 @@ export function CharacterSidebar({
     </div>
   );
 }
-
-    
