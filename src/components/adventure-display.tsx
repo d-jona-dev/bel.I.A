@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2 } from "lucide-react"; // Removed RotateCcw
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added AffinityUpdateSchema
@@ -34,6 +34,7 @@ interface AdventureDisplayProps {
     generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     world: string;
+    playerName: string; // Add player name prop
     characters: Character[];
     initialMessages: Message[]; // Changed from initialNarrative: string
     currentLanguage: string; // Pass current language
@@ -52,6 +53,7 @@ export function AdventureDisplay({
     generateAdventureAction,
     generateSceneImageAction,
     world,
+    playerName, // Destructure player name
     characters,
     initialMessages, // Use initialMessages
     currentLanguage, // Use current language
@@ -120,16 +122,18 @@ export function AdventureDisplay({
         const currentMessages = initialMessages;
         const contextMessages = currentMessages.slice(-5);
         const narrativeContext = contextMessages.map(msg =>
-            msg.type === 'user' ? `> ${msg.content}` : msg.content
-        ).join('\n\n') + `\n\n> ${userMessageContent}\n`; // Append new user action
+            // Include player name in user message context for the AI
+            msg.type === 'user' ? `> ${playerName}: ${msg.content}` : msg.content
+        ).join('\n\n') + `\n\n> ${playerName}: ${userMessageContent}\n`; // Append new user action with player name
 
         // Prepare input for the AI, passing full character objects
         const input: GenerateAdventureInput = {
             world: world,
             initialSituation: narrativeContext,
             characters: characters, // Pass current full character objects
-            userAction: userMessageContent,
+            userAction: userMessageContent, // User action itself doesn't need player name prepended here, the context handles it
             currentLanguage: currentLanguage, // Pass current language
+            playerName: playerName, // Pass player name explicitly
         };
 
         // Add RPG context if enabled
@@ -142,7 +146,12 @@ export function AdventureDisplay({
                          name: c.name,
                          details: c.details, // Send details for context
                          stats: c.stats,
-                         inventory: c.inventory
+                         inventory: c.inventory,
+                         // Include relations in context if needed by the AI
+                         relations: c.relations ? Object.entries(c.relations).map(([id, desc]) => {
+                             const relatedChar = characters.find(char => char.id === id);
+                             return `${relatedChar ? relatedChar.name : (id === 'player' ? playerName : 'Unknown')}: ${desc}`;
+                         }).join(', ') : 'None',
                     })),
                     mode: currentMode,
                  }
@@ -168,6 +177,10 @@ export function AdventureDisplay({
         if (result.affinityUpdates && result.affinityUpdates.length > 0) {
              onAffinityUpdates(result.affinityUpdates);
         }
+        // TODO: Handle relation updates from AI result if implemented
+        // if (result.relationUpdates && result.relationUpdates.length > 0) {
+        //    handleRelationUpdates(result.relationUpdates); // Need a handler in parent (page.tsx)
+        // }
 
 
         // Update local scene description state for image generation button enablement
@@ -385,6 +398,7 @@ export function AdventureDisplay({
                                             </div>
                                             {message.type === 'user' && (
                                                 <Avatar className="h-8 w-8 border">
+                                                    {/* TODO: Add player avatar image if available */}
                                                     <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                                 </Avatar>
                                             )}

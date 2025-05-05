@@ -17,14 +17,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, Dices } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Dices, User } from "lucide-react"; // Added User icon
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast"; // Added for feedback on load
 
-// Schema definition including characters array
+// Schema definition including characters array and player name
 const characterSchema = z.object({
   id: z.string().optional(), // Keep ID if exists
   name: z.string().min(1, "Le nom est requis"),
@@ -36,6 +36,8 @@ const adventureFormSchema = z.object({
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"), // Allow 0 characters initially
   enableRpgMode: z.boolean().default(false).optional(),
+  playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
+  currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
 });
 
 type AdventureFormValues = z.infer<typeof adventureFormSchema>;
@@ -87,6 +89,8 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         enableRpgMode: true,
+        playerName: "Héros", // Example player name
+        currencyName: "Or", // Example currency
     };
     // Reset form with loaded data, which triggers the watch effect and updates parent
     form.reset(loadedData);
@@ -111,6 +115,26 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
 
              <FormField
               control={form.control}
+              name="playerName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2"><User className="h-4 w-4"/> Nom du Joueur</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Nom du héros"
+                      {...field}
+                      className="bg-background border"
+                    />
+                  </FormControl>
+                   <FormDescription>Le nom que le joueur portera dans l'aventure.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+
+             <FormField
+              control={form.control}
               name="enableRpgMode"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
@@ -129,6 +153,28 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                 </FormItem>
               )}
             />
+
+             {/* Conditionally render Currency Name if RPG mode is enabled */}
+            {form.watch('enableRpgMode') && (
+                 <FormField
+                  control={form.control}
+                  name="currencyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom de la Monnaie</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Or, Crédits, Gemmes..."
+                          {...field}
+                          className="bg-background border"
+                        />
+                      </FormControl>
+                       <FormDescription>Le nom de la monnaie utilisée (optionnel).</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
 
             <FormField
               control={form.control}
@@ -233,7 +279,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                       Ajouter un personnage
                     </Button>
                      <FormDescription className="mt-2 text-xs">
-                        Les détails complets (stats, inventaire, historique) sont gérés dans la section "Personnages Secondaires" une fois ajoutés.
+                        Les détails complets (stats, inventaire, historique, relations) sont gérés dans la section "Personnages Secondaires" une fois ajoutés.
                      </FormDescription>
                     </div>
                  </ScrollArea>

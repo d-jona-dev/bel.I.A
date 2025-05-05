@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react'; // Removed RotateCcw, Trash
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema
@@ -46,6 +46,7 @@ interface PageStructureProps {
   handleNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Added initialHistoryEntry
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Added prop for affinity updates
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Added prop for relation updates
   handleSaveNewCharacter: (character: Character) => void; // Added prop for saving new chars
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -56,6 +57,8 @@ interface PageStructureProps {
   handleEditMessage: (messageId: string, newContent: string) => void;
   handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
   handleUndoLastMessage: () => void; // Added undo handler prop
+  playerId: string; // Add playerId prop
+  playerName: string; // Add playerName prop
 }
 
 export function PageStructure({
@@ -70,6 +73,7 @@ export function PageStructure({
   handleNewCharacters, // Destructure new prop
   handleCharacterHistoryUpdate, // Destructure new prop
   handleAffinityUpdates, // Destructure new prop
+  handleRelationUpdate, // Destructure new prop
   handleSaveNewCharacter, // Destructure new prop
   handleSave,
   handleLoad,
@@ -80,6 +84,8 @@ export function PageStructure({
   handleEditMessage,
   handleRegenerateLastResponse, // Added prop
   handleUndoLastMessage, // Added prop
+  playerId, // Destructure player ID
+  playerName, // Destructure player name
 }: PageStructureProps) {
   return (
     <>
@@ -137,7 +143,7 @@ export function PageStructure({
                           <Link href="/personnages">
                             <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires">
                                 <Users2 className="h-5 w-5" />
-                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
                             </Button>
                           </Link>
                         </TooltipTrigger>
@@ -149,8 +155,6 @@ export function PageStructure({
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-            {/* Restart Adventure Button removed from here */}
-
             {/* Load Button */}
             <TooltipProvider>
                  <Tooltip>
@@ -220,6 +224,7 @@ export function PageStructure({
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
                 world={adventureSettings.world}
+                playerName={playerName} // Pass player name
                 characters={characters}
                 initialMessages={narrativeMessages} // Pass the message array
                 currentLanguage={currentLanguage} // Pass current language
@@ -287,8 +292,11 @@ export function PageStructure({
                                      characters={characters}
                                      onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter} // Pass save handler
+                                     onRelationUpdate={handleRelationUpdate} // Pass relation update handler
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={adventureSettings.rpgMode}
+                                     playerId={playerId} // Pass player ID
+                                     playerName={playerName} // Pass player name
                                  />
                              </AccordionContent>
                          </AccordionItem>

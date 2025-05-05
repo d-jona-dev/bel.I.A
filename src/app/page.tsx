@@ -14,21 +14,57 @@ import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSc
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 
 
+// Constants
+const PLAYER_ID = "player"; // Define a constant ID for the player
+
 export default function Home() {
   // State Management
   const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
     rpgMode: false,
+    playerName: "Player", // Default player name
   });
   const [characters, setCharacters] = React.useState<Character[]>([
-      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {}, affinity: 70 }, // Added initial affinity
-      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {}, affinity: 60 } // Added initial affinity
+      {
+        id: 'rina-1',
+        name: "Rina",
+        details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
+        history: [],
+        opinion: {},
+        affinity: 70,
+        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" } // Initial relations
+      },
+      {
+        id: 'kentaro-1',
+        name: "Kentaro",
+        details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
+        history: [],
+        opinion: {},
+        affinity: 60,
+        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Amie" } // Initial relations
+      }
   ]);
   // Store the initial characters defined in settings separately for reset purposes
   const [initialCharactersFromSettings, setInitialCharactersFromSettings] = React.useState<Character[]>([
-      { id: 'rina-1', name: "Rina", details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.", history: [], opinion: {}, affinity: 70 },
-      { id: 'kentaro-1', name: "Kentaro", details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.", history: [], opinion: {}, affinity: 60 }
+       {
+        id: 'rina-1',
+        name: "Rina",
+        details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
+        history: [],
+        opinion: {},
+        affinity: 70,
+        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" } // Initial relations
+      },
+      {
+        id: 'kentaro-1',
+        name: "Kentaro",
+        details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
+        history: [],
+        opinion: {},
+        affinity: 60,
+        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Amie" } // Initial relations
+      }
   ]);
   // Narrative is now an array of Message objects
   const [narrative, setNarrative] = React.useState<Message[]>([
@@ -44,12 +80,15 @@ export default function Home() {
     console.log("Updating global settings:", newSettings);
     const oldInitialSituation = adventureSettings.initialSituation;
     const newRPGMode = newSettings.enableRpgMode ?? false;
-    const updatedSettings = {
+    const updatedSettings: AdventureSettings = { // Explicitly type updatedSettings
         world: newSettings.world,
         initialSituation: newSettings.initialSituation,
         rpgMode: newRPGMode,
+        playerName: newSettings.playerName || "Player", // Update player name
+        currencyName: newSettings.currencyName, // Ensure other fields are passed
     };
     setAdventureSettings(updatedSettings);
+
     // Update character list from form and store this as the "initial" set for resets
      const initialCharsFromForm = newSettings.characters.map((c: any) => {
         // Try to find existing character by name if ID is missing or new
@@ -63,6 +102,7 @@ export default function Home() {
             opinion: existingChar?.opinion || {},
             portraitUrl: existingChar?.portraitUrl || null,
             affinity: existingChar?.affinity ?? 50, // Keep existing affinity or default to 50
+            relations: existingChar?.relations || { [PLAYER_ID]: "Inconnu" }, // Keep existing relations or default player relation
             // Initialize RPG fields based on whether RPG mode is *currently* enabled
             ...(newRPGMode && {
                 level: existingChar?.level || 1,
@@ -119,10 +159,17 @@ export default function Home() {
         setCharacters(prevChars => {
             const currentNames = new Set(prevChars.map(c => c.name.toLowerCase()));
             const charsToAdd: Character[] = [];
+            const existingChars = [...prevChars]; // Copy existing characters for relation updates
 
             newChars.forEach(newCharData => {
                 if (!currentNames.has(newCharData.name.toLowerCase())) {
                     const newId = `${newCharData.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                    const initialRelations: Record<string, string> = { [PLAYER_ID]: "Rencontré récemment" }; // Default relation to player
+                    // Initialize relations with existing characters
+                    existingChars.forEach(ec => {
+                        initialRelations[ec.id] = "Inconnu"; // Default relation
+                    });
+
                     const characterToAdd: Character = {
                         id: newId,
                         name: newCharData.name,
@@ -131,6 +178,7 @@ export default function Home() {
                         opinion: {}, // Initialize opinion
                         portraitUrl: null,
                         affinity: 50, // New characters start at neutral affinity
+                        relations: initialRelations, // Add initialized relations
                         // Initialize RPG fields if mode is on
                         ...(adventureSettings.rpgMode && {
                             level: 1,
@@ -155,6 +203,12 @@ export default function Home() {
                     };
                     charsToAdd.push(characterToAdd);
                     currentNames.add(newCharData.name.toLowerCase()); // Add to set to prevent duplicates within the same batch
+
+                     // Update existing characters' relations to include the new character
+                     existingChars.forEach(ec => {
+                        if (!ec.relations) ec.relations = {};
+                        ec.relations[newId] = "Inconnu"; // Default relation
+                    });
                 }
             });
 
@@ -166,7 +220,8 @@ export default function Home() {
                         description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste locale. Sauvegardez-le si vous le souhaitez.`,
                     });
                 }, 0);
-                return [...prevChars, ...charsToAdd];
+                 // Return updated existing characters + new characters
+                return [...existingChars, ...charsToAdd];
             }
             return prevChars; // No changes if no new unique characters
         });
@@ -241,8 +296,53 @@ export default function Home() {
         });
     };
 
+     // Function to handle relation updates (can be called from CharacterSidebar or potentially AI in future)
+     const handleRelationUpdate = (charId: string, targetId: string, newRelation: string) => {
+        setCharacters(prevChars => prevChars.map(char => {
+            if (char.id === charId) {
+                const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
+                return { ...char, relations: updatedRelations };
+            }
+            // Also update the target character's relation back if they exist
+            if (char.id === targetId) {
+                // Define the inverse relationship (this might need AI help later)
+                 let inverseRelation = "Inconnu";
+                 if(charId === PLAYER_ID){
+                     // If the update is from an NPC towards the player, we need the NPC's perspective
+                     // Let's find the NPC doing the update first
+                     const updatingChar = prevChars.find(c => c.id === charId);
+                     if(updatingChar){
+                         inverseRelation = updatingChar.name; // Simple inverse for now
+                     }
+                 } else if (targetId === PLAYER_ID) {
+                    // Relationship from player towards NPC
+                    inverseRelation = adventureSettings.playerName || "Player"; // Use player name
+                 } else {
+                     const targetChar = prevChars.find(c => c.id === charId);
+                     if (targetChar) inverseRelation = targetChar.name;
+                 }
 
-    // New handler for editing a specific message
+
+                // Very basic inverse logic, might need refinement
+                 if (newRelation.toLowerCase().includes("ami")) inverseRelation = "Ami(e)";
+                 else if (newRelation.toLowerCase().includes("ennemi")) inverseRelation = "Ennemi(e)";
+                 else if (newRelation.toLowerCase().includes("frère") || newRelation.toLowerCase().includes("soeur")) inverseRelation = "Frère/Soeur";
+                 else if (newRelation.toLowerCase().includes("parent")) inverseRelation = "Enfant";
+                 else if (newRelation.toLowerCase().includes("enfant")) inverseRelation = "Parent";
+                 // ... add more complex inverse relations if needed
+
+                const updatedRelations = { ...(char.relations || {}), [charId]: inverseRelation }; // Set inverse relation
+                return { ...char, relations: updatedRelations };
+            }
+            return char;
+        }));
+         setTimeout(() => {
+            toast({ title: "Relation Mise à Jour" });
+        }, 0);
+    };
+
+
+   // New handler for editing a specific message
    const handleEditMessage = (messageId: string, newContent: string) => {
        setNarrative(prev => prev.map(msg =>
            msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
@@ -317,16 +417,17 @@ export default function Home() {
 
          // Prepare context for the AI regeneration
          const narrativeContext = contextMessages.map(msg =>
-                 msg.type === 'user' ? `> ${msg.content}` : msg.content
-             ).join('\n\n') + `\n\n> ${lastUserAction}\n`; // Re-append the crucial user action
+                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content // Include player name in user messages
+             ).join('\n\n') + `\n\n> ${adventureSettings.playerName || 'Player'}: ${lastUserAction}\n`; // Re-append the crucial user action with player name
 
          try {
              const input: GenerateAdventureInput = {
                  world: adventureSettings.world,
                  initialSituation: narrativeContext, // Provide the reconstructed context
                  characters: characters, // Pass current full character objects
-                 userAction: lastUserAction, // Use the same user action
+                 userAction: `${adventureSettings.playerName || 'Player'}: ${lastUserAction}`, // Prepend player name to user action
                  currentLanguage: currentLanguage, // Pass current language
+                 playerName: adventureSettings.playerName || "Player", // Pass player name explicitly
                  promptConfig: adventureSettings.rpgMode ? {
                     rpgContext: {
                         playerStats: { /* TODO: Player stats placeholder */ },
@@ -335,7 +436,12 @@ export default function Home() {
                              name: c.name,
                              details: c.details,
                              stats: c.stats,
-                             inventory: c.inventory
+                             inventory: c.inventory,
+                             // Include relations in context if needed by the AI
+                             relations: c.relations ? Object.entries(c.relations).map(([id, desc]) => {
+                                 const relatedChar = characters.find(char => char.id === id);
+                                 return `${relatedChar ? relatedChar.name : (id === PLAYER_ID ? adventureSettings.playerName || 'Player' : 'Unknown')}: ${desc}`;
+                             }).join(', ') : 'None',
                         })),
                         mode: 'exploration', // TODO: Determine mode dynamically if needed
                     }
@@ -368,6 +474,7 @@ export default function Home() {
              handleNewCharacters(result.newCharacters || []);
              handleCharacterHistoryUpdate(result.characterUpdates || []);
              handleAffinityUpdates(result.affinityUpdates || []);
+             // handleRelationUpdates(result.relationUpdates || []); // TODO: Add relation updates from AI if implemented
 
 
               setTimeout(() => {
@@ -445,7 +552,7 @@ export default function Home() {
             characters: charactersToSave,
             narrative,
             currentLanguage,
-            saveFormatVersion: 1.3, // Bump version for affinity field
+            saveFormatVersion: 1.4, // Bump version for relations field
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download
@@ -496,15 +603,20 @@ export default function Home() {
                 }
 
 
-                if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.3) {
+                 // Migration for versions before 1.4 (relations field)
+                 if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.4) {
                      console.log("Migrating old save format...");
                      loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         history: Array.isArray(c.history) ? c.history : [],
                         opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {}, // Ensure opinion is an object
                         affinity: c.affinity ?? 50, // Add default affinity if missing
+                        relations: c.relations || { [PLAYER_ID]: "Inconnu" }, // Initialize relations if missing
                      }));
+                     // Ensure player name exists in settings
+                     loadedData.adventureSettings.playerName = loadedData.adventureSettings.playerName || "Player";
                 }
+
 
                 setAdventureSettings(loadedData.adventureSettings);
                 const rpgModeActive = loadedData.adventureSettings.rpgMode;
@@ -516,6 +628,7 @@ export default function Home() {
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
                     affinity: c.affinity ?? 50, // Load affinity or default
+                    relations: c.relations || { [PLAYER_ID]: "Inconnu" }, // Load relations or default
                     ...(rpgModeActive && {
                         level: c.level ?? 1,
                         experience: c.experience ?? 0,
@@ -575,6 +688,7 @@ export default function Home() {
         handleNewCharacters={handleNewCharacters}
         handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
         handleAffinityUpdates={handleAffinityUpdates} // Pass affinity handler
+        handleRelationUpdate={handleRelationUpdate} // Pass relation handler
         handleSaveNewCharacter={handleSaveNewCharacter}
         handleSave={handleSave}
         handleLoad={handleLoad}
@@ -585,6 +699,8 @@ export default function Home() {
         handleEditMessage={handleEditMessage}
         handleRegenerateLastResponse={handleRegenerateLastResponse}
         handleUndoLastMessage={handleUndoLastMessage} // Pass the undo handler
+        playerId={PLAYER_ID} // Pass player ID
+        playerName={adventureSettings.playerName || "Player"} // Pass player name
       />
   );
 }

@@ -21,6 +21,7 @@ export interface Character {
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
   portraitUrl?: string | null; // URL for generated portrait
   affinity?: number; // Affinity towards the player (0-100)
+  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID, value: description e.g., "Petite amie", "Ami")
 
   // Potential future fields for RPG mode (aligned with D&D concepts)
   level?: number;
@@ -51,6 +52,7 @@ export interface AdventureSettings {
     rpgMode: boolean;
     // Add other global settings as needed (e.g., starting level, currency name)
     currencyName?: string; // e.g., "Gold", "Credits"
+    playerName?: string; // Add player name setting
 }
 
 // Add other shared types as the application grows
@@ -60,6 +62,6 @@ export interface SaveData {
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
-    saveFormatVersion?: number; // Bump version for affinity field
+    saveFormatVersion?: number; // Bump version for relations field
     timestamp?: string;
 }

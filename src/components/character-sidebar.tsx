@@ -6,18 +6,25 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, AccordionHeader } from "@/components/ui/accordion"; // Corrected import: AccordionHeader is not typically exported directly, but AccordionTrigger is used within AccordionItem. Let's assume AccordionHeader was a typo and not needed.
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart } from "lucide-react"; // Added Save icon, Heart icon
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon } from "lucide-react"; // Added Save icon, Heart icon, LinkIcon
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Image generation types
 import { useToast } from "@/hooks/use-toast";
 import type { Character } from "@/types"; // Import shared Character type
 import { Progress } from "@/components/ui/progress"; // Import Progress component
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select" // Import Select for relations
 
 
 // Define props for the CharacterSidebar
@@ -25,16 +32,22 @@ interface CharacterSidebarProps {
     characters: Character[];
     onCharacterUpdate: (updatedCharacter: Character) => void; // Callback to update parent state
     onSaveNewCharacter: (character: Character) => void; // Callback to save a new character globally
+    onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Callback for relation updates
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>; // For portraits
     rpgMode: boolean; // To show/hide RPG elements
+    playerId: string; // Player's unique ID
+    playerName: string; // Player's name
 }
 
 export function CharacterSidebar({
     characters,
     onCharacterUpdate,
     onSaveNewCharacter,
+    onRelationUpdate,
     generateImageAction,
     rpgMode,
+    playerId,
+    playerName,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false); // State to track client-side rendering
@@ -99,8 +112,8 @@ export function CharacterSidebar({
         }
    };
 
-    // Handle nested field changes (stats, inventory, opinion, skills)
-    const handleNestedFieldChange = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string, value: string | number | boolean) => {
+    // Handle nested field changes (stats, inventory, opinion, skills, relations)
+    const handleNestedFieldChange = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations', key: string, value: string | number | boolean) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
              const currentFieldData = character[field] || {};
@@ -110,21 +123,36 @@ export function CharacterSidebar({
                  const numValue = parseInt(value as string, 10);
                  finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue; // Keep string for non-numeric skills
              }
-             const updatedField = { ...currentFieldData, [key]: finalValue };
-             onCharacterUpdate({ ...character, [field]: updatedField });
+
+             if (field === 'relations') {
+                 onRelationUpdate(charId, key, String(finalValue)); // Use the specific callback for relations
+             } else {
+                const updatedField = { ...currentFieldData, [key]: finalValue };
+                onCharacterUpdate({ ...character, [field]: updatedField });
+             }
         }
     };
 
-     const removeNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string) => {
+     const removeNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations', key: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
-            const updatedField = { ...character[field] };
-            delete updatedField[key];
-            onCharacterUpdate({ ...character, [field]: updatedField });
+             if (field === 'relations') {
+                 // For relations, maybe set to "Inconnu" instead of deleting?
+                 onRelationUpdate(charId, key, "Inconnu");
+             } else {
+                const updatedField = { ...character[field] };
+                delete updatedField[key];
+                onCharacterUpdate({ ...character, [field]: updatedField });
+             }
         }
     };
 
-    const addNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills') => {
+    const addNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations') => {
+        if (field === 'relations') {
+             toast({ title: "Modification de Relation", description: "Modifiez les relations existantes via la liste déroulante ou le champ texte.", variant: "default" });
+             return; // Don't allow adding new relation targets this way, edit existing ones
+         }
+
         const key = prompt(`Entrez le nom du nouveau champ pour ${field} :`);
         if (key) {
             let valuePrompt = `Entrez la valeur pour ${key} :`;
@@ -194,6 +222,13 @@ export function CharacterSidebar({
         return "Dévoué / Amour";
     };
 
+    // Helper to get character name by ID or player name
+    const getCharacterNameById = (id: string): string => {
+        if (id === playerId) return playerName;
+        const char = characters.find(c => c.id === id);
+        return char?.name || "Inconnu";
+    }
+
 
   // --- Sub-components for Readability ---
 
@@ -240,6 +275,57 @@ export function CharacterSidebar({
          </Card>
      </div>
  );
+
+ // Specific component for Relations
+ const RelationsEditableCard = ({ charId, data }: { charId: string, data?: Record<string, string> }) => {
+    const otherCharacters = characters.filter(c => c.id !== charId); // Exclude self
+
+    return (
+        <div className="space-y-2">
+            <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
+            <Card className="bg-muted/30 border">
+                <CardContent className="p-3 space-y-2">
+                     {/* Relation with Player */}
+                     <div className="flex items-center gap-2">
+                        <Label htmlFor={`${charId}-relations-${playerId}`} className="w-1/3 truncate text-sm">{playerName} (Joueur)</Label>
+                        <Input
+                            id={`${charId}-relations-${playerId}`}
+                            type="text"
+                            value={data?.[playerId] || "Inconnu"}
+                            onChange={(e) => handleNestedFieldChange(charId, 'relations', playerId, e.target.value)}
+                            className="h-8 text-sm flex-1"
+                            placeholder="Ami, Ennemi, Parent..."
+                        />
+                         {/* No delete for player relation */}
+                     </div>
+
+                     {/* Relations with other NPCs */}
+                    {otherCharacters.map(otherChar => (
+                        <div key={otherChar.id} className="flex items-center gap-2">
+                            <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="w-1/3 truncate text-sm">{otherChar.name}</Label>
+                            <Input
+                                id={`${charId}-relations-${otherChar.id}`}
+                                type="text"
+                                value={data?.[otherChar.id] || "Inconnu"}
+                                onChange={(e) => handleNestedFieldChange(charId, 'relations', otherChar.id, e.target.value)}
+                                className="h-8 text-sm flex-1"
+                                placeholder="Ami, Ennemi, Parent..."
+                            />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNestedField(charId, 'relations', otherChar.id)} title="Réinitialiser la relation à Inconnu">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    {otherCharacters.length === 0 && !data?.[playerId] && (
+                         <p className="text-muted-foreground italic text-sm">Aucune relation définie.</p>
+                    )}
+                     <p className="text-xs text-muted-foreground pt-1">Décrivez la relation de ce personnage envers les autres.</p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+ };
+
 
  const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string }) => (
      <div className="space-y-2">
@@ -380,7 +466,7 @@ export function CharacterSidebar({
 
                              {/* Affinity Section */}
                              <div className="space-y-2">
-                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> Affinité avec le joueur</Label>
+                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> Affinité avec {playerName}</Label>
                                  <div className="flex items-center gap-2">
                                      <Input
                                          id={`${char.id}-affinity`}
@@ -395,6 +481,9 @@ export function CharacterSidebar({
                                      <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
                                  </div>
                              </div>
+
+                              {/* Relations Section */}
+                              <RelationsEditableCard charId={char.id} data={char.relations} />
 
 
                             {/* RPG Sections (Conditional & Editable) */}
