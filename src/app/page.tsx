@@ -12,7 +12,17 @@ import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update/affinity/relation types
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog" // Import AlertDialog components for restart confirmation
 
 // Constants
 const PLAYER_ID = "player"; // Define a constant ID for the player
@@ -32,7 +42,7 @@ export default function Home() {
         details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
         history: [],
         opinion: {},
-        affinity: 70,
+        affinity: 70, // Initial affinity towards player
         relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" } // Initial relations
       },
       {
@@ -41,8 +51,8 @@ export default function Home() {
         details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
         history: [],
         opinion: {},
-        affinity: 60,
-        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Amie" } // Initial relations
+        affinity: 60, // Initial affinity towards player
+        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Ami" } // Initial relations
       }
   ]);
   // Store the initial characters defined in settings separately for reset purposes
@@ -54,7 +64,7 @@ export default function Home() {
         history: [],
         opinion: {},
         affinity: 70,
-        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" } // Initial relations
+        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" }
       },
       {
         id: 'kentaro-1',
@@ -63,7 +73,7 @@ export default function Home() {
         history: [],
         opinion: {},
         affinity: 60,
-        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Amie" } // Initial relations
+        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Ami" }
       }
   ]);
   // Narrative is now an array of Message objects
@@ -72,6 +82,7 @@ export default function Home() {
   ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regeneration loading
+  const [isRestarting, setIsRestarting] = React.useState<boolean>(false); // State for restart loading/confirmation
   const { toast } = useToast();
 
   // --- Callback Functions ---
@@ -279,7 +290,7 @@ export default function Home() {
             if (changed) {
                  // Optionally show a toast for significant affinity changes
                  updates.forEach(update => {
-                     if (Math.abs(update.change) >= 5) { // Threshold for noticeable change (lowered from 10)
+                     if (Math.abs(update.change) >= 3) { // Threshold for noticeable change (lowered from 5)
                          const charName = update.characterName;
                          const direction = update.change > 0 ? 'améliorée' : 'détériorée';
                          setTimeout(() => {
@@ -301,6 +312,7 @@ export default function Home() {
         setCharacters(prevChars => prevChars.map(char => {
             if (char.id === charId) {
                 const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
+                console.log(`Manual relation update: ${char.name}'s relation towards ${targetId} set to "${newRelation}"`);
                 return { ...char, relations: updatedRelations };
             }
             // If the update is from an NPC towards another NPC, we don't automatically set the inverse
@@ -309,7 +321,7 @@ export default function Home() {
             return char;
         }));
          setTimeout(() => {
-            toast({ title: "Relation Mise à Jour" });
+            toast({ title: "Relation Mise à Jour Manuellement" });
         }, 0);
     };
 
@@ -331,25 +343,28 @@ export default function Home() {
                 }
 
                 let targetId: string | null = null;
+                let targetCharIndex = -1; // Index for potential inverse update
                 if (update.targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
                     targetId = PLAYER_ID; // Target is the player
                 } else {
-                    const targetChar = chars.find(c => c.name.toLowerCase() === update.targetName.toLowerCase());
-                    if (targetChar) {
-                        targetId = targetChar.id;
+                    targetCharIndex = chars.findIndex(c => c.name.toLowerCase() === update.targetName.toLowerCase());
+                    if (targetCharIndex !== -1) {
+                        targetId = chars[targetCharIndex].id;
                     } else {
                         console.warn(`Relation update error: Target character "${update.targetName}" not found.`);
                         return; // Skip if target character not found
                     }
                 }
 
+                 if (!targetId) return; // Should not happen, but safety check
+
                 const currentRelation = chars[sourceCharIndex].relations?.[targetId] || "Inconnu";
 
                 if (currentRelation !== update.newRelation) {
-                     // Clone the character and their relations to update
+                     // Clone the source character and their relations to update
                     const sourceChar = { ...chars[sourceCharIndex] };
                     sourceChar.relations = { ...(sourceChar.relations || {}), [targetId]: update.newRelation };
-                    chars[sourceCharIndex] = sourceChar; // Update the character in the array
+                    chars[sourceCharIndex] = sourceChar; // Update the source character in the array
 
                     changed = true;
                     console.log(`Relation updated by AI for ${update.characterName} towards ${update.targetName}: "${currentRelation}" -> "${update.newRelation}" (Reason: ${update.reason || 'N/A'})`);
@@ -361,6 +376,24 @@ export default function Home() {
                             description: `Relation envers ${update.targetName} est maintenant "${update.newRelation}". Raison: ${update.reason || 'Événement narratif'}`,
                          });
                      }, 0);
+
+                     // Optional: Attempt to set an inverse relationship automatically if between NPCs
+                     // This is complex and might lead to contradictions. AI should ideally handle both sides if needed.
+                     // Example (simplified, use with caution):
+                     /*
+                     if (targetId !== PLAYER_ID && targetCharIndex !== -1) {
+                         const targetChar = { ...chars[targetCharIndex] };
+                         // Basic inverse (e.g., "Ennemi" -> "Ennemi", "Ami" -> "Ami")
+                         // Needs more sophisticated logic for complex relationships (e.g., "Mentor" -> "Apprenti")
+                         let inverseRelation = update.newRelation;
+                         if (!targetChar.relations) targetChar.relations = {};
+                         if (targetChar.relations[sourceChar.id] !== inverseRelation) {
+                             targetChar.relations[sourceChar.id] = inverseRelation;
+                             chars[targetCharIndex] = targetChar;
+                             console.log(`(Attempted) Inverse relation set for ${update.targetName} towards ${update.characterName}: "${inverseRelation}"`);
+                         }
+                     }
+                     */
                 }
             });
 
@@ -452,7 +485,7 @@ export default function Home() {
                  world: adventureSettings.world,
                  initialSituation: narrativeContext, // Provide the reconstructed context
                  characters: characters, // Pass current full character objects
-                 userAction: `${adventureSettings.playerName || 'Player'}: ${lastUserAction}`, // Prepend player name to user action
+                 userAction: lastUserAction, // Send just the user action text
                  currentLanguage: currentLanguage, // Pass current language
                  playerName: adventureSettings.playerName || "Player", // Pass player name explicitly
                  promptConfig: adventureSettings.rpgMode ? {
@@ -464,7 +497,7 @@ export default function Home() {
                              details: c.details,
                              stats: c.stats,
                              inventory: c.inventory,
-                             // Include relations in context if needed by the AI
+                             // Include relations summary string for the AI context
                              relations: c.relations ? Object.entries(c.relations).map(([id, desc]) => {
                                  const relatedChar = characters.find(char => char.id === id);
                                  return `${relatedChar ? relatedChar.name : (id === PLAYER_ID ? adventureSettings.playerName || 'Player' : 'Unknown')}: ${desc}`;
@@ -579,7 +612,7 @@ export default function Home() {
             characters: charactersToSave,
             narrative,
             currentLanguage,
-            saveFormatVersion: 1.5, // Bump version for relation updates from AI
+            saveFormatVersion: 1.6, // Bump version for dynamic relation updates
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download
@@ -649,6 +682,14 @@ export default function Home() {
                        loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         relations: c.relations || { [PLAYER_ID]: "Inconnu" }, // Ensure relations exist
+                     }));
+                 }
+                  // Migration for versions before 1.6 (fix potential issues with relation format if needed)
+                 if (loadedData.saveFormatVersion < 1.6) {
+                      console.log("Migrating save format (ensure relations format)...");
+                       loadedData.characters = loadedData.characters.map(c => ({
+                        ...c,
+                        relations: typeof c.relations === 'object' && c.relations !== null ? c.relations : { [PLAYER_ID]: "Inconnu" }, // Ensure relations object exists
                      }));
                  }
 

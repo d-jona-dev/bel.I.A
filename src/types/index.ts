@@ -63,6 +63,6 @@ export interface SaveData {
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
-    saveFormatVersion?: number; // Bump version for AI relation updates
+    saveFormatVersion?: number; // Bump version for AI relation updates (1.6)
     timestamp?: string;
 }

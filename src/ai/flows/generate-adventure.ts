@@ -5,7 +5,7 @@
  * @fileOverview Generates adventure narratives based on world, initial situation, characters, and user actions.
  * Includes optional RPG context handling and provides scene descriptions for image generation.
  * Detects newly introduced characters, logs significant character events/quotes in the specified language,
- * and calculates changes in character affinity towards the player. Includes dynamic character relation updates.
+ * and calculates changes in character affinity towards the player. Includes dynamic character relation updates (player-NPC and NPC-NPC).
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -93,17 +93,17 @@ const CharacterUpdateSchema = z.object({
 
 // Define schema for affinity updates - Updated description for change magnitude
 const AffinityUpdateSchema = z.object({
-    characterName: z.string().describe("The name of the known character whose affinity changed."),
-    change: z.number().int().describe("The integer change in affinity (+/-). Keep changes **small and gradual** for typical interactions (e.g., +2 for a kind word, -3 for a minor disagreement, 0 for neutral). Reserve larger changes (+/- 10 or more) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
+    characterName: z.string().describe("The name of the known character whose affinity **towards the player** changed."),
+    change: z.number().int().describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -2 for a minor disagreement, 0 for neutral). Reserve larger changes (+/- 5 or more) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
     reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
 });
 
 // Define schema for relation updates (New) - Target can be player or another character
 const RelationUpdateSchema = z.object({
-    characterName: z.string().describe("The name of the character whose relation is updated."),
-    targetName: z.string().describe("The name of the target character or the player name."), // Use name for easier processing later
-    newRelation: z.string().describe("The new description of the relationship (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival'). Be specific."),
-    reason: z.string().optional().describe("Brief justification for the relation change based on the interaction.")
+    characterName: z.string().describe("The name of the character whose relation is updated (the source)."),
+    targetName: z.string().describe("The name of the target character OR the player's name."), // Use name for easier processing later
+    newRelation: z.string().describe("The new description of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival', 'Amant secret', 'Confidente'). Be specific and clear."),
+    reason: z.string().optional().describe("Brief justification for the relation change based on the narrative interaction or event.")
 });
 
 
@@ -125,11 +125,11 @@ const GenerateAdventureOutputSchema = z.object({
   affinityUpdates: z
     .array(AffinityUpdateSchema)
     .optional()
-    .describe("List of affinity changes for known characters based on the user's action and the resulting narrative."),
+    .describe("List of affinity changes for known characters **towards the player** based on the user's action and the resulting narrative."),
   relationUpdates: z // Added relation updates
     .array(RelationUpdateSchema)
     .optional()
-    .describe("List of relationship changes between characters or towards the player based on the narrative.")
+    .describe("List of relationship changes between characters OR towards the player based on the narrative. Capture changes like becoming lovers, enemies, rivals, etc.")
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -187,7 +187,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Updated Handlebars prompt - Use pre-processed relationsSummary
+  // Updated Handlebars prompt - Use pre-processed relationsSummary and refined instructions
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for history entries is {{currentLanguage}}.
 
 World: {{{world}}}
@@ -200,7 +200,7 @@ Known Characters:
 - Name: {{this.name}}
   Description: {{this.details}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards {{../playerName}} on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral. **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
-  Relations: {{{this.relationsSummary}}} {{! Use the pre-processed summary }}
+  Relations: {{{this.relationsSummary}}} {{! This summarizes this character's relationship TOWARDS others }}
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -230,20 +230,20 @@ Tasks:
     *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant.
     *   **71-90 (Loyal):** Warm, supportive, actively helpful and protective. Trusts {{playerName}} and shares information/resources readily. Enjoys {{playerName}}'s company. May defend or assist {{playerName}} proactively. Compliments are genuine and frequent. Dialogue is open and encouraging.
     *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes {{playerName}}'s well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards {{playerName}}. Dialogue is filled with warmth and care.
-    **ALSO CONSIDER** the defined 'Relations' between characters (summarized in {{{this.relationsSummary}}}). Their interactions should reflect these relationships (e.g., allies help each other, rivals compete, lovers are affectionate). **These relations can also change based on events in the narrative (see Task 6).**
+    **ALSO CONSIDER** the defined 'Relations' **between** characters (summarized for each character in their 'Relations: {{{this.relationsSummary}}}'). Their interactions with EACH OTHER should reflect these relationships (e.g., allies help each other, rivals compete, lovers are affectionate). **These relationships can also change based on events in the narrative (see Task 6).**
 
 2.  **Identify New Characters:** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field. Include their name, a brief description derived from the context, and the location/circumstance of meeting (if possible) in the description and/or 'initialHistoryEntry'. Ensure 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
 
-3.  **Describe the Scene for Image:** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
+3.  **Describe the Scene for Image:** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper", "a young woman with brown hair") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
 
 4.  **Log Character Updates:** Analyze the "Narrative Continuation". For each **KNOWN character** involved in a significant action or memorable quote, create a brief 'historyEntry' summarizing it in the target language: {{currentLanguage}}. Add these to the 'characterUpdates' field. Include location if relevant (e.g., "At the market, Rina said...").
 
-5.  **Calculate Affinity Updates:** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes small and gradual (+/- 1 to 3) for most interactions. Only use larger changes (+/- 5 to 10) for truly major events (life-saving, betrayal, etc.).**
+5.  **Calculate Affinity Updates (Player Interaction):** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect the character's affinity **towards {{playerName}}** (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes VERY small and gradual (+/- 1 or 2) for most interactions. Only use larger changes (+/- 5 or more) for truly major events (life-saving, betrayal, deep declaration of feelings, etc.).**
 
-6.  **Detect Relation Updates:** Analyze the "Narrative Continuation" for significant changes in relationships between **KNOWN characters** or between a known character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'. Include the source character's name, the target's name (or {{playerName}}), the *new* specific relation description (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'), and a brief 'reason'. **Be specific with the new relation.** Only report if there is a *change*.
+6.  **Detect Relation Updates (ALL Characters):** Analyze the "Narrative Continuation" for significant changes in relationships **between ANY two KNOWN characters** OR between a known character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'. Include the source character's name (whose perspective is changing), the target's name (the character or {{playerName}} being viewed differently), the *new* specific relation description from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'), and a brief 'reason'. **Be specific with the new relation.** Only report if there is a *change*. **The narrative MUST reflect these changes immediately.**
 
 Narrative Continuation:
-[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} and inter-character relations** as described in Task 1. **Crucially, incorporate any relationship changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.**]
+[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} AND inter-character relations** as described in Task 1. **Crucially, incorporate any relationship changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.** Make the impact of affinity and relations **obvious** in dialogue and actions.]
 `,
 });
 
@@ -273,4 +273,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
