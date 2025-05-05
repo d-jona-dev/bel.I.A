@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, AccordionHeader } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -317,7 +317,8 @@ export function CharacterSidebar({
                                     <TooltipProvider>
                                         <Tooltip>
                                              {/* Wrap the Star icon in a span */}
-                                            <TooltipTrigger asChild>
+                                             {/* Remove asChild from TooltipTrigger */}
+                                            <TooltipTrigger>
                                                 <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span> {/* Added flex-shrink-0 */}
                                             </TooltipTrigger>
                                             <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
@@ -462,3 +463,6 @@ export function CharacterSidebar({
   );
 }
 
+
+
+    
