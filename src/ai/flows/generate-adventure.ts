@@ -197,6 +197,8 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
+  // Register the helper function
+  helpers: { resolveRelationNames }, // Ensure the helper is registered here
   // Updated Handlebars prompt - Include Player Name, Relations, and Relation Update Task
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for history entries is {{currentLanguage}}.
 
@@ -248,15 +250,13 @@ Tasks:
 
 4.  **Log Character Updates:** Analyze the "Narrative Continuation". For each **KNOWN character** involved in a significant action or memorable quote, create a brief 'historyEntry' summarizing it in the target language: {{currentLanguage}}. Add these to the 'characterUpdates' field. Include location if relevant (e.g., "At the market, Rina said...").
 
-5.  **Calculate Affinity Updates:** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes small and gradual (+/- 1 to 5) for most interactions. Only use larger changes (+/- 10 or more) for truly major events (life-saving, betrayal, etc.).**
+5.  **Calculate Affinity Updates:** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes small and gradual (+/- 1 to 3) for most interactions. Only use larger changes (+/- 5 to 10) for truly major events (life-saving, betrayal, etc.).**
 
 6.  **Detect Relation Updates:** Analyze the "Narrative Continuation" for significant changes in relationships between **KNOWN characters** or between a character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners), add an entry to 'relationUpdates'. Include the source character's name, the target's name (or {{playerName}}), the new relation description, and a brief reason.
 
 Narrative Continuation:
 [Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} and inter-character relations** as described in Task 1.]
 `,
-  // Register the helper function
-  helpers: { resolveRelationNames },
 });
 
 
