@@ -85,10 +85,10 @@ const CharacterUpdateSchema = z.object({
     historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment."),
 });
 
-// Define schema for affinity updates
+// Define schema for affinity updates - Updated description for change magnitude
 const AffinityUpdateSchema = z.object({
     characterName: z.string().describe("The name of the known character whose affinity changed."),
-    change: z.number().int().describe("The integer change in affinity (+/-). E.g., +5 for positive interaction, -10 for negative. 0 for neutral. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
+    change: z.number().int().describe("The integer change in affinity (+/-). Keep changes **small and gradual** for typical interactions (e.g., +2 for a kind word, -3 for a minor disagreement, 0 for neutral). Reserve larger changes (+/- 10 or more) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
     reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
 });
 
@@ -147,7 +147,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Updated Handlebars prompt - explicitly detail affinity influence
+  // Updated Handlebars prompt - **STRONGLY EMPHASIZE** affinity influence and smaller change suggestions
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The target language for history entries is {{currentLanguage}}.
 
 World: {{{world}}}
@@ -159,7 +159,7 @@ Known Characters:
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
-  Current Affinity: {{this.affinity}}/100 (This score dictates their feelings and behavior towards the user on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral.)
+  Current Affinity: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards the user on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral. **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -181,22 +181,22 @@ Player Stats: {{#each promptConfig.rpgContext.playerStats}}{{@key}}: {{this}} {{
 
 Tasks:
 1.  **Generate the "Narrative Continuation":** Write the next part of the story based on all context and the user's action. Be creative and engaging.
-    **CRITICAL: Each known character's behavior, dialogue, and internal thoughts (if appropriate) MUST reflect their 'Current Affinity' towards the user.** Use the following affinity levels as a guide:
-    *   **0-10 (Haine Profonde):** Openly hostile, insulting, aggressive. May actively sabotage or attack the user. Refuses cooperation. Expresses disgust or contempt.
-    *   **11-30 (Hostile):** Uncooperative, distrustful, rude, sarcastic. Avoids the user or speaks negatively about them. May hinder the user indirectly.
-    *   **31-45 (Méfiant):** Cautious, reserved, suspicious. Dialogue is curt and minimal. Avoids sharing information. Actions are self-serving. Body language is closed off.
-    *   **46-55 (Neutre):** Indifferent, polite but distant. Interactions are transactional. Neither helps nor hinders unnecessarily. Normal, unremarkable behavior.
-    *   **56-70 (Amical):** Friendly, generally cooperative, willing to chat. May offer minor assistance or advice. Shows basic positive regard.
-    *   **71-90 (Loyal):** Warm, supportive, actively helpful. Trusts the user and shares information freely. Enjoys the user's company. May defend or assist the user proactively. Compliments are genuine.
-    *   **91-100 (Dévoué / Amour):** Deep affection, utmost loyalty. Prioritizes the user's well-being, potentially taking risks for them. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate.
+    **CRITICAL: Each known character's behavior, dialogue, actions, and internal thoughts (if appropriate) MUST STRONGLY AND CLEARLY REFLECT their 'Current Affinity' towards the user. DO NOT DEVIATE.** Use the following affinity levels as a **strict guide**:
+    *   **0-10 (Haine Profonde / Deep Hate):** Openly hostile, insulting, aggressive, disgusted. Actively sabotages or attacks the user. REFUSES cooperation entirely. Dialogue is filled with contempt and vitriol. Actions are malicious.
+    *   **11-30 (Hostile):** Uncooperative, distrustful, rude, sarcastic, cold. Avoids the user or speaks negatively about them. May hinder the user indirectly. Dialogue is sharp and dismissive. Actions are obstructionist.
+    *   **31-45 (Méfiant / Wary):** Cautious, reserved, suspicious, guarded. Dialogue is curt, minimal, and evasive. Avoids sharing information. Actions are purely self-serving. Body language is closed off and tense.
+    *   **46-55 (Neutre / Neutral):** Indifferent, polite but distant. Interactions are purely transactional or professional. Neither helps nor hinders unnecessarily. Normal, unremarkable, standard behavior. Dialogue is functional.
+    *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant.
+    *   **71-90 (Loyal):** Warm, supportive, actively helpful and protective. Trusts the user and shares information/resources readily. Enjoys the user's company. May defend or assist the user proactively. Compliments are genuine and frequent. Dialogue is open and encouraging.
+    *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes the user's well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards the user. Dialogue is filled with warmth and care.
 
 2.  **Identify New Characters:** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field. Include their name, a brief description derived from the context, and the location/circumstance of meeting (if possible) in the description and/or 'initialHistoryEntry'. Ensure 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
 3.  **Describe the Scene for Image:** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
 4.  **Log Character Updates:** Analyze the "Narrative Continuation". For each **KNOWN character** involved in a significant action or memorable quote, create a brief 'historyEntry' summarizing it in the target language: {{currentLanguage}}. Add these to the 'characterUpdates' field.
-5.  **Calculate Affinity Updates:** Analyze the user's interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'.
+5.  **Calculate Affinity Updates:** Analyze the user's interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes small and gradual (+/- 1 to 5) for most interactions. Only use larger changes (+/- 10 or more) for truly major events (life-saving, betrayal, etc.).**
 
 Narrative Continuation:
-[Generate the next part of the story here, reflecting character affinities as described in Task 1.]
+[Generate the next part of the story here, **strictly reflecting character affinities** as described in Task 1.]
 `,
 });
 
