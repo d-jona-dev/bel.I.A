@@ -10,7 +10,7 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update/affinity types
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update/affinity/relation types
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 
 
@@ -279,7 +279,7 @@ export default function Home() {
             if (changed) {
                  // Optionally show a toast for significant affinity changes
                  updates.forEach(update => {
-                     if (Math.abs(update.change) >= 10) { // Threshold for noticeable change
+                     if (Math.abs(update.change) >= 5) { // Threshold for noticeable change (lowered from 10)
                          const charName = update.characterName;
                          const direction = update.change > 0 ? 'améliorée' : 'détériorée';
                          setTimeout(() => {
@@ -296,49 +296,76 @@ export default function Home() {
         });
     };
 
-     // Function to handle relation updates (can be called from CharacterSidebar or potentially AI in future)
+     // Function to handle relation updates (can be called from CharacterSidebar or AI)
      const handleRelationUpdate = (charId: string, targetId: string, newRelation: string) => {
         setCharacters(prevChars => prevChars.map(char => {
             if (char.id === charId) {
                 const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
                 return { ...char, relations: updatedRelations };
             }
-            // Also update the target character's relation back if they exist
-            if (char.id === targetId) {
-                // Define the inverse relationship (this might need AI help later)
-                 let inverseRelation = "Inconnu";
-                 if(charId === PLAYER_ID){
-                     // If the update is from an NPC towards the player, we need the NPC's perspective
-                     // Let's find the NPC doing the update first
-                     const updatingChar = prevChars.find(c => c.id === charId);
-                     if(updatingChar){
-                         inverseRelation = updatingChar.name; // Simple inverse for now
-                     }
-                 } else if (targetId === PLAYER_ID) {
-                    // Relationship from player towards NPC
-                    inverseRelation = adventureSettings.playerName || "Player"; // Use player name
-                 } else {
-                     const targetChar = prevChars.find(c => c.id === charId);
-                     if (targetChar) inverseRelation = targetChar.name;
-                 }
-
-
-                // Very basic inverse logic, might need refinement
-                 if (newRelation.toLowerCase().includes("ami")) inverseRelation = "Ami(e)";
-                 else if (newRelation.toLowerCase().includes("ennemi")) inverseRelation = "Ennemi(e)";
-                 else if (newRelation.toLowerCase().includes("frère") || newRelation.toLowerCase().includes("soeur")) inverseRelation = "Frère/Soeur";
-                 else if (newRelation.toLowerCase().includes("parent")) inverseRelation = "Enfant";
-                 else if (newRelation.toLowerCase().includes("enfant")) inverseRelation = "Parent";
-                 // ... add more complex inverse relations if needed
-
-                const updatedRelations = { ...(char.relations || {}), [charId]: inverseRelation }; // Set inverse relation
-                return { ...char, relations: updatedRelations };
-            }
+            // If the update is from an NPC towards another NPC, we don't automatically set the inverse
+            // If the update is towards the player, the player's perspective is handled elsewhere (if needed)
+            // Manual updates in the sidebar handle both sides if desired.
             return char;
         }));
          setTimeout(() => {
             toast({ title: "Relation Mise à Jour" });
         }, 0);
+    };
+
+    // Function to handle relation updates specifically from the AI response
+    const handleRelationUpdatesFromAI = (updates: RelationUpdateSchema[]) => {
+        if (!updates || updates.length === 0) return;
+
+        console.log("Processing relation updates from AI:", updates);
+
+        setCharacters(prevChars => {
+            let chars = [...prevChars]; // Create a mutable copy
+            let changed = false;
+
+            updates.forEach(update => {
+                const sourceCharIndex = chars.findIndex(c => c.name.toLowerCase() === update.characterName.toLowerCase());
+                if (sourceCharIndex === -1) {
+                    console.warn(`Relation update error: Source character "${update.characterName}" not found.`);
+                    return; // Skip if source character not found
+                }
+
+                let targetId: string | null = null;
+                if (update.targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
+                    targetId = PLAYER_ID; // Target is the player
+                } else {
+                    const targetChar = chars.find(c => c.name.toLowerCase() === update.targetName.toLowerCase());
+                    if (targetChar) {
+                        targetId = targetChar.id;
+                    } else {
+                        console.warn(`Relation update error: Target character "${update.targetName}" not found.`);
+                        return; // Skip if target character not found
+                    }
+                }
+
+                const currentRelation = chars[sourceCharIndex].relations?.[targetId] || "Inconnu";
+
+                if (currentRelation !== update.newRelation) {
+                     // Clone the character and their relations to update
+                    const sourceChar = { ...chars[sourceCharIndex] };
+                    sourceChar.relations = { ...(sourceChar.relations || {}), [targetId]: update.newRelation };
+                    chars[sourceCharIndex] = sourceChar; // Update the character in the array
+
+                    changed = true;
+                    console.log(`Relation updated by AI for ${update.characterName} towards ${update.targetName}: "${currentRelation}" -> "${update.newRelation}" (Reason: ${update.reason || 'N/A'})`);
+
+                     // Show toast for the changed relation
+                     setTimeout(() => {
+                         toast({
+                            title: `Relation Changée: ${update.characterName}`,
+                            description: `Relation envers ${update.targetName} est maintenant "${update.newRelation}". Raison: ${update.reason || 'Événement narratif'}`,
+                         });
+                     }, 0);
+                }
+            });
+
+            return changed ? chars : prevChars; // Return new array only if changed
+        });
     };
 
 
@@ -470,11 +497,11 @@ export default function Home() {
                 return newNarrative;
              });
 
-             // Handle updates (history, affinity, new chars) for regenerated response
+             // Handle updates (history, affinity, new chars, relations) for regenerated response
              handleNewCharacters(result.newCharacters || []);
              handleCharacterHistoryUpdate(result.characterUpdates || []);
              handleAffinityUpdates(result.affinityUpdates || []);
-             // handleRelationUpdates(result.relationUpdates || []); // TODO: Add relation updates from AI if implemented
+             handleRelationUpdatesFromAI(result.relationUpdates || []); // Handle relation updates from AI
 
 
               setTimeout(() => {
@@ -552,7 +579,7 @@ export default function Home() {
             characters: charactersToSave,
             narrative,
             currentLanguage,
-            saveFormatVersion: 1.4, // Bump version for relations field
+            saveFormatVersion: 1.5, // Bump version for relation updates from AI
             timestamp: new Date().toISOString(),
         };
         // Convert to JSON and offer download
@@ -605,7 +632,7 @@ export default function Home() {
 
                  // Migration for versions before 1.4 (relations field)
                  if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.4) {
-                     console.log("Migrating old save format...");
+                     console.log("Migrating old save format (before relations)...");
                      loadedData.characters = loadedData.characters.map(c => ({
                         ...c,
                         history: Array.isArray(c.history) ? c.history : [],
@@ -616,6 +643,14 @@ export default function Home() {
                      // Ensure player name exists in settings
                      loadedData.adventureSettings.playerName = loadedData.adventureSettings.playerName || "Player";
                 }
+                 // Migration for versions before 1.5 (fix missing relations initialization)
+                 if (loadedData.saveFormatVersion < 1.5) {
+                      console.log("Migrating save format (ensure relations initialized)...");
+                       loadedData.characters = loadedData.characters.map(c => ({
+                        ...c,
+                        relations: c.relations || { [PLAYER_ID]: "Inconnu" }, // Ensure relations exist
+                     }));
+                 }
 
 
                 setAdventureSettings(loadedData.adventureSettings);
@@ -688,7 +723,8 @@ export default function Home() {
         handleNewCharacters={handleNewCharacters}
         handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
         handleAffinityUpdates={handleAffinityUpdates} // Pass affinity handler
-        handleRelationUpdate={handleRelationUpdate} // Pass relation handler
+        handleRelationUpdate={handleRelationUpdate} // Pass manual relation handler
+        handleRelationUpdatesFromAI={handleRelationUpdatesFromAI} // Pass AI relation handler
         handleSaveNewCharacter={handleSaveNewCharacter}
         handleSave={handleSave}
         handleLoad={handleLoad}

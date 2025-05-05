@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -46,7 +46,8 @@ interface PageStructureProps {
   handleNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Added initialHistoryEntry
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Added prop for affinity updates
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Added prop for relation updates
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Added prop for manual relation updates
+  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; // Added prop for AI-driven relation updates
   handleSaveNewCharacter: (character: Character) => void; // Added prop for saving new chars
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -73,7 +74,8 @@ export function PageStructure({
   handleNewCharacters, // Destructure new prop
   handleCharacterHistoryUpdate, // Destructure new prop
   handleAffinityUpdates, // Destructure new prop
-  handleRelationUpdate, // Destructure new prop
+  handleRelationUpdate, // Destructure manual relation prop
+  handleRelationUpdatesFromAI, // Destructure AI relation prop
   handleSaveNewCharacter, // Destructure new prop
   handleSave,
   handleLoad,
@@ -232,6 +234,7 @@ export function PageStructure({
                 onNewCharacters={handleNewCharacters} // Pass the new characters handler
                 onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
                 onAffinityUpdates={handleAffinityUpdates} // Pass affinity update handler
+                onRelationUpdates={handleRelationUpdatesFromAI} // Pass relation update handler from AI
                 rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
@@ -292,7 +295,7 @@ export function PageStructure({
                                      characters={characters}
                                      onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter} // Pass save handler
-                                     onRelationUpdate={handleRelationUpdate} // Pass relation update handler
+                                     onRelationUpdate={handleRelationUpdate} // Pass manual relation update handler
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={adventureSettings.rpgMode}
                                      playerId={playerId} // Pass player ID

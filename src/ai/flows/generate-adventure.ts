@@ -5,7 +5,7 @@
  * @fileOverview Generates adventure narratives based on world, initial situation, characters, and user actions.
  * Includes optional RPG context handling and provides scene descriptions for image generation.
  * Detects newly introduced characters, logs significant character events/quotes in the specified language,
- * and calculates changes in character affinity towards the player. Includes character relations.
+ * and calculates changes in character affinity towards the player. Includes dynamic character relation updates.
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -98,11 +98,11 @@ const AffinityUpdateSchema = z.object({
     reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
 });
 
-// Define schema for relation updates (New)
+// Define schema for relation updates (New) - Target can be player or another character
 const RelationUpdateSchema = z.object({
     characterName: z.string().describe("The name of the character whose relation is updated."),
-    targetName: z.string().describe("The name of the target character or the player name."),
-    newRelation: z.string().describe("The new description of the relationship (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie')."),
+    targetName: z.string().describe("The name of the target character or the player name."), // Use name for easier processing later
+    newRelation: z.string().describe("The new description of the relationship (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival'). Be specific."),
     reason: z.string().optional().describe("Brief justification for the relation change based on the interaction.")
 });
 
@@ -187,8 +187,6 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Removed helpers registration
-  // helpers: { resolveRelationNames },
   // Updated Handlebars prompt - Use pre-processed relationsSummary
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for history entries is {{currentLanguage}}.
 
@@ -232,7 +230,7 @@ Tasks:
     *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant.
     *   **71-90 (Loyal):** Warm, supportive, actively helpful and protective. Trusts {{playerName}} and shares information/resources readily. Enjoys {{playerName}}'s company. May defend or assist {{playerName}} proactively. Compliments are genuine and frequent. Dialogue is open and encouraging.
     *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes {{playerName}}'s well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards {{playerName}}. Dialogue is filled with warmth and care.
-    **ALSO CONSIDER** the defined 'Relations' between characters (summarized in {{{this.relationsSummary}}}). Their interactions should reflect these relationships (e.g., allies help each other, rivals compete).
+    **ALSO CONSIDER** the defined 'Relations' between characters (summarized in {{{this.relationsSummary}}}). Their interactions should reflect these relationships (e.g., allies help each other, rivals compete, lovers are affectionate). **These relations can also change based on events in the narrative (see Task 6).**
 
 2.  **Identify New Characters:** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field. Include their name, a brief description derived from the context, and the location/circumstance of meeting (if possible) in the description and/or 'initialHistoryEntry'. Ensure 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
 
@@ -242,10 +240,10 @@ Tasks:
 
 5.  **Calculate Affinity Updates:** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes small and gradual (+/- 1 to 3) for most interactions. Only use larger changes (+/- 5 to 10) for truly major events (life-saving, betrayal, etc.).**
 
-6.  **Detect Relation Updates:** Analyze the "Narrative Continuation" for significant changes in relationships between **KNOWN characters** or between a character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners), add an entry to 'relationUpdates'. Include the source character's name, the target's name (or {{playerName}}), the new relation description, and a brief reason.
+6.  **Detect Relation Updates:** Analyze the "Narrative Continuation" for significant changes in relationships between **KNOWN characters** or between a known character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'. Include the source character's name, the target's name (or {{playerName}}), the *new* specific relation description (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'), and a brief 'reason'. **Be specific with the new relation.** Only report if there is a *change*.
 
 Narrative Continuation:
-[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} and inter-character relations** as described in Task 1.]
+[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} and inter-character relations** as described in Task 1. **Crucially, incorporate any relationship changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.**]
 `,
 });
 

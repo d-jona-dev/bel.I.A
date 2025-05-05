@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface Message {
@@ -21,7 +22,7 @@ export interface Character {
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
   portraitUrl?: string | null; // URL for generated portrait
   affinity?: number; // Affinity towards the player (0-100)
-  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID, value: description e.g., "Petite amie", "Ami")
+  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID or 'player', value: description e.g., "Petite amie", "Ami")
 
   // Potential future fields for RPG mode (aligned with D&D concepts)
   level?: number;
@@ -62,6 +63,6 @@ export interface SaveData {
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
     // Add versioning or timestamp if needed
-    saveFormatVersion?: number; // Bump version for relations field
+    saveFormatVersion?: number; // Bump version for AI relation updates
     timestamp?: string;
 }

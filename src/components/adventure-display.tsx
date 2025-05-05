@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added AffinityUpdateSchema
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure"; // Import types only, Added AffinityUpdateSchema, RelationUpdateSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
 import type { Message, Character } from "@/types"; // Import Message and Character types
@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 
 
@@ -42,6 +42,7 @@ interface AdventureDisplayProps {
     onNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Callback for adding new characters detected by AI
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Callback for history updates
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Callback for affinity updates
+    onRelationUpdates: (updates: RelationUpdateSchema[]) => void; // Callback for relation updates from AI
     rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; // Callback for editing a message
     onRegenerateLastResponse: () => Promise<void>; // Callback for regenerating the last AI response
@@ -61,6 +62,7 @@ export function AdventureDisplay({
     onNewCharacters, // Add the new callback
     onCharacterHistoryUpdate, // Add history update handler
     onAffinityUpdates, // Add affinity update handler
+    onRelationUpdates, // Add relation update handler from AI
     rpgMode,
     onEditMessage,
     onRegenerateLastResponse, // New handler
@@ -177,10 +179,10 @@ export function AdventureDisplay({
         if (result.affinityUpdates && result.affinityUpdates.length > 0) {
              onAffinityUpdates(result.affinityUpdates);
         }
-        // TODO: Handle relation updates from AI result if implemented
-        // if (result.relationUpdates && result.relationUpdates.length > 0) {
-        //    handleRelationUpdates(result.relationUpdates); // Need a handler in parent (page.tsx)
-        // }
+        // Call the callback to update relations based on AI analysis
+        if (result.relationUpdates && result.relationUpdates.length > 0) {
+           onRelationUpdates(result.relationUpdates); // Use the specific handler for AI updates
+        }
 
 
         // Update local scene description state for image generation button enablement
@@ -208,7 +210,7 @@ export function AdventureDisplay({
     setIsRegenerating(true);
     try {
         await onRegenerateLastResponse(); // Call the function passed from parent
-        // Parent handles narrative update and new characters/history/affinity
+        // Parent handles narrative update and new characters/history/affinity/relations
     } catch (error) {
         // Error handling is likely done in the parent, but log here too
         console.error("Error during regeneration triggered from display:", error);
