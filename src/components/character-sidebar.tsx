@@ -291,7 +291,7 @@ export function CharacterSidebar({
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
                             // Check if _lastSaved exists to avoid showing "new" after save
-                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase()) && !char._lastSaved;
+                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase()) && !(char as any)._lastSaved; // Type assertion to access potential _lastSaved
                         } catch (e) {
                             console.error("Error accessing localStorage:", e);
                         }
@@ -316,9 +316,9 @@ export function CharacterSidebar({
                                 {isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
-                                             {/* Added asChild to TooltipTrigger */}
+                                             {/* Wrap the Star icon in a span */}
                                             <TooltipTrigger asChild>
-                                                <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /> {/* Added flex-shrink-0 */}
+                                                <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span> {/* Added flex-shrink-0 */}
                                             </TooltipTrigger>
                                             <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
                                         </Tooltip>
@@ -461,3 +461,4 @@ export function CharacterSidebar({
     </div>
   );
 }
+
