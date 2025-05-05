@@ -34,7 +34,7 @@ const BaseCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
   details: z.string(),
-  affinity: z.number().optional().default(50),
+  affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion."),
   // Add other fields explicitly used in the prompt or logic if needed
   // For simplicity, relying on passthrough() for less critical fields
 }).passthrough();
@@ -147,7 +147,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema, // Use the updated output schema
   },
-  // Updated Handlebars prompt - use historySummary directly and add affinity instructions
+  // Updated Handlebars prompt - explicitly detail affinity influence
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The target language for history entries is {{currentLanguage}}.
 
 World: {{{world}}}
@@ -159,7 +159,7 @@ Known Characters:
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
-  Current Affinity: {{#if this.affinity}}{{this.affinity}}/100{{else}}50/100 (Neutral){{/if}} (This influences their behavior towards the user: 0=Hate, 50=Neutral, 100=Love/Devotion)
+  Current Affinity: {{this.affinity}}/100 (This score dictates their feelings and behavior towards the user on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral.)
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -180,17 +180,23 @@ Player Stats: {{#each promptConfig.rpgContext.playerStats}}{{@key}}: {{this}} {{
 {{/if}}
 
 Tasks:
-1.  Generate the next part of the story ("Narrative Continuation") based on all the context and the user's action. Be creative and engaging. **CRITICAL: Ensure each known character's behavior, dialogue, and actions reflect their 'Current Affinity' towards the user.**
-    - Low Affinity (0-30): Hostile, uncooperative, distrustful, may act against the user.
-    - Medium Affinity (31-69): Neutral, cautious, potentially helpful but self-interested.
-    - High Affinity (70-100): Friendly, cooperative, helpful, supportive, may take risks for the user.
-2.  Analyze the "Narrative Continuation". Identify any characters mentioned by name that are NOT in the "Known Characters" list above. List these newly introduced characters in the 'newCharacters' output field. Include their name, a brief description derived from the context, and try to identify the location/circumstance of the meeting to include in the description and/or the 'initialHistoryEntry'. Ensure the 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
-3.  Based ONLY on the "Narrative Continuation", provide a concise visual description suitable for generating an image of the scene ('sceneDescriptionForImage'). Focus on the key visual elements, setting, mood, and characters present. IMPORTANT: Describe any characters using their physical appearance or role (e.g., "a tall man with blond hair", "the bartender", "a young woman with brown hair") INSTEAD of their names. If the narrative is purely dialogue or internal monologue with no strong visual scene, omit this field or provide a brief summary like "Character thinking".
-4.  Analyze the "Narrative Continuation" again. For each **KNOWN character** (from the input list) involved in a significant action or who says a memorable quote, create a brief 'historyEntry' summarizing it. This entry MUST be in the target language: {{currentLanguage}}. Add these entries to the 'characterUpdates' output field, specifying the character's name and the summary.
-5.  Analyze the interaction between the user (implied by 'User Action') and the **KNOWN characters** within the "Narrative Continuation". Determine how the user's action and the resulting events affect each known character's affinity towards the user. Affinity scale: 0 (hate) - 50 (neutral) - 100 (love/devotion). For each character whose affinity might change, add an entry to the 'affinityUpdates' field with the character's name and the estimated integer change (e.g., +5 for helping, -10 for insulting, 0 for neutral). Include a brief 'reason'.
+1.  **Generate the "Narrative Continuation":** Write the next part of the story based on all context and the user's action. Be creative and engaging.
+    **CRITICAL: Each known character's behavior, dialogue, and internal thoughts (if appropriate) MUST reflect their 'Current Affinity' towards the user.** Use the following affinity levels as a guide:
+    *   **0-10 (Haine Profonde):** Openly hostile, insulting, aggressive. May actively sabotage or attack the user. Refuses cooperation. Expresses disgust or contempt.
+    *   **11-30 (Hostile):** Uncooperative, distrustful, rude, sarcastic. Avoids the user or speaks negatively about them. May hinder the user indirectly.
+    *   **31-45 (Méfiant):** Cautious, reserved, suspicious. Dialogue is curt and minimal. Avoids sharing information. Actions are self-serving. Body language is closed off.
+    *   **46-55 (Neutre):** Indifferent, polite but distant. Interactions are transactional. Neither helps nor hinders unnecessarily. Normal, unremarkable behavior.
+    *   **56-70 (Amical):** Friendly, generally cooperative, willing to chat. May offer minor assistance or advice. Shows basic positive regard.
+    *   **71-90 (Loyal):** Warm, supportive, actively helpful. Trusts the user and shares information freely. Enjoys the user's company. May defend or assist the user proactively. Compliments are genuine.
+    *   **91-100 (Dévoué / Amour):** Deep affection, utmost loyalty. Prioritizes the user's well-being, potentially taking risks for them. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate.
+
+2.  **Identify New Characters:** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field. Include their name, a brief description derived from the context, and the location/circumstance of meeting (if possible) in the description and/or 'initialHistoryEntry'. Ensure 'initialHistoryEntry' is in the target language: {{currentLanguage}}.
+3.  **Describe the Scene for Image:** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
+4.  **Log Character Updates:** Analyze the "Narrative Continuation". For each **KNOWN character** involved in a significant action or memorable quote, create a brief 'historyEntry' summarizing it in the target language: {{currentLanguage}}. Add these to the 'characterUpdates' field.
+5.  **Calculate Affinity Updates:** Analyze the user's interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect affinity (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'.
 
 Narrative Continuation:
-[Generate the next part of the story here, reflecting character affinities.]
+[Generate the next part of the story here, reflecting character affinities as described in Task 1.]
 `,
 });
 
