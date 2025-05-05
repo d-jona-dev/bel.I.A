@@ -85,7 +85,7 @@ export function CharacterSidebar({
                  let numValue = parseInt(value, 10);
                  // Clamp affinity between 0 and 100
                  if (field === 'affinity') {
-                    numValue = Math.max(0, Math.min(100, numValue));
+                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue)); // Clamp and default to 50 if NaN
                  }
                  onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue }); // Default affinity to 50 if parse fails
             } else {
@@ -290,7 +290,8 @@ export function CharacterSidebar({
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
-                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase());
+                            // Check if _lastSaved exists to avoid showing "new" after save
+                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase()) && !char._lastSaved;
                         } catch (e) {
                             console.error("Error accessing localStorage:", e);
                         }
@@ -300,8 +301,8 @@ export function CharacterSidebar({
                     return (
                     <AccordionItem value={char.id} key={char.id}>
                         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50"> {/* Adjusted hover */}
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
+                            <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Added flex-1 and min-w-0 */}
+                                <Avatar className="h-8 w-8 flex-shrink-0"> {/* Added flex-shrink-0 */}
                                      {imageLoadingStates[char.id] ? (
                                         <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
                                      ) : char.portraitUrl ? (
@@ -310,13 +311,14 @@ export function CharacterSidebar({
                                         <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                      )}
                                 </Avatar>
-                                <span className="font-medium">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
+                                <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
                                 {/* Optional: Add a small badge/icon if potentially new */}
                                 {isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger>
-                                                <Star className="h-3 w-3 text-yellow-500 ml-1" />
+                                             {/* Added asChild to TooltipTrigger */}
+                                            <TooltipTrigger asChild>
+                                                <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /> {/* Added flex-shrink-0 */}
                                             </TooltipTrigger>
                                             <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
                                         </Tooltip>
