@@ -1,3 +1,4 @@
+
 "use client"; // Mark page as Client Component to manage state
 
 import * as React from "react";
@@ -80,7 +81,8 @@ export default function Home() {
   ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr"); // Add state for language
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); // State for regeneration loading
-  const [isRestarting, setIsRestarting] = React.useState<boolean>(false); // State for restart loading/confirmation
+  const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false); // State for restart confirmation dialog
+
   const { toast } = useToast();
 
   // --- Callback Functions ---
@@ -174,22 +176,18 @@ export default function Home() {
                 if (!currentNames.has(newCharData.name.toLowerCase())) {
                     const newId = `${newCharData.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
                     
-                    // Process AI-suggested initial relations
+                    // Process AI-suggested initial relations (now an array of objects)
                     const processedRelations: Record<string, string> = {};
-                    if (newCharData.initialRelations) {
-                        Object.entries(newCharData.initialRelations).forEach(([targetName, description]) => {
-                            if (targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
-                                processedRelations[PLAYER_ID] = description; // Relation to player
+                    if (newCharData.initialRelations && Array.isArray(newCharData.initialRelations)) {
+                        newCharData.initialRelations.forEach(rel => {
+                            if (rel.targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
+                                processedRelations[PLAYER_ID] = rel.description; // Relation to player
                             } else {
-                                const targetChar = existingChars.find(ec => ec.name.toLowerCase() === targetName.toLowerCase());
+                                const targetChar = existingChars.find(ec => ec.name.toLowerCase() === rel.targetName.toLowerCase());
                                 if (targetChar) {
-                                    processedRelations[targetChar.id] = description; // Relation to existing NPC
+                                    processedRelations[targetChar.id] = rel.description; // Relation to existing NPC
                                 } else {
-                                     // This case should ideally not happen if AI follows instructions to only relate to known chars or player
-                                    console.warn(`New character ${newCharData.name} has initial relation to unknown target ${targetName}. Setting to 'Inconnu'.`);
-                                    // We can't create an ID for an unknown target here, so we might skip or use a placeholder.
-                                    // For now, let's set a generic "Unknown" relation if targetName is not player or an existing char.
-                                    // This assumes the AI will use names that match existing characters or the player.
+                                    console.warn(`New character ${newCharData.name} has initial relation to unknown target ${rel.targetName}. Setting to 'Inconnu'.`);
                                 }
                             }
                         });
@@ -562,17 +560,18 @@ export default function Home() {
                 const existingCharsStr = localStorage.getItem('globalCharacters');
                 let existingChars: Character[] = existingCharsStr ? JSON.parse(existingCharsStr) : [];
 
-                const charIndex = existingChars.findIndex(c => c.name.toLowerCase() === character.name.toLowerCase());
+                const charIndex = existingChars.findIndex(c => c.id === character.id || c.name.toLowerCase() === character.name.toLowerCase());
                 if (charIndex > -1) {
-                    existingChars[charIndex] = character;
+                    existingChars[charIndex] = character; // Update existing
                 } else {
-                    existingChars.push(character);
+                    existingChars.push(character); // Add new
                 }
 
                 localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
                  setTimeout(() => {
                     toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` });
                  }, 0);
+                 // Mark the character as saved locally to update UI (e.g., remove "New" badge)
                  handleCharacterUpdate({ ...character, _lastSaved: Date.now() } as any);
 
             } catch (error) {
@@ -598,7 +597,7 @@ export default function Home() {
             characters: charactersToSave,
             narrative,
             currentLanguage,
-            saveFormatVersion: 1.6,
+            saveFormatVersion: 1.6, // Current save format version
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -685,6 +684,7 @@ export default function Home() {
                     portraitUrl: c.portraitUrl || null,
                     affinity: c.affinity ?? 50,
                     relations: c.relations || { [PLAYER_ID]: loadedLang === 'fr' ? "Inconnu" : "Unknown" }, // Relations in loaded language
+                    _lastSaved: c._lastSaved, // Preserve _lastSaved if present
                     ...(rpgModeActive && {
                         level: c.level ?? 1,
                         experience: c.experience ?? 0,
@@ -729,25 +729,24 @@ export default function Home() {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Function to handle restarting the adventure
-  const handleRestartAdventure = () => {
-    setIsRestarting(true); // To potentially show a loading state or confirmation dialog
+  const confirmRestartAdventure = () => {
     // Reset narrative to initial situation
     setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
     // Reset characters to the initial set defined in adventureSettings
-    // Ensure this is a deep copy if initialCharactersFromSettings can be mutated elsewhere or contains nested objects.
-    setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings)));
-    // Any other state to reset (e.g., current image, choices)
-    // setImageUrl(null);
-    // setChoices([]);
-    setIsRestarting(false);
+    setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings))); // Deep copy
+    setImageUrl(null); // Reset current image if any
+    // setChoices([]); // Reset choices if any
+    setShowRestartConfirm(false); // Close the dialog
     setTimeout(() => {
       toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
     }, 0);
   };
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null); // Add imageUrl state for reset
 
 
   // --- Render ---
   return (
+    <>
       <PageStructure
         adventureSettings={adventureSettings}
         characters={characters}
@@ -774,7 +773,23 @@ export default function Home() {
         handleUndoLastMessage={handleUndoLastMessage}
         playerId={PLAYER_ID}
         playerName={adventureSettings.playerName || "Player"}
-        onRestartAdventure={handleRestartAdventure} // Pass restart handler
+        onRestartAdventure={() => setShowRestartConfirm(true)} // Show confirmation dialog
       />
+       {/* Restart Confirmation Dialog */}
+       <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowRestartConfirm(false)}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmRestartAdventure}>Recommencer</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </>
   );
 }
