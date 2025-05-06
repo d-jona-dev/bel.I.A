@@ -81,7 +81,7 @@ const NewCharacterSchema = z.object({
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including the location/circumstance of meeting if possible. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable. MUST be in the specified language."),
     // Suggest initial relations based on context
-    initialRelations: z.record(z.string()).optional().describe("Suggested initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
+    initialRelations: z.object({}).catchall(z.string()).optional().describe("Suggested initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
 });
 
 // Define schema for character history updates
