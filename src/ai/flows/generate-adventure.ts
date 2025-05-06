@@ -81,8 +81,7 @@ const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including the location/circumstance of meeting if possible. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable. MUST be in the specified language."),
-    initialRelations: z.object({}) // Defines an empty object schema.
-                         .passthrough() // Allows any additional string-keyed properties.
+    initialRelations: z.record(z.string(), z.string())
                          .optional()
                          .describe("An object map where keys are names of known characters or the player's name (e.g., '{{playerName}}', 'Rina'), and values are string descriptions of the new character's initial relation towards them (e.g., 'Curieux', 'Indifférent'). Base this on the context of their introduction. If no specific interaction implies a relation, use 'Inconnu' (or its {{currentLanguage}} equivalent). ALL relation descriptions MUST be in {{currentLanguage}}.")
 });
@@ -308,5 +307,7 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
+    
 
     
