@@ -35,7 +35,7 @@ const BaseCharacterSchema = z.object({
   name: z.string(),
   details: z.string(),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion."),
-  relations: z.record(z.string()).optional().describe("Relationship towards other characters/player (key: character ID or 'player', value: description e.g., 'Petite amie', 'Ami'). MUST be in the specified language."),
+  relations: z.record(z.string(), z.string()).optional().describe("Relationship towards other characters/player (key: character ID or 'player', value: description e.g., 'Petite amie', 'Ami'). MUST be in the specified language."),
   // Add other fields explicitly used in the prompt or logic if needed
   // For simplicity, relying on passthrough() for less critical fields
 }).passthrough();
@@ -81,7 +81,7 @@ const NewCharacterSchema = z.object({
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including the location/circumstance of meeting if possible. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable. MUST be in the specified language."),
     // Suggest initial relations based on context
-    initialRelations: z.object({}).catchall(z.string()).optional().describe("Suggested initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
+    initialRelations: z.record(z.string(), z.string()).optional().describe("Suggested initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
 });
 
 // Define schema for character history updates
