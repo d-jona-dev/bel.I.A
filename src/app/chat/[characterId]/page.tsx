@@ -10,11 +10,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Loader2, ArrowLeft, User as UserIcon, Bot } from "lucide-react";
+import { Send, Loader2, ArrowLeft, User as UserIcon, Bot, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Character, Message } from "@/types";
 import { simpleChat } from "@/ai/flows/simple-chat"; // Import the simple chat flow
 import type { SimpleChatInput, SimpleChatOutput, ChatMessage } from "@/ai/flows/simple-chat";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export default function CharacterChatPage() {
   const params = useParams();
@@ -27,6 +39,7 @@ export default function CharacterChatPage() {
   const [userInput, setUserInput] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isLoadingCharacter, setIsLoadingCharacter] = React.useState<boolean>(true);
+  const [adventureContextSummary, setAdventureContextSummary] = React.useState<string>("");
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
 
@@ -43,9 +56,16 @@ export default function CharacterChatPage() {
             setChatHistory([{
               id: `sys-${Date.now()}`,
               type: 'system',
-              content: `Vous discutez maintenant avec ${foundCharacter.name}.`,
+              content: `Vous discutez maintenant avec ${foundCharacter.name}. Elle se souvient des événements passés des aventures.`,
               timestamp: Date.now()
             }]);
+
+            // Prepare adventure context summary
+            const summary = foundCharacter.history && foundCharacter.history.length > 0
+              ? `Voici quelques souvenirs partagés avec vous (le joueur) lors d'aventures précédentes :\n- ${foundCharacter.history.slice(-5).join('\n- ')}` // Last 5 history items
+              : "Aucun souvenir d'aventure spécifique n'est disponible pour le moment.";
+            setAdventureContextSummary(summary);
+
           } else {
             toast({ title: "Personnage non trouvé", description: "Le personnage que vous essayez de contacter n'existe pas.", variant: "destructive" });
             router.push('/histoires'); // Redirect if character not found
@@ -91,22 +111,20 @@ export default function CharacterChatPage() {
       timestamp: Date.now(),
     };
     
-    // Prepare history for AI: current local chatHistory (before adding the new user message)
     const historyForAI: ChatMessage[] = chatHistory.map(m => ({
-        role: m.type === 'user' ? 'user' : (m.type === 'ai' ? 'model' : 'user'), // map 'system' to 'user' for Gemini
+        role: m.type === 'user' ? 'user' : (m.type === 'ai' ? 'model' : 'user'),
         parts: [{ text: m.content }]
     }));
 
-    // Update local chat history with the new user message *after* preparing historyForAI
     setChatHistory(prev => [...prev, newUserMessage]);
-
 
     try {
       const input: SimpleChatInput = {
         characterName: character.name,
-        characterDetails: character.details || "Aucun détail spécifique fourni.", // Ensure details is always a string
-        chatHistory: historyForAI, // Pass the history *before* the current user message
-        userMessage: userMessageContent, // Pass the current user message separately
+        characterDetails: character.details || "Aucun détail spécifique fourni.",
+        chatHistory: historyForAI,
+        userMessage: userMessageContent,
+        adventureContextSummary: adventureContextSummary, // Pass the prepared summary
       };
 
       const result: SimpleChatOutput = await simpleChat(input);
@@ -168,8 +186,38 @@ export default function CharacterChatPage() {
             <AvatarFallback>{character.name.substring(0, 2).toUpperCase()}</AvatarFallback>
           )}
         </Avatar>
-        <h1 className="text-xl font-semibold">{character.name}</h1>
+        <div className="flex-1">
+            <h1 className="text-xl font-semibold">{character.name}</h1>
+            <p className="text-xs text-muted-foreground line-clamp-1">{character.details}</p>
+        </div>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={() => { /* Can show a dialog with full summary */ }}>
+                        <Info className="h-5 w-5" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                    <p className="font-semibold mb-1">Souvenirs d'aventure avec vous :</p>
+                    <p className="text-xs whitespace-pre-wrap">{adventureContextSummary}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
       </header>
+      
+      <Accordion type="single" collapsible className="mb-2">
+        <AccordionItem value="adventure-summary">
+          <AccordionTrigger className="text-sm p-2 bg-muted/50 rounded-md">
+            Résumé des souvenirs d'aventure avec {character.name}
+          </AccordionTrigger>
+          <AccordionContent className="p-2 text-xs text-muted-foreground bg-muted/20 rounded-md">
+            <ScrollArea className="h-24">
+             <p className="whitespace-pre-wrap">{adventureContextSummary}</p>
+            </ScrollArea>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
 
       <Card className="flex-1 flex flex-col overflow-hidden shadow-lg rounded-lg">
         <CardContent className="flex-1 overflow-hidden p-0">

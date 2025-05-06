@@ -2,6 +2,7 @@
 'use server';
 /**
  * @fileOverview A simple chat AI agent for interacting with a single character.
+ * Allows characters to recall past adventure events.
  *
  * - simpleChat - A function that handles the chat process with a character.
  * - SimpleChatInput - The input type for the simpleChat function.
@@ -24,6 +25,7 @@ const SimpleChatInputSchema = z.object({
   characterDetails: z.string().describe('A brief description of the character, including personality traits, background, and how they might speak. This is CRUCIAL for the AI to adopt the persona.'),
   chatHistory: z.array(ChatMessageSchema).optional().describe('The history of the conversation so far. The last message in history is often the latest user message if the user just sent something.'),
   userMessage: z.string().describe('The latest message from the user to the character.'),
+  adventureContextSummary: z.string().optional().describe('A summary of key interactions or events this character had with the player during past adventures. This helps the character remember these events and discuss them if relevant.'),
 });
 export type SimpleChatInput = z.infer<typeof SimpleChatInputSchema>;
 
@@ -39,26 +41,37 @@ export async function simpleChat(input: SimpleChatInput): Promise<SimpleChatOutp
 
 const prompt = ai.definePrompt({
   name: 'simpleChatPrompt',
-  // System message to set the persona
+  // System message to set the persona and context
   system: `You are {{characterName}}.
 Your personality and background: {{characterDetails}}.
-Respond naturally as this character, keeping your persona in mind.
-Engage in a conversation based on the history provided and the user's latest message.
-Keep your responses concise and in character.`,
+
+You are now chatting with the user outside of any specific adventure or ongoing story. This is a direct conversation.
+Engage naturally as this character, keeping your persona in mind.
+Respond to the user's latest message based on the conversation history provided.
+Keep your responses concise and in character.
+
+{{#if adventureContextSummary}}
+Here are some key memories or events from past adventures you had with the user (named 'Player' in those contexts, unless specified otherwise):
+{{{adventureContextSummary}}}
+You can refer to these memories if they are relevant to the current conversation.
+{{else}}
+You don't have any specific shared adventure memories to draw upon right now, so focus on the current conversation.
+{{/if}}
+`,
   // Input schema for the prompt (excluding chatHistory, which is handled by `messages` field)
   input: {
     schema: z.object({
         characterName: SimpleChatInputSchema.shape.characterName,
         characterDetails: SimpleChatInputSchema.shape.characterDetails,
-        userMessage: SimpleChatInputSchema.shape.userMessage, // Add userMessage here
+        userMessage: SimpleChatInputSchema.shape.userMessage,
+        adventureContextSummary: SimpleChatInputSchema.shape.adventureContextSummary, // Add adventureContextSummary
     })
   },
-  output: { // Define output schema for structured response, though we only need a string here
+  output: {
     schema: SimpleChatOutputSchema
   },
-  // The prompt itself is mostly handled by the system message and chat history.
-  // We add the user message explicitly here.
-  prompt: `{{userMessage}}`, 
+  // The prompt itself is the user's message.
+  prompt: `{{userMessage}}`,
 });
 
 
@@ -72,34 +85,28 @@ const simpleChatFlow = ai.defineFlow<
     outputSchema: SimpleChatOutputSchema,
   },
   async (input) => {
-    // History should not include the current userMessage if it's passed directly to the prompt
     const historyForPrompt: ChatMessage[] = input.chatHistory || [];
     
-    // Ensure the last message in historyForPrompt is not the current userMessage
-    // if the caller includes it there. The prompt itself now handles userMessage.
     // This logic assumes that `input.chatHistory` might redundantly include the `input.userMessage`
     // as its last element. If `input.chatHistory` is guaranteed to be only *previous* messages,
     // this check can be simplified or removed.
     const lastHistoryMessageText = historyForPrompt.length > 0 ? historyForPrompt[historyForPrompt.length - 1].parts[0]?.text : undefined;
     
     let actualHistoryToSend = historyForPrompt;
-    if (lastHistoryMessageText === input.userMessage) {
-        // If the last message in history is identical to the userMessage,
-        // assume it's a duplicate and remove it from history before sending.
+    if (lastHistoryMessageText === input.userMessage && historyForPrompt.length > 0) {
         actualHistoryToSend = historyForPrompt.slice(0, -1);
     }
-
 
     console.log("SimpleChat Flow Input:", JSON.stringify(input, null, 2));
     console.log("SimpleChat Flow actualHistoryToSend:", JSON.stringify(actualHistoryToSend, null, 2));
 
-
-    const {output, history: updatedHistory} = await prompt( // Renamed 'history' from prompt response to 'updatedHistory'
-      // Pass characterName, characterDetails and userMessage for the prompt's handlebars
+    const {output, history: updatedHistory} = await prompt(
+      // Pass characterName, characterDetails, userMessage and adventureContextSummary for the prompt's handlebars
       {
         characterName: input.characterName,
         characterDetails: input.characterDetails,
         userMessage: input.userMessage,
+        adventureContextSummary: input.adventureContextSummary, // Pass the summary
       },
       // Pass the (potentially adjusted) conversation history
       {
@@ -113,7 +120,6 @@ const simpleChatFlow = ai.defineFlow<
     }
     console.log("SimpleChat Flow Output:", JSON.stringify(output, null, 2));
     console.log("SimpleChat Flow History after call:", JSON.stringify(updatedHistory, null, 2));
-
 
     return { response: output.response };
   }
