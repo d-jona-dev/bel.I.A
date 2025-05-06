@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -37,6 +36,7 @@ interface CharacterSidebarProps {
     rpgMode: boolean; // To show/hide RPG elements
     playerId: string; // Player's unique ID
     playerName: string; // Player's name
+    currentLanguage: string; // Current language for localization
 }
 
 export function CharacterSidebar({
@@ -48,6 +48,7 @@ export function CharacterSidebar({
     rpgMode,
     playerId,
     playerName,
+    currentLanguage,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false); // State to track client-side rendering
@@ -66,6 +67,7 @@ export function CharacterSidebar({
 
     try {
       // Create a prompt for the portrait based on character details
+      // Details are already in the target language if loaded/created correctly
       const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode ? `Class: ${character.characterClass || 'Unknown'}.` : ''}`; // Add class if RPG mode
       const result = await generateImageAction({ sceneDescription: prompt });
 
@@ -125,7 +127,7 @@ export function CharacterSidebar({
              }
 
              if (field === 'relations') {
-                 onRelationUpdate(charId, key, String(finalValue)); // Use the specific callback for relations
+                 onRelationUpdate(charId, key, String(finalValue)); // Use the specific callback for relations, value is already in target language
              } else {
                 const updatedField = { ...currentFieldData, [key]: finalValue };
                 onCharacterUpdate({ ...character, [field]: updatedField });
@@ -137,8 +139,8 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
              if (field === 'relations') {
-                 // For relations, maybe set to "Inconnu" instead of deleting?
-                 onRelationUpdate(charId, key, "Inconnu");
+                 // For relations, set to localized "Unknown" instead of deleting
+                 onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
              } else {
                 const updatedField = { ...character[field] };
                 delete updatedField[key];
@@ -161,7 +163,7 @@ export function CharacterSidebar({
                  valuePrompt = `Entrez la quantité pour ${key} :`;
                  defaultValue = 1;
             } else if (field === 'opinion') {
-                 defaultValue = 'Neutre';
+                 defaultValue = currentLanguage === 'fr' ? 'Neutre' : 'Neutral';
             } else if (field === 'skills') {
                  valuePrompt = `Entrez la valeur/bonus pour ${key} (ou laissez vide pour compétence acquise) :`;
                  defaultValue = true; // Default to boolean true (proficient)
@@ -183,7 +185,7 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
             const updatedArray = [...character[field]!];
-            updatedArray[index] = value;
+            updatedArray[index] = value; // Value is already in target language if it's history
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
@@ -213,20 +215,30 @@ export function CharacterSidebar({
     // Helper to get affinity label
     const getAffinityLabel = (affinity: number | undefined): string => {
         const value = affinity ?? 50;
-        if (value <= 10) return "Haine profonde";
+        if (currentLanguage === 'fr') {
+            if (value <= 10) return "Haine profonde";
+            if (value <= 30) return "Hostile";
+            if (value <= 45) return "Méfiant";
+            if (value <= 55) return "Neutre";
+            if (value <= 70) return "Amical";
+            if (value <= 90) return "Loyal";
+            return "Dévoué / Amour";
+        }
+        // Default to English or adapt for other languages
+        if (value <= 10) return "Deep Hate";
         if (value <= 30) return "Hostile";
-        if (value <= 45) return "Méfiant";
-        if (value <= 55) return "Neutre";
-        if (value <= 70) return "Amical";
+        if (value <= 45) return "Wary";
+        if (value <= 55) return "Neutral";
+        if (value <= 70) return "Friendly";
         if (value <= 90) return "Loyal";
-        return "Dévoué / Amour";
+        return "Devoted / Love";
     };
 
     // Helper to get character name by ID or player name
     const getCharacterNameById = (id: string): string => {
         if (id === playerId) return playerName;
         const char = characters.find(c => c.id === id);
-        return char?.name || "Inconnu";
+        return char?.name || (currentLanguage === 'fr' ? "Inconnu" : "Unknown");
     }
 
 
@@ -279,6 +291,7 @@ export function CharacterSidebar({
  // Specific component for Relations
  const RelationsEditableCard = ({ charId, data }: { charId: string, data?: Record<string, string> }) => {
     const otherCharacters = characters.filter(c => c.id !== charId); // Exclude self
+    const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
     return (
         <div className="space-y-2">
@@ -291,10 +304,10 @@ export function CharacterSidebar({
                         <Input
                             id={`${charId}-relations-${playerId}`}
                             type="text"
-                            value={data?.[playerId] || "Inconnu"}
+                            value={data?.[playerId] || unknownRelation}
                             onChange={(e) => handleNestedFieldChange(charId, 'relations', playerId, e.target.value)}
                             className="h-8 text-sm flex-1"
-                            placeholder="Ami, Ennemi, Parent..."
+                            placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
                         />
                          {/* No delete for player relation */}
                      </div>
@@ -306,20 +319,20 @@ export function CharacterSidebar({
                             <Input
                                 id={`${charId}-relations-${otherChar.id}`}
                                 type="text"
-                                value={data?.[otherChar.id] || "Inconnu"}
+                                value={data?.[otherChar.id] || unknownRelation}
                                 onChange={(e) => handleNestedFieldChange(charId, 'relations', otherChar.id, e.target.value)}
                                 className="h-8 text-sm flex-1"
-                                placeholder="Ami, Ennemi, Parent..."
+                                placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
                             />
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNestedField(charId, 'relations', otherChar.id)} title="Réinitialiser la relation à Inconnu">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNestedField(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
                     ))}
-                    {otherCharacters.length === 0 && !data?.[playerId] && (
-                         <p className="text-muted-foreground italic text-sm">Aucune relation définie.</p>
+                    {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( // Check if only player relation or no relations
+                         <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
                     )}
-                     <p className="text-xs text-muted-foreground pt-1">Décrivez la relation de ce personnage envers les autres.</p>
+                     <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
                 </CardContent>
             </Card>
         </div>
@@ -337,10 +350,10 @@ export function CharacterSidebar({
                         {data.map((item, index) => (
                             <div key={index} className="flex items-center gap-2 mb-1">
                                 <Textarea // Use Textarea for history
-                                    value={item}
+                                    value={item} // Item is already in target language
                                     onChange={(e) => handleArrayFieldChange(charId, field, index, e.target.value)}
                                     className="text-sm flex-1 bg-background border"
-                                    placeholder={`Entrée ${index + 1}`}
+                                    placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
                                     rows={1} // Start with 1 row, auto-grow
                                 />
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => removeArrayFieldItem(charId, field, index)}>
@@ -350,7 +363,7 @@ export function CharacterSidebar({
                         ))}
                      </ScrollArea>
                  ) : (
-                     <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} ajouté(e).</p>
+                     <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
                  )}
                   <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => addArrayFieldItem(charId, field)}>
                      <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
@@ -365,7 +378,7 @@ export function CharacterSidebar({
   return (
     <div className="w-full"> {/* Added container div */}
         {characters.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Aucun personnage secondaire défini.</p>
+            <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini." : "No secondary characters defined."}</p>
         ) : (
             <Accordion type="multiple" className="w-full">
                 {characters.map((char) => {
@@ -376,8 +389,8 @@ export function CharacterSidebar({
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
-                            // Check if _lastSaved exists to avoid showing "new" after save
-                            isPotentiallyNew = !globalChars.some(gc => gc.name.toLowerCase() === char.name.toLowerCase()) && !(char as any)._lastSaved; // Type assertion to access potential _lastSaved
+                            // Check if character with the same name exists globally AND if _lastSaved is not present
+                            isPotentiallyNew = !globalChars.some(gc => gc.id === char.id || gc.name.toLowerCase() === char.name.toLowerCase()) && !(char as any)._lastSaved;
                         } catch (e) {
                             console.error("Error accessing localStorage:", e);
                         }
@@ -409,7 +422,7 @@ export function CharacterSidebar({
                                                     <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
                                                 </span>
                                             </TooltipTrigger>
-                                            <TooltipContent side="top">Nouveau personnage non sauvegardé globalement.</TooltipContent>
+                                            <TooltipContent side="top">{currentLanguage === 'fr' ? "Nouveau personnage non sauvegardé globalement." : "New character not saved globally."}</TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                 )}
@@ -422,10 +435,10 @@ export function CharacterSidebar({
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => onSaveNewCharacter(char)}>
-                                                <Save className="h-4 w-4 mr-1" /> Sauvegarder Globalement
+                                                <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder Globalement" : "Save Globally"}
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent side="bottom">Sauvegarder ce personnage pour le réutiliser dans d'autres aventures.</TooltipContent>
+                                        <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures."}</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             )}
@@ -445,10 +458,10 @@ export function CharacterSidebar({
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button variant="outline" size="sm" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}>
-                                                <Wand2 className="h-4 w-4 mr-1"/> Générer Portrait
+                                                <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Générer Portrait" : "Generate Portrait"}
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>Générer un portrait avec l'IA basé sur la description.</TooltipContent>
+                                        <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA basé sur la description." : "Generate an AI portrait based on the description."}</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                            </div>
@@ -457,16 +470,16 @@ export function CharacterSidebar({
 
                             {/* Base Details (Editable) */}
                             <EditableField
-                                label="Description"
+                                label={currentLanguage === 'fr' ? "Description" : "Description"}
                                 id={`${char.id}-details`}
-                                value={char.details}
+                                value={char.details} // Details should be in target language
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
 
                              {/* Affinity Section */}
                              <div className="space-y-2">
-                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> Affinité avec {playerName}</Label>
+                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
                                  <div className="flex items-center gap-2">
                                      <Input
                                          id={`${char.id}-affinity`}
@@ -539,10 +552,10 @@ export function CharacterSidebar({
                             <Separator />
 
                             {/* History (Editable List) */}
-                             <ArrayEditableCard charId={char.id} field="history" title="Historique Narratif" icon={History} data={char.history} addLabel="Ajouter Entrée Historique" />
+                             <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} />
 
                             {/* Opinion (Editable) */}
-                            <NestedEditableCard charId={char.id} field="opinion" title="Opinions" icon={Brain} data={char.opinion} addLabel="Ajouter Opinion"/>
+                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"}/>
 
                         </AccordionContent>
                     </AccordionItem>

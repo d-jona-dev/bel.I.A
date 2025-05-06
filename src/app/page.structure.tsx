@@ -1,4 +1,3 @@
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -10,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -24,7 +23,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog" // Import AlertDialog components
 
 // Import sub-components used in the structure
@@ -43,7 +41,7 @@ interface PageStructureProps {
   handleSettingsUpdate: (newSettings: any) => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
   handleCharacterUpdate: (updatedCharacter: Character) => void;
-  handleNewCharacters: (newChars: Array<{ name: string; details?: string, initialHistoryEntry?: string }>) => void; // Added initialHistoryEntry
+  handleNewCharacters: (newChars: NewCharacterSchema[]) => void; // Use NewCharacterSchema
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Added prop for affinity updates
   handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Added prop for manual relation updates
@@ -60,6 +58,7 @@ interface PageStructureProps {
   handleUndoLastMessage: () => void; // Added undo handler prop
   playerId: string; // Add playerId prop
   playerName: string; // Add playerName prop
+  onRestartAdventure: () => void; // Added restart adventure handler
 }
 
 export function PageStructure({
@@ -88,6 +87,7 @@ export function PageStructure({
   handleUndoLastMessage, // Added prop
   playerId, // Destructure player ID
   playerName, // Destructure player name
+  onRestartAdventure, // Destructure restart handler
 }: PageStructureProps) {
   return (
     <>
@@ -239,6 +239,7 @@ export function PageStructure({
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
                 onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
+                onRestartAdventure={onRestartAdventure} // Pass restart handler
              />
         </main>
       </SidebarInset>
@@ -300,6 +301,7 @@ export function PageStructure({
                                      rpgMode={adventureSettings.rpgMode}
                                      playerId={playerId} // Pass player ID
                                      playerName={playerName} // Pass player name
+                                     currentLanguage={currentLanguage} // Pass current language
                                  />
                              </AccordionContent>
                          </AccordionItem>

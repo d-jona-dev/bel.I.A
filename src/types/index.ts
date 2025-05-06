@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface Message {
@@ -13,16 +12,16 @@ export interface Message {
 export interface Character {
   id: string; // Unique ID for the character
   name: string;
-  details: string; // Base description from the form
+  details: string; // Base description, SHOULD be in target language
 
   // RPG specific fields (optional based on rpgMode)
   stats?: Record<string, number | string>; // e.g., { HP: 10, STR: 5, Class: 'Warrior' }
   inventory?: Record<string, number>; // e.g., { Gold: 100, Sword: 1 }
-  history?: string[]; // Log of significant events, actions, or quotes involving the character
-  opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }
+  history?: string[]; // Log of significant events, actions, or quotes involving the character, SHOULD be in target language
+  opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }, SHOULD be in target language
   portraitUrl?: string | null; // URL for generated portrait
   affinity?: number; // Affinity towards the player (0-100)
-  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID or 'player', value: description e.g., "Petite amie", "Ami")
+  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID or 'player', value: description e.g., "Petite amie", "Ami"), SHOULD be in target language
 
   // Potential future fields for RPG mode (aligned with D&D concepts)
   level?: number;
@@ -45,6 +44,8 @@ export interface Character {
   techniques?: string[]; // Special combat moves
   passiveAbilities?: string[]; // Innate abilities
   // Add alignment, background, etc. if needed
+
+  _lastSaved?: number; // Timestamp of last global save to help UI distinguish new characters
 }
 
 export interface AdventureSettings {
