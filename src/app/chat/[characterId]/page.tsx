@@ -14,7 +14,7 @@ import { Send, Loader2, ArrowLeft, User as UserIcon, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Character, Message } from "@/types";
 import { simpleChat } from "@/ai/flows/simple-chat"; // Import the simple chat flow
-import type { SimpleChatInput, SimpleChatOutput } from "@/ai/flows/simple-chat";
+import type { SimpleChatInput, SimpleChatOutput, ChatMessage } from "@/ai/flows/simple-chat";
 
 export default function CharacterChatPage() {
   const params = useParams();
@@ -90,17 +90,23 @@ export default function CharacterChatPage() {
       content: userMessageContent,
       timestamp: Date.now(),
     };
+    
+    // Prepare history for AI: current local chatHistory (before adding the new user message)
+    const historyForAI: ChatMessage[] = chatHistory.map(m => ({
+        role: m.type === 'user' ? 'user' : (m.type === 'ai' ? 'model' : 'user'), // map 'system' to 'user' for Gemini
+        parts: [{ text: m.content }]
+    }));
+
+    // Update local chat history with the new user message *after* preparing historyForAI
     setChatHistory(prev => [...prev, newUserMessage]);
+
 
     try {
       const input: SimpleChatInput = {
         characterName: character.name,
-        characterDetails: character.details,
-        chatHistory: [...chatHistory, newUserMessage].map(m => ({ // Send current history + new user message
-            role: m.type === 'user' ? 'user' : (m.type === 'ai' ? 'model' : 'user'), // map 'system' to 'user' for Gemini
-            parts: [{ text: m.content }]
-        })),
-        userMessage: userMessageContent,
+        characterDetails: character.details || "Aucun détail spécifique fourni.", // Ensure details is always a string
+        chatHistory: historyForAI, // Pass the history *before* the current user message
+        userMessage: userMessageContent, // Pass the current user message separately
       };
 
       const result: SimpleChatOutput = await simpleChat(input);
@@ -120,9 +126,6 @@ export default function CharacterChatPage() {
         description: `Impossible d'obtenir une réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`,
         variant: "destructive",
       });
-       // Re-add user input if AI fails
-      // setUserInput(userMessageContent); // No, keep it cleared, user can resend.
-      // Optionally add an error message to chat history
       const errorMessage: Message = {
         id: `err-${Date.now()}`,
         type: 'system',
@@ -233,3 +236,4 @@ export default function CharacterChatPage() {
     </div>
   );
 }
+

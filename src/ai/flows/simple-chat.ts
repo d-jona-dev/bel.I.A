@@ -50,15 +50,15 @@ Keep your responses concise and in character.`,
     schema: z.object({
         characterName: SimpleChatInputSchema.shape.characterName,
         characterDetails: SimpleChatInputSchema.shape.characterDetails,
-        // userMessage is not explicitly in input schema for prompt, it will be the last message in history
+        userMessage: SimpleChatInputSchema.shape.userMessage, // Add userMessage here
     })
   },
   output: { // Define output schema for structured response, though we only need a string here
     schema: SimpleChatOutputSchema
   },
   // The prompt itself is mostly handled by the system message and chat history.
-  // We don't need a complex handlebars template here if using `messages` in the call.
-  prompt: ``, // Empty prompt string, as context is provided via system and messages
+  // We add the user message explicitly here.
+  prompt: `{{userMessage}}`, 
 });
 
 
@@ -72,33 +72,50 @@ const simpleChatFlow = ai.defineFlow<
     outputSchema: SimpleChatOutputSchema,
   },
   async (input) => {
-    const messages: ChatMessage[] = input.chatHistory || [];
-    // The userMessage is already included as the last message in chatHistory by the caller if it's a continuation.
-    // If chatHistory was empty and this is the first message, userMessage forms the start of the conversation.
-    // For Gemini, the `messages` array in `generate()` expects the full conversation history.
+    // History should not include the current userMessage if it's passed directly to the prompt
+    const historyForPrompt: ChatMessage[] = input.chatHistory || [];
+    
+    // Ensure the last message in historyForPrompt is not the current userMessage
+    // if the caller includes it there. The prompt itself now handles userMessage.
+    // This logic assumes that `input.chatHistory` might redundantly include the `input.userMessage`
+    // as its last element. If `input.chatHistory` is guaranteed to be only *previous* messages,
+    // this check can be simplified or removed.
+    const lastHistoryMessageText = historyForPrompt.length > 0 ? historyForPrompt[historyForPrompt.length - 1].parts[0]?.text : undefined;
+    
+    let actualHistoryToSend = historyForPrompt;
+    if (lastHistoryMessageText === input.userMessage) {
+        // If the last message in history is identical to the userMessage,
+        // assume it's a duplicate and remove it from history before sending.
+        actualHistoryToSend = historyForPrompt.slice(0, -1);
+    }
+
 
     console.log("SimpleChat Flow Input:", JSON.stringify(input, null, 2));
+    console.log("SimpleChat Flow actualHistoryToSend:", JSON.stringify(actualHistoryToSend, null, 2));
 
-    const {output, history} = await prompt(
-      // Pass characterName and characterDetails for the system prompt's handlebars
+
+    const {output, history: updatedHistory} = await prompt( // Renamed 'history' from prompt response to 'updatedHistory'
+      // Pass characterName, characterDetails and userMessage for the prompt's handlebars
       {
         characterName: input.characterName,
         characterDetails: input.characterDetails,
+        userMessage: input.userMessage,
       },
-      // Pass the conversation history
+      // Pass the (potentially adjusted) conversation history
       {
-        history: messages, // Use the messages array directly
+        history: actualHistoryToSend,
       }
     );
 
     if (!output?.response) {
-      console.error("AI did not return a response. History:", history);
+      console.error("AI did not return a response. History from call:", updatedHistory);
       throw new Error("AI failed to generate a response for the character.");
     }
     console.log("SimpleChat Flow Output:", JSON.stringify(output, null, 2));
-    console.log("SimpleChat Flow History after call:", JSON.stringify(history, null, 2));
+    console.log("SimpleChat Flow History after call:", JSON.stringify(updatedHistory, null, 2));
 
 
     return { response: output.response };
   }
 );
+
