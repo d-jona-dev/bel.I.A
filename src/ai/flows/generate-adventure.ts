@@ -80,8 +80,7 @@ const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including the location/circumstance of meeting if possible. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable. MUST be in the specified language."),
-    // Suggest initial relations based on context
-    initialRelations: z.object({}).passthrough().optional().describe("Suggested initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
+    initialRelations: z.record(z.string(), z.string()).optional().describe("A map of initial relations for the new character based on the meeting context (towards player and existing characters). Keys should be character names (or player's name), values are relation descriptions (e.g., 'Ami potentiel', 'Suspect'). MUST be in the specified language.")
 });
 
 // Define schema for character history updates
@@ -233,7 +232,7 @@ Tasks:
     *   Include their 'name'.
     *   Provide 'details': a brief description derived from the context, including the location/circumstance of meeting (if possible). **MUST be in {{currentLanguage}}.**
     *   Provide 'initialHistoryEntry': a brief log about meeting the character (e.g., "Met {{playerName}} at the market."). **MUST be in {{currentLanguage}}.**
-    *   Provide 'initialRelations': an object where keys are names of known characters or '{{playerName}}', and values are string descriptions of the new character's initial relation towards them (e.g., { "{{playerName}}": "Curieux", "Rina": "Indifférent" }). Base this on the context of their introduction. If no specific interaction implies a relation, use "Inconnu" (or its {{currentLanguage}} equivalent). **ALL relation descriptions MUST be in {{currentLanguage}}.**
+    *   Provide 'initialRelations': an object map where keys are names of known characters or '{{playerName}}', and values are string descriptions of the new character's initial relation towards them (e.g., { "{{playerName}}": "Curieux", "Rina": "Indifférent" }). Base this on the context of their introduction. If no specific interaction implies a relation, use "Inconnu" (or its {{currentLanguage}} equivalent). **ALL relation descriptions MUST be in {{currentLanguage}}.**
 
 3.  **Describe the Scene for Image (in English, for image model):** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper", "a young woman with brown hair") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
 
