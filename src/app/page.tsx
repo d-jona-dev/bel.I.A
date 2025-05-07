@@ -105,6 +105,7 @@ export default function Home() {
         // Try to find existing character by name if ID is missing or new
         const existingChar = characters.find(ec => ec.name === c.name);
         const id = existingChar?.id || `${c.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`; // More unique ID
+        const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
         return {
             id: id,
             name: c.name,
@@ -113,7 +114,7 @@ export default function Home() {
             opinion: existingChar?.opinion || {},
             portraitUrl: existingChar?.portraitUrl || null,
             affinity: existingChar?.affinity ?? 50, // Keep existing affinity or default to 50
-            relations: existingChar?.relations || { [PLAYER_ID]: "Inconnu" }, // Relations assumed to be in currentLanguage
+            relations: existingChar?.relations || { [PLAYER_ID]: defaultRelation }, // Relations assumed to be in currentLanguage
             // Initialize RPG fields based on whether RPG mode is *currently* enabled
             ...(newRPGMode && {
                 level: existingChar?.level || 1,
@@ -166,6 +167,7 @@ export default function Home() {
    // Function to handle newly detected characters from AI response
    const handleNewCharacters = (newChars: Array<NewCharacterSchema>) => { // Use NewCharacterSchema from generate-adventure
         if (!newChars || newChars.length === 0) return;
+        const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
         setCharacters(prevChars => {
             const currentNames = new Set(prevChars.map(c => c.name.toLowerCase()));
@@ -180,26 +182,28 @@ export default function Home() {
                     const processedRelations: Record<string, string> = {};
                     if (newCharData.initialRelations && Array.isArray(newCharData.initialRelations)) {
                         newCharData.initialRelations.forEach(rel => {
+                            const relationDescription = rel.description || defaultRelationDesc; // Fallback if AI gives empty string
                             if (rel.targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
-                                processedRelations[PLAYER_ID] = rel.description; // Relation to player
+                                processedRelations[PLAYER_ID] = relationDescription; // Relation to player
                             } else {
                                 const targetChar = existingChars.find(ec => ec.name.toLowerCase() === rel.targetName.toLowerCase());
                                 if (targetChar) {
-                                    processedRelations[targetChar.id] = rel.description; // Relation to existing NPC
+                                    processedRelations[targetChar.id] = relationDescription; // Relation to existing NPC
                                 } else {
-                                    console.warn(`New character ${newCharData.name} has initial relation to unknown target ${rel.targetName}. Setting to 'Inconnu'.`);
+                                    console.warn(`New character ${newCharData.name} has initial relation to unknown target ${rel.targetName}. Using default.`);
+                                    // Potentially log or use a placeholder if target not found, but AI should provide valid targets
                                 }
                             }
                         });
                     }
-                     // Ensure a default relation to player if not provided by AI
-                    if (!processedRelations[PLAYER_ID]) {
-                        processedRelations[PLAYER_ID] = currentLanguage === 'fr' ? "Rencontré récemment" : "Recently met";
+                     // Ensure a default relation to player if not provided by AI or if it's empty
+                    if (!processedRelations[PLAYER_ID] || processedRelations[PLAYER_ID].trim() === "" || processedRelations[PLAYER_ID].toLowerCase() === "inconnu" || processedRelations[PLAYER_ID].toLowerCase() === "unknown") {
+                        processedRelations[PLAYER_ID] = defaultRelationDesc;
                     }
-                     // Ensure initial relations with other existing characters are set to "Inconnu" (or localized equivalent) if not provided
+                     // Ensure initial relations with other existing characters are set to "Inconnu" (or localized equivalent) if not provided or empty
                     existingChars.forEach(ec => {
-                        if (!processedRelations[ec.id]) {
-                            processedRelations[ec.id] = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+                        if (!processedRelations[ec.id] || processedRelations[ec.id].trim() === "" || processedRelations[ec.id].toLowerCase() === "inconnu" || processedRelations[ec.id].toLowerCase() === "unknown") {
+                            processedRelations[ec.id] = defaultRelationDesc;
                         }
                     });
 
@@ -241,7 +245,9 @@ export default function Home() {
                      // Update existing characters' relations to include the new character
                      existingChars = existingChars.map(ec => {
                         const updatedEcRelations = { ...(ec.relations || {}) };
-                        updatedEcRelations[newId] = currentLanguage === 'fr' ? "Inconnu" : "Unknown"; // Default relation from existing char to new char
+                        if (!updatedEcRelations[newId] || updatedEcRelations[newId].trim() === "" || updatedEcRelations[newId].toLowerCase() === "inconnu" || updatedEcRelations[newId].toLowerCase() === "unknown") {
+                             updatedEcRelations[newId] = defaultRelationDesc; // Default relation from existing char to new char
+                        }
                         return { ...ec, relations: updatedEcRelations };
                     });
                 }
@@ -351,6 +357,7 @@ export default function Home() {
         if (!updates || updates.length === 0) return;
 
         console.log("Processing relation updates from AI:", updates);
+        const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
         setCharacters(prevChars => {
             let chars = [...prevChars]; // Create a mutable copy
@@ -364,14 +371,12 @@ export default function Home() {
                 }
 
                 let targetId: string | null = null;
-                // let targetCharIndex = -1; // Index for potential inverse update
                 if (update.targetName.toLowerCase() === (adventureSettings.playerName || "Player").toLowerCase()) {
                     targetId = PLAYER_ID; // Target is the player
                 } else {
                     const targetChar = chars.find(c => c.name.toLowerCase() === update.targetName.toLowerCase());
                     if (targetChar) {
                         targetId = targetChar.id;
-                        // targetCharIndex = chars.findIndex(c => c.id === targetChar.id);
                     } else {
                         console.warn(`Relation update error: Target character "${update.targetName}" not found.`);
                         return; // Skip if target character not found
@@ -380,22 +385,22 @@ export default function Home() {
 
                  if (!targetId) return; // Should not happen, but safety check
 
-                const currentRelation = chars[sourceCharIndex].relations?.[targetId] || (currentLanguage === 'fr' ? "Inconnu" : "Unknown");
+                const currentRelation = chars[sourceCharIndex].relations?.[targetId] || defaultRelationDesc;
+                const newRelationFromAI = update.newRelation.trim() === "" || update.newRelation.toLowerCase() === "inconnu" || update.newRelation.toLowerCase() === "unknown" ? defaultRelationDesc : update.newRelation;
 
-                if (currentRelation !== update.newRelation) { // newRelation from AI is in target language
-                     // Clone the source character and their relations to update
+
+                if (currentRelation !== newRelationFromAI) { 
                     const sourceChar = { ...chars[sourceCharIndex] };
-                    sourceChar.relations = { ...(sourceChar.relations || {}), [targetId]: update.newRelation };
-                    chars[sourceCharIndex] = sourceChar; // Update the source character in the array
+                    sourceChar.relations = { ...(sourceChar.relations || {}), [targetId]: newRelationFromAI };
+                    chars[sourceCharIndex] = sourceChar; 
 
                     changed = true;
-                    console.log(`Relation updated by AI for ${update.characterName} towards ${update.targetName}: "${currentRelation}" -> "${update.newRelation}" (Reason: ${update.reason || 'N/A'})`);
+                    console.log(`Relation updated by AI for ${update.characterName} towards ${update.targetName}: "${currentRelation}" -> "${newRelationFromAI}" (Reason: ${update.reason || 'N/A'})`);
 
-                     // Show toast for the changed relation
                      setTimeout(() => {
                          toast({
                             title: `Relation Changée: ${update.characterName}`,
-                            description: `Relation envers ${update.targetName} est maintenant "${update.newRelation}". Raison: ${update.reason || 'Événement narratif'}`,
+                            description: `Relation envers ${update.targetName} est maintenant "${newRelationFromAI}". Raison: ${update.reason || 'Événement narratif'}`,
                          });
                      }, 0);
                 }
@@ -411,7 +416,6 @@ export default function Home() {
        setNarrative(prev => prev.map(msg =>
            msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
        ));
-        // Use setTimeout to avoid updating state during render cycle
        setTimeout(() => {
             toast({ title: "Message Modifié" });
        }, 0);
@@ -421,7 +425,7 @@ export default function Home() {
    // Function to undo the last message (user or AI)
     const handleUndoLastMessage = () => {
         setNarrative(prevNarrative => {
-            if (prevNarrative.length <= 1) {
+            if (prevNarrative.length <= 1) { // Can't undo the very first (initial situation) message
                  setTimeout(() => {
                      toast({ title: "Impossible d'annuler", description: "Aucun message à annuler.", variant: "destructive" });
                  }, 0);
@@ -445,7 +449,7 @@ export default function Home() {
          let contextMessages: Message[] = [];
          let lastAiIndex = -1;
 
-         const currentNarrative = [...narrative];
+         const currentNarrative = [...narrative]; // Use the current state of narrative
          for (let i = currentNarrative.length - 1; i >= 0; i--) {
              const message = currentNarrative[i];
              if (message.type === 'ai' && !lastAiMessage) {
@@ -453,8 +457,9 @@ export default function Home() {
                  lastAiIndex = i;
              } else if (message.type === 'user' && lastAiMessage) {
                  lastUserAction = message.content;
-                 const contextEndIndex = i;
-                 const contextStartIndex = Math.max(0, contextEndIndex - 4);
+                 // Get messages *before* this user action as context
+                 const contextEndIndex = i; // Messages up to, but not including, this user action
+                 const contextStartIndex = Math.max(0, contextEndIndex - 4); // e.g., last 5 messages for overall context
                  contextMessages = currentNarrative.slice(contextStartIndex, contextEndIndex);
                  break;
              }
@@ -473,14 +478,15 @@ export default function Home() {
             toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." });
           }, 0);
 
-         const narrativeContext = contextMessages.map(msg =>
+         // Narrative context should be the messages leading up to the user's action, plus the user's action
+         const narrativeContextForRegen = contextMessages.map(msg =>
                  msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
              ).join('\n\n') + `\n\n> ${adventureSettings.playerName || 'Player'}: ${lastUserAction}\n`;
 
          try {
              const input: GenerateAdventureInput = {
                  world: adventureSettings.world,
-                 initialSituation: narrativeContext,
+                 initialSituation: narrativeContextForRegen, // Use the constructed context
                  characters: characters,
                  userAction: lastUserAction,
                  currentLanguage: currentLanguage,
@@ -499,13 +505,14 @@ export default function Home() {
                                  return `${targetName}: ${desc}`; // desc is already in target language
                              }).join(', ') : (currentLanguage === 'fr' ? 'Aucune' : 'None'),
                         })),
-                        mode: 'exploration',
+                        mode: 'exploration', // Assuming exploration mode for regeneration
                     }
                  } : undefined,
              };
 
              const result = await generateAdventure(input);
 
+             // Update the narrative: Replace the old AI message with the new one
              setNarrative(prev => {
                 const newNarrative = [...prev];
                 const newAiMessage: Message = {
@@ -515,14 +522,16 @@ export default function Home() {
                      timestamp: Date.now(),
                      sceneDescription: result.sceneDescriptionForImage,
                  };
-                 if (lastAiIndex !== -1) {
-                    newNarrative.splice(lastAiIndex, 1, newAiMessage);
+                 if (lastAiIndex !== -1) { // Should always be found if we got this far
+                    newNarrative.splice(lastAiIndex, 1, newAiMessage); // Replace the old AI message
                  } else {
+                    // Fallback: This case should ideally not happen if lastAiMessage was found
                     newNarrative.push(newAiMessage);
                  }
                 return newNarrative;
              });
 
+             // Handle side effects from the new AI response
              handleNewCharacters(result.newCharacters || []);
              handleCharacterHistoryUpdate(result.characterUpdates || []);
              handleAffinityUpdates(result.affinityUpdates || []);
@@ -675,6 +684,7 @@ export default function Home() {
                 setAdventureSettings(loadedData.adventureSettings);
                 const rpgModeActive = loadedData.adventureSettings.rpgMode;
                 const loadedLang = loadedData.currentLanguage || "fr";
+                const defaultRelation = loadedLang === 'fr' ? "Inconnu" : "Unknown";
                 const validatedCharacters = loadedData.characters.map((c: any) => ({
                     id: c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                     name: c.name || "Inconnu",
@@ -683,7 +693,7 @@ export default function Home() {
                     opinion: c.opinion || {},
                     portraitUrl: c.portraitUrl || null,
                     affinity: c.affinity ?? 50,
-                    relations: c.relations || { [PLAYER_ID]: loadedLang === 'fr' ? "Inconnu" : "Unknown" }, // Relations in loaded language
+                    relations: c.relations || { [PLAYER_ID]: defaultRelation }, // Relations in loaded language
                     _lastSaved: c._lastSaved, // Preserve _lastSaved if present
                     ...(rpgModeActive && {
                         level: c.level ?? 1,
@@ -722,7 +732,7 @@ export default function Home() {
             }
         };
         reader.readAsText(file);
-        event.target.value = '';
+        if(event.target) event.target.value = ''; // Reset file input
     };
 
     // Ref for file input
@@ -730,12 +740,11 @@ export default function Home() {
 
   // Function to handle restarting the adventure
   const confirmRestartAdventure = () => {
-    // Reset narrative to initial situation
+    // Reset narrative to initial situation from current adventure settings
     setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: adventureSettings.initialSituation, timestamp: Date.now() }]);
-    // Reset characters to the initial set defined in adventureSettings
-    setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings))); // Deep copy
+    // Reset characters to the initial set defined in *current* adventureSettings
+    setCharacters(JSON.parse(JSON.stringify(initialCharactersFromSettings))); // Deep copy of the characters *as defined at the start or last settings update/load*
     setImageUrl(null); // Reset current image if any
-    // setChoices([]); // Reset choices if any
     setShowRestartConfirm(false); // Close the dialog
     setTimeout(() => {
       toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
@@ -781,7 +790,7 @@ export default function Home() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus.
+                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés).
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -793,3 +802,4 @@ export default function Home() {
       </>
   );
 }
+

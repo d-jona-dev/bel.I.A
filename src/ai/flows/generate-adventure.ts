@@ -84,9 +84,9 @@ const NewCharacterSchema = z.object({
     initialRelations: z.array(
         z.object({
             targetName: z.string().describe("Name of the known character or the player's name (e.g., '{{playerName}}', 'Rina')."),
-            description: z.string().describe("String description of the new character's initial relation towards this target (e.g., 'Curieux', 'Indifférent'). MUST be in {{currentLanguage}}.")
+            description: z.string().describe("String description of the new character's initial relation towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive term if possible.")
         })
-    ).optional().describe("An array of objects, where each object defines the new character's initial relation towards a known character or the player. Example: `[{\"targetName\": \"{{playerName}}\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a description like 'Inconnu' (or its {{currentLanguage}} equivalent). ALL relation descriptions MUST be in {{currentLanguage}}.")
+    ).optional().describe("An array of objects, where each object defines the new character's initial relation towards a known character or the player. Example: `[{\"targetName\": \"{{playerName}}\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive term like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}.")
 });
 
 // Define schema for character history updates
@@ -106,7 +106,7 @@ const AffinityUpdateSchema = z.object({
 const RelationUpdateSchema = z.object({
     characterName: z.string().describe("The name of the character whose relation is updated (the source)."),
     targetName: z.string().describe("The name of the target character OR the player's name."), // Use name for easier processing later
-    newRelation: z.string().describe("The new description of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival', 'Amant secret', 'Confidente'). Be specific and clear. MUST be in the specified language."),
+    newRelation: z.string().describe("The new description of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival', 'Amant secret', 'Confidente'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation if the narrative now allows it. MUST be in the specified language."),
     reason: z.string().optional().describe("Brief justification for the relation change based on the narrative interaction or event.")
 });
 
@@ -133,7 +133,7 @@ const GenerateAdventureOutputSchema = z.object({
   relationUpdates: z // Added relation updates
     .array(RelationUpdateSchema)
     .optional()
-    .describe("List of relationship changes between characters OR towards the player based on the narrative. Capture changes like becoming lovers, enemies, rivals, etc. MUST be in the specified language.")
+    .describe("List of relationship changes between characters OR towards the player based on the narrative. Capture changes like becoming lovers, enemies, rivals, etc. If a relationship was previously 'Inconnu' (or similar) and can now be defined more specifically, include it here. MUST be in the specified language.")
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -148,6 +148,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
 
         // Relations Summary (replaces the helper function)
         let relationsSummary = "Aucune définie."; // Default in French, should adapt if language changes or be provided by AI
+        if (input.currentLanguage === 'en') relationsSummary = "None defined.";
+        // Add other languages as needed for default
+        
         if (char.relations) {
             const relationEntries = Object.entries(char.relations)
                 .map(([targetId, description]) => {
@@ -163,9 +166,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
 
         return {
             ...char, // Spread existing character properties
-            details: char.details || "No details provided.", // Details should be in target language
+            details: char.details || (input.currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."), // Details should be in target language
             affinity: char.affinity ?? 50,
-            relations: char.relations || { ['player']: "Inconnu" }, // Ensure relations exist, default to French "Inconnu"
+            relations: char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }, // Ensure relations exist
             historySummary: historySummary, // History entries already in target language
             relationsSummary: relationsSummary, // Add the pre-processed summary, already in target language
         };
@@ -202,7 +205,7 @@ Known Characters:
 - Name: {{this.name}}
   Description: {{this.details}} {{! MUST be in {{../currentLanguage}} }}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards {{../playerName}} on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral. **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
-  Relations: {{{this.relationsSummary}}} {{! This summarizes this character's relationship TOWARDS others. MUST be in {{../currentLanguage}} }}
+  Relations: {{{this.relationsSummary}}} {{! This summarizes this character's relationship TOWARDS others. If a relation is listed as 'Inconnu' (or 'Unknown', etc.), it means it's not yet defined. MUST be in {{../currentLanguage}} }}
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -238,7 +241,7 @@ Tasks:
     *   Include their 'name'.
     *   Provide 'details': a brief description derived from the context, including the location/circumstance of meeting (if possible). **MUST be in {{currentLanguage}}.**
     *   Provide 'initialHistoryEntry': a brief log about meeting the character (e.g., "Met {{playerName}} at the market."). **MUST be in {{currentLanguage}}.**
-    *   Provide 'initialRelations': an array of objects, each with 'targetName' and 'description'. Example: \`[{\\"targetName\\": \\"{{playerName}}\\", \\"description\\": \\"Curieux\\"}, {\\"targetName\\": \\"Rina\\", \\"description\\": \\"Indifférent\\"}]\`. Base this on the context of their introduction. If no specific interaction implies a relation for a target, use a description like 'Inconnu' (or its {{currentLanguage}} equivalent). **ALL relation descriptions MUST be in {{currentLanguage}}.**
+    *   Provide 'initialRelations': an array of objects, each with 'targetName' (player or known NPC name) and 'description'. **CRITICAL: If a relationship is 'Inconnu' (or its {{currentLanguage}} equivalent), actively try to infer a more specific relationship (e.g., 'Curious', 'Indifferent', 'Potential ally') based on the introduction context. Use 'Inconnu' ONLY as a last resort if no context allows for a better description.** Example: \`[{\\"targetName\\": \\"{{playerName}}\\", \\"description\\": \\"Curieux\\"}, {\\"targetName\\": \\"Rina\\", \\"description\\": \\"Indifférent\\"}]\`. **ALL relation descriptions MUST be in {{currentLanguage}}.**
 
 3.  **Describe the Scene for Image (in English, for image model):** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper", "a young woman with brown hair") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
 
@@ -246,12 +249,14 @@ Tasks:
 
 5.  **Calculate Affinity Updates (Player Interaction):** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect the character's affinity **towards {{playerName}}** (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes VERY small and gradual (+/- 1 or 2) for most interactions. Only use larger changes (+/- 5 or more) for truly major events (life-saving, betrayal, deep declaration of feelings, etc.).**
 
-6.  **Detect Relation Updates (ALL Characters, in {{currentLanguage}}):** Analyze the "Narrative Continuation" for significant changes in relationships **between ANY two KNOWN characters** OR between a known character and **{{playerName}}**. If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'.
+6.  **Detect Relation Updates (ALL Characters, in {{currentLanguage}}):** Analyze the "Narrative Continuation" for significant changes in relationships **between ANY two KNOWN characters** OR between a known character and **{{playerName}}**.
+    *   If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'.
+    *   **CRITICAL: If an existing relationship for a character towards another is currently 'Inconnu' (or its {{currentLanguage}} equivalent like 'Unknown') AND the narrative provides enough context, you MUST update it to a more specific and coherent description (e.g., 'Nouveau rival', 'Semble amical'). This applies to player-NPC and NPC-NPC relations.**
     *   Include the source character's name (whose perspective is changing).
     *   Include the target's name (the character or {{playerName}} being viewed differently).
-    *   Provide the *new* specific relation description from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'). **Be specific with the new relation. This description MUST be in {{currentLanguage}}.**
+    *   Provide the *new* specific relation description from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'). **This description MUST be in {{currentLanguage}}. Avoid vague terms like 'Relation modifiée' unless absolutely no other specific term fits.**
     *   Include a brief 'reason' for the change.
-    Only report if there is a *change*. **The narrative MUST reflect these changes immediately.**
+    Only report if there is a *change* or if an 'Inconnu' relation can be *clarified*. **The narrative MUST reflect these changes immediately.**
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} AND inter-character relations** as described in Task 1. **Crucially, incorporate any relationship changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.** Make the impact of affinity and relations **obvious** in dialogue and actions. Ensure ALL generated text is in **{{currentLanguage}}**.]
@@ -310,3 +315,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
