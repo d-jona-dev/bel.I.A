@@ -28,22 +28,24 @@ import {
 
 // Import sub-components used in the structure
 import { AdventureForm } from '@/components/adventure-form';
-import { AdventureDisplay } from '@/components/adventure-display';
 import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar"; // Ensure this is imported
+import { AdventureDisplay } from '@/components/adventure-display'; // Import AdventureDisplay
+import type { AdventureFormValues } from './page'; // Import AdventureFormValues
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings; // Main applied settings for display/AI
   characters: Character[]; // Main applied characters for display/AI
   stagedAdventureSettings: AdventureSettings; // Staged settings for forms
   stagedCharacters: Character[]; // Staged characters for forms
+  formKey: number; // Add formKey prop
   handleApplyStagedChanges: () => void; // New prop to apply staged changes
 
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: any) => void; // Will update staged settings
+  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; // Will update staged settings
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void; // Will update staged characters
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
@@ -71,6 +73,7 @@ export function PageStructure({
   characters,
   stagedAdventureSettings, // Destructure new prop
   stagedCharacters, // Destructure new prop
+  formKey, // Destructure new prop
   handleApplyStagedChanges, // Destructure new prop
   narrativeMessages,
   currentLanguage,
@@ -247,7 +250,6 @@ export function PageStructure({
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
-                onRestartAdventure={onRestartAdventure}
              />
         </main>
       </SidebarInset>
@@ -269,6 +271,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
+                                    key={formKey} // Add key to re-mount form when initialValues change significantly
                                     initialValues={{ ...stagedAdventureSettings, characters: stagedCharacters.map(({ name, details, id }) => ({ name, details, id })) }}
                                     onSettingsChange={handleSettingsUpdate} // Updates staged settings
                                 />
@@ -316,6 +319,10 @@ export function PageStructure({
                  </SidebarContent>
              </ScrollArea>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
+                 <Button onClick={onRestartAdventure} variant="outline" className="w-full mb-2">
+                    <RefreshCcw className="mr-2 h-5 w-5" />
+                    Recommencer l'Aventure
+                </Button>
                 <Button onClick={handleApplyStagedChanges} className="w-full">
                     <CheckCircle className="mr-2 h-5 w-5" />
                     Enregistrer les modifications
@@ -325,3 +332,4 @@ export function PageStructure({
     </>
   );
 }
+

@@ -23,6 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast"; 
+import type { AdventureFormValues } from '@/app/page'; // Import AdventureFormValues
 
 // Schema definition including characters array and player name
 const characterSchema = z.object({
@@ -40,14 +41,14 @@ const adventureFormSchema = z.object({
   currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
 });
 
-type AdventureFormValues = z.infer<typeof adventureFormSchema>;
 
 interface AdventureFormProps {
+    key?: number; // Add key prop
     initialValues: AdventureFormValues; 
     onSettingsChange: (values: AdventureFormValues) => void; 
 }
 
-export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ key: propKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
@@ -61,21 +62,26 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
 
   // Effect to reset the form when initialValues prop changes (e.g., loading a save, or parent applies staged changes)
    React.useEffect(() => {
+    console.log("AdventureForm: initialValues or key changed, resetting form.", initialValues, propKey);
     form.reset(initialValues);
-    console.log("AdventureForm reset with initialValues:", initialValues);
-   }, [initialValues, form]);
+   }, [initialValues, propKey, form]); // Add propKey to dependencies
 
   // Listen to form changes and call onSettingsChange to update staged state in parent
   React.useEffect(() => {
-    const subscription = form.watch((value) => {
-      onSettingsChange(value as AdventureFormValues);
+    const subscription = form.watch((value, { name, type }) => {
+      // Only call onSettingsChange if the change is not from a reset event
+      // and the form is dirty (meaning user interaction has occurred)
+      // This prevents infinite loops when parent updates staged state, which then updates initialValues.
+      if (type !== 'reset' && form.formState.isDirty) {
+         onSettingsChange(value as AdventureFormValues);
+      }
     });
     return () => subscription.unsubscribe();
   }, [form, onSettingsChange]);
 
 
   const handleLoadPrompt = () => {
-    const loadedData = {
+    const loadedData: AdventureFormValues = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
         characters: [
@@ -86,14 +92,16 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
         playerName: "Héros", 
         currencyName: "Or", 
     };
-    form.reset(loadedData); // This will trigger the watch and update parent's staged state
+    form.reset(loadedData); // This will trigger the watch and update parent's staged state if isDirty
+    onSettingsChange(loadedData); // Directly call onSettingsChange to ensure parent is updated
     toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
   };
 
 
   return (
     <Form {...form}>
-      <form className="space-y-4" onChange={() => onSettingsChange(form.getValues())}>
+      {/* Removed onChange from form tag as useEffect handles changes */}
+      <form className="space-y-4">
 
         <div className="space-y-4"> 
             <div className="flex justify-end"> 
@@ -208,8 +216,8 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                 <AccordionContent>
                  <ScrollArea className="h-48 pr-3">
                     <div className="space-y-4">
-                    {fields.map((field, index) => (
-                    <Card key={field.id} className="relative pt-6 bg-muted/30 border"> 
+                    {fields.map((item, index) => ( // Changed 'field' to 'item' to avoid conflict
+                    <Card key={item.id} className="relative pt-6 bg-muted/30 border"> 
                          <Button
                             type="button"
                             variant="ghost"
@@ -223,7 +231,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <FormField
                           control={form.control}
                           name={`characters.${index}.name`}
-                          render={({ field }) => (
+                          render={({ field }) => ( // 'field' here is from FormField render prop
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
@@ -236,7 +244,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <FormField
                           control={form.control}
                           name={`characters.${index}.details`}
-                          render={({ field }) => (
+                          render={({ field }) => ( // 'field' here is from FormField render prop
                             <FormItem>
                               <FormLabel>Détails (Description Initiale)</FormLabel>
                               <FormControl>
@@ -278,3 +286,4 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     </Form>
   );
 }
+
