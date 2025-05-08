@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast"; // Added for feedback on load
+import { useToast } from "@/hooks/use-toast"; 
 
 // Schema definition including characters array and player name
 const characterSchema = z.object({
@@ -34,7 +34,7 @@ const characterSchema = z.object({
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
-  characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"), // Allow 0 characters initially
+  characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"), 
   enableRpgMode: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
@@ -43,15 +43,14 @@ const adventureFormSchema = z.object({
 type AdventureFormValues = z.infer<typeof adventureFormSchema>;
 
 interface AdventureFormProps {
-    initialValues: AdventureFormValues; // Receive initial values from parent
-    onSettingsChange: (values: AdventureFormValues) => void; // Callback to update parent
+    initialValues: AdventureFormValues; 
+    onSettingsChange: (values: AdventureFormValues) => void; 
 }
 
 export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    // Use initialValues passed from the parent component
     defaultValues: initialValues,
   });
 
@@ -60,27 +59,22 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     name: "characters",
   });
 
-  // Watch for changes and call the onSettingsChange callback
-  React.useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-      if (type === 'change') {
-        // Call the callback passed from the parent component
-        onSettingsChange(value as AdventureFormValues);
-        console.log("Form changed, notifying parent:", value);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form, onSettingsChange]);
-
-   // Effect to reset the form when initialValues prop changes (e.g., loading a save)
+  // Effect to reset the form when initialValues prop changes (e.g., loading a save, or parent applies staged changes)
    React.useEffect(() => {
     form.reset(initialValues);
     console.log("AdventureForm reset with initialValues:", initialValues);
    }, [initialValues, form]);
 
+  // Listen to form changes and call onSettingsChange to update staged state in parent
+  React.useEffect(() => {
+    const subscription = form.watch((value) => {
+      onSettingsChange(value as AdventureFormValues);
+    });
+    return () => subscription.unsubscribe();
+  }, [form, onSettingsChange]);
+
 
   const handleLoadPrompt = () => {
-    // Example data to load - replace with actual file loading logic if needed
     const loadedData = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
@@ -89,25 +83,20 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         enableRpgMode: true,
-        playerName: "Héros", // Example player name
-        currencyName: "Or", // Example currency
+        playerName: "Héros", 
+        currencyName: "Or", 
     };
-    // Reset form with loaded data, which triggers the watch effect and updates parent
-    form.reset(loadedData);
+    form.reset(loadedData); // This will trigger the watch and update parent's staged state
     toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
   };
 
 
   return (
     <Form {...form}>
-      {/* No onSubmit needed here as updates happen via watch -> onSettingsChange */}
-      <form className="space-y-4">
-        {/* Removed outer Card component */}
-        {/* <CardHeader> ... </CardHeader> */}
-        {/* <CardContent className="space-y-4"> ... </CardContent> */}
+      <form className="space-y-4" onChange={() => onSettingsChange(form.getValues())}>
 
-        <div className="space-y-4"> {/* Replaced CardContent with a simple div */}
-            <div className="flex justify-end"> {/* Moved Load button */}
+        <div className="space-y-4"> 
+            <div className="flex justify-end"> 
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Example
                 </Button>
@@ -154,7 +143,6 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
               )}
             />
 
-             {/* Conditionally render Currency Name if RPG mode is enabled */}
             {form.watch('enableRpgMode') && (
                  <FormField
                   control={form.control}
@@ -214,22 +202,20 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
               )}
             />
 
-             {/* Character definition fields (kept in the form for adding/removing) */}
-             <Accordion type="single" collapsible className="w-full border-t pt-4"> {/* Added border top */}
+             <Accordion type="single" collapsible className="w-full border-t pt-4"> 
                <AccordionItem value="character-definitions">
                 <AccordionTrigger>Définir les Personnages Initiaux</AccordionTrigger>
                 <AccordionContent>
                  <ScrollArea className="h-48 pr-3">
                     <div className="space-y-4">
                     {fields.map((field, index) => (
-                    <Card key={field.id} className="relative pt-6 bg-muted/30 border"> {/* Slightly different bg */}
+                    <Card key={field.id} className="relative pt-6 bg-muted/30 border"> 
                          <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             className="absolute top-1 right-1 h-6 w-6"
                             onClick={() => remove(index)}
-                            // disabled={fields.length <= 1} // Allow removing all characters
                         >
                             <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

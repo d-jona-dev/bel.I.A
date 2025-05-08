@@ -1,3 +1,4 @@
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw } from 'lucide-react'; // Added RefreshCcw
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw, CheckCircle } from 'lucide-react'; // Added RefreshCcw, CheckCircle
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema
@@ -33,20 +34,24 @@ import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar"; // Ensure this is imported
 
 interface PageStructureProps {
-  adventureSettings: AdventureSettings;
-  characters: Character[];
-  narrativeMessages: Message[]; // Changed from narrative: string
+  adventureSettings: AdventureSettings; // Main applied settings for display/AI
+  characters: Character[]; // Main applied characters for display/AI
+  stagedAdventureSettings: AdventureSettings; // Staged settings for forms
+  stagedCharacters: Character[]; // Staged characters for forms
+  handleApplyStagedChanges: () => void; // New prop to apply staged changes
+
+  narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: any) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; // Updated signature
-  handleCharacterUpdate: (updatedCharacter: Character) => void;
-  handleNewCharacters: (newChars: NewCharacterSchema[]) => void; // Use NewCharacterSchema
-  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Added prop for history updates
-  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Added prop for affinity updates
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Added prop for manual relation updates
-  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; // Added prop for AI-driven relation updates
-  handleSaveNewCharacter: (character: Character) => void; // Added prop for saving new chars
+  handleSettingsUpdate: (newSettings: any) => void; // Will update staged settings
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
+  handleCharacterUpdate: (updatedCharacter: Character) => void; // Will update staged characters
+  handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
+  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
+  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Will update staged characters
+  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void;
+  handleSaveNewCharacter: (character: Character) => void;
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
@@ -54,28 +59,31 @@ interface PageStructureProps {
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
-  handleRegenerateLastResponse: () => Promise<void>; // Added regenerate handler prop
-  handleUndoLastMessage: () => void; // Added undo handler prop
-  playerId: string; // Add playerId prop
-  playerName: string; // Add playerName prop
-  onRestartAdventure: () => void; // Added restart adventure handler
+  handleRegenerateLastResponse: () => Promise<void>;
+  handleUndoLastMessage: () => void;
+  playerId: string;
+  playerName: string;
+  onRestartAdventure: () => void;
 }
 
 export function PageStructure({
   adventureSettings,
   characters,
-  narrativeMessages, // Use narrativeMessages
+  stagedAdventureSettings, // Destructure new prop
+  stagedCharacters, // Destructure new prop
+  handleApplyStagedChanges, // Destructure new prop
+  narrativeMessages,
   currentLanguage,
   fileInputRef,
   handleSettingsUpdate,
   handleNarrativeUpdate,
   handleCharacterUpdate,
-  handleNewCharacters, // Destructure new prop
-  handleCharacterHistoryUpdate, // Destructure new prop
-  handleAffinityUpdates, // Destructure new prop
-  handleRelationUpdate, // Destructure manual relation prop
-  handleRelationUpdatesFromAI, // Destructure AI relation prop
-  handleSaveNewCharacter, // Destructure new prop
+  handleNewCharacters,
+  handleCharacterHistoryUpdate,
+  handleAffinityUpdates,
+  handleRelationUpdate,
+  handleRelationUpdatesFromAI,
+  handleSaveNewCharacter,
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -83,11 +91,11 @@ export function PageStructure({
   generateAdventureAction,
   generateSceneImageAction,
   handleEditMessage,
-  handleRegenerateLastResponse, // Added prop
-  handleUndoLastMessage, // Added prop
-  playerId, // Destructure player ID
-  playerName, // Destructure player name
-  onRestartAdventure, // Destructure restart handler
+  handleRegenerateLastResponse,
+  handleUndoLastMessage,
+  playerId,
+  playerName,
+  onRestartAdventure,
 }: PageStructureProps) {
   return (
     <>
@@ -202,7 +210,7 @@ export function PageStructure({
           <div className="flex items-center space-x-2">
             <LanguageSelector
                 translateTextAction={translateTextAction}
-                currentText={narrativeMessages.map(m => m.content).join('\n\n')} // Join message content for translation context
+                currentText={narrativeMessages.map(m => m.content).join('\n\n')}
                 onLanguageChange={setCurrentLanguage}
                 currentLanguage={currentLanguage}
             />
@@ -225,21 +233,21 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                world={adventureSettings.world}
-                playerName={playerName} // Pass player name
-                characters={characters}
-                initialMessages={narrativeMessages} // Pass the message array
-                currentLanguage={currentLanguage} // Pass current language
-                onNarrativeChange={handleNarrativeUpdate} // Pass the updated handler
-                onNewCharacters={handleNewCharacters} // Pass the new characters handler
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Pass history update handler
-                onAffinityUpdates={handleAffinityUpdates} // Pass affinity update handler
-                onRelationUpdates={handleRelationUpdatesFromAI} // Pass relation update handler from AI
-                rpgMode={adventureSettings.rpgMode}
+                world={adventureSettings.world} // Use applied settings
+                playerName={playerName}
+                characters={characters} // Use applied characters
+                initialMessages={narrativeMessages}
+                currentLanguage={currentLanguage}
+                onNarrativeChange={handleNarrativeUpdate}
+                onNewCharacters={handleNewCharacters} // Will update staged characters
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Will update staged characters
+                onAffinityUpdates={handleAffinityUpdates} // Will update staged characters
+                onRelationUpdates={handleRelationUpdatesFromAI} // Will update staged characters
+                rpgMode={adventureSettings.rpgMode} // Use applied RPG mode
                 onEditMessage={handleEditMessage}
-                onRegenerateLastResponse={handleRegenerateLastResponse} // Pass regenerate handler
-                onUndoLastMessage={handleUndoLastMessage} // Pass undo handler
-                onRestartAdventure={onRestartAdventure} // Pass restart handler
+                onRegenerateLastResponse={handleRegenerateLastResponse}
+                onUndoLastMessage={handleUndoLastMessage}
+                onRestartAdventure={onRestartAdventure}
              />
         </main>
       </SidebarInset>
@@ -261,8 +269,8 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    initialValues={{ ...adventureSettings, characters: characters.map(({ name, details, id }) => ({ name, details, id })) }}
-                                    onSettingsChange={handleSettingsUpdate}
+                                    initialValues={{ ...stagedAdventureSettings, characters: stagedCharacters.map(({ name, details, id }) => ({ name, details, id })) }}
+                                    onSettingsChange={handleSettingsUpdate} // Updates staged settings
                                 />
                              </AccordionContent>
                          </AccordionItem>
@@ -291,23 +299,28 @@ export function PageStructure({
                                  </div>
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
-                                 {/* Use CharacterSidebar component */}
                                  <CharacterSidebar
-                                     characters={characters}
-                                     onCharacterUpdate={handleCharacterUpdate}
-                                     onSaveNewCharacter={handleSaveNewCharacter} // Pass save handler
-                                     onRelationUpdate={handleRelationUpdate} // Pass manual relation update handler
+                                     characters={stagedCharacters} // Pass staged characters for editing
+                                     onCharacterUpdate={handleCharacterUpdate} // Updates staged characters
+                                     onSaveNewCharacter={handleSaveNewCharacter}
+                                     onRelationUpdate={handleRelationUpdate} // Updates staged characters
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={adventureSettings.rpgMode}
-                                     playerId={playerId} // Pass player ID
-                                     playerName={playerName} // Pass player name
-                                     currentLanguage={currentLanguage} // Pass current language
+                                     rpgMode={stagedAdventureSettings.rpgMode} // Use staged RPG mode
+                                     playerId={playerId}
+                                     playerName={stagedAdventureSettings.playerName || "Player"} // Use staged player name
+                                     currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
                  </SidebarContent>
              </ScrollArea>
+            <SidebarFooter className="p-4 border-t border-sidebar-border">
+                <Button onClick={handleApplyStagedChanges} className="w-full">
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Enregistrer les modifications
+                </Button>
+            </SidebarFooter>
        </Sidebar>
     </>
   );
