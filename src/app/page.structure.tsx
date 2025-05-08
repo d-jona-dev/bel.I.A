@@ -1,4 +1,3 @@
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -37,21 +36,25 @@ import type { AdventureFormValues } from './page'; // Import AdventureFormValues
 interface PageStructureProps {
   adventureSettings: AdventureSettings; // Main applied settings for display/AI
   characters: Character[]; // Main applied characters for display/AI
-  stagedAdventureSettings: AdventureSettings; // Staged settings for forms
-  stagedCharacters: Character[]; // Staged characters for forms
-  formKey: number; // Add formKey prop
-  handleApplyStagedChanges: () => void; // New prop to apply staged changes
+  
+  // Staged settings for AdventureForm. characters here are just name/details.
+  stagedAdventureSettings: AdventureFormValues; 
+  // Staged full characters for CharacterSidebar.
+  stagedCharacters: Character[]; 
+
+  formKey: number; 
+  handleApplyStagedChanges: () => void; 
 
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; // Will update staged settings
+  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; 
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
-  handleCharacterUpdate: (updatedCharacter: Character) => void; // Will update staged characters
+  handleCharacterUpdate: (updatedCharacter: Character) => void; 
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Will update staged characters
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; 
   handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void;
   handleSaveNewCharacter: (character: Character) => void;
   handleSave: () => void;
@@ -71,10 +74,10 @@ interface PageStructureProps {
 export function PageStructure({
   adventureSettings,
   characters,
-  stagedAdventureSettings, // Destructure new prop
-  stagedCharacters, // Destructure new prop
-  formKey, // Destructure new prop
-  handleApplyStagedChanges, // Destructure new prop
+  stagedAdventureSettings, 
+  stagedCharacters, 
+  formKey, 
+  handleApplyStagedChanges, 
   narrativeMessages,
   currentLanguage,
   fileInputRef,
@@ -242,10 +245,10 @@ export function PageStructure({
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
-                onNewCharacters={handleNewCharacters} // Will update staged characters
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Will update staged characters
-                onAffinityUpdates={handleAffinityUpdates} // Will update staged characters
-                onRelationUpdates={handleRelationUpdatesFromAI} // Will update staged characters
+                onNewCharacters={handleNewCharacters} 
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
+                onAffinityUpdates={handleAffinityUpdates} 
+                onRelationUpdates={handleRelationUpdatesFromAI} 
                 rpgMode={adventureSettings.rpgMode} // Use applied RPG mode
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
@@ -272,7 +275,7 @@ export function PageStructure({
                              <AccordionContent className="pt-2">
                                 <AdventureForm
                                     key={formKey} // Add key to re-mount form when initialValues change significantly
-                                    initialValues={{ ...stagedAdventureSettings, characters: stagedCharacters.map(({ name, details, id }) => ({ name, details, id })) }}
+                                    initialValues={stagedAdventureSettings} // Pass AdventureFormValues
                                     onSettingsChange={handleSettingsUpdate} // Updates staged settings
                                 />
                              </AccordionContent>
@@ -303,14 +306,14 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                  <CharacterSidebar
-                                     characters={stagedCharacters} // Pass staged characters for editing
-                                     onCharacterUpdate={handleCharacterUpdate} // Updates staged characters
+                                     characters={stagedCharacters} // Pass full staged characters for editing
+                                     onCharacterUpdate={handleCharacterUpdate} 
                                      onSaveNewCharacter={handleSaveNewCharacter}
-                                     onRelationUpdate={handleRelationUpdate} // Updates staged characters
+                                     onRelationUpdate={handleRelationUpdate} 
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.rpgMode} // Use staged RPG mode
+                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false} // Use staged RPG mode from AdventureFormValues
                                      playerId={playerId}
-                                     playerName={stagedAdventureSettings.playerName || "Player"} // Use staged player name
+                                     playerName={stagedAdventureSettings.playerName || "Player"} 
                                      currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>
@@ -332,4 +335,3 @@ export function PageStructure({
     </>
   );
 }
-

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -52,7 +51,8 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    defaultValues: initialValues,
+    // initialValues here should be AdventureFormValues which means characters are {name, details}
+    defaultValues: initialValues, 
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -60,18 +60,14 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
     name: "characters",
   });
 
-  // Effect to reset the form when initialValues prop changes (e.g., loading a save, or parent applies staged changes)
    React.useEffect(() => {
     console.log("AdventureForm: initialValues or key changed, resetting form.", initialValues, propKey);
-    form.reset(initialValues);
-   }, [initialValues, propKey, form]); // Add propKey to dependencies
+    // initialValues are AdventureFormValues, form expects the same
+    form.reset(initialValues); 
+   }, [initialValues, propKey, form]); 
 
-  // Listen to form changes and call onSettingsChange to update staged state in parent
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      // Only call onSettingsChange if the change is not from a reset event
-      // and the form is dirty (meaning user interaction has occurred)
-      // This prevents infinite loops when parent updates staged state, which then updates initialValues.
       if (type !== 'reset' && form.formState.isDirty) {
          onSettingsChange(value as AdventureFormValues);
       }
@@ -81,10 +77,11 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
 
 
   const handleLoadPrompt = () => {
+    // Ensure loadedData conforms to AdventureFormValues
     const loadedData: AdventureFormValues = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
-        characters: [
+        characters: [ // These are FormCharacterDefinition
             { name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
@@ -92,15 +89,14 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
         playerName: "Héros", 
         currencyName: "Or", 
     };
-    form.reset(loadedData); // This will trigger the watch and update parent's staged state if isDirty
-    onSettingsChange(loadedData); // Directly call onSettingsChange to ensure parent is updated
+    form.reset(loadedData); 
+    onSettingsChange(loadedData); 
     toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
   };
 
 
   return (
     <Form {...form}>
-      {/* Removed onChange from form tag as useEffect handles changes */}
       <form className="space-y-4">
 
         <div className="space-y-4"> 
@@ -120,6 +116,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                     <Input
                       placeholder="Nom du héros"
                       {...field}
+                      value={field.value || ""} // Ensure value is not undefined
                       className="bg-background border"
                     />
                   </FormControl>
@@ -162,6 +159,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                         <Input
                           placeholder="Or, Crédits, Gemmes..."
                           {...field}
+                          value={field.value || ""} // Ensure value is not undefined
                           className="bg-background border"
                         />
                       </FormControl>
@@ -216,7 +214,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                 <AccordionContent>
                  <ScrollArea className="h-48 pr-3">
                     <div className="space-y-4">
-                    {fields.map((item, index) => ( // Changed 'field' to 'item' to avoid conflict
+                    {fields.map((item, index) => ( 
                     <Card key={item.id} className="relative pt-6 bg-muted/30 border"> 
                          <Button
                             type="button"
@@ -231,7 +229,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                         <FormField
                           control={form.control}
                           name={`characters.${index}.name`}
-                          render={({ field }) => ( // 'field' here is from FormField render prop
+                          render={({ field }) => ( 
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
@@ -244,7 +242,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                         <FormField
                           control={form.control}
                           name={`characters.${index}.details`}
-                          render={({ field }) => ( // 'field' here is from FormField render prop
+                          render={({ field }) => ( 
                             <FormItem>
                               <FormLabel>Détails (Description Initiale)</FormLabel>
                               <FormControl>
@@ -273,7 +271,7 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
                       Ajouter un personnage
                     </Button>
                      <FormDescription className="mt-2 text-xs">
-                        Les détails complets (stats, inventaire, historique, relations) sont gérés dans la section "Personnages Secondaires" une fois ajoutés.
+                        Les détails complets (stats, inventaire, historique, relations) sont gérés dans la section "Personnages Secondaires" une fois ajoutés via "Enregistrer les modifications".
                      </FormDescription>
                     </div>
                  </ScrollArea>
@@ -286,4 +284,3 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
     </Form>
   );
 }
-
