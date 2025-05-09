@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -43,7 +42,6 @@ const adventureFormSchema = z.object({
 
 
 interface AdventureFormProps {
-    // key prop removed as it's special in React and handled by PageStructure for remounting
     initialValues: AdventureFormValues; 
     onSettingsChange: (values: AdventureFormValues) => void; 
 }
@@ -60,28 +58,36 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     name: "characters",
   });
 
-   React.useEffect(() => {
-    console.log("AdventureForm: initialValues changed, resetting form.", initialValues);
+  const justReset = React.useRef(false);
+
+  React.useEffect(() => {
+    console.log("AdventureForm: initialValues prop changed, resetting form.", initialValues);
     form.reset(initialValues); 
-   }, [initialValues, form]); // form from useForm is stable, but included for clarity with form.reset
+    justReset.current = true; // Mark that a reset just happened due to prop change
+  }, [initialValues, form]); // form.reset is stable if form instance is stable
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      // Avoid triggering onSettingsChange on initial mount or reset if form isn't dirty
-      if (type !== 'reset' || (type === 'reset' && form.formState.isDirty)) {
-         onSettingsChange(value as AdventureFormValues);
+      if (justReset.current) {
+        // If form was just reset by initialValues prop change,
+        // don't immediately call onSettingsChange.
+        // The form values are now in sync with initialValues.
+        // Subsequent user interactions should trigger onSettingsChange.
+        justReset.current = false; // Reset the flag
+        return;
       }
+      // For any other change (typically user input or other programmatic changes not from initialValues reset)
+      onSettingsChange(value as AdventureFormValues);
     });
     return () => subscription.unsubscribe();
-  }, [form, onSettingsChange]);
+  }, [form, onSettingsChange]); // initialValues is not needed here; logic handled by justReset
 
 
   const handleLoadPrompt = () => {
-    // Ensure loadedData conforms to AdventureFormValues
     const loadedData: AdventureFormValues = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
-        characters: [ // These are FormCharacterDefinition
+        characters: [ 
             { name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
@@ -89,8 +95,10 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
         playerName: "Héros", 
         currencyName: "Or", 
     };
-    form.reset(loadedData); 
-    onSettingsChange(loadedData); 
+    // When loading a prompt, this will trigger the useEffect for initialValues
+    // which will call form.reset and set justReset.current = true.
+    // The watch effect will then correctly skip calling onSettingsChange for this reset.
+    onSettingsChange(loadedData); // Signal to parent that initial values should change
     toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
   };
 
@@ -116,7 +124,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                     <Input
                       placeholder="Nom du héros"
                       {...field}
-                      value={field.value || ""} // Ensure value is not undefined
+                      value={field.value || ""} 
                       className="bg-background border"
                     />
                   </FormControl>
@@ -159,7 +167,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <Input
                           placeholder="Or, Crédits, Gemmes..."
                           {...field}
-                          value={field.value || ""} // Ensure value is not undefined
+                          value={field.value || ""} 
                           className="bg-background border"
                         />
                       </FormControl>
@@ -284,4 +292,3 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     </Form>
   );
 }
-
