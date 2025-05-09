@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -42,16 +43,15 @@ const adventureFormSchema = z.object({
 
 
 interface AdventureFormProps {
-    key?: number; // Add key prop
+    // key prop removed as it's special in React and handled by PageStructure for remounting
     initialValues: AdventureFormValues; 
     onSettingsChange: (values: AdventureFormValues) => void; 
 }
 
-export function AdventureForm({ key: propKey, initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    // initialValues here should be AdventureFormValues which means characters are {name, details}
     defaultValues: initialValues, 
   });
 
@@ -61,14 +61,14 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
   });
 
    React.useEffect(() => {
-    console.log("AdventureForm: initialValues or key changed, resetting form.", initialValues, propKey);
-    // initialValues are AdventureFormValues, form expects the same
+    console.log("AdventureForm: initialValues changed, resetting form.", initialValues);
     form.reset(initialValues); 
-   }, [initialValues, propKey, form]); 
+   }, [initialValues, form]); // form from useForm is stable, but included for clarity with form.reset
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      if (type !== 'reset' && form.formState.isDirty) {
+      // Avoid triggering onSettingsChange on initial mount or reset if form isn't dirty
+      if (type !== 'reset' || (type === 'reset' && form.formState.isDirty)) {
          onSettingsChange(value as AdventureFormValues);
       }
     });
@@ -284,3 +284,4 @@ export function AdventureForm({ key: propKey, initialValues, onSettingsChange }:
     </Form>
   );
 }
+
