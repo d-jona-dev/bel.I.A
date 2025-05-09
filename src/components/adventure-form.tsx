@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -41,15 +42,16 @@ const adventureFormSchema = z.object({
 });
 
 interface AdventureFormProps {
-    propKey: number;
+    // propKey is removed; parent will use React's `key` prop on this component
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
 }
 
-export function AdventureForm({ propKey, initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
+    // defaultValues will be used when the form is initialized/re-initialized (due to parent key change)
     defaultValues: initialValues,
   });
 
@@ -58,31 +60,12 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
     name: "characters",
   });
 
-  const justReset = React.useRef(true);
-
-  React.useEffect(() => {
-    form.reset(initialValues);
-    justReset.current = true; // Signal that a reset happened
-
-    // Schedule justReset.current to be set to false after the current event loop cycle.
-    // This helps ensure that any watch events triggered by the reset (synchronously or in microtasks)
-    // are ignored.
-    const timerId = setTimeout(() => {
-      justReset.current = false;
-    }, 0);
-
-    return () => {
-      clearTimeout(timerId); // Cleanup the timer if the component unmounts or dependencies change
-    };
-  }, [initialValues, propKey, form]);
-
+  // Watch for form changes and call onSettingsChange.
+  // This updates the parent's "staged" state.
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      if (justReset.current) {
-        // If justReset.current is true, it means a reset has just occurred (or is in progress via timeout).
-        // We ignore this watch event to prevent an infinite loop.
-        return;
-      }
+      // `type` is undefined on initial programmatic population, but defined on user interaction.
+      // We call onSettingsChange for all changes to keep parent's staged state in sync.
       onSettingsChange(value as AdventureFormValues);
     });
     return () => {
@@ -103,20 +86,19 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
         playerName: "Héros",
         currencyName: "Or",
     };
-    // Directly call onSettingsChange to update parent state, which will flow back via initialValues
+    // Update parent's staged state
     onSettingsChange(loadedData);
-    form.reset(loadedData); // Also reset the form's internal state
-    justReset.current = true; // Signal reset
-    const timerId = setTimeout(() => { justReset.current = false; }, 0); // And schedule to clear flag
-    // No separate toast here, parent might toast on apply changes
-
+    // Reset the local form to reflect these new values immediately
+    form.reset(loadedData);
+    
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
 
 
   return (
     <Form {...form}>
-      <form className="space-y-4">
+      {/* Add onSubmit to prevent default browser form submission which can cause page reloads */}
+      <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
 
         <div className="space-y-4">
             <div className="flex justify-end">
@@ -236,7 +218,7 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
                     {fields.map((item, index) => (
                     <Card key={item.id} className="relative pt-6 bg-muted/30 border">
                          <Button
-                            type="button"
+                            type="button" // Ensure type="button" for buttons inside a form
                             variant="ghost"
                             size="icon"
                             className="absolute top-1 right-1 h-6 w-6"
@@ -280,7 +262,7 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
                     </Card>
                   ))}
                    <Button
-                      type="button"
+                      type="button" // Ensure type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => append({ name: "", details: "" })}
@@ -303,3 +285,4 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
     </Form>
   );
 }
+
