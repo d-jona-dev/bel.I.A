@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, Dices, User } from "lucide-react"; // Added User icon
+import { PlusCircle, Trash2, Upload, Dices, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast"; 
-import type { AdventureFormValues } from '@/app/page'; // Import AdventureFormValues
+import { useToast } from "@/hooks/use-toast";
+import type { AdventureFormValues } from '@/app/page';
 
 // Schema definition including characters array and player name
 const characterSchema = z.object({
@@ -34,23 +34,24 @@ const characterSchema = z.object({
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
-  characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"), 
+  characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"),
   enableRpgMode: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
 });
 
-
+// Renamed formKey to propKey to avoid conflict with React's special key prop.
 interface AdventureFormProps {
-    initialValues: AdventureFormValues; 
-    onSettingsChange: (values: AdventureFormValues) => void; 
+    propKey: number; // Changed from formKey to propKey
+    initialValues: AdventureFormValues;
+    onSettingsChange: (values: AdventureFormValues) => void;
 }
 
-export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ propKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    defaultValues: initialValues, 
+    defaultValues: initialValues,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -58,47 +59,48 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     name: "characters",
   });
 
-  const justReset = React.useRef(false);
+  // Initialize justReset to true. This will make the first watch invocation (on mount/remount) be ignored.
+  const justReset = React.useRef(true);
 
   React.useEffect(() => {
-    console.log("AdventureForm: initialValues prop changed, resetting form.", initialValues);
-    form.reset(initialValues); 
-    justReset.current = true; // Mark that a reset just happened due to prop change
-  }, [initialValues, form]); // form.reset is stable if form instance is stable
+    // This effect runs when initialValues prop changes OR when propKey changes (causing re-mount/re-initialization logic).
+    // console.log("AdventureForm: initialValues or propKey changed, resetting form.", initialValues, propKey);
+    form.reset(initialValues);
+    justReset.current = true; // Signal that a reset happened, next watch invocation should be ignored.
+  }, [initialValues, propKey, form]); // form.reset is stable if form instance is stable. form included for completeness if reset is not stable.
 
   React.useEffect(() => {
+    // console.log("AdventureForm: Setting up watch");
     const subscription = form.watch((value, { name, type }) => {
+      // console.log("AdventureForm: Watch triggered. justReset.current =", justReset.current);
       if (justReset.current) {
-        // If form was just reset by initialValues prop change,
-        // don't immediately call onSettingsChange.
-        // The form values are now in sync with initialValues.
-        // Subsequent user interactions should trigger onSettingsChange.
-        justReset.current = false; // Reset the flag
+        justReset.current = false; // Consume the flag
+        // console.log("AdventureForm: Watch ignored due to justReset flag.");
         return;
       }
-      // For any other change (typically user input or other programmatic changes not from initialValues reset)
+      // console.log("AdventureForm: Watch calling onSettingsChange.");
       onSettingsChange(value as AdventureFormValues);
     });
-    return () => subscription.unsubscribe();
-  }, [form, onSettingsChange]); // initialValues is not needed here; logic handled by justReset
+    return () => {
+      // console.log("AdventureForm: Unsubscribing watch");
+      subscription.unsubscribe();
+    };
+  }, [form, onSettingsChange]); // form.watch is stable if form instance is stable.
 
 
   const handleLoadPrompt = () => {
     const loadedData: AdventureFormValues = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
-        characters: [ 
+        characters: [
             { name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         enableRpgMode: true,
-        playerName: "Héros", 
-        currencyName: "Or", 
+        playerName: "Héros",
+        currencyName: "Or",
     };
-    // When loading a prompt, this will trigger the useEffect for initialValues
-    // which will call form.reset and set justReset.current = true.
-    // The watch effect will then correctly skip calling onSettingsChange for this reset.
-    onSettingsChange(loadedData); // Signal to parent that initial values should change
+    onSettingsChange(loadedData);
     toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
   };
 
@@ -107,8 +109,8 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
     <Form {...form}>
       <form className="space-y-4">
 
-        <div className="space-y-4"> 
-            <div className="flex justify-end"> 
+        <div className="space-y-4">
+            <div className="flex justify-end">
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Example
                 </Button>
@@ -124,7 +126,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                     <Input
                       placeholder="Nom du héros"
                       {...field}
-                      value={field.value || ""} 
+                      value={field.value || ""}
                       className="bg-background border"
                     />
                   </FormControl>
@@ -167,7 +169,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <Input
                           placeholder="Or, Crédits, Gemmes..."
                           {...field}
-                          value={field.value || ""} 
+                          value={field.value || ""}
                           className="bg-background border"
                         />
                       </FormControl>
@@ -216,14 +218,14 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
               )}
             />
 
-             <Accordion type="single" collapsible className="w-full border-t pt-4"> 
+             <Accordion type="single" collapsible className="w-full border-t pt-4">
                <AccordionItem value="character-definitions">
                 <AccordionTrigger>Définir les Personnages Initiaux</AccordionTrigger>
                 <AccordionContent>
                  <ScrollArea className="h-48 pr-3">
                     <div className="space-y-4">
-                    {fields.map((item, index) => ( 
-                    <Card key={item.id} className="relative pt-6 bg-muted/30 border"> 
+                    {fields.map((item, index) => (
+                    <Card key={item.id} className="relative pt-6 bg-muted/30 border">
                          <Button
                             type="button"
                             variant="ghost"
@@ -237,7 +239,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <FormField
                           control={form.control}
                           name={`characters.${index}.name`}
-                          render={({ field }) => ( 
+                          render={({ field }) => (
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
@@ -250,7 +252,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                         <FormField
                           control={form.control}
                           name={`characters.${index}.details`}
-                          render={({ field }) => ( 
+                          render={({ field }) => (
                             <FormItem>
                               <FormLabel>Détails (Description Initiale)</FormLabel>
                               <FormControl>

@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw, CheckCircle } from 'lucide-react'; // Added RefreshCcw, CheckCircle
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw, CheckCircle } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message } from "@/types"; // Added Message type
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Added CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema
+import type { Character, AdventureSettings, Message } from "@/types";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -23,38 +23,32 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog" // Import AlertDialog components
+} from "@/components/ui/alert-dialog"
 
-// Import sub-components used in the structure
 import { AdventureForm } from '@/components/adventure-form';
 import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
-import { CharacterSidebar } from "@/components/character-sidebar"; // Ensure this is imported
-import { AdventureDisplay } from '@/components/adventure-display'; // Import AdventureDisplay
-import type { AdventureFormValues } from './page'; // Import AdventureFormValues
+import { CharacterSidebar } from "@/components/character-sidebar";
+import { AdventureDisplay } from '@/components/adventure-display';
+import type { AdventureFormValues } from './page';
 
 interface PageStructureProps {
-  adventureSettings: AdventureSettings; // Main applied settings for display/AI
-  characters: Character[]; // Main applied characters for display/AI
-  
-  // Staged settings for AdventureForm. characters here are just name/details.
-  stagedAdventureSettings: AdventureFormValues; 
-  // Staged full characters for CharacterSidebar.
-  stagedCharacters: Character[]; 
-
-  formKey: number; 
-  handleApplyStagedChanges: () => void; 
-
+  adventureSettings: AdventureSettings;
+  characters: Character[];
+  stagedAdventureSettings: AdventureFormValues;
+  stagedCharacters: Character[];
+  propKey: number; // Changed from formKey to propKey to match AdventureForm prop
+  handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; 
+  handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
-  handleCharacterUpdate: (updatedCharacter: Character) => void; 
+  handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; 
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
   handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void;
   handleSaveNewCharacter: (character: Character) => void;
   handleSave: () => void;
@@ -74,10 +68,10 @@ interface PageStructureProps {
 export function PageStructure({
   adventureSettings,
   characters,
-  stagedAdventureSettings, 
-  stagedCharacters, 
-  formKey, 
-  handleApplyStagedChanges, 
+  stagedAdventureSettings,
+  stagedCharacters,
+  propKey, // Use propKey
+  handleApplyStagedChanges,
   narrativeMessages,
   currentLanguage,
   fileInputRef,
@@ -239,17 +233,17 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                world={adventureSettings.world} // Use applied settings
+                world={adventureSettings.world}
                 playerName={playerName}
-                characters={characters} // Use applied characters
+                characters={characters}
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
-                onNewCharacters={handleNewCharacters} 
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
-                onAffinityUpdates={handleAffinityUpdates} 
-                onRelationUpdates={handleRelationUpdatesFromAI} 
-                rpgMode={adventureSettings.rpgMode} // Use applied RPG mode
+                onNewCharacters={handleNewCharacters}
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+                onAffinityUpdates={handleAffinityUpdates}
+                onRelationUpdates={handleRelationUpdatesFromAI}
+                rpgMode={adventureSettings.rpgMode}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
@@ -274,9 +268,9 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={formKey} // Add key to re-mount form when initialValues change significantly
-                                    initialValues={stagedAdventureSettings} // Pass AdventureFormValues
-                                    onSettingsChange={handleSettingsUpdate} // Updates staged settings
+                                    propKey={propKey} // Pass propKey here
+                                    initialValues={stagedAdventureSettings}
+                                    onSettingsChange={handleSettingsUpdate}
                                 />
                              </AccordionContent>
                          </AccordionItem>
@@ -306,14 +300,14 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                  <CharacterSidebar
-                                     characters={stagedCharacters} // Pass full staged characters for editing
-                                     onCharacterUpdate={handleCharacterUpdate} 
+                                     characters={stagedCharacters}
+                                     onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter}
-                                     onRelationUpdate={handleRelationUpdate} 
+                                     onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false} // Use staged RPG mode from AdventureFormValues
+                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
                                      playerId={playerId}
-                                     playerName={stagedAdventureSettings.playerName || "Player"} 
+                                     playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>

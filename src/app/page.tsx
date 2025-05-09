@@ -9,7 +9,7 @@ import { PageStructure } from "./page.structure"; // Import the layout structure
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure"; // Import input/output/new char/update/affinity/relation types
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -20,21 +20,27 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog" // Import AlertDialog components for restart confirmation
+} from "@/components/ui/alert-dialog"
 
 // Constants
-const PLAYER_ID = "player"; // Define a constant ID for the player
+const PLAYER_ID = "player";
 
 // Helper type for character definitions within AdventureForm
-type FormCharacterDefinition = { id?: string; name: string; details: string };
+export type FormCharacterDefinition = { id?: string; name: string; details: string };
+
+// Helper type for AdventureForm props consistency
+export type AdventureFormValues = Omit<AdventureSettings, 'rpgMode' | 'characters'> & {
+  characters: FormCharacterDefinition[];
+  enableRpgMode?: boolean;
+};
+
 
 export default function Home() {
-  // State Management
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
     rpgMode: false,
-    playerName: "Player", // Default player name
+    playerName: "Player",
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -56,21 +62,17 @@ export default function Home() {
         relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Ami" }
       }
   ]);
-  
-  // Applied state (used by AdventureDisplay)
+
   const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(baseAdventureSettings);
   const [characters, setCharacters] = React.useState<Character[]>(baseCharacters);
 
-  // Staged state for Right Sidebar (AdventureForm and CharacterSidebar)
   const [stagedAdventureMainSettings, setStagedAdventureMainSettings] = React.useState<AdventureSettings>(baseAdventureSettings);
-  // Staged character definitions from AdventureForm's "Définir les Personnages Initiaux"
   const [stagedInitialCharacterDefinitions, setStagedInitialCharacterDefinitions] = React.useState<FormCharacterDefinition[]>(
     baseCharacters.map(c => ({ id: c.id, name: c.name, details: c.details }))
   );
-  // Staged full characters (edited by CharacterSidebar, and provides base for AdventureForm's initial character definitions)
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(baseCharacters);
-  
-  const [formKey, setFormKey] = React.useState(0); // Key to re-mount AdventureForm
+
+  const [formKey, setFormKey] = React.useState(0);
 
   const [narrative, setNarrative] = React.useState<Message[]>([
      { id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }
@@ -81,7 +83,6 @@ export default function Home() {
 
   const { toast } = useToast();
 
-  // Sync staged states when base states change (e.g., on load or apply changes)
   React.useEffect(() => {
     setStagedAdventureMainSettings(adventureSettings);
     setStagedCharacters(characters);
@@ -90,38 +91,32 @@ export default function Home() {
   }, [adventureSettings, characters]);
 
 
-  // --- Callback Functions ---
-
   const handleSettingsUpdate = React.useCallback((newSettingsFromForm: AdventureFormValues) => {
-    console.log("Staging AdventureForm update with:", newSettingsFromForm);
     setStagedAdventureMainSettings(prevSettings => ({
-        ...prevSettings, 
+        ...prevSettings,
         world: newSettingsFromForm.world,
         initialSituation: newSettingsFromForm.initialSituation,
         rpgMode: newSettingsFromForm.enableRpgMode ?? false,
         playerName: newSettingsFromForm.playerName || "Player",
-        currencyName: newSettingsFromForm.currencyName, 
+        currencyName: newSettingsFromForm.currencyName,
     }));
     setStagedInitialCharacterDefinitions(newSettingsFromForm.characters);
   }, []);
 
 
   const handleApplyStagedChanges = React.useCallback(() => {
-    console.log("Applying staged changes to main state.");
-    
-    const currentLiveAdventureSettings = adventureSettings; // Capture before update
-
+    const currentLiveAdventureSettings = adventureSettings;
     setAdventureSettings(stagedAdventureMainSettings);
 
     const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
     const newRPGMode = stagedAdventureMainSettings.rpgMode;
 
-    let reconciledStagedCharacters = [...stagedCharacters]; 
+    let reconciledStagedCharacters = [...stagedCharacters];
     const detailedCharMap = new Map(reconciledStagedCharacters.map(char => [char.id, char]));
 
     const finalCharactersList: Character[] = stagedInitialCharacterDefinitions.map(formDef => {
         const existingDetailedChar = formDef.id ? detailedCharMap.get(formDef.id) : reconciledStagedCharacters.find(sc => sc.name === formDef.name && !sc.id);
-        
+
         if (existingDetailedChar) {
             return {
                 ...existingDetailedChar,
@@ -134,7 +129,7 @@ export default function Home() {
                     strength: existingDetailedChar.strength ?? 10, dexterity: existingDetailedChar.dexterity ?? 10, constitution: existingDetailedChar.constitution ?? 10,
                     intelligence: existingDetailedChar.intelligence ?? 10, wisdom: existingDetailedChar.wisdom ?? 10, charisma: existingDetailedChar.charisma ?? 10,
                     hitPoints: existingDetailedChar.hitPoints ?? 10, maxHitPoints: existingDetailedChar.maxHitPoints ?? 10, armorClass: existingDetailedChar.armorClass ?? 10,
-                } : { 
+                } : {
                     level: undefined, experience: undefined, characterClass: undefined, stats: undefined, inventory: undefined, skills: undefined,
                     spells: undefined, techniques: undefined, passiveAbilities: undefined, strength: undefined, dexterity: undefined, constitution: undefined,
                     intelligence: undefined, wisdom: undefined, charisma: undefined, hitPoints: undefined, maxHitPoints: undefined, armorClass: undefined,
@@ -161,50 +156,67 @@ export default function Home() {
         }
     });
 
+    // Ensure all characters have relations to each other
+    finalCharactersList.forEach(char => {
+        finalCharactersList.forEach(otherChar => {
+            if (char.id !== otherChar.id) {
+                if (!char.relations) char.relations = {};
+                if (!char.relations[otherChar.id]) {
+                    char.relations[otherChar.id] = defaultRelation;
+                }
+            }
+        });
+        if (!char.relations) char.relations = {};
+        if(!char.relations[PLAYER_ID]) {
+            char.relations[PLAYER_ID] = defaultRelation;
+        }
+    });
+
+
     setCharacters(finalCharactersList);
-    
+
     if (stagedAdventureMainSettings.initialSituation !== currentLiveAdventureSettings.initialSituation) {
         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureMainSettings.initialSituation, timestamp: Date.now() }]);
     }
-    
+
     toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
   }, [stagedAdventureMainSettings, stagedCharacters, stagedInitialCharacterDefinitions, currentLanguage, toast, adventureSettings]);
 
 
    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string) => {
        const newMessage: Message = {
-            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             type: type,
             content: content,
             timestamp: Date.now(),
-            sceneDescription: type === 'ai' ? sceneDesc : undefined, 
+            sceneDescription: type === 'ai' ? sceneDesc : undefined,
        };
        setNarrative(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
 
-   const handleNewCharacters = React.useCallback((newChars: Array<NewCharacterSchema>) => { 
+   const handleNewCharacters = React.useCallback((newChars: Array<NewCharacterSchema>) => {
         if (!newChars || newChars.length === 0) return;
         const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
-        setStagedCharacters(prevChars => { 
+        setStagedCharacters(prevChars => {
             const currentNames = new Set(prevChars.map(c => c.name.toLowerCase()));
             const charsToAdd: Character[] = [];
-            let existingCharsCopy = [...prevChars]; // Work with a copy
+            let existingCharsCopy = [...prevChars];
 
             newChars.forEach(newCharData => {
                 if (!currentNames.has(newCharData.name.toLowerCase())) {
                     const newId = `${newCharData.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-                    
                     const processedRelations: Record<string, string> = {};
+
                     if (newCharData.initialRelations && Array.isArray(newCharData.initialRelations)) {
                         newCharData.initialRelations.forEach(rel => {
-                            const relationDescription = rel.description || defaultRelationDesc; 
-                            if (rel.targetName.toLowerCase() === (stagedAdventureMainSettings.playerName || "Player").toLowerCase()) { 
+                            const relationDescription = rel.description || defaultRelationDesc;
+                            if (rel.targetName.toLowerCase() === (stagedAdventureMainSettings.playerName || "Player").toLowerCase()) {
                                 processedRelations[PLAYER_ID] = relationDescription;
                             } else {
                                 const targetChar = existingCharsCopy.find(ec => ec.name.toLowerCase() === rel.targetName.toLowerCase());
                                 if (targetChar) {
-                                    processedRelations[targetChar.id] = relationDescription; 
+                                    processedRelations[targetChar.id] = relationDescription;
                                 }
                             }
                         });
@@ -214,16 +226,21 @@ export default function Home() {
                     }
                     existingCharsCopy.forEach(ec => {
                         if (!processedRelations[ec.id] || processedRelations[ec.id].trim() === "" || processedRelations[ec.id].toLowerCase() === "inconnu" || processedRelations[ec.id].toLowerCase() === "unknown") {
-                            processedRelations[ec.id] = defaultRelationDesc;
+                             processedRelations[ec.id] = defaultRelationDesc;
                         }
+                         if (!ec.relations) ec.relations = {};
+                         if(!ec.relations[newId] || ec.relations[newId].trim() === "" || ec.relations[newId].toLowerCase() === "inconnu" || ec.relations[newId].toLowerCase() === "unknown") {
+                            ec.relations[newId] = defaultRelationDesc;
+                         }
                     });
+
 
                     const characterToAdd: Character = {
                         id: newId, name: newCharData.name,
                         details: newCharData.details || (currentLanguage === 'fr' ? "Rencontré récemment." : "Recently met."),
                         history: newCharData.initialHistoryEntry ? [newCharData.initialHistoryEntry] : [`Rencontré le ${new Date().toLocaleString()}`],
                         opinion: {}, portraitUrl: null, affinity: 50, relations: processedRelations,
-                        ...(stagedAdventureMainSettings.rpgMode && { 
+                        ...(stagedAdventureMainSettings.rpgMode && {
                             level: 1, experience: 0, characterClass: '', stats: {}, inventory: {}, skills: {},
                             spells: [], techniques: [], passiveAbilities: [], strength: 10, dexterity: 10,
                             constitution: 10, intelligence: 10, wisdom: 10, charisma: 10,
@@ -232,25 +249,24 @@ export default function Home() {
                     };
                     charsToAdd.push(characterToAdd);
                     currentNames.add(newCharData.name.toLowerCase());
-
-                    existingCharsCopy = existingCharsCopy.map(ec => {
-                        const updatedEcRelations = { ...(ec.relations || {}) };
-                        if (!updatedEcRelations[newId] || updatedEcRelations[newId].trim() === "" || updatedEcRelations[newId].toLowerCase() === "inconnu" || updatedEcRelations[newId].toLowerCase() === "unknown") {
-                             updatedEcRelations[newId] = defaultRelationDesc;
+                    existingCharsCopy = existingCharsCopy.map(ec => ({
+                        ...ec,
+                        relations: {
+                            ...(ec.relations || {}),
+                            [newId]: ec.relations?.[newId] || defaultRelationDesc,
                         }
-                        return { ...ec, relations: updatedEcRelations };
-                    });
+                    }));
                 }
             });
 
             if (charsToAdd.length > 0) {
                 const newFullList = [...existingCharsCopy, ...charsToAdd];
-                setTimeout(() => { 
-                    toast({
-                        title: "Nouveau Personnage Rencontré",
-                        description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste des personnages. Enregistrez les modifications pour confirmer.`,
-                    });
-                }, 0);
+                React.startTransition(() => {
+                  toast({
+                      title: "Nouveau Personnage Rencontré",
+                      description: `${charsToAdd.map(c => c.name).join(', ')} a été ajouté à la liste des personnages. Enregistrez les modifications pour confirmer.`,
+                  });
+                });
                 setStagedInitialCharacterDefinitions(newFullList.map(c => ({ id: c.id, name: c.name, details: c.details })));
                 return newFullList;
             }
@@ -260,7 +276,7 @@ export default function Home() {
 
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
-        setStagedCharacters(prevChars => { 
+        setStagedCharacters(prevChars => {
             let changed = false;
             const updatedChars = prevChars.map(char => {
                 const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
@@ -284,7 +300,7 @@ export default function Home() {
 
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
-        setStagedCharacters(prevChars => { 
+        setStagedCharacters(prevChars => {
              let changed = false;
             const updatedChars = prevChars.map(char => {
                 const affinityUpdate = updates.find(u => u.characterName.toLowerCase() === char.name.toLowerCase());
@@ -299,15 +315,15 @@ export default function Home() {
 
             if (changed) {
                  updates.forEach(update => {
-                     if (Math.abs(update.change) >= 3) { 
+                     if (Math.abs(update.change) >= 3) {
                          const charName = update.characterName;
                          const direction = update.change > 0 ? 'améliorée' : 'détériorée';
-                         setTimeout(() => { 
-                             toast({
-                                title: `Affinité Modifiée: ${charName}`,
-                                description: `Votre relation avec ${charName} s'est ${direction}. Raison: ${update.reason || 'Interaction récente'}`,
-                             });
-                         }, 0);
+                         React.startTransition(() => {
+                           toast({
+                              title: `Affinité Modifiée: ${charName}`,
+                              description: `Votre relation avec ${charName} s'est ${direction}. Raison: ${update.reason || 'Interaction récente'}`,
+                           });
+                         });
                      }
                  });
                  setStagedInitialCharacterDefinitions(updatedChars.map(c => ({ id: c.id, name: c.name, details: c.details })));
@@ -318,7 +334,7 @@ export default function Home() {
     }, [toast]);
 
      const handleRelationUpdate = React.useCallback((charId: string, targetId: string, newRelation: string) => {
-        setStagedCharacters(prevChars => prevChars.map(char => { 
+        setStagedCharacters(prevChars => prevChars.map(char => {
             if (char.id === charId) {
                 const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
                 return { ...char, relations: updatedRelations };
@@ -331,7 +347,7 @@ export default function Home() {
         if (!updates || updates.length === 0) return;
         const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
-        setStagedCharacters(prevChars => { 
+        setStagedCharacters(prevChars => {
             let chars = [...prevChars];
             let changed = false;
 
@@ -340,7 +356,7 @@ export default function Home() {
                 if (sourceCharIndex === -1) return;
 
                 let targetId: string | null = null;
-                if (update.targetName.toLowerCase() === (stagedAdventureMainSettings.playerName || "Player").toLowerCase()) { 
+                if (update.targetName.toLowerCase() === (stagedAdventureMainSettings.playerName || "Player").toLowerCase()) {
                     targetId = PLAYER_ID;
                 } else {
                     const targetChar = chars.find(c => c.name.toLowerCase() === update.targetName.toLowerCase());
@@ -352,17 +368,17 @@ export default function Home() {
                 const currentRelation = chars[sourceCharIndex].relations?.[targetId] || defaultRelationDesc;
                 const newRelationFromAI = update.newRelation.trim() === "" || update.newRelation.toLowerCase() === "inconnu" || update.newRelation.toLowerCase() === "unknown" ? defaultRelationDesc : update.newRelation;
 
-                if (currentRelation !== newRelationFromAI) { 
+                if (currentRelation !== newRelationFromAI) {
                     const sourceChar = { ...chars[sourceCharIndex] };
                     sourceChar.relations = { ...(sourceChar.relations || {}), [targetId]: newRelationFromAI };
-                    chars[sourceCharIndex] = sourceChar; 
+                    chars[sourceCharIndex] = sourceChar;
                     changed = true;
-                     setTimeout(() => { 
-                         toast({
-                            title: `Relation Changée: ${update.characterName}`,
-                            description: `Relation envers ${update.targetName} est maintenant "${newRelationFromAI}". Raison: ${update.reason || 'Événement narratif'}`,
-                         });
-                     }, 0);
+                     React.startTransition(() => {
+                       toast({
+                          title: `Relation Changée: ${update.characterName}`,
+                          description: `Relation envers ${update.targetName} est maintenant "${newRelationFromAI}". Raison: ${update.reason || 'Événement narratif'}`,
+                       });
+                     });
                 }
             });
             if (changed) {
@@ -377,13 +393,13 @@ export default function Home() {
        setNarrative(prev => prev.map(msg =>
            msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
        ));
-       setTimeout(() => { toast({ title: "Message Modifié" }); }, 0);
+       React.startTransition(() => { toast({ title: "Message Modifié" }); });
    }, [toast]);
 
     const handleUndoLastMessage = React.useCallback(() => {
         setNarrative(prevNarrative => {
             if (prevNarrative.length <= 1) {
-                 setTimeout(() => { toast({ title: "Impossible d'annuler", description: "Aucun message à annuler.", variant: "destructive" }); }, 0);
+                 React.startTransition(() => { toast({ title: "Impossible d'annuler", description: "Aucun message à annuler.", variant: "destructive" }); });
                  return prevNarrative;
             }
             let lastUserIndex = -1;
@@ -394,18 +410,18 @@ export default function Home() {
                 }
             }
 
-            if (lastUserIndex === -1 && prevNarrative.length > 1) { 
-                return prevNarrative.slice(0,1); 
-            } else if (lastUserIndex > 0) { 
+            if (lastUserIndex === -1 && prevNarrative.length > 1) {
+                return prevNarrative.slice(0,1);
+            } else if (lastUserIndex > 0) {
                 const newNarrative = prevNarrative.slice(0, lastUserIndex);
-                setTimeout(() => { toast({ title: "Dernier tour annulé" }); }, 0);
+                React.startTransition(() => { toast({ title: "Dernier tour annulé" }); });
                 return newNarrative;
-            } else if (prevNarrative.length > 1) { 
-                 const newNarrative = prevNarrative.slice(0, 1); 
-                 setTimeout(() => { toast({ title: "Dernier message annulé" }); }, 0);
+            } else if (prevNarrative.length > 1) {
+                 const newNarrative = prevNarrative.slice(0, 1);
+                 React.startTransition(() => { toast({ title: "Dernier message annulé" }); });
                  return newNarrative;
             }
-            setTimeout(() => { toast({ title: "Annulation non applicable", description:"Aucune action utilisateur claire à annuler."}); }, 0);
+            React.startTransition(() => { toast({ title: "Annulation non applicable", description:"Aucune action utilisateur claire à annuler."}); });
             return prevNarrative;
         });
     }, [toast]);
@@ -432,26 +448,26 @@ export default function Home() {
          }
 
          if (!lastAiMessage || !lastUserAction) {
-             setTimeout(() => { toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" }); }, 0);
+             React.startTransition(() => { toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" }); });
              return;
          }
 
          setIsRegenerating(true);
-         setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); }, 0);
+         React.startTransition(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); });
 
          const narrativeContextForRegen = contextMessages.map(msg =>
-                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content 
+                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
              ).join('\n\n') + `\n\n> ${adventureSettings.playerName || 'Player'}: ${lastUserAction}\n`;
 
          try {
              const input: GenerateAdventureInput = {
                  world: adventureSettings.world, initialSituation: narrativeContextForRegen,
                  characters: characters, userAction: lastUserAction, currentLanguage: currentLanguage,
-                 playerName: adventureSettings.playerName || "Player", 
-                 promptConfig: adventureSettings.rpgMode ? { 
+                 playerName: adventureSettings.playerName || "Player",
+                 promptConfig: adventureSettings.rpgMode ? {
                     rpgContext: {
                         playerStats: { },
-                        characterDetails: characters.map(c => ({ 
+                        characterDetails: characters.map(c => ({
                              name: c.name, details: c.details, stats: c.stats, inventory: c.inventory,
                              relations: c.relations ? Object.entries(c.relations).map(([id, desc]) => {
                                  const relatedChar = characters.find(char => char.id === id);
@@ -480,20 +496,20 @@ export default function Home() {
              handleCharacterHistoryUpdate(result.characterUpdates || []);
              handleAffinityUpdates(result.affinityUpdates || []);
              handleRelationUpdatesFromAI(result.relationUpdates || []);
-             setTimeout(() => { toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." }); }, 0);
+             React.startTransition(() => { toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." }); });
          } catch (error) {
              console.error("Error regenerating adventure:", error);
-             setTimeout(() => { 
+             React.startTransition(() => {
                 toast({ title: "Erreur de Régénération", description: `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`, variant: "destructive"});
-              }, 0);
+              });
          } finally {
              setIsRegenerating(false);
          }
      }, [isRegenerating, narrative, adventureSettings, characters, currentLanguage, toast, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI]);
 
    const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
-       setStagedCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c)); 
-       setStagedInitialCharacterDefinitions(prevDefs => prevDefs.map(def => 
+       setStagedCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
+       setStagedInitialCharacterDefinitions(prevDefs => prevDefs.map(def =>
            def.id === updatedCharacter.id ? { ...def, name: updatedCharacter.name, details: updatedCharacter.details } : def
        ));
    }, []);
@@ -507,17 +523,17 @@ export default function Home() {
                 if (charIndex > -1) existingChars[charIndex] = character;
                 else existingChars.push(character);
                 localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
-                 setTimeout(() => { toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` }); }, 0);
+                 React.startTransition(() => { toast({ title: "Personnage Sauvegardé", description: `${character.name} est maintenant disponible globalement.` }); });
                  setStagedCharacters(prev => prev.map(c => c.id === character.id ? { ...c, _lastSaved: Date.now() } as any : c));
-                 setStagedInitialCharacterDefinitions(prevDefs => prevDefs.map(def => 
+                 setStagedInitialCharacterDefinitions(prevDefs => prevDefs.map(def =>
                     def.id === character.id ? { ...def, name: character.name, details: character.details } : def
                  ));
             } catch (error) {
                  console.error("Failed to save character to localStorage:", error);
-                 setTimeout(() => { toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }); }, 0);
+                 React.startTransition(() => { toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }); });
             }
         } else {
-              setTimeout(() => { toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" }); }, 0);
+            React.startTransition(() => { toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" }); });
         }
     }, [toast]);
 
@@ -535,7 +551,7 @@ export default function Home() {
         a.download = `aventurier_textuel_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        setTimeout(() => { toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." }); }, 0);
+        React.startTransition(() => { toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." }); });
     }, [adventureSettings, characters, narrative, currentLanguage, toast]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -581,7 +597,7 @@ export default function Home() {
                     _lastSaved: c._lastSaved,
                     ...(rpgModeActive && { level: c.level ?? 1, experience: c.experience ?? 0, characterClass: c.characterClass ?? '', stats: c.stats ?? {}, inventory: c.inventory ?? {}, skills: c.skills ?? {}, spells: c.spells ?? [], techniques: c.techniques ?? [], passiveAbilities: c.passiveAbilities ?? [], strength: c.strength ?? 10, dexterity: c.dexterity ?? 10, constitution: c.constitution ?? 10, intelligence: c.intelligence ?? 10, wisdom: c.wisdom ?? 10, charisma: c.charisma ?? 10, hitPoints: c.hitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10, armorClass: c.armorClass ?? 10, }),
                 }));
-                
+
                 setAdventureSettings(loadedData.adventureSettings);
                 setCharacters(validatedCharacters);
                 setNarrative(loadedData.narrative as Message[]);
@@ -589,10 +605,10 @@ export default function Home() {
                 setBaseAdventureSettings(loadedData.adventureSettings);
                 setBaseCharacters(validatedCharacters);
 
-                setTimeout(() => { toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." }); }, 0);
+                React.startTransition(() => { toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." }); });
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
-                setTimeout(() => { toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" }); }, 0);
+                React.startTransition(() => { toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" }); });
             }
         };
         reader.readAsText(file);
@@ -602,66 +618,44 @@ export default function Home() {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const confirmRestartAdventure = React.useCallback(() => {
-        const initialSettings = {
-            world: "Grande université populaire nommée \"hight scoole of futur\".",
-            initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
-            rpgMode: false,
-            playerName: "Player",
-        };
-        const initialChars = [
-            {
-                id: 'rina-1', name: "Rina",
-                details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
-                history: ["Ceci est un exemple d'historique pour Rina."], opinion: {}, affinity: 70,
-                relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" }
-            },
-            {
-                id: 'kentaro-1', name: "Kentaro",
-                details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
-                history: ["Kentaro a été vu parlant à Rina."], opinion: {}, affinity: 60,
-                relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Ami" }
-            }
-        ];
-
-        setAdventureSettings(initialSettings);
-        setCharacters(initialChars);
-        setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }]);
-        setBaseAdventureSettings(initialSettings);
-        setBaseCharacters(initialChars);
+        setAdventureSettings(baseAdventureSettings);
+        setCharacters(baseCharacters);
+        setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }]);
         setShowRestartConfirm(false);
-        setTimeout(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée à son état initial." }); }, 0);
-    }, [toast]);
+        React.startTransition(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée à son état initial." }); });
+    }, [baseAdventureSettings, baseCharacters, toast]);
 
-  // Memoize the stagedAdventureSettings object passed to PageStructure / AdventureForm
+
   const memoizedStagedAdventureSettingsForForm = React.useMemo(() => {
     return {
       ...stagedAdventureMainSettings,
       characters: stagedInitialCharacterDefinitions,
+      // Ensure enableRpgMode is explicitly passed if it's part of AdventureFormValues structure
+      enableRpgMode: stagedAdventureMainSettings.rpgMode,
     };
   }, [stagedAdventureMainSettings, stagedInitialCharacterDefinitions]);
 
-  // --- Render ---
   return (
     <>
       <PageStructure
-        adventureSettings={adventureSettings} 
-        characters={characters} 
+        adventureSettings={adventureSettings}
+        characters={characters}
         stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
-        stagedCharacters={stagedCharacters} 
-        formKey={formKey} 
-        handleApplyStagedChanges={handleApplyStagedChanges} 
+        stagedCharacters={stagedCharacters}
+        propKey={formKey} // Pass formKey as propKey
+        handleApplyStagedChanges={handleApplyStagedChanges}
         narrativeMessages={narrative}
         currentLanguage={currentLanguage}
         fileInputRef={fileInputRef}
-        handleSettingsUpdate={handleSettingsUpdate} 
+        handleSettingsUpdate={handleSettingsUpdate}
         handleNarrativeUpdate={handleNarrativeUpdate}
-        handleCharacterUpdate={handleCharacterUpdate} 
-        handleNewCharacters={handleNewCharacters} 
-        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
-        handleAffinityUpdates={handleAffinityUpdates} 
-        handleRelationUpdate={handleRelationUpdate} 
-        handleRelationUpdatesFromAI={handleRelationUpdatesFromAI} 
-        handleSaveNewCharacter={handleSaveNewCharacter} 
+        handleCharacterUpdate={handleCharacterUpdate}
+        handleNewCharacters={handleNewCharacters}
+        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+        handleAffinityUpdates={handleAffinityUpdates}
+        handleRelationUpdate={handleRelationUpdate}
+        handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
+        handleSaveNewCharacter={handleSaveNewCharacter}
         handleSave={handleSave}
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
@@ -672,7 +666,7 @@ export default function Home() {
         handleRegenerateLastResponse={handleRegenerateLastResponse}
         handleUndoLastMessage={handleUndoLastMessage}
         playerId={PLAYER_ID}
-        playerName={adventureSettings.playerName || "Player"} 
+        playerName={adventureSettings.playerName || "Player"}
         onRestartAdventure={() => setShowRestartConfirm(true)}
       />
        <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
@@ -692,9 +686,3 @@ export default function Home() {
       </>
   );
 }
-
-// Helper type for AdventureForm props
-export type AdventureFormValues = Omit<AdventureSettings, 'rpgMode' | 'characters'> & {
-  characters: FormCharacterDefinition[]; 
-  enableRpgMode?: boolean;
-};
