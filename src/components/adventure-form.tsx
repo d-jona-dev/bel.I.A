@@ -40,9 +40,8 @@ const adventureFormSchema = z.object({
   currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
 });
 
-// Renamed formKey to propKey to avoid conflict with React's special key prop.
 interface AdventureFormProps {
-    propKey: number; // Changed from formKey to propKey
+    propKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
 }
@@ -59,33 +58,37 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
     name: "characters",
   });
 
-  // Initialize justReset to true. This will make the first watch invocation (on mount/remount) be ignored.
   const justReset = React.useRef(true);
 
   React.useEffect(() => {
-    // This effect runs when initialValues prop changes OR when propKey changes (causing re-mount/re-initialization logic).
-    // console.log("AdventureForm: initialValues or propKey changed, resetting form.", initialValues, propKey);
     form.reset(initialValues);
-    justReset.current = true; // Signal that a reset happened, next watch invocation should be ignored.
-  }, [initialValues, propKey, form]); // form.reset is stable if form instance is stable. form included for completeness if reset is not stable.
+    justReset.current = true; // Signal that a reset happened
+
+    // Schedule justReset.current to be set to false after the current event loop cycle.
+    // This helps ensure that any watch events triggered by the reset (synchronously or in microtasks)
+    // are ignored.
+    const timerId = setTimeout(() => {
+      justReset.current = false;
+    }, 0);
+
+    return () => {
+      clearTimeout(timerId); // Cleanup the timer if the component unmounts or dependencies change
+    };
+  }, [initialValues, propKey, form]);
 
   React.useEffect(() => {
-    // console.log("AdventureForm: Setting up watch");
     const subscription = form.watch((value, { name, type }) => {
-      // console.log("AdventureForm: Watch triggered. justReset.current =", justReset.current);
       if (justReset.current) {
-        justReset.current = false; // Consume the flag
-        // console.log("AdventureForm: Watch ignored due to justReset flag.");
+        // If justReset.current is true, it means a reset has just occurred (or is in progress via timeout).
+        // We ignore this watch event to prevent an infinite loop.
         return;
       }
-      // console.log("AdventureForm: Watch calling onSettingsChange.");
       onSettingsChange(value as AdventureFormValues);
     });
     return () => {
-      // console.log("AdventureForm: Unsubscribing watch");
       subscription.unsubscribe();
     };
-  }, [form, onSettingsChange]); // form.watch is stable if form instance is stable.
+  }, [form, onSettingsChange]);
 
 
   const handleLoadPrompt = () => {
@@ -100,8 +103,14 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
         playerName: "Héros",
         currencyName: "Or",
     };
+    // Directly call onSettingsChange to update parent state, which will flow back via initialValues
     onSettingsChange(loadedData);
-    toast({ title: "Prompt Chargé", description: "La configuration de l'aventure a été chargée depuis l'exemple." });
+    form.reset(loadedData); // Also reset the form's internal state
+    justReset.current = true; // Signal reset
+    const timerId = setTimeout(() => { justReset.current = false; }, 0); // And schedule to clear flag
+    // No separate toast here, parent might toast on apply changes
+
+    toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
 
 
