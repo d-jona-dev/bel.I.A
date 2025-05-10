@@ -52,6 +52,7 @@ interface PageStructureProps {
   handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Updates staged characters
   handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; // Updates staged characters
   handleSaveNewCharacter: (character: Character) => void; // Saves staged character globally
+  handleAddStagedCharacter: (character: Character) => void; // Adds a global character to staged characters
   handleSave: () => void; // Saves live state
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void; // Loads into base and live state
   setCurrentLanguage: (lang: string) => void;
@@ -85,6 +86,7 @@ export function PageStructure({
   handleRelationUpdate,
   handleRelationUpdatesFromAI,
   handleSaveNewCharacter,
+  handleAddStagedCharacter, // Destructure new prop
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -304,6 +306,7 @@ export function PageStructure({
                                      characters={stagedCharacters} // Manage staged characters
                                      onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter}
+                                     onAddStagedCharacter={handleAddStagedCharacter} // Pass new callback
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={stagedAdventureSettings.enableRpgMode ?? false} // Use RPG mode from staged settings

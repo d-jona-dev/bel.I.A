@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon } from "lucide-react"; // Added Save icon, Heart icon, LinkIcon
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react"; // Added Save icon, Heart icon, LinkIcon, UserPlus
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Image generation types
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,7 @@ interface CharacterSidebarProps {
     characters: Character[];
     onCharacterUpdate: (updatedCharacter: Character) => void; // Callback to update parent state
     onSaveNewCharacter: (character: Character) => void; // Callback to save a new character globally
+    onAddStagedCharacter: (character: Character) => void; // Callback to add a globally saved character to staged characters
     onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Callback for relation updates
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>; // For portraits
     rpgMode: boolean; // To show/hide RPG elements
@@ -43,6 +45,7 @@ export function CharacterSidebar({
     characters,
     onCharacterUpdate,
     onSaveNewCharacter,
+    onAddStagedCharacter,
     onRelationUpdate,
     generateImageAction,
     rpgMode,
@@ -52,12 +55,42 @@ export function CharacterSidebar({
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false); // State to track client-side rendering
+  const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
   // Set isClient to true only on the client-side after mount
   React.useEffect(() => {
     setIsClient(true);
-  }, []);
+    if (typeof window !== 'undefined') {
+        try {
+            const storedGlobalChars = localStorage.getItem('globalCharacters');
+            if (storedGlobalChars) {
+                setGlobalCharactersList(JSON.parse(storedGlobalChars));
+            }
+        } catch (error) {
+            console.error("Failed to load global characters from localStorage:", error);
+            toast({
+                title: "Erreur de chargement",
+                description: "Impossible de charger les personnages globaux.",
+                variant: "destructive",
+            });
+        }
+    }
+  }, [toast]);
+
+  const availableGlobalChars = React.useMemo(() => {
+    if (!isClient) return [];
+    return globalCharactersList.filter(
+        gc => !characters.some(sc => sc.name.toLowerCase() === gc.name.toLowerCase() || sc.id === gc.id)
+    );
+  }, [globalCharactersList, characters, isClient]);
+
+  const handleAddGlobalCharToAdventure = (charId: string) => {
+    const charToAdd = globalCharactersList.find(gc => gc.id === charId);
+    if (charToAdd) {
+        onAddStagedCharacter(charToAdd); // Call parent to add to staged characters
+    }
+  };
 
 
   const handleGeneratePortrait = async (character: Character) => {
@@ -66,14 +99,9 @@ export function CharacterSidebar({
     setImageLoadingStates(prev => ({ ...prev, [character.id]: true }));
 
     try {
-      // Create a prompt for the portrait based on character details
-      // Details are already in the target language if loaded/created correctly
-      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode ? `Class: ${character.characterClass || 'Unknown'}.` : ''}`; // Add class if RPG mode
+      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode ? `Class: ${character.characterClass || 'Unknown'}.` : ''}`; 
       const result = await generateImageAction({ sceneDescription: prompt });
-
-      // Update the specific character with the new portrait URL via callback
       onCharacterUpdate({ ...character, portraitUrl: result.imageUrl });
-
       toast({
         title: "Portrait Généré",
         description: `Le portrait de ${character.name} a été généré.`,
@@ -90,21 +118,17 @@ export function CharacterSidebar({
     }
   };
 
-   // Handle direct edits to character fields (string, number, boolean)
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-            // Basic type checking/conversion for numbers
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass', 'affinity']; // Added affinity
+            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass', 'affinity'];
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
-                 // Clamp affinity between 0 and 100
                  if (field === 'affinity') {
-                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue)); // Clamp and default to 50 if NaN
+                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue)); 
                  }
-                 onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue }); // Default affinity to 50 if parse fails
+                 onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue });
             } else {
-                 // Clamp affinity if it's directly set as a number
                  let finalValue = value;
                  if (field === 'affinity' && typeof finalValue === 'number') {
                     finalValue = Math.max(0, Math.min(100, finalValue));
@@ -114,20 +138,18 @@ export function CharacterSidebar({
         }
    };
 
-    // Handle nested field changes (stats, inventory, opinion, skills, relations)
     const handleNestedFieldChange = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations', key: string, value: string | number | boolean) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
              const currentFieldData = character[field] || {};
-             // Ensure correct type for inventory/skills if they are numbers/booleans
              let finalValue = value;
              if ((field === 'inventory' || (field === 'skills' && typeof value === 'string'))) {
                  const numValue = parseInt(value as string, 10);
-                 finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue; // Keep string for non-numeric skills
+                 finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue; 
              }
 
              if (field === 'relations') {
-                 onRelationUpdate(charId, key, String(finalValue)); // Use the specific callback for relations, value is already in target language
+                 onRelationUpdate(charId, key, String(finalValue)); 
              } else {
                 const updatedField = { ...currentFieldData, [key]: finalValue };
                 onCharacterUpdate({ ...character, [field]: updatedField });
@@ -139,7 +161,6 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
              if (field === 'relations') {
-                 // For relations, set to localized "Unknown" instead of deleting
                  onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
              } else {
                 const updatedField = { ...character[field] };
@@ -152,7 +173,7 @@ export function CharacterSidebar({
     const addNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations') => {
         if (field === 'relations') {
              toast({ title: "Modification de Relation", description: "Modifiez les relations existantes via la liste déroulante ou le champ texte.", variant: "default" });
-             return; // Don't allow adding new relation targets this way, edit existing ones
+             return; 
          }
 
         const key = prompt(`Entrez le nom du nouveau champ pour ${field} :`);
@@ -166,26 +187,25 @@ export function CharacterSidebar({
                  defaultValue = currentLanguage === 'fr' ? 'Neutre' : 'Neutral';
             } else if (field === 'skills') {
                  valuePrompt = `Entrez la valeur/bonus pour ${key} (ou laissez vide pour compétence acquise) :`;
-                 defaultValue = true; // Default to boolean true (proficient)
+                 defaultValue = true; 
             } else if (field === 'stats') {
                  valuePrompt = `Entrez la valeur pour la statistique ${key} :`;
                  defaultValue = 10;
             }
 
             const valueInput = prompt(valuePrompt);
-            if (valueInput !== null) { // Check if prompt was cancelled
+            if (valueInput !== null) { 
                  let value: string | number | boolean = valueInput.trim() === '' ? defaultValue : valueInput;
                  handleNestedFieldChange(charId, field, key, value);
             }
         }
     };
 
-     // Handle changes to array fields (history, spells, techniques, passiveAbilities)
     const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
             const updatedArray = [...character[field]!];
-            updatedArray[index] = value; // Value is already in target language if it's history
+            updatedArray[index] = value; 
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
@@ -212,7 +232,6 @@ export function CharacterSidebar({
         }
     };
 
-    // Helper to get affinity label
     const getAffinityLabel = (affinity: number | undefined): string => {
         const value = affinity ?? 50;
         if (currentLanguage === 'fr') {
@@ -224,7 +243,6 @@ export function CharacterSidebar({
             if (value <= 90) return "Loyal";
             return "Dévoué / Amour";
         }
-        // Default to English or adapt for other languages
         if (value <= 10) return "Deep Hate";
         if (value <= 30) return "Hostile";
         if (value <= 45) return "Wary";
@@ -234,15 +252,11 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
-    // Helper to get character name by ID or player name
     const getCharacterNameById = (id: string): string => {
         if (id === playerId) return playerName;
         const char = characters.find(c => c.id === id);
         return char?.name || (currentLanguage === 'fr' ? "Inconnu" : "Unknown");
     }
-
-
-  // --- Sub-components for Readability ---
 
   const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows, min, max }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number }) => (
       <div className="space-y-1">
@@ -267,7 +281,7 @@ export function CharacterSidebar({
                              <Input
                                  id={`${charId}-${field}-${key}`}
                                  type={valueType === 'number' ? 'number' : 'text'}
-                                 value={String(value)} // Input value must be string
+                                 value={String(value)} 
                                  onChange={(e) => handleNestedFieldChange(charId, field, key, e.target.value)}
                                  className="h-8 text-sm flex-1"
                                  min={valueType === 'number' ? "0" : undefined}
@@ -288,9 +302,8 @@ export function CharacterSidebar({
      </div>
  );
 
- // Specific component for Relations
  const RelationsEditableCard = ({ charId, data }: { charId: string, data?: Record<string, string> }) => {
-    const otherCharacters = characters.filter(c => c.id !== charId); // Exclude self
+    const otherCharacters = characters.filter(c => c.id !== charId); 
     const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
     return (
@@ -298,7 +311,6 @@ export function CharacterSidebar({
             <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
             <Card className="bg-muted/30 border">
                 <CardContent className="p-3 space-y-2">
-                     {/* Relation with Player */}
                      <div className="flex items-center gap-2">
                         <Label htmlFor={`${charId}-relations-${playerId}`} className="w-1/3 truncate text-sm">{playerName} (Joueur)</Label>
                         <Input
@@ -309,10 +321,8 @@ export function CharacterSidebar({
                             className="h-8 text-sm flex-1"
                             placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
                         />
-                         {/* No delete for player relation */}
                      </div>
 
-                     {/* Relations with other NPCs */}
                     {otherCharacters.map(otherChar => (
                         <div key={otherChar.id} className="flex items-center gap-2">
                             <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="w-1/3 truncate text-sm">{otherChar.name}</Label>
@@ -329,7 +339,7 @@ export function CharacterSidebar({
                             </Button>
                         </div>
                     ))}
-                    {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( // Check if only player relation or no relations
+                    {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( 
                          <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
                     )}
                      <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
@@ -346,15 +356,15 @@ export function CharacterSidebar({
          <Card className="bg-muted/30 border">
              <CardContent className="p-3 space-y-2">
                  {data && data.length > 0 ? (
-                      <ScrollArea className="h-32"> {/* Make history scrollable */}
+                      <ScrollArea className="h-32"> 
                         {data.map((item, index) => (
                             <div key={index} className="flex items-center gap-2 mb-1">
-                                <Textarea // Use Textarea for history
-                                    value={item} // Item is already in target language
+                                <Textarea 
+                                    value={item} 
                                     onChange={(e) => handleArrayFieldChange(charId, field, index, e.target.value)}
                                     className="text-sm flex-1 bg-background border"
                                     placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
-                                    rows={1} // Start with 1 row, auto-grow
+                                    rows={1} 
                                 />
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => removeArrayFieldItem(charId, field, index)}>
                                     <Trash2 className="h-4 w-4" />
@@ -373,23 +383,48 @@ export function CharacterSidebar({
      </div>
  );
 
-
-  // The component now returns the Accordion directly, meant to be placed inside another container
   return (
-    <div className="w-full"> {/* Added container div */}
+    <div className="w-full">
+        {isClient && availableGlobalChars.length > 0 && (
+            <Card className="mb-4 border-dashed">
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <UserPlus className="h-5 w-5" />
+                        {currentLanguage === 'fr' ? 'Ajouter un Personnage Sauvegardé' : 'Add Saved Character'}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Select onValueChange={handleAddGlobalCharToAdventure} disabled={availableGlobalChars.length === 0}>
+                        <SelectTrigger>
+                            <SelectValue placeholder={currentLanguage === 'fr' ? 'Sélectionner un personnage...' : 'Select a character...'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableGlobalChars.map(gc => (
+                                <SelectItem key={gc.id} value={gc.id}>
+                                    {gc.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {availableGlobalChars.length === 0 && (
+                         <p className="text-xs text-muted-foreground mt-2">
+                           {currentLanguage === 'fr' ? 'Tous les personnages sauvegardés sont déjà dans cette aventure.' : 'All saved characters are already in this adventure.'}
+                         </p>
+                    )}
+                </CardContent>
+            </Card>
+        )}
+
         {characters.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini." : "No secondary characters defined."}</p>
+            <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini pour l'aventure en cours." : "No secondary characters defined for the current adventure."}</p>
         ) : (
             <Accordion type="multiple" className="w-full">
                 {characters.map((char) => {
-                    // Determine if this character might be considered "new"
-                    // Only check localStorage on the client side
                     let isPotentiallyNew = false;
                     if (isClient) {
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
-                            // Check if character with the same name exists globally AND if _lastSaved is not present
                             isPotentiallyNew = !globalChars.some(gc => gc.id === char.id || gc.name.toLowerCase() === char.name.toLowerCase()) && !(char as any)._lastSaved;
                         } catch (e) {
                             console.error("Error accessing localStorage:", e);
@@ -400,8 +435,8 @@ export function CharacterSidebar({
                     return (
                     <AccordionItem value={char.id} key={char.id}>
                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                            <div className="flex items-center gap-3 flex-1 min-w-0"> {/* Added flex-1 and min-w-0 */}
-                                <Avatar className="h-8 w-8 flex-shrink-0"> {/* Added flex-shrink-0 */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0"> 
+                                <Avatar className="h-8 w-8 flex-shrink-0"> 
                                      {imageLoadingStates[char.id] ? (
                                         <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
                                      ) : char.portraitUrl ? (
@@ -411,14 +446,11 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
-                                {/* Optional: Add a small badge/icon if potentially new */}
                                 {isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
-                                             {/* Wrap the Star icon in a span */}
-                                             {/* Use asChild here to avoid nested buttons */}
                                             <TooltipTrigger asChild>
-                                                <span className="inline-flex items-center"> {/* Wrap Star in span for asChild */}
+                                                <span className="inline-flex items-center"> 
                                                     <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
                                                 </span>
                                             </TooltipTrigger>
@@ -428,8 +460,7 @@ export function CharacterSidebar({
                                 )}
                             </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> {/* Ensure background for content */}
-                           {/* Save New Character Button - Only render if potentially new and on client */}
+                        <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> 
                             {isClient && isPotentiallyNew && (
                                 <TooltipProvider>
                                     <Tooltip>
@@ -443,7 +474,6 @@ export function CharacterSidebar({
                                 </TooltipProvider>
                             )}
 
-                           {/* Portrait Generation */}
                            <div className="flex flex-col items-center gap-2">
                                 <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
                                     {imageLoadingStates[char.id] ? (
@@ -467,17 +497,13 @@ export function CharacterSidebar({
                            </div>
 
                             <Separator />
-
-                            {/* Base Details (Editable) */}
                             <EditableField
                                 label={currentLanguage === 'fr' ? "Description" : "Description"}
                                 id={`${char.id}-details`}
-                                value={char.details} // Details should be in target language
+                                value={char.details} 
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
-
-                             {/* Affinity Section */}
                              <div className="space-y-2">
                                  <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
                                  <div className="flex items-center gap-2">
@@ -494,12 +520,7 @@ export function CharacterSidebar({
                                      <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
                                  </div>
                              </div>
-
-                              {/* Relations Section */}
                               <RelationsEditableCard charId={char.id} data={char.relations} />
-
-
-                            {/* RPG Sections (Conditional & Editable) */}
                             {rpgMode && (
                                 <>
                                     <Separator />
@@ -513,9 +534,7 @@ export function CharacterSidebar({
                                         <EditableField label="PV Max" id={`${char.id}-maxHp`} type="number" value={char.maxHitPoints} onChange={(e) => handleFieldChange(char.id, 'maxHitPoints', e.target.value)} />
                                      </div>
                                      <EditableField label="Classe d'Armure (CA)" id={`${char.id}-ac`} type="number" value={char.armorClass} onChange={(e) => handleFieldChange(char.id, 'armorClass', e.target.value)} />
-
                                     <Separator />
-                                    {/* D&D Stats */}
                                      <Label className="flex items-center gap-1"><Dices className="h-4 w-4"/> Caractéristiques</Label>
                                      <div className="grid grid-cols-3 gap-2">
                                         <EditableField label="FOR" id={`${char.id}-str`} type="number" value={char.strength} onChange={(e) => handleFieldChange(char.id, 'strength', e.target.value)} />
@@ -525,38 +544,17 @@ export function CharacterSidebar({
                                         <EditableField label="SAG" id={`${char.id}-wis`} type="number" value={char.wisdom} onChange={(e) => handleFieldChange(char.id, 'wisdom', e.target.value)} />
                                         <EditableField label="CHA" id={`${char.id}-cha`} type="number" value={char.charisma} onChange={(e) => handleFieldChange(char.id, 'charisma', e.target.value)} />
                                     </div>
-
-
-                                    {/* General Stats (if needed beyond D&D) */}
                                     <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" />
-
-                                    {/* Skills */}
-                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text"/> {/* Value can be boolean or number */}
-
-
-                                    {/* Inventory */}
+                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text"/>
                                     <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number"/>
-
-                                     {/* Spells */}
                                     <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" />
-
-                                     {/* Techniques */}
                                     <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" />
-
-                                     {/* Passive Abilities */}
                                     <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" />
-
                                 </>
                             )}
-
                             <Separator />
-
-                            {/* History (Editable List) */}
                              <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} />
-
-                            {/* Opinion (Editable) */}
                             <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"}/>
-
                         </AccordionContent>
                     </AccordionItem>
                     )
@@ -566,3 +564,4 @@ export function CharacterSidebar({
     </div>
   );
 }
+
