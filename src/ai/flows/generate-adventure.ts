@@ -36,7 +36,7 @@ const BaseCharacterSchema = z.object({
   name: z.string(),
   details: z.string(),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion."),
-  relations: z.record(z.string(), z.string()).optional().describe("Relationship towards other characters/player (key: character ID or 'player', value: description e.g., 'Petite amie', 'Ami'). MUST be in the specified language."),
+  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). MUST be in the specified language."),
   // Add other fields explicitly used in the prompt or logic if needed
   // For simplicity, relying on passthrough() for less critical fields
 }).passthrough();
@@ -44,7 +44,7 @@ const BaseCharacterSchema = z.object({
 // Define a schema specifically for the history summary and pre-processed relations summary
 const ContextSummarySchema = z.object({
     historySummary: z.string().optional().describe('A brief summary of the last few history entries.'),
-    relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relations for prompt context. MUST be in the specified language.'), // Added relations summary field
+    relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relationship statuses for prompt context. MUST be in the specified language.'), // Updated to reflect relationship statuses
 });
 
 // Combine the base character schema and the summary schema
@@ -62,7 +62,7 @@ const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue.'),
   // Pass characters with pre-processed summaries
-  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relations summary, and history summary. Relations and history summaries MUST be in the specified language.'),
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
   userAction: z.string().describe('The action taken by the user.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
@@ -84,9 +84,9 @@ const NewCharacterSchema = z.object({
     initialRelations: z.array(
         z.object({
             targetName: z.string().describe("Name of the known character or the player's name (e.g., '{{playerName}}', 'Rina')."),
-            description: z.string().describe("String description of the new character's initial relation towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive term if possible.")
+            description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible.")
         })
-    ).optional().describe("An array of objects, where each object defines the new character's initial relation towards a known character or the player. Example: `[{\"targetName\": \"{{playerName}}\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive term like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}.")
+    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\"targetName\": \"{{playerName}}\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}.")
 });
 
 // Define schema for character history updates
@@ -106,7 +106,7 @@ const AffinityUpdateSchema = z.object({
 const RelationUpdateSchema = z.object({
     characterName: z.string().describe("The name of the character whose relation is updated (the source)."),
     targetName: z.string().describe("The name of the target character OR the player's name."), // Use name for easier processing later
-    newRelation: z.string().describe("The new description of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rival', 'Amant secret', 'Confidente'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation if the narrative now allows it. MUST be in the specified language."),
+    newRelation: z.string().describe("The new *status* of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rivale', 'Amant secret', 'Confidente'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation status if the narrative now allows it. MUST be in the specified language."),
     reason: z.string().optional().describe("Brief justification for the relation change based on the narrative interaction or event.")
 });
 
@@ -133,7 +133,7 @@ const GenerateAdventureOutputSchema = z.object({
   relationUpdates: z // Added relation updates
     .array(RelationUpdateSchema)
     .optional()
-    .describe("List of relationship changes between characters OR towards the player based on the narrative. Capture changes like becoming lovers, enemies, rivals, etc. If a relationship was previously 'Inconnu' (or similar) and can now be defined more specifically, include it here. MUST be in the specified language.")
+    .describe("List of relationship status changes between characters OR towards the player based on the narrative. Capture changes like becoming lovers, enemies, rivals, etc. If a relationship status was previously 'Inconnu' (or similar) and can now be defined more specifically, include it here. MUST be in the specified language.")
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -205,7 +205,7 @@ Known Characters:
 - Name: {{this.name}}
   Description: {{this.details}} {{! MUST be in {{../currentLanguage}} }}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards {{../playerName}} on a scale from 0=Hate to 100=Love/Devotion. 50 is Neutral. **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
-  Relations: {{{this.relationsSummary}}} {{! This summarizes this character's relationship TOWARDS others. If a relation is listed as 'Inconnu' (or 'Unknown', etc.), it means it's not yet defined. MUST be in {{../currentLanguage}} }}
+  Relationship Statuses: {{{this.relationsSummary}}} {{! This summarizes this character's relationship STATUS TOWARDS others. If a status is 'Inconnu' (or 'Unknown', etc.), it means it's not yet defined. MUST be in {{../currentLanguage}} }}
   {{#if this.characterClass}}Class: {{this.characterClass}}{{/if}}
   {{#if this.level}}Level: {{this.level}}{{/if}}
   {{#if this.stats}}Stats: {{#each this.stats}}{{@key}}: {{this}} {{/each}}{{/if}}
@@ -228,20 +228,20 @@ Player Stats ({{../playerName}}): {{#each promptConfig.rpgContext.playerStats}}{
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story based on all context and the user's action. Be creative and engaging.
     **CRITICAL: Each known character's behavior, dialogue, actions, and internal thoughts (if appropriate) MUST STRONGLY AND CLEARLY REFLECT their 'Current Affinity' towards {{playerName}}. DO NOT DEVIATE.** Use the following affinity levels as a **strict guide**:
-    *   **0-10 (Haine Profonde / Deep Hate):** Openly hostile, insulting, aggressive, disgusted. Actively sabotages or attacks {{playerName}}. REFUSES cooperation entirely. Dialogue is filled with contempt and vitriol. Actions are malicious.
-    *   **11-30 (Hostile):** Uncooperative, distrustful, rude, sarcastic, cold. Avoids {{playerName}} or speaks negatively about them. May hinder {{playerName}} indirectly. Dialogue is sharp and dismissive. Actions are obstructionist.
-    *   **31-45 (Méfiant / Wary):** Cautious, reserved, suspicious, guarded. Dialogue is curt, minimal, and evasive. Avoids sharing information. Actions are purely self-serving. Body language is closed off and tense.
-    *   **46-55 (Neutre / Neutral):** Indifferent, polite but distant. Interactions are purely transactional or professional. Neither helps nor hinders unnecessarily. Normal, unremarkable, standard behavior. Dialogue is functional.
-    *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant.
-    *   **71-90 (Loyal):** Warm, supportive, actively helpful and protective. Trusts {{playerName}} and shares information/resources readily. Enjoys {{playerName}}'s company. May defend or assist {{playerName}} proactively. Compliments are genuine and frequent. Dialogue is open and encouraging.
-    *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes {{playerName}}'s well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards {{playerName}}. Dialogue is filled with warmth and care.
-    **ALSO CONSIDER** the defined 'Relations' **between** characters (summarized for each character in their 'Relations: {{{this.relationsSummary}}}'). Their interactions with EACH OTHER should reflect these relationships (e.g., allies help each other, rivals compete, lovers are affectionate). **These relationships can also change based on events in the narrative (see Task 6).** Ensure all character interactions in the narrative adhere to these established relations and affinities.
+    *   **0-10 (Haine Profonde / Deep Hate):** Openly hostile, insulting, aggressive, disgusted. Actively sabotages or attacks {{playerName}}. REFUSES cooperation entirely. Dialogue is filled with contempt and vitriol. Actions are malicious. Avoids all contact if possible, or seeks to harm.
+    *   **11-30 (Hostile / Hostile):** Uncooperative, distrustful, rude, sarcastic, cold. Avoids {{playerName}} or speaks negatively about them. May hinder {{playerName}} indirectly. Dialogue is sharp, dismissive, and often contains veiled threats or insults. Actions are obstructionist and unhelpful.
+    *   **31-45 (Méfiant / Wary):** Cautious, reserved, suspicious, guarded. Dialogue is curt, minimal, and evasive. Avoids sharing information. Actions are purely self-serving, may offer minimal cooperation if it benefits them greatly. Body language is closed off and tense. May question {{playerName}}'s motives.
+    *   **46-55 (Neutre / Neutral):** Indifferent, polite but distant. Interactions are purely transactional or professional. Neither helps nor hinders unnecessarily. Normal, unremarkable, standard behavior. Dialogue is functional, polite, but without warmth.
+    *   **56-70 (Amical / Friendly):** Generally cooperative, willing to chat amiably. May offer minor assistance or advice freely. Shows basic positive regard and warmth. Dialogue is pleasant, open, and may include light humor or personal anecdotes.
+    *   **71-90 (Loyal / Loyal):** Warm, supportive, actively helpful and protective. Trusts {{playerName}} and shares information/resources readily. Enjoys {{playerName}}'s company. May defend or assist {{playerName}} proactively. Compliments are genuine and frequent. Dialogue is open, encouraging, and expresses clear care for {{playerName}}.
+    *   **91-100 (Dévoué / Amour / Devoted / Love):** Deep affection, unwavering loyalty. Prioritizes {{playerName}}'s well-being above their own, potentially taking significant risks. Expresses strong positive emotions (admiration, love, devotion). May confide secrets or declare feelings if contextually appropriate. Actions demonstrate selflessness towards {{playerName}}. Dialogue is filled with warmth, care, deep affection, and potentially romantic undertones if applicable.
+    **ALSO CONSIDER** the defined 'Relationship Statuses' **between** characters (summarized for each character in their 'Relationship Statuses: {{{this.relationsSummary}}}'). Their interactions with EACH OTHER should reflect these statuses (e.g., allies help each other, rivals compete, lovers are affectionate). **These relationship statuses can also change based on events in the narrative (see Task 6).** Ensure all character interactions in the narrative adhere to these established statuses and affinities.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** Analyze the "Narrative Continuation". List any characters mentioned by name that are NOT in the "Known Characters" list above in the 'newCharacters' field.
     *   Include their 'name'.
     *   Provide 'details': a brief description derived from the context, including the location/circumstance of meeting (if possible). **MUST be in {{currentLanguage}}.**
     *   Provide 'initialHistoryEntry': a brief log about meeting the character (e.g., "Met {{playerName}} at the market."). **MUST be in {{currentLanguage}}.**
-    *   Provide 'initialRelations': an array of objects, each with 'targetName' (player or known NPC name) and 'description'. **CRITICAL: If a relationship is 'Inconnu' (or its {{currentLanguage}} equivalent), actively try to infer a more specific relationship (e.g., 'Curious', 'Indifferent', 'Potential ally') based on the introduction context. Use 'Inconnu' ONLY as a last resort if no context allows for a better description.** Example: \`[{\\"targetName\\": \\"{{playerName}}\\", \\"description\\": \\"Curieux\\"}, {\\"targetName\\": \\"Rina\\", \\"description\\": \\"Indifférent\\"}]\`. **ALL relation descriptions MUST be in {{currentLanguage}}.**
+    *   Provide 'initialRelations': an array of objects, each with 'targetName' (player or known NPC name) and 'description' (the relationship *status*). **CRITICAL: If a relationship status is 'Inconnu' (or its {{currentLanguage}} equivalent), actively try to infer a more specific relationship *status* (e.g., 'Potentiel allié', 'Simple connaissance', 'Nouvelle rivale') based on the introduction context. Use 'Inconnu' ONLY as a last resort if no context allows for a better status.** Example: \`[{\\"targetName\\": \\"{{playerName}}\\", \\"description\\": \\"Curieux\\"}, {\\"targetName\\": \\"Rina\\", \\"description\\": \\"Simple connaissance\\"}]\`. **ALL relation descriptions MUST be in {{currentLanguage}}.**
 
 3.  **Describe the Scene for Image (in English, for image model):** Provide a concise visual description for 'sceneDescriptionForImage'. Focus on setting, mood, key visual elements, and characters present. IMPORTANT: Describe characters by physical appearance or role (e.g., "a tall man with blond hair", "the shopkeeper", "a young woman with brown hair") INSTEAD of their names. Omit or summarize ("Character thinking") if no strong visual scene.
 
@@ -249,17 +249,17 @@ Tasks:
 
 5.  **Calculate Affinity Updates (Player Interaction):** Analyze {{playerName}}'s interaction with **KNOWN characters** in the "Narrative Continuation". Determine how events affect the character's affinity **towards {{playerName}}** (0-100 scale). Add entries to 'affinityUpdates' with the character's name, the integer change (+/-), and a brief 'reason'. **IMPORTANT: Keep changes VERY small and gradual (+/- 1 or 2) for most interactions. Only use larger changes (+/- 5 or more) for truly major events (life-saving, betrayal, deep declaration of feelings, etc.).**
 
-6.  **Detect Relation Updates (ALL Characters, in {{currentLanguage}}):** Analyze the "Narrative Continuation" for significant changes in relationships **between ANY two KNOWN characters** OR between a known character and **{{playerName}}**.
-    *   If a relationship fundamentally changes (e.g., becoming enemies, lovers, rivals, ex-partners, mentor/mentee, servant/master) due to plot developments, add an entry to 'relationUpdates'.
-    *   **CRITICAL: If an existing relationship for a character towards another is currently 'Inconnu' (or its {{currentLanguage}} equivalent like 'Unknown') AND the narrative provides enough context, you MUST update it to a more specific and coherent description (e.g., 'Nouveau rival', 'Semble amical'). This applies to player-NPC and NPC-NPC relations.**
+6.  **Detect Relation Status Updates (ALL Characters, in {{currentLanguage}}):** Analyze the "Narrative Continuation" for significant changes in relationship *statuses* **between ANY two KNOWN characters** OR between a known character and **{{playerName}}**.
+    *   If a relationship status fundamentally changes (e.g., from 'Ami' to 'Ennemi juré', from 'Simple connaissance' to 'Amant secret', from 'Rivale' to 'Alliée de confiance') due to plot developments, add an entry to 'relationUpdates'.
+    *   **CRITICAL: If an existing relationship status for a character towards another is currently 'Inconnu' (or its {{currentLanguage}} equivalent like 'Unknown') AND the narrative provides enough context, you MUST update it to a more specific and coherent *status* (e.g., 'Nouveau rival', 'Amie potentielle', 'Protecteur'). This applies to player-NPC and NPC-NPC relations.**
     *   Include the source character's name (whose perspective is changing).
     *   Include the target's name (the character or {{playerName}} being viewed differently).
-    *   Provide the *new* specific relation description from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor'). **This description MUST be in {{currentLanguage}}. Avoid vague terms like 'Relation modifiée' unless absolutely no other specific term fits.**
+    *   Provide the *new* specific relationship *status* from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Amant secret', 'Rivale', 'Mentor', 'Ex-petite amie'). **This description MUST be in {{currentLanguage}}. Avoid vague terms like 'Relation modifiée' unless absolutely no other specific status fits.**
     *   Include a brief 'reason' for the change.
-    Only report if there is a *change* or if an 'Inconnu' relation can be *clarified*. **The narrative MUST reflect these changes immediately.**
+    Only report if there is a *change* or if an 'Inconnu' status can be *clarified*. **The narrative MUST reflect these changes immediately.**
 
 Narrative Continuation (in {{currentLanguage}}):
-[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} AND inter-character relations** as described in Task 1. **Crucially, incorporate any relationship changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.** Make the impact of affinity and relations **obvious** in dialogue and actions. Ensure ALL generated text is in **{{currentLanguage}}**.]
+[Generate the next part of the story here, **strictly reflecting character affinities towards {{playerName}} AND inter-character relationship statuses** as described in Task 1. **Crucially, incorporate any relationship status changes detected in Task 6 into subsequent interactions and character behavior within this narrative segment and future ones.** Make the impact of affinity and relations **obvious** in dialogue and actions. Ensure ALL generated text is in **{{currentLanguage}}**.]
 `,
 });
 

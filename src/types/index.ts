@@ -21,7 +21,7 @@ export interface Character {
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }, SHOULD be in target language
   portraitUrl?: string | null; // URL for generated portrait
   affinity?: number; // Affinity towards the player (0-100)
-  relations?: Record<string, string>; // Relationship towards other characters/player (key: character ID or 'player', value: description e.g., "Petite amie", "Ami"), SHOULD be in target language
+  relations?: Record<string, string>; // Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., "Petite amie", "Meilleur ami", "Ennemi juré"), SHOULD be in target language
 
   // Potential future fields for RPG mode (aligned with D&D concepts)
   level?: number;
@@ -67,3 +67,4 @@ export interface SaveData {
     saveFormatVersion?: number; // Bump version for AI relation updates (1.6)
     timestamp?: string;
 }
+
