@@ -23,6 +23,8 @@ export interface Combatant {
   name: string; // Name of the combatant
   currentHp: number;
   maxHp: number;
+  currentMp?: number; // Current Mana Points
+  maxMp?: number; // Maximum Mana Points
   team: 'player' | 'enemy' | 'neutral'; // Team alignment
   isDefeated: boolean;
   // Potentially more combat-specific stats like temporary AC boost, conditions etc.
@@ -65,6 +67,8 @@ export interface Character {
   baseHitPoints?: number; // Base HP before CON modifier, etc.
   hitPoints?: number; // Current HP
   maxHitPoints?: number; // Maximum HP
+  manaPoints?: number; // Current MP/Mana
+  maxManaPoints?: number; // Maximum MP/Mana
   armorClass?: number;
   attackBonus?: number; // General to-hit bonus
   damageBonus?: string; // e.g. "+2", "1d4+STR" - simplified for LLM for now
