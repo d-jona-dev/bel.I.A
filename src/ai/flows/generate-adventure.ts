@@ -89,6 +89,7 @@ const GenerateAdventureInputSchema = z.object({
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
+  currencyName: z.string().optional().describe("The name of the currency used in RPG mode (e.g., 'gold', 'credits'). Defaults appropriately if not provided and RPG mode is active."),
   promptConfig: z.object({ // Kept for potential future use, but RPG context is now more integrated
       rpgContext: RpgContextSchema.optional()
   }).optional(),
@@ -217,17 +218,25 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             armorClass: input.rpgModeActive ? (char.armorClass ?? 10) : undefined,
             attackBonus: input.rpgModeActive ? (char.attackBonus ?? 0) : undefined,
             damageBonus: input.rpgModeActive ? (char.damageBonus ?? "1") : undefined,
-            characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined, // Default to "N/A"
-            level: input.rpgModeActive ? (char.level ?? 1) : undefined, // Default to 1
+            characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
+            level: input.rpgModeActive ? (char.level ?? 1) : undefined, 
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
         };
     });
     
+    let finalCurrencyName = input.currencyName;
+    if (input.rpgModeActive && (finalCurrencyName === undefined || finalCurrencyName === null || finalCurrencyName.trim() === "")) {
+        finalCurrencyName = input.currentLanguage === 'fr' ? 'pièces d\'or' : 'gold coins';
+    } else if (!input.rpgModeActive) {
+        finalCurrencyName = undefined; 
+    }
+
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
         characters: processedCharacters,
-        rpgModeActive: input.rpgModeActive ?? false, // Ensure this is explicitly passed
-        activeCombat: input.activeCombat // Pass the activeCombat state
+        rpgModeActive: input.rpgModeActive ?? false, 
+        activeCombat: input.activeCombat,
+        currencyName: finalCurrencyName,
     };
 
   return generateAdventureFlow(flowInput);
@@ -307,7 +316,7 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 10-50 EXP per typical enemy, more for tougher ones) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop combatUpdates.lootDropped (e.g., {{../currencyName | default "gold"}}, simple items).
+        *   Optionally, defeated enemies might drop {{../currencyName}}, simple items).
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs and statuses for the next turn.
     *   **Regardless of combat, if relationsModeActive is true:**

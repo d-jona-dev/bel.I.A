@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw, CheckCircle } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat } from "@/types"; // Added ActiveCombat
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
@@ -256,6 +256,8 @@ export function PageStructure({
                 onUndoLastMessage={handleUndoLastMessage}
                 activeCombat={activeCombat} // Pass activeCombat
                 onCombatUpdates={onCombatUpdates} // Pass onCombatUpdates
+                currencyName={adventureSettings.currencyName} // Pass currencyName
+                onRestartAdventure={onRestartAdventure}
              />
         </main>
       </SidebarInset>
@@ -327,10 +329,6 @@ export function PageStructure({
                  </SidebarContent>
              </ScrollArea>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-                <Button onClick={onRestartAdventure} variant="outline" className="w-full mb-2">
-                    <RefreshCcw className="mr-2 h-5 w-5" />
-                    Recommencer l'Aventure
-                </Button>
                 <Button onClick={handleApplyStagedChanges} className="w-full">
                     <CheckCircle className="mr-2 h-5 w-5" />
                     Enregistrer les modifications

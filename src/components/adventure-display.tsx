@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2 } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RefreshCcw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
@@ -49,6 +49,8 @@ interface AdventureDisplayProps {
     onUndoLastMessage: () => void; 
     activeCombat?: ActiveCombat; // Added activeCombat prop
     onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; // Added combat updates handler
+    currencyName?: string; // Add currencyName
+    onRestartAdventure: () => void;
 }
 
 
@@ -71,6 +73,8 @@ export function AdventureDisplay({
     onUndoLastMessage, 
     activeCombat, // Destructure activeCombat
     onCombatUpdates, // Destructure onCombatUpdates
+    currencyName, // Destructure currencyName
+    onRestartAdventure,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -123,15 +127,15 @@ export function AdventureDisplay({
     onNarrativeChange(userMessageContent, 'user');
     
     try {
-        const currentMessages = initialMessages;
-        const contextMessages = currentMessages.slice(-5);
+        const currentMessages = initialMessages; // Use initialMessages (which is 'narrative' from parent)
+        const contextMessages = currentMessages.slice(-5); // Get the last 5 messages for context
         const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${playerName}: ${msg.content}` : msg.content
         ).join('\n\n') + `\n\n> ${playerName}: ${userMessageContent}\n`; 
 
         const input: GenerateAdventureInput = {
             world: world,
-            initialSituation: narrativeContext,
+            initialSituation: narrativeContext, // Use the constructed context
             characters: characters, 
             userAction: userMessageContent, 
             currentLanguage: currentLanguage, 
@@ -139,6 +143,7 @@ export function AdventureDisplay({
             rpgModeActive: rpgMode, // Pass the rpgMode state
             relationsModeActive: true, // Assuming relations mode is always active if this component is complex enough
             activeCombat: activeCombat, // Pass current combat state
+            currencyName: currencyName, // Pass currencyName
         };
         
         // The promptConfig.rpgContext is somewhat redundant now but kept for structure
@@ -446,6 +451,16 @@ export function AdventureDisplay({
                                  <TooltipContent>Annuler le dernier message</TooltipContent>
                              </Tooltip>
                          </TooltipProvider>
+                          <TooltipProvider>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <Button type="button" variant="outline" size="icon" onClick={onRestartAdventure} disabled={isLoading || isRegenerating}>
+                                          <RefreshCcw className="h-5 w-5" />
+                                      </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Recommencer l'Aventure</TooltipContent>
+                              </Tooltip>
+                          </TooltipProvider>
 
                         <Textarea
                             placeholder={currentMode === 'exploration' ? "Que faites-vous ? Décrivez votre action..." : (currentMode === 'combat' ? "Décrivez votre action de combat..." : "Votre message...")}

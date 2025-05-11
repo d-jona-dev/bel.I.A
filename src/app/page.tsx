@@ -45,6 +45,7 @@ export default function Home() {
     rpgMode: false, // Default RPG mode to false
     relationsMode: true, // Default relations mode to true
     playerName: "Player",
+    currencyName: "Pièces d'Or", // Default currency name
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -237,12 +238,16 @@ export default function Home() {
 
         if (combatUpdates.expGained && combatUpdates.expGained > 0) {
             // TODO: Update player experience
-            toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
+            React.startTransition(() => {
+              toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
+            });
         }
         if (combatUpdates.lootDropped && combatUpdates.lootDropped.length > 0) {
             // TODO: Add loot to player inventory
             const lootNames = combatUpdates.lootDropped.map(l => `${l.itemName} (x${l.quantity})`).join(', ');
-            toast({ title: "Butin Récupéré!", description: `Vous avez trouvé: ${lootNames}.` });
+             React.startTransition(() => {
+                toast({ title: "Butin Récupéré!", description: `Vous avez trouvé: ${lootNames}.` });
+             });
         }
 
         // Update the activeCombat state for the next turn or end combat
@@ -250,7 +255,9 @@ export default function Home() {
              setActiveCombat(combatUpdates.nextActiveCombatState);
         } else if (combatUpdates.combatEnded) {
              setActiveCombat(undefined); // Or set isActive to false
-             toast({ title: "Combat Terminé!"});
+             React.startTransition(() => {
+                toast({ title: "Combat Terminé!"});
+             });
         }
 
     }, [adventureSettings.rpgMode, toast]);
@@ -619,6 +626,7 @@ export default function Home() {
                  relationsModeActive: adventureSettings.relationsMode ?? true,
                  rpgModeActive: adventureSettings.rpgMode ?? false,
                  activeCombat: activeCombat, // Pass current combat state for regeneration context
+                 currencyName: adventureSettings.currencyName, // Pass currencyName
              };
 
              const result = await generateAdventure(input);
