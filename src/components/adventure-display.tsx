@@ -36,18 +36,18 @@ interface AdventureDisplayProps {
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     adventureSettings: AdventureSettings; // Pass full adventure settings
     characters: Character[];
-    initialMessages: Message[]; 
-    currentLanguage: string; 
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void; 
-    onNewCharacters: (newChars: NewCharacterSchema[]) => void; 
-    onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; 
-    onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; 
-    onRelationUpdates: (updates: RelationUpdateSchema[]) => void; 
-    onEditMessage: (messageId: string, newContent: string) => void; 
-    onRegenerateLastResponse: () => Promise<void>; 
-    onUndoLastMessage: () => void; 
-    activeCombat?: ActiveCombat; 
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; 
+    initialMessages: Message[];
+    currentLanguage: string;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
+    onNewCharacters: (newChars: NewCharacterSchema[]) => void;
+    onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
+    onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
+    onRelationUpdates: (updates: RelationUpdateSchema[]) => void;
+    onEditMessage: (messageId: string, newContent: string) => void;
+    onRegenerateLastResponse: () => Promise<void>;
+    onUndoLastMessage: () => void;
+    activeCombat?: ActiveCombat;
+    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
 }
 
@@ -57,29 +57,29 @@ export function AdventureDisplay({
     generateSceneImageAction,
     adventureSettings,
     characters,
-    initialMessages, 
-    currentLanguage, 
-    onNarrativeChange, 
-    onNewCharacters, 
-    onCharacterHistoryUpdate, 
-    onAffinityUpdates, 
-    onRelationUpdates, 
+    initialMessages,
+    currentLanguage,
+    onNarrativeChange,
+    onNewCharacters,
+    onCharacterHistoryUpdate,
+    onAffinityUpdates,
+    onRelationUpdates,
     onEditMessage,
-    onRegenerateLastResponse, 
-    onUndoLastMessage, 
-    activeCombat, 
-    onCombatUpdates, 
+    onRegenerateLastResponse,
+    onUndoLastMessage,
+    activeCombat,
+    onCombatUpdates,
     onRestartAdventure,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
-  const [choices, setChoices] = React.useState<string[]>([]); 
+  const [choices, setChoices] = React.useState<string[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
-  const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); 
-  const [imageUrl, setImageUrl] = React.useState<string | null>(null); 
-  const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration"); 
-  const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null); 
+  const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
+  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration");
+  const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
@@ -100,13 +100,13 @@ export function AdventureDisplay({
               });
           }
         }
-    }, [initialMessages]); 
+    }, [initialMessages]);
 
     React.useEffect(() => {
         if (adventureSettings.rpgMode && activeCombat?.isActive) {
             setCurrentMode("combat");
         } else {
-            setCurrentMode("exploration"); 
+            setCurrentMode("exploration");
         }
     }, [activeCombat, adventureSettings.rpgMode]);
 
@@ -116,28 +116,28 @@ export function AdventureDisplay({
 
     setIsLoading(true);
     const userMessageContent = userAction.trim();
-    setUserAction(""); 
+    setUserAction("");
 
     onNarrativeChange(userMessageContent, 'user');
-    
+
     try {
-        const currentMessages = initialMessages; 
-        const contextMessages = currentMessages.slice(-5); 
+        const currentMessages = initialMessages;
+        const contextMessages = currentMessages.slice(-5);
         const narrativeContext = contextMessages.map(msg =>
             msg.type === 'user' ? `> ${adventureSettings.playerName}: ${msg.content}` : msg.content
-        ).join('\n\n') + `\n\n> ${adventureSettings.playerName}: ${userMessageContent}\n`; 
+        ).join('\n\n') + `\n\n> ${adventureSettings.playerName}: ${userMessageContent}\n`;
 
         const input: GenerateAdventureInput = {
             world: adventureSettings.world,
-            initialSituation: narrativeContext, 
-            characters: characters, 
-            userAction: userMessageContent, 
-            currentLanguage: currentLanguage, 
-            playerName: adventureSettings.playerName || "Player", 
-            rpgModeActive: adventureSettings.rpgMode, 
+            initialSituation: narrativeContext,
+            characters: characters,
+            userAction: userMessageContent,
+            currentLanguage: currentLanguage,
+            playerName: adventureSettings.playerName || "Player",
+            rpgModeActive: adventureSettings.rpgMode,
             relationsModeActive: adventureSettings.relationsMode ?? true,
-            activeCombat: activeCombat, 
-            currencyName: adventureSettings.currencyName, 
+            activeCombat: activeCombat,
+            currencyName: adventureSettings.currencyName,
             playerClass: adventureSettings.playerClass,
             playerLevel: adventureSettings.playerLevel,
             playerCurrentHp: adventureSettings.playerCurrentHp,
@@ -147,7 +147,7 @@ export function AdventureDisplay({
             playerCurrentExp: adventureSettings.playerCurrentExp,
             playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
         };
-        
+
         const result = await generateAdventureAction(input);
         onNarrativeChange(result.narrative, 'ai', result.sceneDescriptionForImage);
 
@@ -161,14 +161,14 @@ export function AdventureDisplay({
              onAffinityUpdates(result.affinityUpdates);
         }
         if (adventureSettings.relationsMode && result.relationUpdates && result.relationUpdates.length > 0) {
-           onRelationUpdates(result.relationUpdates); 
+           onRelationUpdates(result.relationUpdates);
         }
         if (adventureSettings.rpgMode && result.combatUpdates) {
             onCombatUpdates(result.combatUpdates);
         }
 
         setCurrentSceneDescription(result.sceneDescriptionForImage || null);
-        setChoices([]); 
+        setChoices([]);
 
     } catch (error) {
         console.error("Error generating adventure:", error);
@@ -186,7 +186,7 @@ export function AdventureDisplay({
     if (isLoading || isRegenerating) return;
     setIsRegenerating(true);
     try {
-        await onRegenerateLastResponse(); 
+        await onRegenerateLastResponse();
     } catch (error) {
         console.error("Error during regeneration triggered from display:", error);
     } finally {
@@ -258,7 +258,7 @@ export function AdventureDisplay({
     }
   };
 
-  const canUndo = messages.length > 1; 
+  const canUndo = messages.length > 1;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -397,7 +397,7 @@ export function AdventureDisplay({
                         </div>
                     )}
 
-                    {adventureSettings.rpgMode && activeCombat?.isActive && ( 
+                    {adventureSettings.rpgMode && activeCombat?.isActive && (
                         <div className="flex flex-wrap gap-2 mb-2">
                              <TooltipProvider>
                                 <Tooltip>
@@ -449,7 +449,7 @@ export function AdventureDisplay({
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
                             rows={1}
-                            className="min-h-[40px] max-h-[150px] resize-y flex-1" 
+                            className="min-h-[40px] max-h-[150px] resize-y flex-1"
                             disabled={isLoading || isRegenerating}
                         />
                         <TooltipProvider>
@@ -482,7 +482,7 @@ export function AdventureDisplay({
                                     alt="Generated Scene"
                                     fill
                                     style={{ objectFit: 'contain' }}
-                                    data-ai-hint="adventure scene visual" 
+                                    data-ai-hint="adventure scene visual"
                                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
                                 />
                             </div>
@@ -543,6 +543,57 @@ export function AdventureDisplay({
                         </CardContent>
                     </Card>
                 )}
+
+                {adventureSettings.rpgMode && activeCombat?.isActive && activeCombat.combatants.some(c => c.team === 'enemy' && !c.isDefeated) && (
+                    <Card className="shadow-md rounded-lg mt-4">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg">Ennemis</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pt-2 max-h-48 overflow-y-auto"> {/* Added max-h and overflow */}
+                            {activeCombat.combatants
+                                .filter(c => c.team === 'enemy' && !c.isDefeated)
+                                .map(enemyCombatant => {
+                                    const enemyCharacterDetails = characters.find(char => char.id === enemyCombatant.characterId);
+                                    const enemyName = enemyCombatant.name;
+                                    const enemyClass = enemyCharacterDetails?.characterClass || "Combattant";
+                                    const enemyLevel = enemyCharacterDetails?.level || (enemyCharacterDetails?.isHostile ? 1 : undefined); // Provide a default level for hostiles
+
+                                    const enemyCurrentHp = enemyCombatant.currentHp;
+                                    const enemyMaxHp = enemyCombatant.maxHp;
+                                    const enemyCurrentMp = enemyCombatant.currentMp;
+                                    const enemyMaxMp = enemyCombatant.maxMp;
+
+                                    return (
+                                        <div key={enemyCombatant.characterId} className="border p-3 rounded-md bg-muted/50">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <Label htmlFor={`enemy-title-${enemyCombatant.characterId}`} className="text-sm font-semibold">{enemyName}</Label>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {enemyClass} {enemyLevel !== undefined ? `- Niv. ${enemyLevel}` : ''}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <Label htmlFor={`enemy-hp-${enemyCombatant.characterId}`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                                                    <span className="text-xs text-muted-foreground">{enemyCurrentHp} / {enemyMaxHp}</span>
+                                                </div>
+                                                <Progress id={`enemy-hp-${enemyCombatant.characterId}`} value={(enemyCurrentHp / (enemyMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                                            </div>
+                                            {(enemyMaxMp ?? 0) > 0 && (
+                                                <div className="mt-2">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <Label htmlFor={`enemy-mp-${enemyCombatant.characterId}`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                                                        <span className="text-xs text-muted-foreground">{enemyCurrentMp ?? 0} / {enemyMaxMp ?? 0}</span>
+                                                    </div>
+                                                    <Progress id={`enemy-mp-${enemyCombatant.characterId}`} value={((enemyCurrentMp ?? 0) / (enemyMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                        </CardContent>
+                    </Card>
+                )}
+
             </div>
       </div>
     </div>
