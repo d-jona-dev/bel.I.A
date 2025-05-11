@@ -4,7 +4,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,34 +12,160 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react"; // Added Save icon, Heart icon, LinkIcon, UserPlus
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Image generation types
+import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character } from "@/types"; // Import shared Character type
-import { Progress } from "@/components/ui/progress"; // Import Progress component
+import type { Character } from "@/types";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select" // Import Select for relations
-
+} from "@/components/ui/select";
 
 // Define props for the CharacterSidebar
 interface CharacterSidebarProps {
     characters: Character[];
-    onCharacterUpdate: (updatedCharacter: Character) => void; // Callback to update parent state
-    onSaveNewCharacter: (character: Character) => void; // Callback to save a new character globally
-    onAddStagedCharacter: (character: Character) => void; // Callback to add a globally saved character to staged characters
-    onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Callback for relation updates
-    generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>; // For portraits
-    rpgMode: boolean; // To show/hide RPG elements
-    playerId: string; // Player's unique ID
-    playerName: string; // Player's name
-    currentLanguage: string; // Current language for localization
+    onCharacterUpdate: (updatedCharacter: Character) => void;
+    onSaveNewCharacter: (character: Character) => void;
+    onAddStagedCharacter: (character: Character) => void;
+    onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
+    generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+    rpgMode: boolean;
+    playerId: string;
+    playerName: string;
+    currentLanguage: string;
 }
+
+// Helper Components (defined outside CharacterSidebar)
+
+const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number, disabled?: boolean }) => (
+    <div className="space-y-1">
+          <Label htmlFor={id}>{label}</Label>
+          {rows ? (
+              <Textarea id={id} value={value ?? ""} onChange={onChange} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
+          ) : (
+              <Input id={id} type={type} value={value ?? ""} onChange={onChange} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
+          )}
+      </div>
+);
+
+const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, valueType = "text", onUpdate, onRemove, onAdd }: { charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', title: string, icon: React.ElementType, data?: Record<string, string | number | boolean>, addLabel: string, valueType?: 'text' | 'number' | 'boolean', onUpdate: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string) => void, onAdd: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills') => void }) => (
+   <div className="space-y-2">
+       <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
+       <Card className="bg-muted/30 border">
+           <CardContent className="p-3 space-y-2">
+               {data && Object.keys(data).length > 0 ? (
+                   Object.entries(data).map(([key, value]) => (
+                       <div key={key} className="flex items-center gap-2">
+                           <Label htmlFor={`${charId}-${field}-${key}`} className="w-1/3 capitalize truncate text-sm">{key}</Label>
+                           <Input
+                               id={`${charId}-${field}-${key}`}
+                               type={valueType === 'number' ? 'number' : 'text'}
+                               value={String(value)} 
+                               onChange={(e) => onUpdate(charId, field, key, e.target.value)}
+                               className="h-8 text-sm flex-1 bg-background border"
+                               min={valueType === 'number' ? "0" : undefined}
+                           />
+                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, field, key)}>
+                               <Trash2 className="h-4 w-4" />
+                           </Button>
+                       </div>
+                   ))
+               ) : (
+                   <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} défini(e).</p>
+               )}
+               <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)}>
+                  <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
+               </Button>
+           </CardContent>
+       </Card>
+   </div>
+);
+
+const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void }) => {
+  const otherCharacters = characters.filter(c => c.id !== charId); 
+  const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+
+  return (
+      <div className="space-y-2">
+          <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
+          <Card className="bg-muted/30 border">
+              <CardContent className="p-3 space-y-2">
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor={`${charId}-relations-${playerId}`} className="w-1/3 truncate text-sm">{playerName} (Joueur)</Label>
+                      <Input
+                          id={`${charId}-relations-${playerId}`}
+                          type="text"
+                          value={data?.[playerId] || unknownRelation}
+                          onChange={(e) => onUpdate(charId, 'relations', playerId, e.target.value)}
+                          className="h-8 text-sm flex-1 bg-background border"
+                          placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                      />
+                   </div>
+
+                  {otherCharacters.map(otherChar => (
+                      <div key={otherChar.id} className="flex items-center gap-2">
+                          <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="w-1/3 truncate text-sm">{otherChar.name}</Label>
+                          <Input
+                              id={`${charId}-relations-${otherChar.id}`}
+                              type="text"
+                              value={data?.[otherChar.id] || unknownRelation}
+                              onChange={(e) => onUpdate(charId, 'relations', otherChar.id, e.target.value)}
+                              className="h-8 text-sm flex-1 bg-background border"
+                              placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                          />
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"}>
+                              <Trash2 className="h-4 w-4" />
+                          </Button>
+                      </div>
+                  ))}
+                  {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( 
+                       <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
+                  )}
+                   <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
+              </CardContent>
+          </Card>
+      </div>
+  );
+};
+
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => void, currentLanguage: string }) => (
+   <div className="space-y-2">
+       <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
+       <Card className="bg-muted/30 border">
+           <CardContent className="p-3 space-y-2">
+               {data && data.length > 0 ? (
+                    <ScrollArea className="h-32"> 
+                      {data.map((item, index) => (
+                          <div key={index} className="flex items-center gap-2 mb-1">
+                              <Textarea 
+                                  value={item} 
+                                  onChange={(e) => onUpdate(charId, field, index, e.target.value)}
+                                  className="text-sm flex-1 bg-background border"
+                                  placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
+                                  rows={1} 
+                              />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field, index)}>
+                                  <Trash2 className="h-4 w-4" />
+                              </Button>
+                          </div>
+                      ))}
+                   </ScrollArea>
+               ) : (
+                   <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
+               )}
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)}>
+                   <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
+               </Button>
+           </CardContent>
+       </Card>
+   </div>
+);
+
 
 export function CharacterSidebar({
     characters,
@@ -54,11 +180,10 @@ export function CharacterSidebar({
     currentLanguage,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
-  const [isClient, setIsClient] = React.useState(false); // State to track client-side rendering
+  const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
-  // Set isClient to true only on the client-side after mount
   React.useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
@@ -88,14 +213,12 @@ export function CharacterSidebar({
   const handleAddGlobalCharToAdventure = (charId: string) => {
     const charToAdd = globalCharactersList.find(gc => gc.id === charId);
     if (charToAdd) {
-        onAddStagedCharacter(charToAdd); // Call parent to add to staged characters
+        onAddStagedCharacter(charToAdd);
     }
   };
 
-
   const handleGeneratePortrait = async (character: Character) => {
     if (imageLoadingStates[character.id]) return;
-
     setImageLoadingStates(prev => ({ ...prev, [character.id]: true }));
 
     try {
@@ -122,19 +245,17 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character) {
             const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass', 'affinity'];
+            let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
                  if (field === 'affinity') {
                     numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue)); 
                  }
-                 onCharacterUpdate({ ...character, [field]: isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue });
-            } else {
-                 let finalValue = value;
-                 if (field === 'affinity' && typeof finalValue === 'number') {
-                    finalValue = Math.max(0, Math.min(100, finalValue));
-                 }
-                 onCharacterUpdate({ ...character, [field]: finalValue });
+                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue;
+            } else if (field === 'affinity' && typeof processedValue === 'number') {
+                processedValue = Math.max(0, Math.min(100, processedValue));
             }
+            onCharacterUpdate({ ...character, [field]: processedValue });
         }
    };
 
@@ -204,7 +325,7 @@ export function CharacterSidebar({
     const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
-            const updatedArray = [...character[field]!];
+            const updatedArray = [...character[field]!]; // Non-null assertion as we check character[field]
             updatedArray[index] = value; 
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -226,7 +347,7 @@ export function CharacterSidebar({
     const removeArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => {
         const character = characters.find(c => c.id === charId);
          if (character && character[field]) {
-            const updatedArray = [...character[field]!];
+            const updatedArray = [...character[field]!]; // Non-null assertion
             updatedArray.splice(index, 1);
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -243,6 +364,7 @@ export function CharacterSidebar({
             if (value <= 90) return "Loyal";
             return "Dévoué / Amour";
         }
+        // Default to English or other language
         if (value <= 10) return "Deep Hate";
         if (value <= 30) return "Hostile";
         if (value <= 45) return "Wary";
@@ -252,136 +374,6 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
-    const getCharacterNameById = (id: string): string => {
-        if (id === playerId) return playerName;
-        const char = characters.find(c => c.id === id);
-        return char?.name || (currentLanguage === 'fr' ? "Inconnu" : "Unknown");
-    }
-
-  const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows, min, max }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number }) => (
-      <div className="space-y-1">
-            <Label htmlFor={id}>{label}</Label>
-            {rows ? (
-                <Textarea id={id} value={value ?? ""} onChange={onChange} placeholder={placeholder} rows={rows} className="text-sm bg-background border"/>
-            ) : (
-                <Input id={id} type={type} value={value ?? ""} onChange={onChange} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max}/>
-            )}
-        </div>
-  );
-
- const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, valueType = "text" }: { charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', title: string, icon: React.ElementType, data?: Record<string, string | number | boolean>, addLabel: string, valueType?: 'text' | 'number' | 'boolean' }) => (
-     <div className="space-y-2">
-         <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
-         <Card className="bg-muted/30 border">
-             <CardContent className="p-3 space-y-2">
-                 {data && Object.keys(data).length > 0 ? (
-                     Object.entries(data).map(([key, value]) => (
-                         <div key={key} className="flex items-center gap-2">
-                             <Label htmlFor={`${charId}-${field}-${key}`} className="w-1/3 capitalize truncate text-sm">{key}</Label>
-                             <Input
-                                 id={`${charId}-${field}-${key}`}
-                                 type={valueType === 'number' ? 'number' : 'text'}
-                                 value={String(value)} 
-                                 onChange={(e) => handleNestedFieldChange(charId, field, key, e.target.value)}
-                                 className="h-8 text-sm flex-1"
-                                 min={valueType === 'number' ? "0" : undefined}
-                             />
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNestedField(charId, field, key)}>
-                                 <Trash2 className="h-4 w-4" />
-                             </Button>
-                         </div>
-                     ))
-                 ) : (
-                     <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} défini(e).</p>
-                 )}
-                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => addNestedField(charId, field)}>
-                    <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
-                 </Button>
-             </CardContent>
-         </Card>
-     </div>
- );
-
- const RelationsEditableCard = ({ charId, data }: { charId: string, data?: Record<string, string> }) => {
-    const otherCharacters = characters.filter(c => c.id !== charId); 
-    const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-
-    return (
-        <div className="space-y-2">
-            <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
-            <Card className="bg-muted/30 border">
-                <CardContent className="p-3 space-y-2">
-                     <div className="flex items-center gap-2">
-                        <Label htmlFor={`${charId}-relations-${playerId}`} className="w-1/3 truncate text-sm">{playerName} (Joueur)</Label>
-                        <Input
-                            id={`${charId}-relations-${playerId}`}
-                            type="text"
-                            value={data?.[playerId] || unknownRelation}
-                            onChange={(e) => handleNestedFieldChange(charId, 'relations', playerId, e.target.value)}
-                            className="h-8 text-sm flex-1"
-                            placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
-                        />
-                     </div>
-
-                    {otherCharacters.map(otherChar => (
-                        <div key={otherChar.id} className="flex items-center gap-2">
-                            <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="w-1/3 truncate text-sm">{otherChar.name}</Label>
-                            <Input
-                                id={`${charId}-relations-${otherChar.id}`}
-                                type="text"
-                                value={data?.[otherChar.id] || unknownRelation}
-                                onChange={(e) => handleNestedFieldChange(charId, 'relations', otherChar.id, e.target.value)}
-                                className="h-8 text-sm flex-1"
-                                placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
-                            />
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNestedField(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                    {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( 
-                         <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
-                    )}
-                     <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
-                </CardContent>
-            </Card>
-        </div>
-    );
- };
-
-
- const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string }) => (
-     <div className="space-y-2">
-         <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
-         <Card className="bg-muted/30 border">
-             <CardContent className="p-3 space-y-2">
-                 {data && data.length > 0 ? (
-                      <ScrollArea className="h-32"> 
-                        {data.map((item, index) => (
-                            <div key={index} className="flex items-center gap-2 mb-1">
-                                <Textarea 
-                                    value={item} 
-                                    onChange={(e) => handleArrayFieldChange(charId, field, index, e.target.value)}
-                                    className="text-sm flex-1 bg-background border"
-                                    placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
-                                    rows={1} 
-                                />
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => removeArrayFieldItem(charId, field, index)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                     </ScrollArea>
-                 ) : (
-                     <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
-                 )}
-                  <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => addArrayFieldItem(charId, field)}>
-                     <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
-                 </Button>
-             </CardContent>
-         </Card>
-     </div>
- );
 
   return (
     <div className="w-full">
@@ -421,7 +413,7 @@ export function CharacterSidebar({
             <Accordion type="multiple" className="w-full">
                 {characters.map((char) => {
                     let isPotentiallyNew = false;
-                    if (isClient) {
+                    if (isClient) { // Only access localStorage on client
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
@@ -450,6 +442,7 @@ export function CharacterSidebar({
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
+                                                {/* The TooltipTrigger needs a single child that can accept a ref and event handlers. Span is fine. */}
                                                 <span className="inline-flex items-center"> 
                                                     <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
                                                 </span>
@@ -461,7 +454,7 @@ export function CharacterSidebar({
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> 
-                            {isClient && isPotentiallyNew && (
+                            {isClient && isPotentiallyNew && ( // Only access localStorage on client
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -497,6 +490,13 @@ export function CharacterSidebar({
                            </div>
 
                             <Separator />
+                            {/* Character Name */}
+                            <EditableField
+                                label="Nom"
+                                id={`${char.id}-name`}
+                                value={char.name}
+                                onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                            />
                             <EditableField
                                 label={currentLanguage === 'fr' ? "Description" : "Description"}
                                 id={`${char.id}-details`}
@@ -514,13 +514,22 @@ export function CharacterSidebar({
                                          max="100"
                                          value={currentAffinity}
                                          onChange={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
-                                         className="h-8 text-sm w-20 flex-none"
+                                         className="h-8 text-sm w-20 flex-none bg-background border"
                                      />
                                      <Progress value={currentAffinity} className="flex-1 h-2" />
                                      <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
                                  </div>
                              </div>
-                              <RelationsEditableCard charId={char.id} data={char.relations} />
+                              <RelationsEditableCard 
+                                charId={char.id} 
+                                data={char.relations} 
+                                characters={characters}
+                                playerId={playerId}
+                                playerName={playerName}
+                                currentLanguage={currentLanguage}
+                                onUpdate={handleNestedFieldChange}
+                                onRemove={removeNestedField}
+                              />
                             {rpgMode && (
                                 <>
                                     <Separator />
@@ -544,17 +553,17 @@ export function CharacterSidebar({
                                         <EditableField label="SAG" id={`${char.id}-wis`} type="number" value={char.wisdom} onChange={(e) => handleFieldChange(char.id, 'wisdom', e.target.value)} />
                                         <EditableField label="CHA" id={`${char.id}-cha`} type="number" value={char.charisma} onChange={(e) => handleFieldChange(char.id, 'charisma', e.target.value)} />
                                     </div>
-                                    <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" />
-                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text"/>
-                                    <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number"/>
-                                    <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" />
-                                    <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" />
-                                    <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" />
+                                    <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
+                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
+                                    <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
+                                    <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
+                                    <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
+                                    <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
                                 </>
                             )}
                             <Separator />
-                             <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} />
-                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"}/>
+                             <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
+                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"} onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
                         </AccordionContent>
                     </AccordionItem>
                     )
