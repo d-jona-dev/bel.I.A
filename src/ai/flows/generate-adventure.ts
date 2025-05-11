@@ -260,14 +260,14 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         activeCombat: input.activeCombat,
         currencyName: finalCurrencyName,
         // Pass player stats explicitly
-        playerClass: input.rpgModeActive ? input.playerClass : undefined,
-        playerLevel: input.rpgModeActive ? input.playerLevel : undefined,
-        playerCurrentHp: input.rpgModeActive ? input.playerCurrentHp : undefined,
-        playerMaxHp: input.rpgModeActive ? input.playerMaxHp : undefined,
-        playerCurrentMp: input.rpgModeActive ? input.playerCurrentMp : undefined,
-        playerMaxMp: input.rpgModeActive ? input.playerMaxMp : undefined,
-        playerCurrentExp: input.rpgModeActive ? input.playerCurrentExp : undefined,
-        playerExpToNextLevel: input.rpgModeActive ? input.playerExpToNextLevel : undefined,
+        playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
+        playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
+        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp ?? input.playerMaxHp ?? 10) : undefined,
+        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp || 10) : undefined,
+        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp ?? input.playerMaxMp ?? 0) : undefined,
+        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp || 0) : undefined,
+        playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
+        playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
     };
 
   return generateAdventureFlow(flowInput);
@@ -291,12 +291,12 @@ Current Situation/Recent Narrative:
 
 {{#if rpgModeActive}}
 --- Player Stats ({{playerName}}) ---
-Class: {{playerClass | default "Aventurier"}} | Level: {{playerLevel | default 1}}
-HP: {{playerCurrentHp | default 10}}/{{playerMaxHp | default 10}}
+Class: {{playerClass}} | Level: {{playerLevel}}
+HP: {{playerCurrentHp}}/{{playerMaxHp}}
 {{#if playerMaxMp}}
-MP: {{playerCurrentMp | default 0}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used)
+MP: {{playerCurrentMp}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used)
 {{/if}}
-EXP: {{playerCurrentExp | default 0}}/{{playerExpToNextLevel | default 100}}
+EXP: {{playerCurrentExp}}/{{playerExpToNextLevel}}
 ---
 {{/if}}
 
@@ -321,7 +321,7 @@ Known Characters (excluding player unless explicitly listed for context):
 - Name: {{this.name}}
   Description: {{this.details}}
   {{#if ../rpgModeActive}}
-  Class: {{this.characterClass | default "N/A"}} | Level: {{this.level | default 1}}
+  Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
   {{/if}}
@@ -364,7 +364,7 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop {{currencyName | default "or"}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
+        *   Optionally, defeated enemies might drop {{currencyName}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, and statuses for the next turn.
     *   **Regardless of combat, if relationsModeActive is true:**
