@@ -6,15 +6,15 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RefreshCcw } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RefreshCcw, Heart, Zap as ZapIcon, BarChart2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image"; // Import types only
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, Combatant } from "@/types"; // Import Message, Character, ActiveCombat types
+import type { Message, Character, ActiveCombat, Combatant, AdventureSettings } from "@/types"; // Import Message, Character, ActiveCombat types
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,14 +27,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 
 
 // Define prop types including new props for message handling
 interface AdventureDisplayProps {
     generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    world: string;
-    playerName: string; 
+    adventureSettings: AdventureSettings; // Pass full adventure settings
     characters: Character[];
     initialMessages: Message[]; 
     currentLanguage: string; 
@@ -43,13 +43,11 @@ interface AdventureDisplayProps {
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; 
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; 
     onRelationUpdates: (updates: RelationUpdateSchema[]) => void; 
-    rpgMode: boolean;
     onEditMessage: (messageId: string, newContent: string) => void; 
     onRegenerateLastResponse: () => Promise<void>; 
     onUndoLastMessage: () => void; 
-    activeCombat?: ActiveCombat; // Added activeCombat prop
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; // Added combat updates handler
-    currencyName?: string; // Add currencyName
+    activeCombat?: ActiveCombat; 
+    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; 
     onRestartAdventure: () => void;
 }
 
@@ -57,8 +55,7 @@ interface AdventureDisplayProps {
 export function AdventureDisplay({
     generateAdventureAction,
     generateSceneImageAction,
-    world,
-    playerName, 
+    adventureSettings,
     characters,
     initialMessages, 
     currentLanguage, 
@@ -67,13 +64,11 @@ export function AdventureDisplay({
     onCharacterHistoryUpdate, 
     onAffinityUpdates, 
     onRelationUpdates, 
-    rpgMode,
     onEditMessage,
     onRegenerateLastResponse, 
     onUndoLastMessage, 
-    activeCombat, // Destructure activeCombat
-    onCombatUpdates, // Destructure onCombatUpdates
-    currencyName, // Destructure currencyName
+    activeCombat, 
+    onCombatUpdates, 
     onRestartAdventure,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -107,14 +102,13 @@ export function AdventureDisplay({
         }
     }, [initialMessages]); 
 
-    // Update currentMode based on activeCombat state
     React.useEffect(() => {
-        if (rpgMode && activeCombat?.isActive) {
+        if (adventureSettings.rpgMode && activeCombat?.isActive) {
             setCurrentMode("combat");
         } else {
-            setCurrentMode("exploration"); // Default or back to exploration if combat ends
+            setCurrentMode("exploration"); 
         }
-    }, [activeCombat, rpgMode]);
+    }, [activeCombat, adventureSettings.rpgMode]);
 
 
   const handleSendAction = async () => {
@@ -127,45 +121,33 @@ export function AdventureDisplay({
     onNarrativeChange(userMessageContent, 'user');
     
     try {
-        const currentMessages = initialMessages; // Use initialMessages (which is 'narrative' from parent)
-        const contextMessages = currentMessages.slice(-5); // Get the last 5 messages for context
+        const currentMessages = initialMessages; 
+        const contextMessages = currentMessages.slice(-5); 
         const narrativeContext = contextMessages.map(msg =>
-            msg.type === 'user' ? `> ${playerName}: ${msg.content}` : msg.content
-        ).join('\n\n') + `\n\n> ${playerName}: ${userMessageContent}\n`; 
+            msg.type === 'user' ? `> ${adventureSettings.playerName}: ${msg.content}` : msg.content
+        ).join('\n\n') + `\n\n> ${adventureSettings.playerName}: ${userMessageContent}\n`; 
 
         const input: GenerateAdventureInput = {
-            world: world,
-            initialSituation: narrativeContext, // Use the constructed context
+            world: adventureSettings.world,
+            initialSituation: narrativeContext, 
             characters: characters, 
             userAction: userMessageContent, 
             currentLanguage: currentLanguage, 
-            playerName: playerName, 
-            rpgModeActive: rpgMode, // Pass the rpgMode state
-            relationsModeActive: true, // Assuming relations mode is always active if this component is complex enough
-            activeCombat: activeCombat, // Pass current combat state
-            currencyName: currencyName, // Pass currencyName
+            playerName: adventureSettings.playerName || "Player", 
+            rpgModeActive: adventureSettings.rpgMode, 
+            relationsModeActive: adventureSettings.relationsMode ?? true,
+            activeCombat: activeCombat, 
+            currencyName: adventureSettings.currencyName, 
+            playerClass: adventureSettings.playerClass,
+            playerLevel: adventureSettings.playerLevel,
+            playerCurrentHp: adventureSettings.playerCurrentHp,
+            playerMaxHp: adventureSettings.playerMaxHp,
+            playerCurrentMp: adventureSettings.playerCurrentMp,
+            playerMaxMp: adventureSettings.playerMaxMp,
+            playerCurrentExp: adventureSettings.playerCurrentExp,
+            playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
         };
         
-        // The promptConfig.rpgContext is somewhat redundant now but kept for structure
-        if (rpgMode) {
-             input.promptConfig = {
-                 rpgContext: {
-                    playerStats: { /* TODO: Player stats placeholder */ },
-                    characterDetails: characters.map(c => ({
-                         name: c.name,
-                         details: c.details,
-                         stats: c.stats,
-                         inventory: c.inventory,
-                         relations: c.relations ? Object.entries(c.relations).map(([id, desc]) => {
-                             const relatedChar = characters.find(char => char.id === id);
-                             return `${relatedChar ? relatedChar.name : (id === 'player' ? playerName : 'Unknown')}: ${desc}`;
-                         }).join(', ') : 'None',
-                    })),
-                    mode: currentMode,
-                 }
-             };
-        }
-
         const result = await generateAdventureAction(input);
         onNarrativeChange(result.narrative, 'ai', result.sceneDescriptionForImage);
 
@@ -175,14 +157,13 @@ export function AdventureDisplay({
         if (result.characterUpdates && result.characterUpdates.length > 0) {
             onCharacterHistoryUpdate(result.characterUpdates);
         }
-        if (result.affinityUpdates && result.affinityUpdates.length > 0) {
+        if (adventureSettings.relationsMode && result.affinityUpdates && result.affinityUpdates.length > 0) {
              onAffinityUpdates(result.affinityUpdates);
         }
-        if (result.relationUpdates && result.relationUpdates.length > 0) {
+        if (adventureSettings.relationsMode && result.relationUpdates && result.relationUpdates.length > 0) {
            onRelationUpdates(result.relationUpdates); 
         }
-        // Handle combat updates from AI
-        if (rpgMode && result.combatUpdates) {
+        if (adventureSettings.rpgMode && result.combatUpdates) {
             onCombatUpdates(result.combatUpdates);
         }
 
@@ -282,10 +263,10 @@ export function AdventureDisplay({
   return (
     <div className="flex flex-col h-full overflow-hidden">
        <Tabs defaultValue="exploration" value={currentMode} onValueChange={(value) => setCurrentMode(value as any)} className="mb-2">
-        <TabsList className={`grid w-full ${rpgMode ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <TabsList className={`grid w-full ${adventureSettings.rpgMode ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="exploration"><Map className="mr-2 h-4 w-4" />Exploration</TabsTrigger>
           <TabsTrigger value="dialogue" disabled><Users className="mr-2 h-4 w-4" />Dialogue (Future)</TabsTrigger>
-          {rpgMode && <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>}
+          {adventureSettings.rpgMode && <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>}
         </TabsList>
       </Tabs>
 
@@ -416,7 +397,7 @@ export function AdventureDisplay({
                         </div>
                     )}
 
-                    {rpgMode && activeCombat?.isActive && ( // Show combat actions only if RPG mode and combat is active
+                    {adventureSettings.rpgMode && activeCombat?.isActive && ( 
                         <div className="flex flex-wrap gap-2 mb-2">
                              <TooltipProvider>
                                 <Tooltip>
@@ -486,48 +467,84 @@ export function AdventureDisplay({
                 </CardFooter>
             </Card>
 
-            <Card className="w-1/3 lg:w-1/4 hidden md:flex flex-col overflow-hidden">
-                <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-                    {isImageLoading ? (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                            <p>Génération de l'image...</p>
-                        </div>
-                    ) : imageUrl ? (
-                         <div className="relative w-full h-full">
-                            <Image
-                                src={imageUrl}
-                                alt="Generated Scene"
-                                fill
-                                style={{ objectFit: 'contain' }}
-                                data-ai-hint="adventure scene visual" 
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
-                            />
-                        </div>
-                    ) : (
-                        <div className="text-center text-muted-foreground">
-                            <ImageIcon className="h-12 w-12 mx-auto mb-2" />
-                            <p>Aucune image générée pour cette scène.</p>
-                        </div>
-                    )}
-                </CardContent>
-                <CardFooter className="p-4 border-t">
-                    <TooltipProvider>
-                        <Tooltip>
-                             <TooltipTrigger asChild>
-                                <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || isRegenerating || !currentSceneDescription}>
-                                    <Wand2 className="mr-2 h-4 w-4" />
-                                    Générer Image Scène
-                                </Button>
-                             </TooltipTrigger>
-                             <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </CardFooter>
-            </Card>
+            <div className="w-1/3 lg:w-1/4 hidden md:flex flex-col gap-4 overflow-y-auto"> {/* Added gap-4 and overflow-y-auto */}
+                <Card>
+                    <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
+                        {isImageLoading ? (
+                            <div className="flex flex-col items-center justify-center text-muted-foreground">
+                                <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                                <p>Génération de l'image...</p>
+                            </div>
+                        ) : imageUrl ? (
+                             <div className="relative w-full aspect-square"> {/* Changed to aspect-square for better image display */}
+                                <Image
+                                    src={imageUrl}
+                                    alt="Generated Scene"
+                                    fill
+                                    style={{ objectFit: 'contain' }}
+                                    data-ai-hint="adventure scene visual" 
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
+                                />
+                            </div>
+                        ) : (
+                            <div className="text-center text-muted-foreground">
+                                <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                                <p>Aucune image générée pour cette scène.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                    <CardFooter className="p-4 border-t">
+                        <TooltipProvider>
+                            <Tooltip>
+                                 <TooltipTrigger asChild>
+                                    <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || isRegenerating || !currentSceneDescription}>
+                                        <Wand2 className="mr-2 h-4 w-4" />
+                                        Générer Image Scène
+                                    </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </CardFooter>
+                </Card>
+
+                {adventureSettings.rpgMode && (
+                    <Card className="shadow-md rounded-lg">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-lg">{adventureSettings.playerName || "Joueur"}</CardTitle>
+                            <CardDescription>{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pt-2">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
+                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
+                                </div>
+                                <Progress id="player-hp" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                            </div>
+
+                            {(adventureSettings.playerMaxMp ?? 0) > 0 && (
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <Label htmlFor="player-mp" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
+                                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
+                                    </div>
+                                    <Progress id="player-mp" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                                </div>
+                            )}
+
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label htmlFor="player-exp" className="text-sm font-medium flex items-center"><BarChart2 className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
+                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
+                                </div>
+                                <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
       </div>
-
-
     </div>
   );
 }

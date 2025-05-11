@@ -19,7 +19,14 @@ import type { Character, ActiveCombat, Combatant } from '@/types'; // Import Cha
 
 // Define RPG context schema (optional)
 const RpgContextSchema = z.object({
-    playerStats: z.record(z.union([z.string(), z.number()])).optional().describe("Player character's statistics (e.g., HP, MP, STR)."),
+    playerStats: z.object({
+        Name: z.string().optional(),
+        Class: z.string().optional(),
+        Level: z.number().optional(),
+        HP: z.string().optional().describe("Player HP, e.g., '15/20'"),
+        MP: z.string().optional().describe("Player MP, e.g., '10/10' or 'N/A'"),
+        EXP: z.string().optional().describe("Player EXP, e.g., '50/100'"),
+    }).optional().describe("Player character's statistics (e.g., HP, MP, STR)."),
     characterDetails: z.array(z.object({
         name: z.string(),
         details: z.string().optional().describe("Brief description of the character for context."),
@@ -34,8 +41,8 @@ const BaseCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
   details: z.string(),
-  affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion."),
-  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). MUST be in the specified language."),
+  affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion. This score dictates the character's baseline behavior and responses toward the player. Small, gradual changes for typical interactions (+/- 1-2), larger changes (+/- 5+) for major events."),
+  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, attempt to define it based on new interactions."),
   // RPG Stats for combat
   hitPoints: z.number().optional().describe("Current Hit Points. If undefined in RPG mode, assume a default like 10."),
   maxHitPoints: z.number().optional().describe("Maximum Hit Points. If undefined in RPG mode, assume a default like 10."),
@@ -97,6 +104,15 @@ const GenerateAdventureInputSchema = z.object({
   promptConfig: z.object({ 
       rpgContext: RpgContextSchema.optional()
   }).optional(),
+  // Player specific RPG stats for context
+  playerClass: z.string().optional().describe("Player's character class if RPG mode is active."),
+  playerLevel: z.number().optional().describe("Player's current level if RPG mode is active."),
+  playerCurrentHp: z.number().optional().describe("Player's current HP if RPG mode is active."),
+  playerMaxHp: z.number().optional().describe("Player's maximum HP if RPG mode is active."),
+  playerCurrentMp: z.number().optional().describe("Player's current MP if RPG mode is active and applicable."),
+  playerMaxMp: z.number().optional().describe("Player's maximum MP if RPG mode is active and applicable."),
+  playerCurrentExp: z.number().optional().describe("Player's current EXP if RPG mode is active."),
+  playerExpToNextLevel: z.number().optional().describe("EXP needed for player's next level if RPG mode is active."),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
@@ -107,12 +123,12 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
 
 const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
-    details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including the location/circumstance of meeting if possible. MUST be in the specified language."),
-    initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable. MUST be in the specified language."),
+    details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
+    initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
         z.object({
             targetName: z.string().describe("Name of the known character or the player's name (e.g., '{{playerName}}', 'Rina')."),
-            description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
+            description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
     ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\"targetName\": \"{{playerName}}\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
     isHostile: z.boolean().optional().default(false).describe("Is this new character initially hostile to the player? Relevant if rpgModeActive is true."),
@@ -129,7 +145,7 @@ const NewCharacterSchema = z.object({
 
 const CharacterUpdateSchema = z.object({
     characterName: z.string().describe("The name of the known character involved."),
-    historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment. MUST be in the specified language."),
+    historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment. MUST be in the specified language. Include location if relevant and known (e.g. 'Au marché: A proposé une affaire douteuse à {{playerName}}.', 'Dans le couloir: A semblé troublée par la question de {{playerName}}.' )."),
 });
 
 const AffinityUpdateSchema = z.object({
@@ -141,7 +157,7 @@ const AffinityUpdateSchema = z.object({
 const RelationUpdateSchema = z.object({
     characterName: z.string().describe("The name of the character whose relation is updated (the source)."),
     targetName: z.string().describe("The name of the target character OR the player's name."),
-    newRelation: z.string().describe("The new *status* of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rivale', 'Amant secret', 'Confidente'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation status if the narrative now allows it. MUST be in the specified language."),
+    newRelation: z.string().describe("The new *status* of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rivale', 'Amant secret', 'Confidente', 'Collègue'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation status if the narrative now allows it. MUST be in the specified language."),
     reason: z.string().optional().describe("Brief justification for the relation change based on the narrative interaction or event.")
 });
 
@@ -154,8 +170,8 @@ const CombatOutcomeSchema = z.object({
 
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, and status updates for all combatants involved in this turn."),
-    expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated."),
-    lootDropped: z.array(z.object({ itemName: z.string(), quantity: z.number() })).optional().describe("Items looted from defeated enemies (includes currency if applicable, using {{../currencyName}})."),
+    expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
+    lootDropped: z.array(z.object({ itemName: z.string(), quantity: z.number() })).optional().describe("Items looted from defeated enemies (includes currency if applicable, using {{../currencyName}}). Loot should be appropriate for the enemy type and world setting."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -167,7 +183,7 @@ const GenerateAdventureOutputSchema = z.object({
   sceneDescriptionForImage: z
     .string()
     .optional()
-    .describe('A concise visual description of the current scene, suitable for an image generation prompt. Describe characters using their physical appearance, not their names.'),
+    .describe('A concise visual description of the current scene, suitable for an image generation prompt. Describe characters using their physical appearance, not their names. Include key actions or mood if relevant.'),
   newCharacters: z
     .array(NewCharacterSchema)
     .optional()
@@ -193,20 +209,18 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
     const processedCharacters: CharacterWithContextSummary[] = input.characters.map(char => {
         const history = char.history || [];
         const lastThreeEntries = history.slice(-3);
-        const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (input.currentLanguage === 'fr' ? 'Aucun' : 'None');
+        const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (input.currentLanguage === 'fr' ? 'Aucun historique notable.' : 'No notable history.');
         
         let relationsSummaryText = input.currentLanguage === 'fr' ? "Mode relations désactivé." : "Relations mode disabled.";
-        if (input.relationsModeActive) {
-             relationsSummaryText = char.relations
-                ? Object.entries(char.relations)
+        if (input.relationsModeActive && char.relations) {
+             relationsSummaryText = Object.entries(char.relations)
                       .map(([targetId, description]) => {
                           const targetName = targetId === 'player' 
                               ? input.playerName 
                               : input.characters.find(c => c.id === targetId)?.name || targetId;
                           return `${targetName}: ${description}`;
                       })
-                      .join(', ') || (input.currentLanguage === 'fr' ? 'Aucune relation définie.' : 'No relations defined.')
-                : (input.currentLanguage === 'fr' ? 'Aucune relation définie.' : 'No relations defined.');
+                      .join('; ') || (input.currentLanguage === 'fr' ? 'Aucune relation définie.' : 'No relations defined.');
         }
 
         return {
@@ -242,8 +256,18 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         ...input,
         characters: processedCharacters,
         rpgModeActive: input.rpgModeActive ?? false, 
+        relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
         currencyName: finalCurrencyName,
+        // Pass player stats explicitly
+        playerClass: input.rpgModeActive ? input.playerClass : undefined,
+        playerLevel: input.rpgModeActive ? input.playerLevel : undefined,
+        playerCurrentHp: input.rpgModeActive ? input.playerCurrentHp : undefined,
+        playerMaxHp: input.rpgModeActive ? input.playerMaxHp : undefined,
+        playerCurrentMp: input.rpgModeActive ? input.playerCurrentMp : undefined,
+        playerMaxMp: input.rpgModeActive ? input.playerMaxMp : undefined,
+        playerCurrentExp: input.rpgModeActive ? input.playerCurrentExp : undefined,
+        playerExpToNextLevel: input.rpgModeActive ? input.playerExpToNextLevel : undefined,
     };
 
   return generateAdventureFlow(flowInput);
@@ -265,6 +289,17 @@ World: {{{world}}}
 Current Situation/Recent Narrative:
 {{{initialSituation}}}
 
+{{#if rpgModeActive}}
+--- Player Stats ({{playerName}}) ---
+Class: {{playerClass | default "Aventurier"}} | Level: {{playerLevel | default 1}}
+HP: {{playerCurrentHp | default 10}}/{{playerMaxHp | default 10}}
+{{#if playerMaxMp}}
+MP: {{playerCurrentMp | default 0}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used)
+{{/if}}
+EXP: {{playerCurrentExp | default 0}}/{{playerExpToNextLevel | default 100}}
+---
+{{/if}}
+
 {{#if activeCombat.isActive}}
 --- COMBAT ACTIVE ---
 Environment: {{activeCombat.environmentDescription}}
@@ -284,64 +319,70 @@ Previous Turn Summary:
 Known Characters (excluding player unless explicitly listed for context):
 {{#each characters}}
 - Name: {{this.name}}
-  Description: {{this.details}} {{! MUST be in {{../currentLanguage}} }}
+  Description: {{this.details}}
   {{#if ../rpgModeActive}}
-  Class: {{this.characterClass}} | Level: {{this.level}}
+  Class: {{this.characterClass | default "N/A"}} | Level: {{this.level | default 1}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
-  Current Affinity towards {{../playerName}}: **{{this.affinity}}/100** (This score **DICTATES** their feelings and behavior towards {{../playerName}} on a scale from 0-10: Deep Hate, 11-30: Hostile, 31-45: Wary, 46-55: Neutral, 56-70: Friendly, 71-90: Loyal, 91-100: Devoted/Love). **ADHERE STRICTLY TO THE LEVELS DESCRIBED BELOW.**)
-  Relationship Statuses: {{{this.relationsSummary}}} {{! MUST be in {{../currentLanguage}} }}
+  Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
+    0-10 (Deep Hate): Actively hostile, seeks harm, betrayal.
+    11-30 (Hostile): Disdainful, obstructive, may attack if provoked or advantageous.
+    31-45 (Wary/Dislike): Suspicious, uncooperative, negative remarks.
+    46-55 (Neutral): Indifferent, formal, or business-like.
+    56-70 (Friendly): Helpful, agreeable, positive remarks.
+    71-90 (Loyal/Like): Trusting, supportive, seeks player's company, protective.
+    91-100 (Devoted/Love): Deep affection, self-sacrificing, strong emotional connection.
+  Relationship Statuses: {{{this.relationsSummary}}} (e.g., {{../playerName}}: Petite amie; Kentaro: Ami proche). These define the *nature* of the bond.
   {{else}}
   (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
   {{/if}}
-  History (summary): {{{this.historySummary}}} {{! MUST be in {{../currentLanguage}} }}
+  History (summary): {{{this.historySummary}}}
 {{/each}}
 
 User Action (from {{playerName}}): {{{userAction}}}
 
-{{#if promptConfig.rpgContext}}
---- RPG Context (Legacy, prefer integrated fields) ---
-Mode: {{promptConfig.rpgContext.mode}}
-{{#if promptConfig.rpgContext.playerStats}}
-Player Stats ({{../playerName}}): {{#each promptConfig.rpgContext.playerStats}}{{@key}}: {{this}} {{/each}}
-{{/if}}
+{{#if promptConfig.rpgContext.playerStats}} 
+{{! This is legacy, prefer direct player stats above, but keep for reference if needed by existing saves }}
+--- RPG Context (Legacy Player Stats) ---
+Player: {{promptConfig.rpgContext.playerStats.Name}}, Class: {{promptConfig.rpgContext.playerStats.Class}}, Lvl: {{promptConfig.rpgContext.playerStats.Level}}, HP: {{promptConfig.rpgContext.playerStats.HP}}, MP: {{promptConfig.rpgContext.playerStats.MP}}, EXP: {{promptConfig.rpgContext.playerStats.EXP}}
 ---
 {{/if}}
+
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
-        *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction. They might back down, demand something, or attack anyway, potentially initiating combat.
-        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants and their initial state (HP, MP if applicable). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
+        *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
+        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
-        *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (assume basic stats if not detailed) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
-        *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
+        *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
+        *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
         *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed.
-        *   If an enemy is defeated, award {{playerName}} EXP (e.g., 10-50 EXP per typical enemy, more for tougher ones) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop {{../currencyName}} or simple items. List these in combatUpdates.lootDropped.
+        *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
+        *   Optionally, defeated enemies might drop {{currencyName | default "or"}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, and statuses for the next turn.
     *   **Regardless of combat, if relationsModeActive is true:**
-        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} (0-10: Deep Hate, 11-30: Hostile, 31-45: Wary, 46-55: Neutral, 56-70: Friendly, 71-90: Loyal, 91-100: Devoted/Love). Also consider inter-character 'Relationship Statuses'.
+        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
-    *   Include 'name', 'details' (with meeting location/circumstance), 'initialHistoryEntry'.
-    *   {{#if rpgModeActive}}If introduced as hostile, set isHostile: true and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP).{{/if}}
-    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status if possible, use 'Inconnu' as last resort.{{/if}}
+    *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP).{{/if}}
+    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.**{{/if}}
 
-3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance, not name).
+3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
 
-4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates.
+4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates, including location context if known.
 
 {{#if relationsModeActive}}
-5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 5+) for major events.
+5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 5+) for major events. Justify with 'reason'.
 
-6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses*. If status was 'Inconnu' and can now be defined, update it. Add to relationUpdates.
+6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses* (e.g. from 'Inconnu' to 'Ami', or 'Ami' to 'Rivale'). Add to relationUpdates with 'newRelation' and 'reason'.
 {{else}}
 (Affinity and Relation updates are disabled.)
 {{/if}}
@@ -407,13 +448,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
-// Note on Handlebars helpers like `gt`:
-// Genkit v1.x does not directly support custom Handlebars helpers in ai.definePrompt in the same way previous versions might have.
-// For conditional logic based on values (like `maxMp > 0`), it's generally better to:
-// 1. Pre-process the data in the flow's main function to create boolean flags that Handlebars can use with `{{#if}}`.
-// 2. Structure the prompt to clearly instruct the AI on how to interpret values (e.g., "Only display MP if maxMp is greater than 0").
-// 3. Ensure schemas are well-defined (e.g., `maxMp: z.number().optional()`). If `maxMp` is not present or is 0 (which is falsy in Handlebars `{{#if}}`), the block won't render.
-// The template has been updated to use `{{#if this.maxMp}}` and `{{#if this.maxManaPoints}}`. If these values are present and non-zero, the block will render.
-// The AI is expected to understand that if `maxMp` is 0, it should not display "MP: X/0".
-// This avoids the "unknown helper gt" error.

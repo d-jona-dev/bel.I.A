@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, Dices, User, Users } from "lucide-react"; // Added Users icon
+import { PlusCircle, Trash2, Upload, Dices, User, Users, Heart, Gamepad2, Coins } from "lucide-react"; // Added icons
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,27 +37,39 @@ const adventureFormSchema = z.object({
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"),
   enableRpgMode: z.boolean().default(false).optional(),
-  enableRelationsMode: z.boolean().default(true).optional(), // New field for relations mode
+  enableRelationsMode: z.boolean().default(true).optional(), 
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
-  currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé).")
+  currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé)."),
+  playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
+  playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
+  playerMaxHp: z.number().int().min(1).optional().default(20).describe("Points de vie maximum initiaux."),
+  playerMaxMp: z.number().int().min(0).optional().default(0).describe("Points de magie maximum initiaux (0 si pas de magie)."),
+  playerExpToNextLevel: z.number().int().min(1).optional().default(100).describe("EXP requis pour le prochain niveau."),
 });
 
 interface AdventureFormProps {
+    propKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
 }
 
-export function AdventureForm({ initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ propKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
+    key: String(propKey), // Ensure form re-initializes when propKey changes
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "characters",
   });
+  
+  React.useEffect(() => {
+    form.reset(initialValues);
+  }, [initialValues, form, propKey]);
+
 
   React.useEffect(() => {
     const subscription = form.watch((value ) => {
@@ -78,12 +90,17 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         enableRpgMode: true,
-        enableRelationsMode: true, // Example includes relations mode enabled
+        enableRelationsMode: true, 
         playerName: "Héros",
         currencyName: "Or",
+        playerClass: "Étudiant Combattant",
+        playerLevel: 1,
+        playerMaxHp: 25,
+        playerMaxMp: 10,
+        playerExpToNextLevel: 100,
     };
-    onSettingsChange(loadedData);
-    form.reset(loadedData);
+    onSettingsChange(loadedData); // Update staged settings
+    form.reset(loadedData); // Reset form with new values
     
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
@@ -147,9 +164,9 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
                   <div className="space-y-0.5">
-                    <FormLabel className="flex items-center gap-2"><Dices className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
+                    <FormLabel className="flex items-center gap-2"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
                     <FormDescription>
-                      Activer les systèmes RPG (stats, inventaire, etc.).
+                      Activer les systèmes RPG (stats, combat, EXP, etc.).
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -163,12 +180,80 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
             />
 
             {form.watch('enableRpgMode') && (
+              <Card className="p-4 space-y-3 border-dashed bg-muted/20">
+                 <FormDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</FormDescription>
+                 <FormField
+                  control={form.control}
+                  name="playerClass"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Classe du Joueur</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Guerrier, Mage, Étudiant..." {...field} value={field.value || ""} className="bg-background border"/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="playerLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Niveau Initial</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="playerMaxHp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PV Max Initiaux</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="20" {...field} value={field.value || 20} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="playerMaxMp"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PM Max Initiaux</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
+                      </FormControl>
+                       <FormDescription>Mettre 0 si le joueur n'utilise pas de magie.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="playerExpToNextLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>EXP pour Niveau Suivant</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="100" {...field} value={field.value || 100} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                  <FormField
                   control={form.control}
                   name="currencyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom de la Monnaie</FormLabel>
+                      <FormLabel className="flex items-center gap-2"><Coins className="h-4 w-4"/>Nom de la Monnaie</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Or, Crédits, Gemmes..."
@@ -182,6 +267,7 @@ export function AdventureForm({ initialValues, onSettingsChange }: AdventureForm
                     </FormItem>
                   )}
                 />
+              </Card>
             )}
 
             <FormField

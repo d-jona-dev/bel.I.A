@@ -65,8 +65,8 @@ interface PageStructureProps {
   playerId: string;
   playerName: string; 
   onRestartAdventure: () => void;
-  activeCombat?: ActiveCombat; // Added activeCombat prop
-  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; // Added combat updates handler prop
+  activeCombat?: ActiveCombat; 
+  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; 
 }
 
 export function PageStructure({
@@ -101,8 +101,8 @@ export function PageStructure({
   playerId,
   playerName,
   onRestartAdventure,
-  activeCombat, // Destructure activeCombat
-  onCombatUpdates, // Destructure onCombatUpdates
+  activeCombat, 
+  onCombatUpdates, 
 }: PageStructureProps) {
   return (
     <>
@@ -240,8 +240,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                world={adventureSettings.world} 
-                playerName={playerName} 
+                adventureSettings={adventureSettings} // Pass full adventureSettings
                 characters={characters} 
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
@@ -250,13 +249,11 @@ export function PageStructure({
                 onCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
                 onAffinityUpdates={handleAffinityUpdates} 
                 onRelationUpdates={handleRelationUpdatesFromAI} 
-                rpgMode={adventureSettings.rpgMode} 
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
-                activeCombat={activeCombat} // Pass activeCombat
-                onCombatUpdates={onCombatUpdates} // Pass onCombatUpdates
-                currencyName={adventureSettings.currencyName} // Pass currencyName
+                activeCombat={activeCombat} 
+                onCombatUpdates={onCombatUpdates} 
                 onRestartAdventure={onRestartAdventure}
              />
         </main>
