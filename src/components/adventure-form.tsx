@@ -58,7 +58,7 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
-    key: String(propKey), // Ensure form re-initializes when propKey changes
+    // The form will re-initialize with new defaultValues when the component's key (propKey) changes.
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -66,9 +66,21 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
     name: "characters",
   });
   
+  // This effect ensures that if initialValues prop changes (e.g. due to "Load Prompt Example" or propKey change),
+  // the form is reset to these new values.
+  // It's important that initialValues prop itself is stable or changes intentionally, not as a side-effect of form.watch.
   React.useEffect(() => {
-    form.reset(initialValues);
-  }, [initialValues, form, propKey]);
+     // Only reset if the initialValues prop truly represents a new state to load into the form,
+     // not just a re-render with effectively the same staged data.
+     // The key on the component ensures re-mount for propKey changes.
+     // This explicit reset is for cases like "Load Prompt Example" if it updates parent state feeding initialValues.
+     // However, "Load Prompt Example" now calls form.reset itself.
+     // So, this might only be needed if initialValues can change from parent *without* propKey changing *and* without an internal form.reset.
+     // For now, let's keep it to ensure "Load Prompt Example" reflects if it only updates parent state.
+     // To be safe and avoid loops, only reset if initialValues reference changes significantly.
+     // A deep comparison here would be too costly. The parent component should ensure initialValues reference stability.
+     form.reset(initialValues);
+  }, [initialValues, form.reset]); // propKey is not needed here as component re-mounts via key.
 
 
   React.useEffect(() => {
@@ -99,8 +111,8 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
         playerMaxMp: 10,
         playerExpToNextLevel: 100,
     };
-    onSettingsChange(loadedData); // Update staged settings
-    form.reset(loadedData); // Reset form with new values
+    onSettingsChange(loadedData); // Update staged settings in parent
+    form.reset(loadedData); // Reset the form directly with new values
     
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };

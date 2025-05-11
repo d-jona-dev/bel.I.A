@@ -31,7 +31,7 @@ import { ModelLoader } from '@/components/model-loader';
 import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar";
 import { AdventureDisplay } from '@/components/adventure-display';
-import type { AdventureFormValues } from './page';
+import type { AdventureFormValues } from '../app/page';
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings; 
@@ -240,7 +240,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                adventureSettings={adventureSettings} // Pass full adventureSettings
+                adventureSettings={adventureSettings} 
                 characters={characters} 
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
@@ -276,6 +276,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
+                                    key={propKey.toString()} // Key added here
                                     propKey={propKey} 
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
