@@ -220,8 +220,8 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             // RPG Stats
             hitPoints: input.rpgModeActive ? (char.hitPoints ?? char.maxHitPoints ?? 10) : undefined,
             maxHitPoints: input.rpgModeActive ? (char.maxHitPoints ?? 10) : undefined,
-            manaPoints: input.rpgModeActive ? (char.manaPoints ?? char.maxManaPoints ?? 0) : undefined,
-            maxManaPoints: input.rpgModeActive ? (char.maxManaPoints ?? 0) : undefined,
+            manaPoints: input.rpgModeActive ? (char.manaPoints ?? char.maxManaPoints ?? (char.characterClass?.toLowerCase().includes('mage') || char.characterClass?.toLowerCase().includes('sorcerer') ? 10 : 0)) : undefined,
+            maxManaPoints: input.rpgModeActive ? (char.maxManaPoints ?? (char.characterClass?.toLowerCase().includes('mage') || char.characterClass?.toLowerCase().includes('sorcerer') ? 10 : 0)) : undefined,
             armorClass: input.rpgModeActive ? (char.armorClass ?? 10) : undefined,
             attackBonus: input.rpgModeActive ? (char.attackBonus ?? 0) : undefined,
             damageBonus: input.rpgModeActive ? (char.damageBonus ?? "1") : undefined,
@@ -270,7 +270,7 @@ Current Situation/Recent Narrative:
 Environment: {{activeCombat.environmentDescription}}
 Combatants:
 {{#each activeCombat.combatants}}
-- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}{{#if (gt this.maxMp 0)}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}}{{/if}} {{#if this.isDefeated}}(DEFEATED){{/if}}
+- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.isDefeated}}(DEFEATED){{/if}}
 {{/each}}
 {{#if activeCombat.turnLog}}
 Previous Turn Summary:
@@ -287,7 +287,7 @@ Known Characters (excluding player unless explicitly listed for context):
   Description: {{this.details}} {{! MUST be in {{../currentLanguage}} }}
   {{#if ../rpgModeActive}}
   Class: {{this.characterClass}} | Level: {{this.level}}
-  HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}{{#if (gt this.maxManaPoints 0)}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
+  HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
@@ -360,11 +360,6 @@ const generateAdventureFlow = ai.defineFlow<
     name: 'generateAdventureFlow',
     inputSchema: GenerateAdventureInputSchema,
     outputSchema: GenerateAdventureOutputSchema,
-    // Register the Handlebars helper
-    // As of Genkit v1.x, custom Handlebars helpers are not directly supported in definePrompt in the same way.
-    // Logic for complex data transformation should ideally happen in the flow's main function body before calling the prompt,
-    // or the prompt needs to be structured to work with the data as-is.
-    // For this use case, we'll ensure relationsSummary is pre-processed in the `generateAdventure` wrapper.
   },
   async input => {
 
@@ -413,33 +408,12 @@ const generateAdventureFlow = ai.defineFlow<
   }
 );
 
-// Helper for Handlebars - This approach might not work with Genkit v1.x ai.definePrompt directly.
-// If complex logic is needed within the template, it's better to pre-process data.
-// For simple conditionals like `gt`, it's often better to structure the input data.
-// However, keeping this here as a reference if a similar feature is needed or if Genkit evolves.
-// genkit.registerHandlebarsHelper('gt', (a: number, b: number) => a > b);
-// As of current understanding, direct helper registration like this for definePrompt is not standard.
-// Simpler conditions can be done with #if. For `gt`, pre-calculate boolean flags if needed.
-// Or, rely on the AI's ability to understand conditional output based on numeric values if the prompt is clear.
-// For the MP display in the prompt, we will rely on {{#if this.maxMp}} and the AI to interpret.
-// If maxMp > 0, then display MP.
-// Update: Handlebars.js itself supports basic helpers. `gt` is not a standard one.
-// The expression `{{#if (gt this.maxMp 0)}}` is not standard Handlebars.
-// The correct way is to use `{{#if this.maxMp}}` and then check if it's greater than 0 implicitly, or pass a boolean flag.
-// Let's simplify the template part: `{{#if this.maxMp}} - MP: {{this.currentMp}}/{{this.maxMp}}{{/if}}`
-// This will show MP if maxMp is defined and non-zero (truthy).
-// For clarity on 0 MP, the AI would need to know not to show "MP: X/0".
-// A better check in Handlebars would be `{{#if this.maxMp}}{{#if (expr this.maxMp '>' 0)}}...{{/if}}{{/if}}` if `expr` helper was available.
-// Since it's not standard, we rely on AI not to output "MP: X/0" or we pre-process.
-// The prompt will be: `{{#if this.maxMp}}{{#if this.maxMp}} - MP: {{this.currentMp}}/{{this.maxMp}}{{/if}}{{/if}}` and AI must understand that if maxMp is 0, it shouldn't print.
-// A better approach is: `{{#if this.maxMp}}{{#if (ne this.maxMp 0)}} - MP: {{this.currentMp}}/{{this.maxMp}}{{/if}}{{/if}}` if `ne` (not equal) was a known helper.
-// Simplest for now: `{{#if this.maxMp}} {{#if (expr @root.rpgModeActive && this.maxMp > 0)}} - MP: {{this.currentMp}}/{{this.maxMp}} {{/if}}{{/if}}`
-// Let's use a simpler structure and rely on the AI's intelligence for 0 maxMp cases.
-// The prompt was: `{{#if this.maxMp}}{{#if (gt this.maxMp 0)}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}}{{/if}}`
-// Change to: `{{#if this.maxMp}} {{!-- Assuming maxMp > 0 if present --}} - MP: {{this.currentMp}}/{{this.maxMp}} {{/if}}`
-// This is still not ideal.
-// The best Handlebars native way: `{{#if maxMp}}MP: {{currentMp}}/{{maxMp}}{{/if}}`. If `maxMp` can be `0` and we want to hide it,
-// the data itself should have a flag like `hasMana` or the AI should be smart.
-// The fix used was to make `maxMp` optional in the schema, so `{{#if this.maxMp}}` works correctly.
-// The `(gt this.maxMp 0)` part was likely causing parsing errors as `gt` isn't a standard helper.
-// The prompt has been updated to remove `(gt this.maxMp 0)`.
+// Note on Handlebars helpers like `gt`:
+// Genkit v1.x does not directly support custom Handlebars helpers in ai.definePrompt in the same way previous versions might have.
+// For conditional logic based on values (like `maxMp > 0`), it's generally better to:
+// 1. Pre-process the data in the flow's main function to create boolean flags that Handlebars can use with `{{#if}}`.
+// 2. Structure the prompt to clearly instruct the AI on how to interpret values (e.g., "Only display MP if maxMp is greater than 0").
+// 3. Ensure schemas are well-defined (e.g., `maxMp: z.number().optional()`). If `maxMp` is not present or is 0 (which is falsy in Handlebars `{{#if}}`), the block won't render.
+// The template has been updated to use `{{#if this.maxMp}}` and `{{#if this.maxManaPoints}}`. If these values are present and non-zero, the block will render.
+// The AI is expected to understand that if `maxMp` is 0, it should not display "MP: X/0".
+// This avoids the "unknown helper gt" error.
