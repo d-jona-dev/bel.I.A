@@ -217,8 +217,8 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             armorClass: input.rpgModeActive ? (char.armorClass ?? 10) : undefined,
             attackBonus: input.rpgModeActive ? (char.attackBonus ?? 0) : undefined,
             damageBonus: input.rpgModeActive ? (char.damageBonus ?? "1") : undefined,
-            characterClass: input.rpgModeActive ? char.characterClass : undefined,
-            level: input.rpgModeActive ? char.level : undefined,
+            characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined, // Default to "N/A"
+            level: input.rpgModeActive ? (char.level ?? 1) : undefined, // Default to 1
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
         };
     });
@@ -270,8 +270,8 @@ Known Characters (excluding player unless explicitly listed for context):
 - Name: {{this.name}}
   Description: {{this.details}} {{! MUST be in {{../currentLanguage}} }}
   {{#if ../rpgModeActive}}
-  Class: {{this.characterClass | default "N/A"}} | Level: {{this.level | default 1}}
-  HP: {{this.hitPoints | default "N/A"}}/{{this.maxHitPoints | default "N/A"}} | AC: {{this.armorClass | default "N/A"}} | Attack: {{this.attackBonus | default "+0"}} | Damage: {{this.damageBonus | default "1"}}
+  Class: {{this.characterClass}} | Level: {{this.level}}
+  HP: {{this.hitPoints}}/{{this.maxHitPoints}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
