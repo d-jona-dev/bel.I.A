@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RefreshCcw, Heart, Zap as ZapIcon, BarChart2, RotateCcw } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,6 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
@@ -91,6 +92,16 @@ export function AdventureDisplay({
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef(messages);
   const { toast } = useToast();
+
+    // Placeholder spells and skills - in a real app, these would come from character data or game rules
+    const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
+      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] 
+      : [];
+    const playerSkills = adventureSettings.playerClass?.toLowerCase().includes("guerrier") || adventureSettings.playerClass?.toLowerCase().includes("sportif") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
+      ? ["Attaque Puissante", "Charge", "Provocation"] 
+      : [];
+    const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
+
 
     React.useEffect(() => {
         setMessages(initialMessages);
@@ -404,14 +415,54 @@ export function AdventureDisplay({
                                     </TooltipTrigger>
                                     <TooltipContent>Action de combat : Se défendre.</TooltipContent>
                                 </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="secondary" size="sm" onClick={() => setUserAction("Utiliser compétence/sort : ")} disabled={isLoading || isRegenerating}>
-                                        <Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Décrire l'utilisation d'un sort ou compétence (à compléter dans la zone de texte).</TooltipContent>
-                                </Tooltip>
+
+                                <DropdownMenu>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="secondary" size="sm" disabled={isLoading || isRegenerating || (playerSpells.length === 0 && playerSkills.length === 0 && genericSkills.length === 0)}>
+                                                    <Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Utiliser un sort ou une compétence.</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DropdownMenuContent>
+                                        {playerSpells.length > 0 && (
+                                            <>
+                                                {playerSpells.map(spell => (
+                                                    <DropdownMenuItem key={spell} onSelect={() => handleSendSpecificAction(`Utiliser le sort : ${spell}`)}>
+                                                        {spell}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                                <DropdownMenuSeparator />
+                                            </>
+                                        )}
+                                        {playerSkills.length > 0 && (
+                                            <>
+                                                {playerSkills.map(skill => (
+                                                    <DropdownMenuItem key={skill} onSelect={() => handleSendSpecificAction(`Utiliser la compétence : ${skill}`)}>
+                                                        {skill}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                                <DropdownMenuSeparator />
+                                            </>
+                                        )}
+                                        {genericSkills.map(skill => (
+                                             <DropdownMenuItem key={skill} onSelect={() => handleSendSpecificAction(skill)}>
+                                                {skill}
+                                            </DropdownMenuItem>
+                                        ))}
+                                        {(playerSpells.length > 0 || playerSkills.length > 0 || genericSkills.length > 0) && <DropdownMenuSeparator />}
+                                        <DropdownMenuItem onSelect={() => setUserAction("Utiliser compétence/sort : ")}>
+                                            Autre... (Décrire)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+
                                  <DropdownMenu>
                                     <TooltipProvider>
                                         <Tooltip>
@@ -433,6 +484,7 @@ export function AdventureDisplay({
                                         <DropdownMenuItem onSelect={() => handleSendSpecificAction("Utiliser Parchemin de Feu")}>
                                         Parchemin de Feu
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem onSelect={() => setUserAction("Utiliser un objet : ")}>
                                             Autre... (Décrire)
                                         </DropdownMenuItem>
@@ -634,3 +686,4 @@ export function AdventureDisplay({
     </div>
   );
 }
+
