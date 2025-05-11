@@ -52,6 +52,7 @@ export interface AdventureSettings {
     world: string;
     initialSituation: string;
     rpgMode: boolean;
+    relationsMode?: boolean; // Added for the new "Mode jeux de Relations"
     // Add other global settings as needed (e.g., starting level, currency name)
     currencyName?: string; // e.g., "Gold", "Credits"
     playerName?: string; // Add player name setting

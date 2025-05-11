@@ -35,6 +35,7 @@ interface CharacterSidebarProps {
     onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
+    relationsMode: boolean; // Added relationsMode prop
     playerId: string;
     playerName: string;
     currentLanguage: string;
@@ -175,6 +176,7 @@ export function CharacterSidebar({
     onRelationUpdate,
     generateImageAction,
     rpgMode,
+    relationsMode, // Destructure relationsMode
     playerId,
     playerName,
     currentLanguage,
@@ -222,7 +224,7 @@ export function CharacterSidebar({
     setImageLoadingStates(prev => ({ ...prev, [character.id]: true }));
 
     try {
-      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode ? `Class: ${character.characterClass || 'Unknown'}.` : ''}`; 
+      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode && character.characterClass ? `Class: ${character.characterClass}.` : ''}`; 
       const result = await generateImageAction({ sceneDescription: prompt });
       onCharacterUpdate({ ...character, portraitUrl: result.imageUrl });
       toast({
@@ -325,7 +327,7 @@ export function CharacterSidebar({
     const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
-            const updatedArray = [...character[field]!]; // Non-null assertion as we check character[field]
+            const updatedArray = [...character[field]!]; 
             updatedArray[index] = value; 
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -347,7 +349,7 @@ export function CharacterSidebar({
     const removeArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => {
         const character = characters.find(c => c.id === charId);
          if (character && character[field]) {
-            const updatedArray = [...character[field]!]; // Non-null assertion
+            const updatedArray = [...character[field]!]; 
             updatedArray.splice(index, 1);
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -364,7 +366,6 @@ export function CharacterSidebar({
             if (value <= 90) return "Loyal";
             return "Dévoué / Amour";
         }
-        // Default to English or other language
         if (value <= 10) return "Deep Hate";
         if (value <= 30) return "Hostile";
         if (value <= 45) return "Wary";
@@ -413,7 +414,7 @@ export function CharacterSidebar({
             <Accordion type="multiple" className="w-full">
                 {characters.map((char) => {
                     let isPotentiallyNew = false;
-                    if (isClient) { // Only access localStorage on client
+                    if (isClient) { 
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
@@ -442,7 +443,6 @@ export function CharacterSidebar({
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                {/* The TooltipTrigger needs a single child that can accept a ref and event handlers. Span is fine. */}
                                                 <span className="inline-flex items-center"> 
                                                     <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
                                                 </span>
@@ -454,7 +454,7 @@ export function CharacterSidebar({
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> 
-                            {isClient && isPotentiallyNew && ( // Only access localStorage on client
+                            {isClient && isPotentiallyNew && ( 
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -490,7 +490,6 @@ export function CharacterSidebar({
                            </div>
 
                             <Separator />
-                            {/* Character Name */}
                             <EditableField
                                 label="Nom"
                                 id={`${char.id}-name`}
@@ -504,32 +503,36 @@ export function CharacterSidebar({
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
-                             <div className="space-y-2">
-                                 <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
-                                 <div className="flex items-center gap-2">
-                                     <Input
-                                         id={`${char.id}-affinity`}
-                                         type="number"
-                                         min="0"
-                                         max="100"
-                                         value={currentAffinity}
-                                         onChange={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
-                                         className="h-8 text-sm w-20 flex-none bg-background border"
-                                     />
-                                     <Progress value={currentAffinity} className="flex-1 h-2" />
-                                     <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
-                                 </div>
-                             </div>
-                              <RelationsEditableCard 
-                                charId={char.id} 
-                                data={char.relations} 
-                                characters={characters}
-                                playerId={playerId}
-                                playerName={playerName}
-                                currentLanguage={currentLanguage}
-                                onUpdate={handleNestedFieldChange}
-                                onRemove={removeNestedField}
-                              />
+                            {relationsMode && ( // Conditionally render affinity and relations
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                id={`${char.id}-affinity`}
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                value={currentAffinity}
+                                                onChange={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
+                                                className="h-8 text-sm w-20 flex-none bg-background border"
+                                            />
+                                            <Progress value={currentAffinity} className="flex-1 h-2" />
+                                            <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                                        </div>
+                                    </div>
+                                    <RelationsEditableCard 
+                                        charId={char.id} 
+                                        data={char.relations} 
+                                        characters={characters}
+                                        playerId={playerId}
+                                        playerName={playerName}
+                                        currentLanguage={currentLanguage}
+                                        onUpdate={handleNestedFieldChange}
+                                        onRemove={removeNestedField}
+                                    />
+                                </>
+                            )}
                             {rpgMode && (
                                 <>
                                     <Separator />

@@ -34,27 +34,27 @@ import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from './page';
 
 interface PageStructureProps {
-  adventureSettings: AdventureSettings; // Live settings for display/AI
-  characters: Character[]; // Live characters for display/AI
-  stagedAdventureSettings: AdventureFormValues; // Staged settings for AdventureForm
-  stagedCharacters: Character[]; // Staged characters for CharacterSidebar
-  propKey: number; // React key for AdventureForm
+  adventureSettings: AdventureSettings; 
+  characters: Character[]; 
+  stagedAdventureSettings: AdventureFormValues; 
+  stagedCharacters: Character[]; 
+  propKey: number; 
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; // Updates staged state
+  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; 
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
-  handleCharacterUpdate: (updatedCharacter: Character) => void; // Updates staged characters
-  handleNewCharacters: (newChars: NewCharacterSchema[]) => void; // Updates staged characters
-  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; // Updates staged characters
-  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; // Updates staged characters
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; // Updates staged characters
-  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; // Updates staged characters
-  handleSaveNewCharacter: (character: Character) => void; // Saves staged character globally
-  handleAddStagedCharacter: (character: Character) => void; // Adds a global character to staged characters
-  handleSave: () => void; // Saves live state
-  handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void; // Loads into base and live state
+  handleCharacterUpdate: (updatedCharacter: Character) => void; 
+  handleNewCharacters: (newChars: NewCharacterSchema[]) => void; 
+  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; 
+  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; 
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; 
+  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; 
+  handleSaveNewCharacter: (character: Character) => void; 
+  handleAddStagedCharacter: (character: Character) => void; 
+  handleSave: () => void; 
+  handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void; 
   setCurrentLanguage: (lang: string) => void;
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
@@ -63,7 +63,7 @@ interface PageStructureProps {
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
-  playerName: string; // Live player name for display
+  playerName: string; 
   onRestartAdventure: () => void;
 }
 
@@ -86,7 +86,7 @@ export function PageStructure({
   handleRelationUpdate,
   handleRelationUpdatesFromAI,
   handleSaveNewCharacter,
-  handleAddStagedCharacter, // Destructure new prop
+  handleAddStagedCharacter, 
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -236,17 +236,17 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                world={adventureSettings.world} // Use live settings for AI
-                playerName={playerName} // Use live player name for AI
-                characters={characters} // Use live characters for AI
+                world={adventureSettings.world} 
+                playerName={playerName} 
+                characters={characters} 
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
-                onNewCharacters={handleNewCharacters} // Updates staged
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} // Updates staged
-                onAffinityUpdates={handleAffinityUpdates} // Updates staged
-                onRelationUpdates={handleRelationUpdatesFromAI} // Updates staged
-                rpgMode={adventureSettings.rpgMode} // Use live RPG mode for AI
+                onNewCharacters={handleNewCharacters} 
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
+                onAffinityUpdates={handleAffinityUpdates} 
+                onRelationUpdates={handleRelationUpdatesFromAI} 
+                rpgMode={adventureSettings.rpgMode} 
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
@@ -271,7 +271,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={propKey} // Use propKey as React key
+                                    key={propKey} 
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />
@@ -303,15 +303,16 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                  <CharacterSidebar
-                                     characters={stagedCharacters} // Manage staged characters
+                                     characters={stagedCharacters} 
                                      onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter}
-                                     onAddStagedCharacter={handleAddStagedCharacter} // Pass new callback
+                                     onAddStagedCharacter={handleAddStagedCharacter} 
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false} // Use RPG mode from staged settings
+                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false} 
+                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true} // Pass relationsMode
                                      playerId={playerId}
-                                     playerName={stagedAdventureSettings.playerName || "Player"} // Use player name from staged settings
+                                     playerName={stagedAdventureSettings.playerName || "Player"} 
                                      currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>
