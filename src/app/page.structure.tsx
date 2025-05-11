@@ -1,4 +1,3 @@
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -34,27 +33,27 @@ import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from '../app/page';
 
 interface PageStructureProps {
-  adventureSettings: AdventureSettings; 
-  characters: Character[]; 
-  stagedAdventureSettings: AdventureFormValues; 
-  stagedCharacters: Character[]; 
-  propKey: number; 
+  adventureSettings: AdventureSettings;
+  characters: Character[];
+  stagedAdventureSettings: AdventureFormValues;
+  stagedCharacters: Character[];
+  formPropKey: number; // Renamed from propKey for clarity, used for AdventureForm key
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: AdventureFormValues) => void; 
+  handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
-  handleCharacterUpdate: (updatedCharacter: Character) => void; 
-  handleNewCharacters: (newChars: NewCharacterSchema[]) => void; 
-  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void; 
-  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void; 
-  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void; 
-  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void; 
-  handleSaveNewCharacter: (character: Character) => void; 
-  handleAddStagedCharacter: (character: Character) => void; 
-  handleSave: () => void; 
-  handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void; 
+  handleCharacterUpdate: (updatedCharacter: Character) => void;
+  handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
+  handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
+  handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
+  handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
+  handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void;
+  handleSaveNewCharacter: (character: Character) => void;
+  handleAddStagedCharacter: (character: Character) => void;
+  handleSave: () => void;
+  handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
   generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
@@ -63,10 +62,10 @@ interface PageStructureProps {
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
-  playerName: string; 
+  playerName: string;
   onRestartAdventure: () => void;
-  activeCombat?: ActiveCombat; 
-  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; 
+  activeCombat?: ActiveCombat;
+  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
 }
 
 export function PageStructure({
@@ -74,7 +73,7 @@ export function PageStructure({
   characters,
   stagedAdventureSettings,
   stagedCharacters,
-  propKey, 
+  formPropKey,
   handleApplyStagedChanges,
   narrativeMessages,
   currentLanguage,
@@ -88,7 +87,7 @@ export function PageStructure({
   handleRelationUpdate,
   handleRelationUpdatesFromAI,
   handleSaveNewCharacter,
-  handleAddStagedCharacter, 
+  handleAddStagedCharacter,
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -101,8 +100,8 @@ export function PageStructure({
   playerId,
   playerName,
   onRestartAdventure,
-  activeCombat, 
-  onCombatUpdates, 
+  activeCombat,
+  onCombatUpdates,
 }: PageStructureProps) {
   return (
     <>
@@ -240,20 +239,20 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                adventureSettings={adventureSettings} 
-                characters={characters} 
+                adventureSettings={adventureSettings}
+                characters={characters}
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
-                onNewCharacters={handleNewCharacters} 
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate} 
-                onAffinityUpdates={handleAffinityUpdates} 
-                onRelationUpdates={handleRelationUpdatesFromAI} 
+                onNewCharacters={handleNewCharacters}
+                onCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+                onAffinityUpdates={handleAffinityUpdates}
+                onRelationUpdates={handleRelationUpdatesFromAI}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
-                activeCombat={activeCombat} 
-                onCombatUpdates={onCombatUpdates} 
+                activeCombat={activeCombat}
+                onCombatUpdates={onCombatUpdates}
                 onRestartAdventure={onRestartAdventure}
              />
         </main>
@@ -276,8 +275,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={propKey.toString()} // Key added here
-                                    propKey={propKey} 
+                                    key={formPropKey.toString()} // Use formPropKey here for AdventureForm's key
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />
@@ -309,16 +307,16 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                  <CharacterSidebar
-                                     characters={stagedCharacters} 
+                                     characters={stagedCharacters}
                                      onCharacterUpdate={handleCharacterUpdate}
                                      onSaveNewCharacter={handleSaveNewCharacter}
-                                     onAddStagedCharacter={handleAddStagedCharacter} 
+                                     onAddStagedCharacter={handleAddStagedCharacter}
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false} 
-                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true} 
+                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
+                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true}
                                      playerId={playerId}
-                                     playerName={stagedAdventureSettings.playerName || "Player"} 
+                                     playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>
