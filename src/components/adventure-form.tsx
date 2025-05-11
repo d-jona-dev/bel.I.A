@@ -48,17 +48,17 @@ const adventureFormSchema = z.object({
 });
 
 interface AdventureFormProps {
-    propKey: number;
+    formPropKey: number; // Changed from propKey to formPropKey for clarity
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
 }
 
-export function AdventureForm({ propKey, initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
-    // The form will re-initialize with new defaultValues when the component's key (propKey) changes.
+    // The form will re-initialize with new defaultValues when the component's key (formPropKey) changes.
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -66,22 +66,12 @@ export function AdventureForm({ propKey, initialValues, onSettingsChange }: Adve
     name: "characters",
   });
   
-  // This effect ensures that if initialValues prop changes (e.g. due to "Load Prompt Example" or propKey change),
-  // the form is reset to these new values.
-  // It's important that initialValues prop itself is stable or changes intentionally, not as a side-effect of form.watch.
-  React.useEffect(() => {
-     // Only reset if the initialValues prop truly represents a new state to load into the form,
-     // not just a re-render with effectively the same staged data.
-     // The key on the component ensures re-mount for propKey changes.
-     // This explicit reset is for cases like "Load Prompt Example" if it updates parent state feeding initialValues.
-     // However, "Load Prompt Example" now calls form.reset itself.
-     // So, this might only be needed if initialValues can change from parent *without* propKey changing *and* without an internal form.reset.
-     // For now, let's keep it to ensure "Load Prompt Example" reflects if it only updates parent state.
-     // To be safe and avoid loops, only reset if initialValues reference changes significantly.
-     // A deep comparison here would be too costly. The parent component should ensure initialValues reference stability.
-     form.reset(initialValues);
-  }, [initialValues, form.reset]); // propKey is not needed here as component re-mounts via key.
-
+  // The useEffect that called form.reset(initialValues) based on initialValues changing has been removed.
+  // It was causing an infinite loop because initialValues were updated by the form.watch callback,
+  // leading to continuous form resets and watch triggers.
+  // The form's re-initialization with new "base" data (e.g., after loading a save)
+  // is now solely handled by the `formPropKey` prop changing, which causes this component to re-mount
+  // and `useForm` to re-initialize with the new `initialValues`.
 
   React.useEffect(() => {
     const subscription = form.watch((value ) => {
