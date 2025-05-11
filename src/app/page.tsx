@@ -3,12 +3,12 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message } from "@/types"; // Import shared types including Message
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, Combatant } from "@/types"; // Import shared types including Message, ActiveCombat
 import { PageStructure } from "./page.structure"; // Import the layout structure component
 
 // Import AI functions here
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -42,7 +42,7 @@ export default function Home() {
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
-    rpgMode: false,
+    rpgMode: false, // Default RPG mode to false
     relationsMode: true, // Default relations mode to true
     playerName: "Player",
   });
@@ -54,7 +54,8 @@ export default function Home() {
         history: ["Ceci est un exemple d'historique pour Rina."],
         opinion: {},
         affinity: 70,
-        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami" }
+        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami Proche" },
+        hitPoints: 25, maxHitPoints: 25, armorClass: 12, attackBonus: 2, damageBonus: "1d4", characterClass: "Étudiante", level: 1, isHostile: false,
       },
       {
         id: 'kentaro-1',
@@ -62,14 +63,17 @@ export default function Home() {
         details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
         history: ["Kentaro a été vu parlant à Rina."],
         opinion: {},
-        affinity: 60,
-        relations: { [PLAYER_ID]: "Meilleur ami", 'rina-1': "Ami" }
+        affinity: 30, // Lowered affinity to make him more prone to conflict
+        relations: { [PLAYER_ID]: "Meilleur ami (tendancieux)", 'rina-1': "Intérêt romantique" },
+        hitPoints: 35, maxHitPoints: 35, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1", characterClass: "Sportif Populaire", level: 2, isHostile: false, // Potentially hostile
       }
   ]);
 
   // "Live" state of the adventure, used by AI and AdventureDisplay
   const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
   const [characters, setCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
+  const [activeCombat, setActiveCombat] = React.useState<ActiveCombat | undefined>(undefined);
+
 
   // "Staged" state for the configuration panel (AdventureForm and CharacterSidebar)
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
@@ -90,6 +94,7 @@ export default function Home() {
     setAdventureSettings(JSON.parse(JSON.stringify(baseAdventureSettings)));
     setCharacters(JSON.parse(JSON.stringify(baseCharacters)));
     setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }]);
+    setActiveCombat(undefined); // Reset combat state on base settings change
   }, [baseAdventureSettings, baseCharacters]);
 
 
@@ -106,7 +111,7 @@ export default function Home() {
         world: newSettingsFromForm.world,
         initialSituation: newSettingsFromForm.initialSituation,
         rpgMode: newSettingsFromForm.enableRpgMode ?? false,
-        relationsMode: newSettingsFromForm.enableRelationsMode ?? true, // Update relationsMode
+        relationsMode: newSettingsFromForm.enableRelationsMode ?? true, 
         playerName: newSettingsFromForm.playerName || "Player",
         currencyName: newSettingsFromForm.currencyName,
     }));
@@ -131,12 +136,19 @@ export default function Home() {
                 spells: existingChar.spells || [], techniques: existingChar.techniques || [], passiveAbilities: existingChar.passiveAbilities || [],
                 strength: existingChar.strength ?? 10, dexterity: existingChar.dexterity ?? 10, constitution: existingChar.constitution ?? 10,
                 intelligence: existingChar.intelligence ?? 10, wisdom: existingChar.wisdom ?? 10, charisma: existingChar.charisma ?? 10,
-                hitPoints: existingChar.hitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10, armorClass: existingChar.armorClass ?? 10,
+                baseHitPoints: existingChar.baseHitPoints ?? 10,
+                hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, 
+                maxHitPoints: existingChar.maxHitPoints ?? 10, 
+                armorClass: existingChar.armorClass ?? 10,
+                attackBonus: existingChar.attackBonus ?? 0,
+                damageBonus: existingChar.damageBonus ?? "1",
+                isHostile: existingChar.isHostile ?? false,
             } : { 
                 level: undefined, experience: undefined, characterClass: undefined, stats: undefined, inventory: undefined, skills: undefined,
                 spells: undefined, techniques: undefined, passiveAbilities: undefined, strength: undefined, dexterity: undefined,
                 constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
-                hitPoints: undefined, maxHitPoints: undefined, armorClass: undefined,
+                baseHitPoints: undefined, hitPoints: undefined, maxHitPoints: undefined, armorClass: undefined,
+                attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
              }),
           };
         } else {
@@ -148,7 +160,9 @@ export default function Home() {
              ...(newRPGMode ? { 
                 level: 1, experience: 0, characterClass: '', stats: {}, inventory: {}, skills: {},
                 spells: [], techniques: [], passiveAbilities: [], strength: 10, dexterity: 10,
-                constitution: 10, intelligence: 10, wisdom: 10, charisma: 10, hitPoints: 10, maxHitPoints: 10, armorClass: 10,
+                constitution: 10, intelligence: 10, wisdom: 10, charisma: 10, 
+                baseHitPoints: 10, hitPoints: 10, maxHitPoints: 10, armorClass: 10,
+                attackBonus: 0, damageBonus: "1", isHostile: false,
             } : {}),
           };
         }
@@ -179,6 +193,7 @@ export default function Home() {
 
     if (stagedAdventureSettings.initialSituation !== currentLiveAdventureSettings.initialSituation) {
         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
+        setActiveCombat(undefined); // Reset combat if initial situation changes
     }
     React.startTransition(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
@@ -196,6 +211,50 @@ export default function Home() {
        };
        setNarrative(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
+
+    const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
+        if (!adventureSettings.rpgMode) return;
+
+        // Update character HP based on combatUpdates.updatedCombatants
+        setCharacters(prevChars => {
+            return prevChars.map(char => {
+                const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
+                if (combatantUpdate) {
+                    return { ...char, hitPoints: combatantUpdate.newHp, isHostile: combatantUpdate.isDefeated ? char.isHostile : true }; // Keep hostile if not defeated, could be refined
+                }
+                return char;
+            });
+        });
+        
+        // Update player character (if player has stats tracked separately, not implemented yet)
+        const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
+        if (playerCombatUpdate) {
+            // TODO: Update player HP and defeat status if player has stats
+            // For now, log it
+            console.log(`Player HP update: ${playerCombatUpdate.newHp}, Defeated: ${playerCombatUpdate.isDefeated}`);
+        }
+
+
+        if (combatUpdates.expGained && combatUpdates.expGained > 0) {
+            // TODO: Update player experience
+            toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
+        }
+        if (combatUpdates.lootDropped && combatUpdates.lootDropped.length > 0) {
+            // TODO: Add loot to player inventory
+            const lootNames = combatUpdates.lootDropped.map(l => `${l.itemName} (x${l.quantity})`).join(', ');
+            toast({ title: "Butin Récupéré!", description: `Vous avez trouvé: ${lootNames}.` });
+        }
+
+        // Update the activeCombat state for the next turn or end combat
+        if (combatUpdates.nextActiveCombatState) {
+             setActiveCombat(combatUpdates.nextActiveCombatState);
+        } else if (combatUpdates.combatEnded) {
+             setActiveCombat(undefined); // Or set isActive to false
+             toast({ title: "Combat Terminé!"});
+        }
+
+    }, [adventureSettings.rpgMode, toast]);
+
 
    const handleNewCharacters = React.useCallback((newChars: Array<NewCharacterSchema>) => {
         if (!newChars || newChars.length === 0) return;
@@ -250,11 +309,21 @@ export default function Home() {
                         opinion: {}, portraitUrl: null, 
                         affinity: stagedAdventureSettings.relationsMode ? 50 : undefined, 
                         relations: stagedAdventureSettings.relationsMode ? processedRelations : undefined,
+                        isHostile: stagedAdventureSettings.rpgMode ? newCharData.isHostile : undefined,
                         ...(stagedAdventureSettings.rpgMode && { 
-                            level: 1, experience: 0, characterClass: '', stats: {}, inventory: {}, skills: {},
-                            spells: [], techniques: [], passiveAbilities: [], strength: 10, dexterity: 10,
-                            constitution: 10, intelligence: 10, wisdom: 10, charisma: 10,
-                            hitPoints: 10, maxHitPoints: 10, armorClass: 10,
+                            level: newCharData.level ?? 1, 
+                            experience: 0, 
+                            characterClass: newCharData.characterClass ?? '', 
+                            stats: {}, inventory: {}, skills: {},
+                            spells: [], techniques: [], passiveAbilities: [], 
+                            strength: 10, dexterity: 10, constitution: 10, 
+                            intelligence: 10, wisdom: 10, charisma: 10,
+                            baseHitPoints: newCharData.maxHitPoints ?? 10,
+                            hitPoints: newCharData.hitPoints ?? newCharData.maxHitPoints ?? 10, 
+                            maxHitPoints: newCharData.maxHitPoints ?? 10, 
+                            armorClass: newCharData.armorClass ?? 10,
+                            attackBonus: newCharData.attackBonus ?? 0,
+                            damageBonus: newCharData.damageBonus ?? "1",
                         })
                     };
                     charsToAdd.push(characterToAdd);
@@ -415,11 +484,19 @@ export default function Home() {
 
     const handleUndoLastMessage = React.useCallback(() => {
         let messageForToast: { title: string, description?: string, variant?: 'default' | 'destructive' } | null = null;
+        let newActiveCombatState = activeCombat;
 
         setNarrative(prevNarrative => {
             if (prevNarrative.length <= 1) { 
                  messageForToast = { title: "Impossible d'annuler", description: "Aucun message à annuler.", variant: "destructive" };
                  return prevNarrative;
+            }
+
+            // If in combat, undoing might mean reverting combat state too (simplified for now)
+            // This simplistic undo might not correctly restore complex combat states.
+            if (activeCombat?.isActive) {
+                console.warn("Undo in combat: Combat state might not be perfectly restored by simple message removal.");
+                // Potentially revert to a previously saved combat state if available
             }
 
             let lastUserIndex = -1;
@@ -431,15 +508,15 @@ export default function Home() {
             }
 
             if (lastUserIndex !== -1) { 
-                if (lastUserIndex > 0) { 
-                    const newNarrative = prevNarrative.slice(0, lastUserIndex);
-                    messageForToast = { title: "Dernier tour annulé" };
-                    return newNarrative;
-                } else if (prevNarrative.length > 1) { 
-                     const newNarrative = prevNarrative.slice(0, 1); 
-                     messageForToast = { title: "Dernier message annulé" };
-                     return newNarrative;
+                const newNarrative = prevNarrative.slice(0, lastUserIndex);
+                messageForToast = { title: "Dernier tour annulé" };
+                
+                // If the AI's response (which is now removed) started combat, we should deactivate combat
+                const lastAiMessageBeforeUndo = prevNarrative[lastUserIndex]; // This was the AI's response to the user's last action
+                if (lastAiMessageBeforeUndo?.sceneDescription?.includes("combat started")) { // Heuristic
+                    newActiveCombatState = undefined;
                 }
+                return newNarrative;
             } else if (prevNarrative.length > 1) { 
                  const newNarrative = prevNarrative.slice(0, 1); 
                  messageForToast = { title: "Dernier message annulé" };
@@ -449,13 +526,16 @@ export default function Home() {
             messageForToast = { title: "Annulation non applicable", description:"Aucune action utilisateur claire à annuler ou déjà à l'état initial."};
             return prevNarrative;
         });
+        
+        setActiveCombat(newActiveCombatState);
+
 
         if (messageForToast) {
            React.startTransition(() => {
-             toast(messageForToast as ToastProps & { title: React.ReactNode; description?: React.ReactNode; });
+             toast(messageForToast as any); // Cast to any to bypass strict ToastProps type for now
            });
         }
-    }, [setNarrative, toast]);
+    }, [setNarrative, toast, activeCombat]);
 
 
     const handleRegenerateLastResponse = React.useCallback(async () => {
@@ -496,7 +576,7 @@ export default function Home() {
              const input: GenerateAdventureInput = {
                  world: adventureSettings.world, 
                  initialSituation: narrativeContextForRegen, 
-                 characters: characters.map(char => { // Pre-process characters for the AI flow
+                 characters: characters.map(char => { 
                     const history = char.history || [];
                     const lastThreeEntries = history.slice(-3);
                     const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (currentLanguage === 'fr' ? 'Aucun' : 'None');
@@ -516,34 +596,29 @@ export default function Home() {
                     }
         
                     return {
-                        ...char,
+                        id: char.id,
+                        name: char.name,
+                        details: char.details,
                         affinity: adventureSettings.relationsMode ? (char.affinity ?? 50) : 50,
                         relations: adventureSettings.relationsMode ? (char.relations || {}) : {},
-                        relationsSummary: relationsSummaryText,
                         historySummary: historySummary,
+                        relationsSummary: relationsSummaryText,
+                        hitPoints: adventureSettings.rpgMode ? (char.hitPoints ?? char.maxHitPoints ?? 10) : undefined,
+                        maxHitPoints: adventureSettings.rpgMode ? (char.maxHitPoints ?? 10) : undefined,
+                        armorClass: adventureSettings.rpgMode ? (char.armorClass ?? 10) : undefined,
+                        attackBonus: adventureSettings.rpgMode ? (char.attackBonus ?? 0) : undefined,
+                        damageBonus: adventureSettings.rpgMode ? (char.damageBonus ?? "1") : undefined,
+                        characterClass: adventureSettings.rpgMode ? char.characterClass : undefined,
+                        level: adventureSettings.rpgMode ? char.level : undefined,
+                        isHostile: adventureSettings.rpgMode ? (char.isHostile ?? false) : undefined,
                     };
                  }),
                  userAction: lastUserAction, 
                  currentLanguage: currentLanguage,
                  playerName: adventureSettings.playerName || "Player",
-                 relationsModeActive: adventureSettings.relationsMode,
-                 promptConfig: adventureSettings.rpgMode ? {
-                    rpgContext: {
-                        playerStats: { },
-                        characterDetails: characters.map(c => ({ 
-                             name: c.name,
-                             details: c.details,
-                             stats: c.stats,
-                             inventory: c.inventory,
-                             relations: adventureSettings.relationsMode && c.relations ? Object.entries(c.relations).map(([id, desc]) => {
-                                 const relatedChar = characters.find(char => char.id === id); 
-                                 const targetName = relatedChar ? relatedChar.name : (id === PLAYER_ID ? (adventureSettings.playerName || 'Player') : 'Unknown');
-                                 return `${targetName}: ${desc}`;
-                             }).join(', ') : (currentLanguage === 'fr' ? 'Aucune' : 'None'),
-                        })),
-                        mode: 'exploration', 
-                    }
-                 } : undefined,
+                 relationsModeActive: adventureSettings.relationsMode ?? true,
+                 rpgModeActive: adventureSettings.rpgMode ?? false,
+                 activeCombat: activeCombat, // Pass current combat state for regeneration context
              };
 
              const result = await generateAdventure(input);
@@ -571,6 +646,10 @@ export default function Home() {
                 handleAffinityUpdates(result.affinityUpdates || []);
                 handleRelationUpdatesFromAI(result.relationUpdates || []);
              }
+             if(adventureSettings.rpgMode && result.combatUpdates) {
+                handleCombatUpdates(result.combatUpdates);
+             }
+
 
              React.startTransition(() => { toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." }); });
          } catch (error) {
@@ -581,7 +660,7 @@ export default function Home() {
          } finally {
              setIsRegenerating(false);
          }
-     }, [isRegenerating, narrative, adventureSettings, characters, currentLanguage, toast, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI, generateAdventure]);
+     }, [isRegenerating, narrative, adventureSettings, characters, currentLanguage, toast, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI, generateAdventure, activeCombat, handleCombatUpdates]);
 
 
    const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -640,8 +719,8 @@ export default function Home() {
                     }
                 });
             } else {
-                newChar.relations = undefined; // Clear relations if mode is off
-                newChar.affinity = undefined; // Clear affinity if mode is off
+                newChar.relations = undefined; 
+                newChar.affinity = undefined; 
             }
     
             const updatedPrevChars = prevStagedChars.map(existingChar => {
@@ -668,9 +747,13 @@ export default function Home() {
                 newChar.intelligence = newChar.intelligence ?? 10;
                 newChar.wisdom = newChar.wisdom ?? 10;
                 newChar.charisma = newChar.charisma ?? 10;
-                newChar.hitPoints = newChar.hitPoints ?? 10;
+                newChar.baseHitPoints = newChar.baseHitPoints ?? 10;
+                newChar.hitPoints = newChar.hitPoints ?? newChar.maxHitPoints ?? 10;
                 newChar.maxHitPoints = newChar.maxHitPoints ?? 10;
                 newChar.armorClass = newChar.armorClass ?? 10;
+                newChar.attackBonus = newChar.attackBonus ?? 0;
+                newChar.damageBonus = newChar.damageBonus ?? "1";
+                newChar.isHostile = newChar.isHostile ?? false;
             }
             return [...updatedPrevChars, newChar];
         });
@@ -694,6 +777,7 @@ export default function Home() {
             characters: charactersToSave, 
             narrative, 
             currentLanguage,
+            activeCombat: activeCombat, // Save active combat state
             saveFormatVersion: 1.6, 
             timestamp: new Date().toISOString(),
         };
@@ -708,7 +792,7 @@ export default function Home() {
         document.body.removeChild(a); 
         URL.revokeObjectURL(url);
         React.startTransition(() => { toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." }); });
-    }, [adventureSettings, characters, narrative, currentLanguage, toast]);
+    }, [adventureSettings, characters, narrative, currentLanguage, activeCombat, toast]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -746,7 +830,7 @@ export default function Home() {
 
 
                 const rpgModeActive = loadedData.adventureSettings.rpgMode;
-                const relationsModeActive = loadedData.adventureSettings.relationsMode ?? true; // Default to true if not present
+                const relationsModeActive = loadedData.adventureSettings.relationsMode ?? true; 
                 const loadedLang = loadedData.currentLanguage || "fr";
                 const defaultRelation = loadedLang === 'fr' ? "Inconnu" : "Unknown";
 
@@ -773,7 +857,13 @@ export default function Home() {
                             passiveAbilities: Array.isArray(c.passiveAbilities) ? c.passiveAbilities : [],
                             strength: c.strength ?? 10, dexterity: c.dexterity ?? 10, constitution: c.constitution ?? 10,
                             intelligence: c.intelligence ?? 10, wisdom: c.wisdom ?? 10, charisma: c.charisma ?? 10,
-                            hitPoints: c.hitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10, armorClass: c.armorClass ?? 10,
+                            baseHitPoints: c.baseHitPoints ?? 10,
+                            hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, 
+                            maxHitPoints: c.maxHitPoints ?? 10, 
+                            armorClass: c.armorClass ?? 10,
+                            attackBonus: c.attackBonus ?? 0,
+                            damageBonus: c.damageBonus ?? "1",
+                            isHostile: c.isHostile ?? false,
                         }),
                     }
                 });
@@ -781,6 +871,7 @@ export default function Home() {
                 setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
                 setNarrative(loadedData.narrative as Message[]); 
                 setCurrentLanguage(loadedLang);
+                setActiveCombat(loadedData.activeCombat || undefined); // Load combat state
 
                 React.startTransition(() => { toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." }); });
             } catch (error: any) {
@@ -795,12 +886,21 @@ export default function Home() {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const confirmRestartAdventure = React.useCallback(() => {
+        // Reset to base settings, not staged settings.
         setAdventureSettings(JSON.parse(JSON.stringify(baseAdventureSettings)));
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)));
         setNarrative([{ id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }]);
+        setActiveCombat(undefined); // Reset combat state
+
+        // Also reset staged settings to reflect the restart
+        setStagedAdventureSettings(JSON.parse(JSON.stringify(baseAdventureSettings)));
+        setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
+        setFormKey(prev => prev + 1); // Force re-render of form with new defaults
+
         setShowRestartConfirm(false); 
         React.startTransition(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée à son état initial." }); });
     }, [baseAdventureSettings, baseCharacters, toast]);
+
 
   const memoizedStagedAdventureSettingsForForm = React.useMemo(() => {
     return {
@@ -809,7 +909,7 @@ export default function Home() {
       playerName: stagedAdventureSettings.playerName,
       currencyName: stagedAdventureSettings.currencyName,
       enableRpgMode: stagedAdventureSettings.rpgMode,
-      enableRelationsMode: stagedAdventureSettings.relationsMode ?? true, // Ensure default for form
+      enableRelationsMode: stagedAdventureSettings.relationsMode ?? true, 
       characters: stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })), 
     };
   }, [stagedAdventureSettings, stagedCharacters]); 
@@ -847,14 +947,16 @@ export default function Home() {
         handleUndoLastMessage={handleUndoLastMessage}
         playerId={PLAYER_ID}
         playerName={adventureSettings.playerName || "Player"} 
-        onRestartAdventure={() => setShowRestartConfirm(true)} 
+        onRestartAdventure={() => setShowRestartConfirm(true)}
+        activeCombat={activeCombat} // Pass activeCombat state
+        onCombatUpdates={handleCombatUpdates} // Pass combat updates handler
       />
        <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                 <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés).
+                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés). L'état de combat sera également réinitialisé.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

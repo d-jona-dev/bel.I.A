@@ -8,6 +8,34 @@ export interface Message {
   sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
 }
 
+export interface CombatAction {
+  actorId: string; // player or character.id
+  actionType: 'attack' | 'spell' | 'skill' | 'defend' | 'flee' | 'dialogue';
+  targetId?: string; // character.id or player
+  description: string; // "Player attacks Goblin with sword"
+  outcome: string; // "Hit for 5 damage", "Missed", "Goblin is stunned"
+  damageDealt?: number;
+  healingDone?: number;
+}
+
+export interface Combatant {
+  characterId: string; // Corresponds to Character.id or 'player'
+  name: string; // Name of the combatant
+  currentHp: number;
+  maxHp: number;
+  team: 'player' | 'enemy' | 'neutral'; // Team alignment
+  isDefeated: boolean;
+  // Potentially more combat-specific stats like temporary AC boost, conditions etc.
+}
+
+export interface ActiveCombat {
+  isActive: boolean;
+  combatants: Combatant[];
+  environmentDescription?: string; // e.g., "a dark cave", "a bustling tavern"
+  turnLog?: string[]; // Summary of major events from previous turns
+  playerAttemptedDeescalation?: boolean; // Flag if player tried to talk out of it
+}
+
 
 export interface Character {
   id: string; // Unique ID for the character
@@ -34,17 +62,22 @@ export interface Character {
   intelligence?: number;
   wisdom?: number;
   charisma?: number;
+  baseHitPoints?: number; // Base HP before CON modifier, etc.
   hitPoints?: number; // Current HP
   maxHitPoints?: number; // Maximum HP
   armorClass?: number;
+  attackBonus?: number; // General to-hit bonus
+  damageBonus?: string; // e.g. "+2", "1d4+STR" - simplified for LLM for now
   // Skills/Proficiencies might be a list or record
   skills?: Record<string, boolean | number>; // e.g., { 'Athletics': true, 'Stealth': 2 }
   // Spells/Techniques could be lists
   spells?: string[]; // Known spells
   techniques?: string[]; // Special combat moves
   passiveAbilities?: string[]; // Innate abilities
-  // Add alignment, background, etc. if needed
-
+  
+  isHostile?: boolean; // Indicates if the character is currently hostile towards the player
+  isQuestGiver?: boolean; // Flag for quest-related NPCs
+  
   _lastSaved?: number; // Timestamp of last global save to help UI distinguish new characters
 }
 
@@ -64,8 +97,8 @@ export interface SaveData {
     characters: Character[];
     narrative: Message[]; // Changed from string to Message[]
     currentLanguage: string;
+    activeCombat?: ActiveCombat; // Save combat state
     // Add versioning or timestamp if needed
     saveFormatVersion?: number; // Bump version for AI relation updates (1.6)
     timestamp?: string;
 }
-

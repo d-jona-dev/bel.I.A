@@ -12,8 +12,8 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, RefreshCcw, CheckCircle } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message } from "@/types";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema } from "@/ai/flows/generate-adventure";
+import type { Character, AdventureSettings, Message, ActiveCombat } from "@/types"; // Added ActiveCombat
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -65,6 +65,8 @@ interface PageStructureProps {
   playerId: string;
   playerName: string; 
   onRestartAdventure: () => void;
+  activeCombat?: ActiveCombat; // Added activeCombat prop
+  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void; // Added combat updates handler prop
 }
 
 export function PageStructure({
@@ -99,6 +101,8 @@ export function PageStructure({
   playerId,
   playerName,
   onRestartAdventure,
+  activeCombat, // Destructure activeCombat
+  onCombatUpdates, // Destructure onCombatUpdates
 }: PageStructureProps) {
   return (
     <>
@@ -250,6 +254,8 @@ export function PageStructure({
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
+                activeCombat={activeCombat} // Pass activeCombat
+                onCombatUpdates={onCombatUpdates} // Pass onCombatUpdates
              />
         </main>
       </SidebarInset>
@@ -271,7 +277,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={propKey} 
+                                    propKey={propKey} 
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />
@@ -310,7 +316,7 @@ export function PageStructure({
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={stagedAdventureSettings.enableRpgMode ?? false} 
-                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true} // Pass relationsMode
+                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true} 
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"} 
                                      currentLanguage={currentLanguage}
@@ -321,7 +327,7 @@ export function PageStructure({
                  </SidebarContent>
              </ScrollArea>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-                 <Button onClick={onRestartAdventure} variant="outline" className="w-full mb-2">
+                <Button onClick={onRestartAdventure} variant="outline" className="w-full mb-2">
                     <RefreshCcw className="mr-2 h-5 w-5" />
                     Recommencer l'Aventure
                 </Button>
