@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, Sparkles, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Users, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2 } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users } from "lucide-react"; // Added Users
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -95,10 +95,10 @@ export function AdventureDisplay({
 
     // Placeholder spells and skills - in a real app, these would come from character data or game rules
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
-      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] 
+      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"]
       : [];
     const playerSkills = adventureSettings.playerClass?.toLowerCase().includes("guerrier") || adventureSettings.playerClass?.toLowerCase().includes("sportif") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
-      ? ["Attaque Puissante", "Charge", "Provocation"] 
+      ? ["Attaque Puissante", "Charge", "Provocation"]
       : [];
     const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
 
@@ -131,7 +131,7 @@ export function AdventureDisplay({
     if (!action || isLoading || isRegenerating) return;
 
     setIsLoading(true);
-    
+
     // Notify parent to add user's action to the narrative
     onNarrativeChange(action, 'user');
     // The local `messages` state will update via useEffect when `initialMessages` prop changes.
@@ -140,7 +140,7 @@ export function AdventureDisplay({
     try {
         // Use messagesRef.current to get the most up-to-date messages *before* this action was processed by AI
         // This context represents the state of the story leading up to the current user action.
-        const historyForAIContext = messagesRef.current 
+        const historyForAIContext = messagesRef.current
             .slice(-5) // Take last 5 messages for context
             .map(msg =>
                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
@@ -148,9 +148,9 @@ export function AdventureDisplay({
 
         const input: GenerateAdventureInput = {
             world: adventureSettings.world,
-            initialSituation: historyForAIContext, 
+            initialSituation: historyForAIContext,
             characters: characters,
-            userAction: action, 
+            userAction: action,
             currentLanguage: currentLanguage,
             playerName: adventureSettings.playerName || "Player",
             rpgModeActive: adventureSettings.rpgMode,
@@ -166,7 +166,7 @@ export function AdventureDisplay({
             playerCurrentExp: adventureSettings.playerCurrentExp,
             playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
         };
-        
+
         // Call the parent's generateAdventureAction.
         // The parent will then call its own handleNarrativeUpdate (which is onNarrativeChange for this component)
         // for the AI's response, and also handle onNewCharacters, onAffinityUpdates, onCombatUpdates, etc.
@@ -183,7 +183,7 @@ export function AdventureDisplay({
         setIsLoading(false);
     }
   };
-  
+
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
     if (!currentTextAction) return;
@@ -686,4 +686,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-

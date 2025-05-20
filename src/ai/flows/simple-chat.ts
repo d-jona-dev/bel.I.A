@@ -23,7 +23,7 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 const SimpleChatInputSchema = z.object({
   characterName: z.string().describe('The name of the character to chat with.'),
   characterDetails: z.string().describe('A brief description of the character, including personality traits, background, and how they might speak. This is CRUCIAL for the AI to adopt the persona.'),
-  chatHistory: z.array(ChatMessageSchema).optional().describe('The history of the conversation so far. The last message in history is often the latest user message if the user just sent something.'),
+  chatHistory: z.array(ChatMessageSchema).optional().describe('The history of the conversation so far. This should be the history *before* the current userMessage.'),
   userMessage: z.string().describe('The latest message from the user to the character.'),
   adventureContextSummary: z.string().optional().describe('A summary of key interactions or events this character had with the player during past adventures. This helps the character remember these events and discuss them if relevant.'),
 });
@@ -85,17 +85,8 @@ const simpleChatFlow = ai.defineFlow<
     outputSchema: SimpleChatOutputSchema,
   },
   async (input) => {
-    const historyForPrompt: ChatMessage[] = input.chatHistory || [];
-    
-    // This logic assumes that `input.chatHistory` might redundantly include the `input.userMessage`
-    // as its last element. If `input.chatHistory` is guaranteed to be only *previous* messages,
-    // this check can be simplified or removed.
-    const lastHistoryMessageText = historyForPrompt.length > 0 ? historyForPrompt[historyForPrompt.length - 1].parts[0]?.text : undefined;
-    
-    let actualHistoryToSend = historyForPrompt;
-    if (lastHistoryMessageText === input.userMessage && historyForPrompt.length > 0) {
-        actualHistoryToSend = historyForPrompt.slice(0, -1);
-    }
+    // input.chatHistory should already be the history *before* the current input.userMessage
+    const actualHistoryToSend: ChatMessage[] = input.chatHistory || [];
 
     console.log("SimpleChat Flow Input:", JSON.stringify(input, null, 2));
     console.log("SimpleChat Flow actualHistoryToSend:", JSON.stringify(actualHistoryToSend, null, 2));
@@ -108,7 +99,7 @@ const simpleChatFlow = ai.defineFlow<
         userMessage: input.userMessage,
         adventureContextSummary: input.adventureContextSummary, // Pass the summary
       },
-      // Pass the (potentially adjusted) conversation history
+      // Pass the conversation history
       {
         history: actualHistoryToSend,
       }
@@ -124,4 +115,3 @@ const simpleChatFlow = ai.defineFlow<
     return { response: output.response };
   }
 );
-

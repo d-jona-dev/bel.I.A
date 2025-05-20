@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, HeartPulse, Star, Dices, Shield, BookOpen, Swords, Zap, Sparkles, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
@@ -66,7 +66,7 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
                            <Input
                                id={`${charId}-${field}-${key}`}
                                type={valueType === 'number' ? 'number' : 'text'}
-                               value={String(value)} 
+                               value={String(value)}
                                onChange={(e) => onUpdate(charId, field, key, e.target.value)}
                                className="h-8 text-sm flex-1 bg-background border"
                                min={valueType === 'number' ? "0" : undefined}
@@ -88,7 +88,7 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
 );
 
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void }) => {
-  const otherCharacters = characters.filter(c => c.id !== charId); 
+  const otherCharacters = characters.filter(c => c.id !== charId);
   const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
   return (
@@ -124,7 +124,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                           </Button>
                       </div>
                   ))}
-                  {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && ( 
+                  {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && (
                        <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
                   )}
                    <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
@@ -140,15 +140,15 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
        <Card className="bg-muted/30 border">
            <CardContent className="p-3 space-y-2">
                {data && data.length > 0 ? (
-                    <ScrollArea className="h-32"> 
+                    <ScrollArea className="h-32">
                       {data.map((item, index) => (
                           <div key={index} className="flex items-center gap-2 mb-1">
-                              <Textarea 
-                                  value={item} 
+                              <Textarea
+                                  value={item}
                                   onChange={(e) => onUpdate(charId, field, index, e.target.value)}
                                   className="text-sm flex-1 bg-background border"
                                   placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
-                                  rows={1} 
+                                  rows={1}
                               />
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field, index)}>
                                   <Trash2 className="h-4 w-4" />
@@ -224,7 +224,7 @@ export function CharacterSidebar({
     setImageLoadingStates(prev => ({ ...prev, [character.id]: true }));
 
     try {
-      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode && character.characterClass ? `Class: ${character.characterClass}.` : ''}`; 
+      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode && character.characterClass ? `Class: ${character.characterClass}.` : ''}`;
       const result = await generateImageAction({ sceneDescription: prompt });
       onCharacterUpdate({ ...character, portraitUrl: result.imageUrl });
       toast({
@@ -251,7 +251,7 @@ export function CharacterSidebar({
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
                  if (field === 'affinity') {
-                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue)); 
+                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
                  }
                  processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue;
             } else if (field === 'affinity' && typeof processedValue === 'number') {
@@ -268,11 +268,11 @@ export function CharacterSidebar({
              let finalValue = value;
              if ((field === 'inventory' || (field === 'skills' && typeof value === 'string'))) {
                  const numValue = parseInt(value as string, 10);
-                 finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue; 
+                 finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue;
              }
 
              if (field === 'relations') {
-                 onRelationUpdate(charId, key, String(finalValue)); 
+                 onRelationUpdate(charId, key, String(finalValue));
              } else {
                 const updatedField = { ...currentFieldData, [key]: finalValue };
                 onCharacterUpdate({ ...character, [field]: updatedField });
@@ -296,7 +296,7 @@ export function CharacterSidebar({
     const addNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations') => {
         if (field === 'relations') {
              toast({ title: "Modification de Relation", description: "Modifiez les relations existantes via la liste déroulante ou le champ texte.", variant: "default" });
-             return; 
+             return;
          }
 
         const key = prompt(`Entrez le nom du nouveau champ pour ${field} :`);
@@ -310,14 +310,14 @@ export function CharacterSidebar({
                  defaultValue = currentLanguage === 'fr' ? 'Neutre' : 'Neutral';
             } else if (field === 'skills') {
                  valuePrompt = `Entrez la valeur/bonus pour ${key} (ou laissez vide pour compétence acquise) :`;
-                 defaultValue = true; 
+                 defaultValue = true;
             } else if (field === 'stats') {
                  valuePrompt = `Entrez la valeur pour la statistique ${key} :`;
                  defaultValue = 10;
             }
 
             const valueInput = prompt(valuePrompt);
-            if (valueInput !== null) { 
+            if (valueInput !== null) {
                  let value: string | number | boolean = valueInput.trim() === '' ? defaultValue : valueInput;
                  handleNestedFieldChange(charId, field, key, value);
             }
@@ -327,8 +327,8 @@ export function CharacterSidebar({
     const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
-            const updatedArray = [...character[field]!]; 
-            updatedArray[index] = value; 
+            const updatedArray = [...character[field]!];
+            updatedArray[index] = value;
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
@@ -349,7 +349,7 @@ export function CharacterSidebar({
     const removeArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => {
         const character = characters.find(c => c.id === charId);
          if (character && character[field]) {
-            const updatedArray = [...character[field]!]; 
+            const updatedArray = [...character[field]!];
             updatedArray.splice(index, 1);
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -414,7 +414,7 @@ export function CharacterSidebar({
             <Accordion type="multiple" className="w-full">
                 {characters.map((char) => {
                     let isPotentiallyNew = false;
-                    if (isClient) { 
+                    if (isClient) {
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
@@ -428,8 +428,8 @@ export function CharacterSidebar({
                     return (
                     <AccordionItem value={char.id} key={char.id}>
                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                            <div className="flex items-center gap-3 flex-1 min-w-0"> 
-                                <Avatar className="h-8 w-8 flex-shrink-0"> 
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <Avatar className="h-8 w-8 flex-shrink-0">
                                      {imageLoadingStates[char.id] ? (
                                         <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
                                      ) : char.portraitUrl ? (
@@ -439,11 +439,12 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
-                                {isPotentiallyNew && (
+                                {isClient && isPotentiallyNew && ( // Ensure this only renders client-side
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <span className="inline-flex items-center"> 
+                                                {/* The TooltipTrigger needs a single, valid React child. A span is fine. */}
+                                                <span className="inline-flex items-center">
                                                     <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
                                                 </span>
                                             </TooltipTrigger>
@@ -453,8 +454,8 @@ export function CharacterSidebar({
                                 )}
                             </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-4 space-y-4 bg-background"> 
-                            {isClient && isPotentiallyNew && ( 
+                        <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
+                            {isClient && isPotentiallyNew && (
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -499,7 +500,7 @@ export function CharacterSidebar({
                             <EditableField
                                 label={currentLanguage === 'fr' ? "Description" : "Description"}
                                 id={`${char.id}-details`}
-                                value={char.details} 
+                                value={char.details}
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
@@ -521,9 +522,9 @@ export function CharacterSidebar({
                                             <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
                                         </div>
                                     </div>
-                                    <RelationsEditableCard 
-                                        charId={char.id} 
-                                        data={char.relations} 
+                                    <RelationsEditableCard
+                                        charId={char.id}
+                                        data={char.relations}
                                         characters={characters}
                                         playerId={playerId}
                                         playerName={playerName}
@@ -545,7 +546,15 @@ export function CharacterSidebar({
                                         <EditableField label="PV Actuels" id={`${char.id}-hp`} type="number" value={char.hitPoints} onChange={(e) => handleFieldChange(char.id, 'hitPoints', e.target.value)} />
                                         <EditableField label="PV Max" id={`${char.id}-maxHp`} type="number" value={char.maxHitPoints} onChange={(e) => handleFieldChange(char.id, 'maxHitPoints', e.target.value)} />
                                      </div>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <EditableField label="PM Actuels" id={`${char.id}-mp`} type="number" value={char.manaPoints} onChange={(e) => handleFieldChange(char.id, 'manaPoints', e.target.value)} />
+                                        <EditableField label="PM Max" id={`${char.id}-maxMp`} type="number" value={char.maxManaPoints} onChange={(e) => handleFieldChange(char.id, 'maxManaPoints', e.target.value)} />
+                                     </div>
                                      <EditableField label="Classe d'Armure (CA)" id={`${char.id}-ac`} type="number" value={char.armorClass} onChange={(e) => handleFieldChange(char.id, 'armorClass', e.target.value)} />
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <EditableField label="Bonus Attaque" id={`${char.id}-atkBonus`} type="number" value={char.attackBonus} onChange={(e) => handleFieldChange(char.id, 'attackBonus', e.target.value)} />
+                                        <EditableField label="Bonus Dégâts" id={`${char.id}-dmgBonus`} value={char.damageBonus} onChange={(e) => handleFieldChange(char.id, 'damageBonus', e.target.value)} placeholder="ex: 1d6+2" />
+                                     </div>
                                     <Separator />
                                      <Label className="flex items-center gap-1"><Dices className="h-4 w-4"/> Caractéristiques</Label>
                                      <div className="grid grid-cols-3 gap-2">
@@ -576,4 +585,3 @@ export function CharacterSidebar({
     </div>
   );
 }
-

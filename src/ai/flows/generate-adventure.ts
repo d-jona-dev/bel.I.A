@@ -101,7 +101,7 @@ const GenerateAdventureInputSchema = z.object({
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
   currencyName: z.string().optional().describe("The name of the currency used in RPG mode (e.g., 'gold', 'credits'). Defaults appropriately if not provided and RPG mode is active."),
-  promptConfig: z.object({ 
+  promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
   // Player specific RPG stats for context
@@ -116,8 +116,8 @@ const GenerateAdventureInputSchema = z.object({
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
-    characters: Character[]; 
-    activeCombat?: ActiveCombat; 
+    characters: Character[];
+    activeCombat?: ActiveCombat;
 };
 
 
@@ -150,7 +150,7 @@ const CharacterUpdateSchema = z.object({
 
 const AffinityUpdateSchema = z.object({
     characterName: z.string().describe("The name of the known character whose affinity **towards the player** changed."),
-    change: z.number().int().describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -2 for a minor disagreement, 0 for neutral). Reserve larger changes (+/- 5 or more) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
+    change: z.number().int().describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -1 or -2 for a minor disagreement/misstep, 0 for neutral). Reserve larger changes (+/- 3 or more, max +/- 10 for extreme events) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
     reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
 });
 
@@ -210,13 +210,13 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         const history = char.history || [];
         const lastThreeEntries = history.slice(-3);
         const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (input.currentLanguage === 'fr' ? 'Aucun historique notable.' : 'No notable history.');
-        
+
         let relationsSummaryText = input.currentLanguage === 'fr' ? "Mode relations désactivé." : "Relations mode disabled.";
         if (input.relationsModeActive && char.relations) {
              relationsSummaryText = Object.entries(char.relations)
                       .map(([targetId, description]) => {
-                          const targetName = targetId === 'player' 
-                              ? input.playerName 
+                          const targetName = targetId === 'player'
+                              ? input.playerName
                               : input.characters.find(c => c.id === targetId)?.name || targetId;
                           return `${targetName}: ${description}`;
                       })
@@ -240,22 +240,22 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             attackBonus: input.rpgModeActive ? (char.attackBonus ?? 0) : undefined,
             damageBonus: input.rpgModeActive ? (char.damageBonus ?? "1") : undefined,
             characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
-            level: input.rpgModeActive ? (char.level ?? 1) : undefined, 
+            level: input.rpgModeActive ? (char.level ?? 1) : undefined,
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
         };
     });
-    
+
     let finalCurrencyName = input.currencyName;
     if (input.rpgModeActive && (finalCurrencyName === undefined || finalCurrencyName === null || finalCurrencyName.trim() === "")) {
         finalCurrencyName = input.currentLanguage === 'fr' ? 'pièces d\'or' : 'gold coins';
     } else if (!input.rpgModeActive) {
-        finalCurrencyName = undefined; 
+        finalCurrencyName = undefined;
     }
 
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
         characters: processedCharacters,
-        rpgModeActive: input.rpgModeActive ?? false, 
+        rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
         currencyName: finalCurrencyName,
@@ -327,14 +327,14 @@ Known Characters (excluding player unless explicitly listed for context):
   {{/if}}
   {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
-    0-10 (Deep Hate): Actively hostile, seeks harm, betrayal.
-    11-30 (Hostile): Disdainful, obstructive, may attack if provoked or advantageous.
-    31-45 (Wary/Dislike): Suspicious, uncooperative, negative remarks.
-    46-55 (Neutral): Indifferent, formal, or business-like.
-    56-70 (Friendly): Helpful, agreeable, positive remarks.
-    71-90 (Loyal/Like): Trusting, supportive, seeks player's company, protective.
-    91-100 (Devoted/Love): Deep affection, self-sacrificing, strong emotional connection.
-  Relationship Statuses: {{{this.relationsSummary}}} (e.g., {{../playerName}}: Petite amie; Kentaro: Ami proche). These define the *nature* of the bond.
+    0-10 (Deep Hate/Dégout): Actively hostile, seeks harm, betrayal, openly insulting or threatening. Will refuse any cooperation.
+    11-30 (Hostile/Conflictuel): Disdainful, obstructive, may attack if provoked or advantageous. Argumentative, sarcastic, unhelpful.
+    31-45 (Wary/Dislike/Méfiant): Suspicious, uncooperative, negative remarks, avoids interaction if possible. Reluctantly complies if forced.
+    46-55 (Neutral/Indifférent): Indifferent, formal, or business-like. Interaction is purely transactional or based on necessity.
+    56-70 (Friendly/Amical): Helpful, agreeable, positive remarks, willing to share some information or small aid.
+    71-90 (Loyal/Like/Apprécie): Trusting, supportive, seeks player's company, protective, offers significant help or advice. Shares personal thoughts.
+    91-100 (Devoted/Love/Dévoué): Deep affection, self-sacrificing, strong emotional connection. May confess feelings or make grand gestures. Prioritizes player's well-being above all.
+  Relationship Statuses: {{{this.relationsSummary}}}. These define the *nature* of the bond (e.g., {{../playerName}}: Petite amie; Kentaro: Ami proche).
   {{else}}
   (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
   {{/if}}
@@ -343,7 +343,7 @@ Known Characters (excluding player unless explicitly listed for context):
 
 User Action (from {{playerName}}): {{{userAction}}}
 
-{{#if promptConfig.rpgContext.playerStats}} 
+{{#if promptConfig.rpgContext.playerStats}}
 {{! This is legacy, prefer direct player stats above, but keep for reference if needed by existing saves }}
 --- RPG Context (Legacy Player Stats) ---
 Player: {{promptConfig.rpgContext.playerStats.Name}}, Class: {{promptConfig.rpgContext.playerStats.Class}}, Lvl: {{promptConfig.rpgContext.playerStats.Level}}, HP: {{promptConfig.rpgContext.playerStats.HP}}, MP: {{promptConfig.rpgContext.playerStats.MP}}, EXP: {{promptConfig.rpgContext.playerStats.EXP}}
@@ -364,11 +364,11 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop {{currencyName}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
+        *   Optionally, defeated enemies might drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, and statuses for the next turn.
     *   **Regardless of combat, if relationsModeActive is true:**
-        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list.
+        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
@@ -380,7 +380,7 @@ Tasks:
 4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates, including location context if known.
 
 {{#if relationsModeActive}}
-5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 5+) for major events. Justify with 'reason'.
+5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
 
 6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses* (e.g. from 'Inconnu' to 'Ami', or 'Ami' to 'Rivale'). Add to relationUpdates with 'newRelation' and 'reason'.
 {{else}}
