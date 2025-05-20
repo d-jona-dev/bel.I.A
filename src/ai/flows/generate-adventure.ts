@@ -15,7 +15,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, ActiveCombat } from '@/types'; // Import Character, ActiveCombat types
+import type { Character } from '@/types'; // Import Character type
 
 // Define RPG context schema (optional)
 const RpgContextSchema = z.object({
@@ -127,7 +127,7 @@ const GenerateAdventureInputSchema = z.object({
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
     characters: Character[];
-    activeCombat?: ActiveCombat; // This should use the type from @/types
+    activeCombat?: z.infer<typeof ActiveCombatSchema>;
 };
 
 
@@ -380,9 +380,9 @@ Tasks:
             *   If an NPC has a status like 'Stunned' or 'Paralyzed', they might skip their action or act with disadvantage.
             *   Decrement the 'duration' of temporary status effects on NPCs. If duration reaches 0, the effect wears off. Narrate this.
         *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
-        *   **Applying New Status Effects:** If an NPC or player action would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in `newStatusEffects` for the affected combatant in `combatUpdates.updatedCombatants`. Provide `name`, `description`, and `duration` (e.g., 2-3 turns, or -1 for permanent/until cured).
+        *   **Applying New Status Effects:** If an NPC or player action would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
-        *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the `newStatusEffects` list for each combatant.
+        *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
         *   Optionally, defeated enemies might drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items (e.g., 'Potion de Soin Mineure', 'Dague Rouillée') appropriate to their type/level. List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
@@ -469,3 +469,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
