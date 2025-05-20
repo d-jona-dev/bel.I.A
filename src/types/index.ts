@@ -43,13 +43,14 @@ export interface Character {
   id: string; // Unique ID for the character
   name: string;
   details: string; // Base description, SHOULD be in target language
+  biographyNotes?: string; // Detailed biography or private notes, SHOULD be in target language if user-provided
 
   // RPG specific fields (optional based on rpgMode)
   stats?: Record<string, number | string>; // e.g., { HP: 10, STR: 5, Class: 'Warrior' }
   inventory?: Record<string, number>; // e.g., { Gold: 100, Sword: 1 }
   history?: string[]; // Log of significant events, actions, or quotes involving the character, SHOULD be in target language
   opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }, SHOULD be in target language
-  portraitUrl?: string | null; // URL for generated portrait
+  portraitUrl?: string | null; // URL for generated portrait or uploaded Data URI
   affinity?: number; // Affinity towards the player (0-100)
   relations?: Record<string, string>; // Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., "Petite amie", "Meilleur ami", "Ennemi juré"), SHOULD be in target language
 

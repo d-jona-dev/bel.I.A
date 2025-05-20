@@ -41,6 +41,7 @@ const BaseCharacterSchema = z.object({
   id: z.string(),
   name: z.string(),
   details: z.string(),
+  biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character. Provides deep context for personality and motivations. MUST be in the specified language if provided from user input in that language."),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion. This score dictates the character's baseline behavior and responses toward the player. Small, gradual changes for typical interactions (+/- 1-2), larger changes (+/- 5+) for major events."),
   relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, attempt to define it based on new interactions."),
   // RPG Stats for combat
@@ -124,6 +125,7 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
 const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
+    biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
         z.object({
@@ -150,7 +152,7 @@ const CharacterUpdateSchema = z.object({
 
 const AffinityUpdateSchema = z.object({
     characterName: z.string().describe("The name of the known character whose affinity **towards the player** changed."),
-    change: z.number().int().describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -1 or -2 for a minor disagreement/misstep, 0 for neutral). Reserve larger changes (+/- 3 or more, max +/- 10 for extreme events) for major story events or betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
+    change: z.number().int().min(-10).max(10).describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -1 or -2 for a minor disagreement/misstep, 0 for neutral). Reserve larger changes (+/- 3 to +/-5) for significant events. Extreme changes (+/- 6 to +/-10) for major betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
     reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
 });
 
@@ -227,6 +229,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             id: char.id,
             name: char.name,
             details: char.details || (input.currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
+            biographyNotes: char.biographyNotes || (input.currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
             affinity: input.relationsModeActive ? (char.affinity ?? 50) : 50,
             relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
             historySummary: historySummary,
@@ -320,6 +323,9 @@ Known Characters (excluding player unless explicitly listed for context):
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
+  {{#if this.biographyNotes}}
+  Biographie/Notes (pour contexte interne, ne pas révéler directement): {{{this.biographyNotes}}}
+  {{/if}}
   {{#if ../rpgModeActive}}
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
@@ -327,14 +333,14 @@ Known Characters (excluding player unless explicitly listed for context):
   {{/if}}
   {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
-    0-10 (Deep Hate/Dégout): Actively hostile, seeks harm, betrayal, openly insulting or threatening. Will refuse any cooperation.
-    11-30 (Hostile/Conflictuel): Disdainful, obstructive, may attack if provoked or advantageous. Argumentative, sarcastic, unhelpful.
-    31-45 (Wary/Dislike/Méfiant): Suspicious, uncooperative, negative remarks, avoids interaction if possible. Reluctantly complies if forced.
-    46-55 (Neutral/Indifférent): Indifferent, formal, or business-like. Interaction is purely transactional or based on necessity.
-    56-70 (Friendly/Amical): Helpful, agreeable, positive remarks, willing to share some information or small aid.
-    71-90 (Loyal/Like/Apprécie): Trusting, supportive, seeks player's company, protective, offers significant help or advice. Shares personal thoughts.
-    91-100 (Devoted/Love/Dévoué): Deep affection, self-sacrificing, strong emotional connection. May confess feelings or make grand gestures. Prioritizes player's well-being above all.
-  Relationship Statuses: {{{this.relationsSummary}}}. These define the *nature* of the bond (e.g., {{../playerName}}: Petite amie; Kentaro: Ami proche).
+    0-10 (Deep Hate/Dégout Total): Actively hostile, seeks harm, betrayal, openly insulting or threatening. Will refuse any cooperation. May attack without direct provocation if opportunity arises. Their dialogue is filled with venom and contempt.
+    11-30 (Hostile/Conflit Ouvert): Disdainful, obstructive, may attack if provoked or if it aligns with their goals. Argumentative, sarcastic, unhelpful. Will likely try to undermine {{../playerName}}. Dialogue is aggressive and dismissive.
+    31-45 (Wary/Dislike/Méfiance Forte): Suspicious, uncooperative, negative remarks, avoids interaction if possible. Reluctantly complies if forced or heavily incentivized. Dialogue is curt, untrusting, and may contain veiled threats or warnings.
+    46-55 (Neutral/Indifférent): Indifferent, formal, or business-like. Interaction is purely transactional or based on necessity. No personal investment. Dialogue is matter-of-fact and lacks warmth.
+    56-70 (Friendly/Amical): Helpful, agreeable, positive remarks, willing to share some information or small aid. Generally pleasant and open to {{../playerName}}. Dialogue is warm and cooperative.
+    71-90 (Loyal/Like/Forte Appréciation): Trusting, supportive, seeks player's company, protective, offers significant help or advice. Shares personal thoughts or concerns. Dialogue is genuinely caring and enthusiastic. May defend {{../playerName}}.
+    91-100 (Devoted/Love/Dévotion Absolue): Deep affection, self-sacrificing, strong emotional connection. May confess feelings (if appropriate to character/story) or make grand gestures. Prioritizes player's well-being above all. Dialogue is deeply personal, loving, and extremely supportive.
+  Relationship Statuses: {{{this.relationsSummary}}}. These define the *nature* of the bond (e.g., {{../playerName}}: Petite amie; Kentaro: Ami proche). If a relation is "Inconnu", try to define it based on current interactions.
   {{else}}
   (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
   {{/if}}
@@ -372,8 +378,9 @@ Tasks:
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
+    *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
     *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP).{{/if}}
-    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.**{{/if}}
+    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
 
@@ -382,7 +389,7 @@ Tasks:
 {{#if relationsModeActive}}
 5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
 
-6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses* (e.g. from 'Inconnu' to 'Ami', or 'Ami' to 'Rivale'). Add to relationUpdates with 'newRelation' and 'reason'.
+6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses* (e.g. from 'Inconnu' to 'Ami', or 'Ami' to 'Rivale'). If an existing relation was "Inconnu" (or equivalent in {{currentLanguage}}), YOU MUST provide a more specific relation status if the narrative interaction now allows it (e.g. "Client", "Rivale", "Protecteur"). Add to relationUpdates with 'newRelation' and 'reason'.
 {{else}}
 (Affinity and Relation updates are disabled.)
 {{/if}}

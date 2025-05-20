@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +35,7 @@ interface CharacterSidebarProps {
     onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
-    relationsMode: boolean; // Added relationsMode prop
+    relationsMode: boolean; 
     playerId: string;
     playerName: string;
     currentLanguage: string;
@@ -176,7 +176,7 @@ export function CharacterSidebar({
     onRelationUpdate,
     generateImageAction,
     rpgMode,
-    relationsMode, // Destructure relationsMode
+    relationsMode, 
     playerId,
     playerName,
     currentLanguage,
@@ -243,17 +243,33 @@ export function CharacterSidebar({
     }
   };
 
+  const handleUploadPortrait = (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+        const character = characters.find(c => c.id === characterId);
+        if (character) {
+            onCharacterUpdate({ ...character, portraitUrl: reader.result as string });
+            toast({ title: "Portrait Téléchargé", description: `Le portrait de ${character.name} a été mis à jour.` });
+        }
+    };
+    reader.readAsDataURL(file);
+    if(event.target) event.target.value = ''; // Reset file input
+  };
+
+
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'armorClass', 'affinity'];
+            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
                  if (field === 'affinity') {
                     numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
                  }
-                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : 0) : numValue;
+                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : (field === 'manaPoints' || field === 'maxManaPoints' ? 0 :10 )) : numValue;
             } else if (field === 'affinity' && typeof processedValue === 'number') {
                 processedValue = Math.max(0, Math.min(100, processedValue));
             }
@@ -439,14 +455,11 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
-                                {isClient && isPotentiallyNew && ( // Ensure this only renders client-side
+                                {isClient && isPotentiallyNew && ( 
                                     <TooltipProvider>
                                         <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                {/* The TooltipTrigger needs a single, valid React child. A span is fine. */}
-                                                <span className="inline-flex items-center">
-                                                    <Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" />
-                                                </span>
+                                             <TooltipTrigger asChild>
+                                                <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span>
                                             </TooltipTrigger>
                                             <TooltipContent side="top">{currentLanguage === 'fr' ? "Nouveau personnage non sauvegardé globalement." : "New character not saved globally."}</TooltipContent>
                                         </Tooltip>
@@ -478,16 +491,39 @@ export function CharacterSidebar({
                                         <User className="h-10 w-10 text-muted-foreground"/>
                                      )}
                                 </div>
+                                <div className="flex gap-2">
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button variant="outline" size="sm" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}>
-                                                <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Générer Portrait" : "Generate Portrait"}
+                                                <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "IA" : "AI"}
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA basé sur la description." : "Generate an AI portrait based on the description."}</TooltipContent>
+                                        <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    id={`upload-portrait-${char.id}`}
+                                    className="hidden"
+                                    onChange={(e) => handleUploadPortrait(char.id, e)}
+                                />
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}
+                                            >
+                                                <UploadCloud className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Télécharger" : "Upload"}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                </div>
                            </div>
 
                             <Separator />
@@ -498,13 +534,21 @@ export function CharacterSidebar({
                                 onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
                             />
                             <EditableField
-                                label={currentLanguage === 'fr' ? "Description" : "Description"}
+                                label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
                                 id={`${char.id}-details`}
                                 value={char.details}
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
-                            {relationsMode && ( // Conditionally render affinity and relations
+                             <EditableField
+                                label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
+                                id={`${char.id}-biographyNotes`}
+                                value={char.biographyNotes || ""}
+                                onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
+                                rows={5}
+                                placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
+                            />
+                            {relationsMode && ( 
                                 <>
                                     <div className="space-y-2">
                                         <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
@@ -547,8 +591,8 @@ export function CharacterSidebar({
                                         <EditableField label="PV Max" id={`${char.id}-maxHp`} type="number" value={char.maxHitPoints} onChange={(e) => handleFieldChange(char.id, 'maxHitPoints', e.target.value)} />
                                      </div>
                                       <div className="grid grid-cols-2 gap-4">
-                                        <EditableField label="PM Actuels" id={`${char.id}-mp`} type="number" value={char.manaPoints} onChange={(e) => handleFieldChange(char.id, 'manaPoints', e.target.value)} />
-                                        <EditableField label="PM Max" id={`${char.id}-maxMp`} type="number" value={char.maxManaPoints} onChange={(e) => handleFieldChange(char.id, 'maxManaPoints', e.target.value)} />
+                                        <EditableField label="PM Actuels" id={`${char.id}-mp`} type="number" value={char.manaPoints ?? 0} onChange={(e) => handleFieldChange(char.id, 'manaPoints', e.target.value)} />
+                                        <EditableField label="PM Max" id={`${char.id}-maxMp`} type="number" value={char.maxManaPoints ?? 0} onChange={(e) => handleFieldChange(char.id, 'maxManaPoints', e.target.value)} />
                                      </div>
                                      <EditableField label="Classe d'Armure (CA)" id={`${char.id}-ac`} type="number" value={char.armorClass} onChange={(e) => handleFieldChange(char.id, 'armorClass', e.target.value)} />
                                       <div className="grid grid-cols-2 gap-4">
