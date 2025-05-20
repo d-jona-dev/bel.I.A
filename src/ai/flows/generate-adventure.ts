@@ -31,7 +31,7 @@ const RpgContextSchema = z.object({
         name: z.string(),
         details: z.string().optional().describe("Brief description of the character for context."),
         stats: z.record(z.union([z.string(), z.number()])).optional().describe("Character's statistics."),
-        inventory: z.record(z.number()).optional().describe("Character's inventory (item name: quantity)."),
+        inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."), // Corrected key type
         relations: z.string().optional().describe("Summary of relations towards player and others.")
     })).optional().describe("Details of relevant secondary characters already known."),
     mode: z.enum(["exploration", "dialogue", "combat"]).optional().describe("Current game mode."),
@@ -55,7 +55,7 @@ const BaseCharacterSchema = z.object({
   characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
-  inventory: z.record(z.number()).optional().describe("Character's inventory (item name: quantity)."),
+  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."), // Corrected key type
 }).passthrough();
 
 
@@ -153,7 +153,7 @@ const NewCharacterSchema = z.object({
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice')."),
     level: z.number().optional().describe("Level if relevant."),
-    inventory: z.record(z.number()).optional().describe("Initial inventory for the new character if relevant (item name: quantity)."),
+    inventory: z.record(z.string(), z.number()).optional().describe("Initial inventory for the new character if relevant (item name: quantity)."), // Corrected key type
 });
 
 const CharacterUpdateSchema = z.object({
