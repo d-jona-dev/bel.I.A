@@ -32,10 +32,8 @@ const PLAYER_ID = "player";
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
-export type AdventureFormValues = Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp'> & {
+export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp'> & {
   characters: FormCharacterDefinition[];
-  enableRpgMode?: boolean;
-  enableRelationsMode?: boolean;
 };
 
 
@@ -43,7 +41,7 @@ export default function Home() {
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Grande université populaire nommée \"hight scoole of futur\".",
     initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
-    rpgMode: true, // Default RPG mode to true for combat testing
+    rpgMode: true, 
     relationsMode: true,
     playerName: "Player",
     currencyName: "Pièces d'Or",
@@ -338,7 +336,7 @@ export default function Home() {
                 toastsToShow.push({ 
                     title: "Butin Récupéré!", 
                     description: `Vous avez trouvé:\n${lootLines.join('\n')}. (Inventaire conceptuel mis à jour)`,
-                    duration: 7000 // Longer duration for multi-line toasts
+                    duration: 7000 
                 });
             }
             return newSettings;
@@ -403,8 +401,7 @@ export default function Home() {
                              }
                         });
                     }
-
-                    // Convert inventory from array of objects to Record<string, number>
+                    
                     const processedInventory: Record<string, number> = {};
                     if (newCharData.inventory && Array.isArray(newCharData.inventory)) {
                         newCharData.inventory.forEach(item => {
@@ -995,15 +992,30 @@ export default function Home() {
         if(event.target) event.target.value = ''; 
     }, [toast, baseAdventureSettings, setBaseAdventureSettings, setBaseCharacters]); 
 
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-
     const confirmRestartAdventure = React.useCallback(() => {
-        setBaseAdventureSettings(prev => JSON.parse(JSON.stringify(prev))); 
-        setBaseCharacters(prev => JSON.parse(JSON.stringify(prev)));   
-    
+        const initialSettings = JSON.parse(JSON.stringify(baseAdventureSettings)); // Use the current base settings
+        const newLiveAdventureSettings = {
+            ...initialSettings,
+            playerCurrentHp: initialSettings.playerMaxHp,
+            playerCurrentMp: initialSettings.playerMaxMp,
+            playerCurrentExp: 0,
+        };
+        const newLiveCharacters = JSON.parse(JSON.stringify(baseCharacters)); // Use the current base characters
+        const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }];
+
+        setAdventureSettings(newLiveAdventureSettings);
+        setCharacters(newLiveCharacters);
+        setNarrativeMessages(newNarrative);
+        setActiveCombat(undefined);
+
+        // Update staged settings and characters to reflect the restart
+        setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
+        setStagedCharacters(JSON.parse(JSON.stringify(newLiveCharacters)));
+        setFormPropKey(prev => prev + 1); // Force re-render of AdventureForm
+
         setShowRestartConfirm(false);
-        React.startTransition(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée à son état initial." }); });
-    }, [toast, setBaseAdventureSettings, setBaseCharacters]); 
+        React.startTransition(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." }); });
+    }, [baseAdventureSettings, baseCharacters, toast]);
 
 
     const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
@@ -1071,7 +1083,7 @@ export default function Home() {
                 toast({
                     title: "Suggestion d'Objectif",
                     description: `${result.questHook} (Raison: ${result.justification})`,
-                    duration: 10000, // Longer duration for this toast
+                    duration: 10000, 
                 });
             });
         } catch (error) {
@@ -1085,6 +1097,7 @@ export default function Home() {
         }
     };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   return (
     <>
