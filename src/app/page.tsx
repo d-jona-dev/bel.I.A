@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat } from "@/types"; 
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, StatusEffect } from "@/types"; 
 import { PageStructure } from "./page.structure"; 
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -58,6 +58,7 @@ export default function Home() {
         id: 'rina-1',
         name: "Rina",
         details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
+        biographyNotes: "Rina semble troublée par les récentes attentions de Kentaro mais n'ose pas en parler.",
         history: ["Ceci est un exemple d'historique pour Rina."],
         opinion: {},
         affinity: 70,
@@ -68,6 +69,7 @@ export default function Home() {
         id: 'kentaro-1',
         name: "Kentaro",
         details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
+        biographyNotes: "Kentaro est secrètement jaloux de votre relation avec Rina et cherche à semer la zizanie.",
         history: ["Kentaro a été vu parlant à Rina."],
         opinion: {},
         affinity: 30,
@@ -272,12 +274,13 @@ export default function Home() {
                         hitPoints: combatantUpdate.newHp,
                         manaPoints: combatantUpdate.newMp ?? char.manaPoints,
                         isHostile: combatantUpdate.isDefeated ? char.isHostile : true 
+                        // Status effects are handled by setActiveCombat below as they are part of the ActiveCombat state
                     };
                 }
                 return char;
             });
         });
-
+        
         setAdventureSettings(prevSettings => {
             if (!prevSettings.rpgMode) return prevSettings;
             let newSettings = { ...prevSettings };
@@ -289,6 +292,7 @@ export default function Home() {
                 if (playerCombatUpdate.isDefeated) {
                     toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
                 }
+                 // Status effects for player are part of activeCombat, handled by setActiveCombat
             }
 
             if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
@@ -382,6 +386,7 @@ export default function Home() {
                     const characterToAdd: Character = {
                         id: newId, name: newCharData.name,
                         details: newCharData.details || (currentLanguage === 'fr' ? "Rencontré récemment." : "Recently met."),
+                        biographyNotes: newCharData.biographyNotes,
                         history: newCharData.initialHistoryEntry ? [newCharData.initialHistoryEntry] : [`Rencontré le ${new Date().toLocaleString()}`],
                         opinion: {}, portraitUrl: null,
                         affinity: stagedAdventureSettings.relationsMode ? 50 : undefined,
@@ -897,7 +902,7 @@ export default function Home() {
 
                     return { 
                         id: charId,
-                        name: c.name || "Inconnu", details: c.details || "", history: Array.isArray(c.history) ? c.history : [],
+                        name: c.name || "Inconnu", details: c.details || "", biographyNotes: c.biographyNotes, history: Array.isArray(c.history) ? c.history : [],
                         opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {},
                         portraitUrl: c.portraitUrl || null,
                         affinity: relationsModeActive ? (c.affinity ?? 50) : undefined,
@@ -947,30 +952,28 @@ export default function Home() {
         };
         reader.readAsText(file);
         if(event.target) event.target.value = ''; 
-    }, [toast, baseAdventureSettings]); // Removed dependencies that might cause issues
+    }, [toast, baseAdventureSettings]); 
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const confirmRestartAdventure = React.useCallback(() => {
-        const freshBaseSettings = JSON.parse(JSON.stringify(baseAdventureSettings)); // Use base settings
+        const freshBaseSettings = JSON.parse(JSON.stringify(baseAdventureSettings)); 
         freshBaseSettings.playerCurrentHp = freshBaseSettings.playerMaxHp;
         freshBaseSettings.playerCurrentMp = freshBaseSettings.playerMaxMp;
         freshBaseSettings.playerCurrentExp = 0;
     
-        // Apply the reset to live settings directly.
         setAdventureSettings(freshBaseSettings);
-        setCharacters(JSON.parse(JSON.stringify(baseCharacters))); // Reset characters from base
+        setCharacters(JSON.parse(JSON.stringify(baseCharacters))); 
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }]);
         setActiveCombat(undefined);
     
-        // Also update staged settings to reflect the reset, and re-key the form.
         setStagedAdventureSettings(JSON.parse(JSON.stringify(freshBaseSettings)));
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
         setFormPropKey(prev => prev + 1);
     
         setShowRestartConfirm(false);
         React.startTransition(() => { toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée à son état initial." }); });
-    }, [baseAdventureSettings, baseCharacters, toast]); // Dependencies are base settings
+    }, [baseAdventureSettings, baseCharacters, toast]); 
 
 
     const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
@@ -1033,7 +1036,7 @@ export default function Home() {
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
         translateTextAction={translateText}
-        generateAdventureAction={callGenerateAdventure} // Pass the wrapper
+        generateAdventureAction={callGenerateAdventure} 
         generateSceneImageAction={generateSceneImage}
         handleEditMessage={handleEditMessage}
         handleRegenerateLastResponse={handleRegenerateLastResponse}

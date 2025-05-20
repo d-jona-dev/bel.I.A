@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users } from "lucide-react"; // Added Users
+import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert } from "lucide-react"; 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -21,7 +21,7 @@ import {
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, StatusEffect } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,15 +66,10 @@ export function AdventureDisplay({
     initialMessages,
     currentLanguage,
     onNarrativeChange,
-    // onNewCharacters, // These will be handled by the parent component after AI response
-    // onCharacterHistoryUpdate,
-    // onAffinityUpdates,
-    // onRelationUpdates,
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
-    // onCombatUpdates, // Handled by parent
     onRestartAdventure,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -93,7 +88,6 @@ export function AdventureDisplay({
   const messagesRef = React.useRef(messages);
   const { toast } = useToast();
 
-    // Placeholder spells and skills - in a real app, these would come from character data or game rules
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
       ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"]
       : [];
@@ -108,6 +102,7 @@ export function AdventureDisplay({
         messagesRef.current = initialMessages;
         const latestAiMessage = [...initialMessages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
         setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
+        setImageUrl(null); // Reset image when messages change significantly
 
         if (scrollAreaRef.current) {
           const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
@@ -131,17 +126,11 @@ export function AdventureDisplay({
     if (!action || isLoading || isRegenerating) return;
 
     setIsLoading(true);
-
-    // Notify parent to add user's action to the narrative
     onNarrativeChange(action, 'user');
-    // The local `messages` state will update via useEffect when `initialMessages` prop changes.
-    // For building immediate context, we rely on messagesRef which is updated by parent.
 
     try {
-        // Use messagesRef.current to get the most up-to-date messages *before* this action was processed by AI
-        // This context represents the state of the story leading up to the current user action.
         const historyForAIContext = messagesRef.current
-            .slice(-5) // Take last 5 messages for context
+            .slice(-5) 
             .map(msg =>
                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
             ).join('\n\n');
@@ -166,10 +155,6 @@ export function AdventureDisplay({
             playerCurrentExp: adventureSettings.playerCurrentExp,
             playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
         };
-
-        // Call the parent's generateAdventureAction.
-        // The parent will then call its own handleNarrativeUpdate (which is onNarrativeChange for this component)
-        // for the AI's response, and also handle onNewCharacters, onAffinityUpdates, onCombatUpdates, etc.
         await generateAdventureAction(input);
 
     } catch (error) {
@@ -187,7 +172,7 @@ export function AdventureDisplay({
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
     if (!currentTextAction) return;
-    setUserAction(""); // Clear textarea
+    setUserAction(""); 
     await handleSendSpecificAction(currentTextAction);
   };
 
@@ -269,13 +254,14 @@ export function AdventureDisplay({
   };
 
   const canUndo = messages.length > 1;
+  const playerCombatant = activeCombat?.combatants.find(c => c.characterId === 'player');
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
        <Tabs defaultValue="exploration" value={currentMode} onValueChange={(value) => setCurrentMode(value as any)} className="mb-2">
         <TabsList className={`grid w-full ${adventureSettings.rpgMode ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="exploration"><Map className="mr-2 h-4 w-4" />Exploration</TabsTrigger>
-          <TabsTrigger value="dialogue" disabled><Users className="mr-2 h-4 w-4" />Dialogue (Future)</TabsTrigger>
+          <TabsTrigger value="dialogue" disabled><Users2 className="mr-2 h-4 w-4" />Dialogue (Future)</TabsTrigger>
           {adventureSettings.rpgMode && <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>}
         </TabsList>
       </Tabs>
@@ -293,13 +279,13 @@ export function AdventureDisplay({
                                 return (
                                     <div key={message.id} className="group relative flex flex-col">
                                         <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
-                                        {message.type === 'ai' && ( // Avatar only for AI messages
+                                        {message.type === 'ai' && ( 
                                             <Avatar className="h-8 w-8 border">
                                                 <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                             </Avatar>
                                         )}
                                         <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
-                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full') // System messages centered
+                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full') 
                                             }`}>
                                                 {message.content}
 
@@ -473,11 +459,10 @@ export function AdventureDisplay({
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                             </TooltipTrigger>
-                                            <TooltipContent>Utiliser un objet de l'inventaire.</TooltipContent>
+                                            <TooltipContent>Utiliser un objet de l'inventaire (décrire l'objet).</TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                     <DropdownMenuContent>
-                                        {/* Placeholder items - replace with actual inventory logic later */}
                                         <DropdownMenuItem onSelect={() => handleSendSpecificAction("Utiliser Potion de Soins")}>
                                         Potion de Soins
                                         </DropdownMenuItem>
@@ -628,6 +613,14 @@ export function AdventureDisplay({
                                 </div>
                                 <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                             </div>
+                            {playerCombatant?.statusEffects && playerCombatant.statusEffects.length > 0 && (
+                                <div className="mt-2">
+                                    <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts Actifs</Label>
+                                    <div className="text-xs text-muted-foreground">
+                                        {playerCombatant.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'permanent' : se.duration + 't'})`).join(', ')}
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -673,6 +666,14 @@ export function AdventureDisplay({
                                                         <span className="text-xs text-muted-foreground">{enemyCurrentMp ?? 0} / {enemyMaxMp ?? 0}</span>
                                                     </div>
                                                     <Progress id={`enemy-mp-${enemyCombatant.characterId}`} value={((enemyCurrentMp ?? 0) / (enemyMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                                                </div>
+                                            )}
+                                            {enemyCombatant.statusEffects && enemyCombatant.statusEffects.length > 0 && (
+                                                <div className="mt-2">
+                                                    <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts</Label>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {enemyCombatant.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

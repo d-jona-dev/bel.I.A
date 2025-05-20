@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 
 export interface Message {
@@ -6,6 +7,12 @@ export interface Message {
   content: string;
   timestamp: number; // For ordering and potential display
   sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
+}
+
+export interface StatusEffect {
+  name: string; // ex: "Empoisonné", "Étourdi"
+  description: string; // ex: "Subit 2 dégâts par tour", "Ne peut pas agir"
+  duration: number; // Nombre de tours restants, -1 pour permanent/jusqu'à guérison
 }
 
 export interface CombatAction {
@@ -27,6 +34,7 @@ export interface Combatant {
   maxMp?: number; // Maximum Mana Points
   team: 'player' | 'enemy' | 'neutral'; // Team alignment
   isDefeated: boolean;
+  statusEffects?: StatusEffect[]; // Active status effects
   // Potentially more combat-specific stats like temporary AC boost, conditions etc.
 }
 

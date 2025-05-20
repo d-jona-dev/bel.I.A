@@ -6,7 +6,7 @@
  * Includes optional RPG context handling and provides scene descriptions for image generation.
  * Detects newly introduced characters, logs significant character events/quotes in the specified language,
  * and calculates changes in character affinity towards the player. Includes dynamic character relation updates (player-NPC and NPC-NPC).
- * Handles combat initiation, turn-based combat narration, enemy actions, and rewards (EXP, Loot). Manages HP and MP.
+ * Handles combat initiation, turn-based combat narration, enemy actions, rewards (EXP, Loot), HP/MP, and status effects.
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -15,7 +15,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, ActiveCombat, Combatant } from '@/types'; // Import Character, ActiveCombat, Combatant types
+import type { Character, ActiveCombat } from '@/types'; // Import Character, ActiveCombat types
 
 // Define RPG context schema (optional)
 const RpgContextSchema = z.object({
@@ -71,6 +71,14 @@ const CharacterWithContextSummarySchema = z.intersection(
 type CharacterWithContextSummary = z.infer<typeof CharacterWithContextSummarySchema>;
 
 // Combat Schemas
+const StatusEffectSchema = z.object({
+  name: z.string().describe("Name of the status effect (e.g., 'Poisoned', 'Stunned')."),
+  description: z.string().describe("Brief description of the effect (e.g., 'Takes 1d4 damage per turn', 'Cannot act')."),
+  duration: z.number().int().describe("Remaining duration in turns. -1 for permanent or until cured."),
+});
+export type StatusEffect = z.infer<typeof StatusEffectSchema>;
+
+
 const CombatantSchema = z.object({
     characterId: z.string().describe("ID of the character or 'player'."),
     name: z.string().describe("Name of the combatant."),
@@ -80,6 +88,7 @@ const CombatantSchema = z.object({
     maxMp: z.number().optional().describe("Maximum MP of the combatant if applicable."),
     team: z.enum(['player', 'enemy', 'neutral']).describe("Team alignment."),
     isDefeated: z.boolean().default(false).describe("Is this combatant defeated?"),
+    statusEffects: z.array(StatusEffectSchema).optional().describe("Active status effects on the combatant."),
 });
 
 const ActiveCombatSchema = z.object({
@@ -95,7 +104,7 @@ const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
   characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
-  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator"). If not in combat, it is a general narrative action.'),
+  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing"). If not in combat, it is a general narrative action.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
@@ -118,7 +127,7 @@ const GenerateAdventureInputSchema = z.object({
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
     characters: Character[];
-    activeCombat?: ActiveCombat;
+    activeCombat?: ActiveCombat; // This should use the type from @/types
 };
 
 
@@ -168,12 +177,13 @@ const CombatOutcomeSchema = z.object({
     newHp: z.number().describe("The combatant's HP after this turn's actions."),
     newMp: z.number().optional().describe("The combatant's MP after this turn's actions, if applicable."),
     isDefeated: z.boolean().default(false).describe("True if the combatant was defeated this turn (HP <= 0)."),
+    newStatusEffects: z.array(StatusEffectSchema).optional().describe("Updated list of status effects for this combatant."),
 });
 
 const CombatUpdatesSchema = z.object({
-    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, and status updates for all combatants involved in this turn."),
+    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    lootDropped: z.array(z.object({ itemName: z.string(), quantity: z.number() })).optional().describe("Items looted from defeated enemies (includes currency if applicable, using {{../currencyName}}). Loot should be appropriate for the enemy type and world setting."),
+    lootDropped: z.array(z.object({ itemName: z.string(), quantity: z.number() })).optional().describe("Items looted from defeated enemies (includes currency if applicable, using {{../currencyName}}). Loot should be appropriate for the enemy type and world setting. Examples: 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible'."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -296,9 +306,7 @@ Current Situation/Recent Narrative:
 --- Player Stats ({{playerName}}) ---
 Class: {{playerClass}} | Level: {{playerLevel}}
 HP: {{playerCurrentHp}}/{{playerMaxHp}}
-{{#if playerMaxMp}}
-MP: {{playerCurrentMp}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used)
-{{/if}}
+{{#if playerMaxMp}}MP: {{playerCurrentMp}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used){{/if}}
 EXP: {{playerCurrentExp}}/{{playerExpToNextLevel}}
 ---
 {{/if}}
@@ -308,7 +316,7 @@ EXP: {{playerCurrentExp}}/{{playerExpToNextLevel}}
 Environment: {{activeCombat.environmentDescription}}
 Combatants:
 {{#each activeCombat.combatants}}
-- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.isDefeated}}(DEFEATED){{/if}}
+- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(DEFEATED){{/if}}
 {{/each}}
 {{#if activeCombat.turnLog}}
 Previous Turn Summary:
@@ -362,17 +370,23 @@ Tasks:
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
-        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
+        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
-        *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
-        *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
+        *   Narrate the userAction (player's combat move). If player uses an item (e.g., "I use Potion of Healing"), describe its effect narratively and update HP/MP directly in combatUpdates.updatedCombatants (for player combatantId: 'player').
+        *   Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
+        *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
+        *   **Status Effects Handling for NPCs:**
+            *   At the start of an NPC's turn (or end), apply damage/effects from ongoing statusEffects (e.g., 'Poisoned' deals damage).
+            *   If an NPC has a status like 'Stunned' or 'Paralyzed', they might skip their action or act with disadvantage.
+            *   Decrement the 'duration' of temporary status effects on NPCs. If duration reaches 0, the effect wears off. Narrate this.
         *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
+        *   **Applying New Status Effects:** If an NPC or player action would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in `newStatusEffects` for the affected combatant in `combatUpdates.updatedCombatants`. Provide `name`, `description`, and `duration` (e.g., 2-3 turns, or -1 for permanent/until cured).
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
-        *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed.
+        *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the `newStatusEffects` list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level. List these in combatUpdates.lootDropped.
+        *   Optionally, defeated enemies might drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items (e.g., 'Potion de Soin Mineure', 'Dague Rouillée') appropriate to their type/level. List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
-        *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, and statuses for the next turn.
+        *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide.
 
@@ -446,7 +460,7 @@ const generateAdventureFlow = ai.defineFlow<
         if(output.combatUpdates.nextActiveCombatState) {
             console.log("Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
             output.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
-                 console.log(`Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}`);
+                 console.log(`Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
             });
         }
     }
