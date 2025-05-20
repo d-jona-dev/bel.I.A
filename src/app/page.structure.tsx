@@ -1,3 +1,4 @@
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat } from "@/types"; // Added ActiveCombat
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
@@ -31,13 +32,15 @@ import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar";
 import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from '../app/page';
+import type { SuggestQuestHookInput, SuggestQuestHookOutput } from '@/ai/flows/suggest-quest-hook'; // Import quest hook types
+
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
   characters: Character[];
   stagedAdventureSettings: AdventureFormValues;
   stagedCharacters: Character[];
-  formPropKey: number; // Renamed from propKey for clarity, used for AdventureForm key
+  formPropKey: number; 
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
@@ -66,6 +69,8 @@ interface PageStructureProps {
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+  suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<SuggestQuestHookOutput>;
+  isSuggestingQuest: boolean;
 }
 
 export function PageStructure({
@@ -102,6 +107,8 @@ export function PageStructure({
   onRestartAdventure,
   activeCombat,
   onCombatUpdates,
+  suggestQuestHookAction,
+  isSuggestingQuest,
 }: PageStructureProps) {
   return (
     <>
@@ -254,6 +261,8 @@ export function PageStructure({
                 activeCombat={activeCombat}
                 onCombatUpdates={onCombatUpdates}
                 onRestartAdventure={onRestartAdventure}
+                suggestQuestHookAction={suggestQuestHookAction}
+                isSuggestingQuest={isSuggestingQuest}
              />
         </main>
       </SidebarInset>
@@ -275,7 +284,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={formPropKey.toString()} // Use formPropKey here for AdventureForm's key
+                                    key={formPropKey.toString()} 
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />

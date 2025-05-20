@@ -55,6 +55,7 @@ const BaseCharacterSchema = z.object({
   characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
+  inventory: z.record(z.number()).optional().describe("Character's inventory (item name: quantity)."),
 }).passthrough();
 
 
@@ -152,11 +153,12 @@ const NewCharacterSchema = z.object({
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice')."),
     level: z.number().optional().describe("Level if relevant."),
+    inventory: z.record(z.number()).optional().describe("Initial inventory for the new character if relevant (item name: quantity)."),
 });
 
 const CharacterUpdateSchema = z.object({
     characterName: z.string().describe("The name of the known character involved."),
-    historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment. MUST be in the specified language. Include location if relevant and known (e.g. 'Au marché: A proposé une affaire douteuse à {{playerName}}.', 'Dans le couloir: A semblé troublée par la question de {{playerName}}.' )."),
+    historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment. MUST be in the specified language. Include location context if relevant and known (e.g. 'Au marché: A proposé une affaire douteuse à {{playerName}}.', 'Dans le couloir: A semblé troublée par la question de {{playerName}}.' )."),
 });
 
 const AffinityUpdateSchema = z.object({
@@ -183,7 +185,11 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    lootDropped: z.array(z.object({ itemName: z.string(), quantity: z.number() })).optional().describe("Items looted from defeated enemies (includes currency if applicable, using {{../currencyName}}). Loot should be appropriate for the enemy type and world setting. Examples: 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible'."),
+    lootDropped: z.array(z.object({ 
+        itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', '50 {{../currencyName}}'."),
+        quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
+        effectHint: z.string().optional().describe("Brève indication de l'effet si non évident par le nom (ex: 'Restaure PV', 'Arme'). L'IA doit déduire les effets basés sur les tropes RPG si non spécifié.")
+    })).optional().describe("Items looted from defeated enemies. Be creative and appropriate for the enemy type, world setting, and {{../currencyName}}. The AI should determine item effects based on common RPG knowledge and context if 'effectHint' is not provided or is vague."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -255,6 +261,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
             level: input.rpgModeActive ? (char.level ?? 1) : undefined,
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
+            inventory: input.rpgModeActive ? (char.inventory || {}) : undefined,
         };
     });
 
@@ -338,6 +345,7 @@ Known Characters (excluding player unless explicitly listed for context):
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
+  Inventory (conceptual): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
@@ -372,28 +380,30 @@ Tasks:
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
-        *   Narrate the userAction (player's combat move). If player uses an item (e.g., "I use Potion of Healing"), describe its effect narratively and update HP/MP directly in combatUpdates.updatedCombatants (for player combatantId: 'player').
-        *   Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
+        *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes"), narrate the action.
+            *   If the item has a clear mechanical effect (like healing, damage, or applying a status effect), reflect this in combatUpdates.updatedCombatants for the player or target. For example, if "Potion de Soin" is used, increase player's HP. If "Bombe Fumigène" is used on "gardes", consider applying a 'Blinded' or 'Distracted' status effect to them with a short duration (e.g., 1-2 turns).
+            *   Conceptually, the player uses up one of these items. The AI should remember recently looted items for a short duration if the player attempts to use them. If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
+        *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
         *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
         *   **Status Effects Handling for NPCs:**
             *   At the start of an NPC's turn (or end), apply damage/effects from ongoing statusEffects (e.g., 'Poisoned' deals damage).
             *   If an NPC has a status like 'Stunned' or 'Paralyzed', they might skip their action or act with disadvantage.
             *   Decrement the 'duration' of temporary status effects on NPCs. If duration reaches 0, the effect wears off. Narrate this.
         *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
-        *   **Applying New Status Effects:** If an NPC or player action would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
+        *   **Applying New Status Effects:** If an NPC or player action (including item usage) would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn, a 'Flashbang' item applies 'Blinded'), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   Optionally, defeated enemies might drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items (e.g., 'Potion de Soin Mineure', 'Dague Rouillée') appropriate to their type/level. List these in combatUpdates.lootDropped.
+        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level (e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', 'Sacoche de 15 {{currencyName}}'). List these in combatUpdates.lootDropped. For items, provide an itemName, quantity, and optionally an effectHint (e.g., itemName: "Potion de Soin Mineure", quantity: 1, effectHint: "Restaure un peu de PV.").
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
     *   **Regardless of combat, if relationsModeActive is true:**
-        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide.
+        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP).{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. {"Dague Rouillée": 1, "Quelques {{../currencyName}}": 5}).{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
