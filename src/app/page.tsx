@@ -12,7 +12,7 @@ import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook"; // Import the new flow
+import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 
 
@@ -404,6 +404,16 @@ export default function Home() {
                         });
                     }
 
+                    // Convert inventory from array of objects to Record<string, number>
+                    const processedInventory: Record<string, number> = {};
+                    if (newCharData.inventory && Array.isArray(newCharData.inventory)) {
+                        newCharData.inventory.forEach(item => {
+                            if (item.itemName && typeof item.itemName === 'string' && typeof item.quantity === 'number' && item.quantity > 0) {
+                                processedInventory[item.itemName] = (processedInventory[item.itemName] || 0) + item.quantity;
+                            }
+                        });
+                    }
+
 
                     const characterToAdd: Character = {
                         id: newId, name: newCharData.name,
@@ -414,7 +424,7 @@ export default function Home() {
                         affinity: stagedAdventureSettings.relationsMode ? 50 : undefined, 
                         relations: stagedAdventureSettings.relationsMode ? processedRelations : undefined,
                         isHostile: stagedAdventureSettings.rpgMode ? newCharData.isHostile : undefined,
-                        inventory: stagedAdventureSettings.rpgMode ? newCharData.inventory : undefined,
+                        inventory: stagedAdventureSettings.rpgMode ? processedInventory : undefined,
                         ...(stagedAdventureSettings.rpgMode && { 
                             level: newCharData.level ?? 1,
                             experience: 0,

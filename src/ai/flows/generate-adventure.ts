@@ -31,7 +31,7 @@ const RpgContextSchema = z.object({
         name: z.string(),
         details: z.string().optional().describe("Brief description of the character for context."),
         stats: z.record(z.union([z.string(), z.number()])).optional().describe("Character's statistics."),
-        inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."), // Corrected key type
+        inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."),
         relations: z.string().optional().describe("Summary of relations towards player and others.")
     })).optional().describe("Details of relevant secondary characters already known."),
     mode: z.enum(["exploration", "dialogue", "combat"]).optional().describe("Current game mode."),
@@ -55,7 +55,7 @@ const BaseCharacterSchema = z.object({
   characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
-  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."), // Corrected key type
+  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."),
 }).passthrough();
 
 
@@ -131,6 +131,10 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
 };
 
+const InventoryItemSchema = z.object({
+    itemName: z.string().describe("Name of the item."),
+    quantity: z.number().int().min(1).describe("Quantity of the item.")
+});
 
 const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
@@ -153,7 +157,7 @@ const NewCharacterSchema = z.object({
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice')."),
     level: z.number().optional().describe("Level if relevant."),
-    inventory: z.record(z.string(), z.number()).optional().describe("Initial inventory for the new character if relevant (item name: quantity)."), // Corrected key type
+    inventory: z.array(InventoryItemSchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]"),
 });
 
 const CharacterUpdateSchema = z.object({
@@ -403,7 +407,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. {"Dague Rouillée": 1, "Quelques {{../currencyName}}": 5}).{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory as an array of objects (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}, {"itemName": "Quelques {{../currencyName}}", "quantity": 5}]).{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -479,4 +483,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
