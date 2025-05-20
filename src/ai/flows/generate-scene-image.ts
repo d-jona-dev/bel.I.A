@@ -45,25 +45,36 @@ const generateSceneImageFlow = ai.defineFlow<
     outputSchema: GenerateSceneImageOutputSchema,
   },
   async input => {
-    // Use ai.generate for image generation with the specified experimental model
-    const {media} = await ai.generate({
-      // IMPORTANT: Use the correct model for image generation
-      model: 'googleai/gemini-2.0-flash-exp',
-      // Pass the scene description directly. It's expected to be well-formatted by the caller.
-      prompt: input.sceneDescription,
-      config: {
-        // IMPORTANT: Must specify both TEXT and IMAGE modalities
-        responseModalities: ['TEXT', 'IMAGE'],
-      },
-    });
+    let fullResponse;
+    try {
+      fullResponse = await ai.generate({
+        model: 'googleai/gemini-2.0-flash-exp',
+        prompt: input.sceneDescription,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      });
+    } catch (e: any) {
+      console.error("Error during ai.generate call for image:", e);
+      // Re-throw the original error or a new one with more context
+      throw new Error(`AI image generation call failed: ${e.message || String(e)}`);
+    }
+    
 
-    // Ensure media and URL exist before returning
+    const media = fullResponse?.media;
+
     if (!media?.url) {
-        throw new Error("Image generation failed or returned no URL.");
+        // Log the full response if media or media.url is missing to help diagnose
+        console.error(
+          "Image generation failed: media or media.url is missing from the response. Full response from ai.generate:",
+          JSON.stringify(fullResponse, null, 2)
+        );
+        throw new Error("Image generation failed or returned no URL. Check server console for details.");
     }
 
-    console.log(`Image generated for prompt: "${input.sceneDescription.substring(0, 100)}..."`); // Log truncated prompt
+    console.log(`Image generated for prompt: "${input.sceneDescription.substring(0, 100)}..."`);
 
     return {imageUrl: media.url};
   }
 );
+
