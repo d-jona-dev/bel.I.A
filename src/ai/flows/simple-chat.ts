@@ -26,6 +26,7 @@ const SimpleChatInputSchema = z.object({
   chatHistory: z.array(ChatMessageSchema).optional().describe('The history of the conversation so far. This should be the history *before* the current userMessage.'),
   userMessage: z.string().describe('The latest message from the user to the character.'),
   adventureContextSummary: z.string().optional().describe('A summary of key interactions or events this character had with the player during past adventures. This helps the character remember these events and discuss them if relevant.'),
+  playerName: z.string().describe('The name of the player character they are chatting with.'),
 });
 export type SimpleChatInput = z.infer<typeof SimpleChatInputSchema>;
 
@@ -45,17 +46,17 @@ const prompt = ai.definePrompt({
   system: `You are {{characterName}}.
 Your personality and background: {{characterDetails}}.
 
-You are now chatting with the user outside of any specific adventure or ongoing story. This is a direct conversation.
-Engage naturally as this character, keeping your persona in mind.
-Respond to the user's latest message based on the conversation history provided.
+You are now chatting directly with {{playerName}} outside of any specific ongoing adventure or immediate story. This is a one-on-one conversation.
+Engage naturally as {{characterName}}, keeping your established persona, history, and feelings (if any) towards {{playerName}} in mind.
+Respond to {{playerName}}'s latest message based on the conversation history provided.
 Keep your responses concise and in character.
 
 {{#if adventureContextSummary}}
-Here are some key memories or events from past adventures you had with the user (named 'Player' in those contexts, unless specified otherwise):
+You remember past adventures and interactions with {{playerName}}. Here is a summary of those shared memories:
 {{{adventureContextSummary}}}
-You can refer to these memories if they are relevant to the current conversation.
+You can refer to these memories if they are relevant to the current conversation, but remember this chat is happening now, separately from those events.
 {{else}}
-You don't have any specific shared adventure memories to draw upon right now, so focus on the current conversation.
+You don't have any specific shared adventure memories with {{playerName}} to draw upon right now, so focus on the current conversation and your general knowledge of them if applicable.
 {{/if}}
 `,
   // Input schema for the prompt (excluding chatHistory, which is handled by `messages` field)
@@ -64,14 +65,15 @@ You don't have any specific shared adventure memories to draw upon right now, so
         characterName: SimpleChatInputSchema.shape.characterName,
         characterDetails: SimpleChatInputSchema.shape.characterDetails,
         userMessage: SimpleChatInputSchema.shape.userMessage,
-        adventureContextSummary: SimpleChatInputSchema.shape.adventureContextSummary, // Add adventureContextSummary
+        adventureContextSummary: SimpleChatInputSchema.shape.adventureContextSummary,
+        playerName: SimpleChatInputSchema.shape.playerName,
     })
   },
   output: {
     schema: SimpleChatOutputSchema
   },
   // The prompt itself is the user's message.
-  prompt: `{{userMessage}}`,
+  prompt: `{{userMessage}}`, // This will be the user's latest message in the history
 });
 
 
@@ -92,16 +94,17 @@ const simpleChatFlow = ai.defineFlow<
     console.log("SimpleChat Flow actualHistoryToSend:", JSON.stringify(actualHistoryToSend, null, 2));
 
     const {output, history: updatedHistory} = await prompt(
-      // Pass characterName, characterDetails, userMessage and adventureContextSummary for the prompt's handlebars
+      // Pass context for the prompt's handlebars (system and user message template)
       {
         characterName: input.characterName,
         characterDetails: input.characterDetails,
-        userMessage: input.userMessage,
-        adventureContextSummary: input.adventureContextSummary, // Pass the summary
+        userMessage: input.userMessage, // This is the 'prompt' part for the last user message
+        adventureContextSummary: input.adventureContextSummary,
+        playerName: input.playerName,
       },
       // Pass the conversation history
       {
-        history: actualHistoryToSend,
+        history: actualHistoryToSend, // This is for the messages array
       }
     );
 

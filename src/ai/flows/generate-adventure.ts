@@ -308,7 +308,7 @@ const prompt = ai.definePrompt({
   },
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, character details, history entries, relation descriptions) is **{{currentLanguage}}**.
 
-**Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Ensure narrative continuity from the 'Current Situation/Recent Narrative'.**
+**Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Ensure narrative continuity from the 'Current Situation/Recent Narrative'. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 
 World: {{{world}}}
 
@@ -367,7 +367,7 @@ Known Characters (excluding player unless explicitly listed for context):
   (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
   {{/if}}
   History (summary): {{{this.historySummary}}}
-  **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Biographie/Notes, Affinity towards {{../playerName}}, their Relationship Statuses with others, and their recent History. They should react logically to the User Action and the Current Situation.**
+  **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Biographie/Notes, Affinity towards {{../playerName}}, their Relationship Statuses with others, and their recent History. Their style of speech (vocabulary, tone, formality) must also align. They should react logically to the User Action and the Current Situation.**
 {{/each}}
 
 User Action (from {{playerName}}): {{{userAction}}}
@@ -486,3 +486,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+

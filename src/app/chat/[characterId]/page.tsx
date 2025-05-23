@@ -40,6 +40,7 @@ export default function CharacterChatPage() {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isLoadingCharacter, setIsLoadingCharacter] = React.useState<boolean>(true);
   const [adventureContextSummary, setAdventureContextSummary] = React.useState<string>("");
+  const [playerName, setPlayerName] = React.useState<string>("Joueur"); // Default player name
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,28 +48,36 @@ export default function CharacterChatPage() {
     if (characterId) {
       try {
         const charactersFromStorage = localStorage.getItem('globalCharacters');
+        const adventureSettingsFromStorage = localStorage.getItem('adventureSettings'); // Assuming you save adventure settings
+
+        if (adventureSettingsFromStorage) {
+            const advSettings: Partial<Pick<Character, "name">> = JSON.parse(adventureSettingsFromStorage); // Use Character name type
+            if (advSettings.name) setPlayerName(advSettings.name); // AdventureSettings has playerName, not name
+        }
+
+
         if (charactersFromStorage) {
           const allCharacters: Character[] = JSON.parse(charactersFromStorage);
           const foundCharacter = allCharacters.find(c => c.id === characterId);
           if (foundCharacter) {
             setCharacter(foundCharacter);
-            // Initialize chat with a system message or character greeting
             setChatHistory([{
               id: `sys-${Date.now()}`,
               type: 'system',
-              content: `Vous discutez maintenant avec ${foundCharacter.name}. Elle se souvient des événements passés des aventures.`,
+              content: `Vous discutez maintenant avec ${foundCharacter.name}. Ce personnage se souvient des événements clés des aventures passées.`,
               timestamp: Date.now()
             }]);
 
             // Prepare adventure context summary
-            const summary = foundCharacter.history && foundCharacter.history.length > 0
-              ? `Voici quelques souvenirs partagés avec vous (le joueur) lors d'aventures précédentes :\n- ${foundCharacter.history.slice(-5).join('\n- ')}` // Last 5 history items
-              : "Aucun souvenir d'aventure spécifique n'est disponible pour le moment.";
+            const historyToShow = foundCharacter.history ? foundCharacter.history.slice(-10) : []; // Last 10 history items
+            const summary = historyToShow.length > 0
+              ? `Souviens-toi de ces interactions clés avec ${playerName} lors d'aventures précédentes :\n- ${historyToShow.join('\n- ')}`
+              : "Vous n'avez pas encore d'historique d'aventure partagé significatif avec ce personnage.";
             setAdventureContextSummary(summary);
 
           } else {
             toast({ title: "Personnage non trouvé", description: "Le personnage que vous essayez de contacter n'existe pas.", variant: "destructive" });
-            router.push('/histoires'); // Redirect if character not found
+            router.push('/histoires'); 
           }
         } else {
             toast({ title: "Aucun personnage", description: "Aucun personnage sauvegardé localement.", variant: "destructive" });
@@ -82,11 +91,10 @@ export default function CharacterChatPage() {
         setIsLoadingCharacter(false);
       }
     }
-  }, [characterId, router, toast]);
+  }, [characterId, router, toast, playerName]);
 
 
   React.useEffect(() => {
-    // Scroll to bottom after messages update
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
       if (scrollElement) {
@@ -102,7 +110,7 @@ export default function CharacterChatPage() {
 
     setIsLoading(true);
     const userMessageContent = userInput.trim();
-    setUserInput(""); // Clear input
+    setUserInput(""); 
 
     const newUserMessage: Message = {
       id: `user-${Date.now()}`,
@@ -111,10 +119,17 @@ export default function CharacterChatPage() {
       timestamp: Date.now(),
     };
     
-    const historyForAI: ChatMessage[] = chatHistory.map(m => ({
-        role: m.type === 'user' ? 'user' : (m.type === 'ai' ? 'model' : 'user'),
-        parts: [{ text: m.content }]
-    }));
+    // Prepare history for AI: convert local Message[] to Genkit's ChatMessage[]
+    // Include only 'user' and 'ai' messages. Exclude 'system' messages for the AI history.
+    const historyForAI: ChatMessage[] = chatHistory
+        .filter(m => m.type === 'user' || m.type === 'ai') 
+        .map(m => ({
+            role: m.type === 'user' ? 'user' : 'model', // 'ai' maps to 'model'
+            parts: [{ text: m.content }]
+        }));
+    
+    // Add current user message to the history for the AI
+    historyForAI.push({role: 'user', parts: [{text: userMessageContent}]});
 
     setChatHistory(prev => [...prev, newUserMessage]);
 
@@ -122,9 +137,10 @@ export default function CharacterChatPage() {
       const input: SimpleChatInput = {
         characterName: character.name,
         characterDetails: character.details || "Aucun détail spécifique fourni.",
-        chatHistory: historyForAI,
-        userMessage: userMessageContent,
-        adventureContextSummary: adventureContextSummary, // Pass the prepared summary
+        chatHistory: historyForAI.slice(0, -1), // Pass history *before* current user message
+        userMessage: userMessageContent, // Current user message for the prompt
+        adventureContextSummary: adventureContextSummary,
+        playerName: playerName,
       };
 
       const result: SimpleChatOutput = await simpleChat(input);
@@ -141,7 +157,7 @@ export default function CharacterChatPage() {
       console.error("Error in chat:", error);
       toast({
         title: "Erreur de Chat",
-        description: `Impossible d'obtenir une réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`,
+        description: `Impossible d'obtenir une réponse: ${error instanceof Error ? error.message : String(error)}.`,
         variant: "destructive",
       });
       const errorMessage: Message = {
@@ -190,25 +206,15 @@ export default function CharacterChatPage() {
             <h1 className="text-xl font-semibold">{character.name}</h1>
             <p className="text-xs text-muted-foreground line-clamp-1">{character.details}</p>
         </div>
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={() => { /* Can show a dialog with full summary */ }}>
-                        <Info className="h-5 w-5" />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="font-semibold mb-1">Souvenirs d'aventure avec vous :</p>
-                    <p className="text-xs whitespace-pre-wrap">{adventureContextSummary}</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
       </header>
       
       <Accordion type="single" collapsible className="mb-2">
         <AccordionItem value="adventure-summary">
-          <AccordionTrigger className="text-sm p-2 bg-muted/50 rounded-md">
-            Résumé des souvenirs d'aventure avec {character.name}
+          <AccordionTrigger className="text-sm p-2 bg-muted/50 rounded-md hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Souvenirs d'aventure avec {character.name} (contextualisation pour l'IA)
+            </div>
           </AccordionTrigger>
           <AccordionContent className="p-2 text-xs text-muted-foreground bg-muted/20 rounded-md">
             <ScrollArea className="h-24">
@@ -259,7 +265,7 @@ export default function CharacterChatPage() {
                       )}
                   </Avatar>
                   <span className="flex items-center text-muted-foreground italic p-3">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {character.name} écrit...
                   </span>
                 </div>
               )}
