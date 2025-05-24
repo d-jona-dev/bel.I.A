@@ -392,7 +392,7 @@ Tasks:
             *   If an NPC has a status like 'Stunned' or 'Paralyzed', they might skip their action or act with disadvantage.
             *   Decrement the 'duration' of temporary status effects on NPCs. If duration reaches 0, the effect wears off. Narrate this.
         *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
-        *   **Applying New Status Effects:** If an NPC or player action (including item usage) would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn, a 'Flashbang' item applies 'Blinded'), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
+        *   **Applying New Status Effects:** If an NPC or player action (including item usage) would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
@@ -405,7 +405,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory as an array of objects (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}, {"itemName": "Quelques {{../currencyName}}", "quantity": 5}]).{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}, {"itemName": "Quelques {{../currencyName}}", "quantity": 5}]).{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -420,13 +420,13 @@ Tasks:
     *   **If a character's affinity towards {{playerName}} crosses a major threshold** (e.g., from neutral to friendly, friendly to loyal, neutral to wary, wary to hostile), consider if their relationship *status* towards {{playerName}} should change.
     *   **If a significant narrative event occurs** (e.g., betrayal, deep act of trust, declaration, prolonged conflict, new alliance forming), update the relationship *status* between the involved characters (NPC-{{playerName}} or NPC-NPC).
     *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' or 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
-    *   Populate `relationUpdates` with:
-        *   `characterName`: The name of the character whose perspective of the relationship is changing.
-        *   `targetName`: The name of the other character involved (or `{{playerName}}`).
-        *   `newRelation`: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in `{{currentLanguage}}`. Be creative and contextually appropriate.
-        *   `reason`: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, `relationUpdates` might include: `{ characterName: "Rina", targetName: "{{playerName}}", newRelation: "Relation tendue", reason: "Suite à la dispute au sujet de Kentaro." }`
-    *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", `relationUpdates` might include: `{ characterName: "Kentaro", targetName: "Yuki", newRelation: "Rivaux déclarés", reason: "Confrontation directe au sujet de leurs objectifs opposés." }`
+    *   Populate relationUpdates with:
+        *   characterName: The name of the character whose perspective of the relationship is changing.
+        *   targetName: The name of the other character involved (or {{playerName}}).
+        *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
+        *   reason: A brief justification for the change.
+    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: \{{ characterName: "Rina", targetName: "{{playerName}}", newRelation: "Relation tendue", reason: "Suite à la dispute au sujet de Kentaro." \}\}
+    *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: \{{ characterName: "Kentaro", targetName: "Yuki", newRelation: "Rivaux déclarés", reason: "Confrontation directe au sujet de leurs objectifs opposés." \}\}
 {{else}}
 (Affinity and Relation updates are disabled.)
 {{/if}}
@@ -492,4 +492,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
