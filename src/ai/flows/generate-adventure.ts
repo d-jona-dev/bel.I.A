@@ -189,7 +189,7 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    lootDropped: z.array(z.object({ 
+    lootDropped: z.array(z.object({
         itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', '50 {{../currencyName}}'."),
         quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
         effectHint: z.string().optional().describe("Brève indication de l'effet si non évident par le nom (ex: 'Restaure PV', 'Arme'). L'IA doit déduire les effets basés sur les tropes RPG si non spécifié.")
@@ -371,13 +371,8 @@ Known Characters (excluding player unless explicitly listed for context):
 {{/each}}
 
 User Action (from {{playerName}}): {{{userAction}}}
-
-{{#if promptConfig.rpgContext.playerStats}}
-{{! This is legacy, prefer direct player stats above, but keep for reference if needed by existing saves }}
---- RPG Context (Legacy Player Stats) ---
-Player: {{promptConfig.rpgContext.playerStats.Name}}, Class: {{promptConfig.rpgContext.playerStats.Class}}, Lvl: {{promptConfig.rpgContext.playerStats.Level}}, HP: {{promptConfig.rpgContext.playerStats.HP}}, MP: {{promptConfig.rpgContext.playerStats.MP}}, EXP: {{promptConfig.rpgContext.playerStats.EXP}}
----
-{{/if}}
+**Do NOT narrate actions for {{playerName}}. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
+**Start the narrative directly from the consequences of the user's action. Do NOT repeat or summarize the user's action.**
 
 
 Tasks:
@@ -420,7 +415,18 @@ Tasks:
 {{#if relationsModeActive}}
 5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
 
-6.  **Relation Status Updates (in {{currentLanguage}}):** For KNOWN characters (NPC-NPC or NPC-Player), detect fundamental changes in relationship *statuses* (e.g. from 'Inconnu' to 'Ami', or 'Ami' to 'Rivale'). If an existing relation was "Inconnu" (or equivalent in {{currentLanguage}}), YOU MUST provide a more specific relation status if the narrative interaction now allows it (e.g. "Client", "Rivale", "Protecteur"). Add to relationUpdates with 'newRelation' and 'reason'.
+6.  **Relation Status Updates (in {{currentLanguage}}):**
+    *   Analyze the narrative for significant shifts in how characters view each other ({{playerName}} or other NPCs).
+    *   **If a character's affinity towards {{playerName}} crosses a major threshold** (e.g., from neutral to friendly, friendly to loyal, neutral to wary, wary to hostile), consider if their relationship *status* towards {{playerName}} should change.
+    *   **If a significant narrative event occurs** (e.g., betrayal, deep act of trust, declaration, prolonged conflict, new alliance forming), update the relationship *status* between the involved characters (NPC-{{playerName}} or NPC-NPC).
+    *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' or 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
+    *   Populate `relationUpdates` with:
+        *   `characterName`: The name of the character whose perspective of the relationship is changing.
+        *   `targetName`: The name of the other character involved (or `{{playerName}}`).
+        *   `newRelation`: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in `{{currentLanguage}}`. Be creative and contextually appropriate.
+        *   `reason`: A brief justification for the change.
+    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, `relationUpdates` might include: `{ characterName: "Rina", targetName: "{{playerName}}", newRelation: "Relation tendue", reason: "Suite à la dispute au sujet de Kentaro." }`
+    *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", `relationUpdates` might include: `{ characterName: "Kentaro", targetName: "Yuki", newRelation: "Rivaux déclarés", reason: "Confrontation directe au sujet de leurs objectifs opposés." }`
 {{else}}
 (Affinity and Relation updates are disabled.)
 {{/if}}
