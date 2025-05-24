@@ -142,7 +142,7 @@ const NewCharacterSchema = z.object({
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
-        z.object({
+        z.object({ // This object's properties MUST be defined for the API.
             targetName: z.string().describe("Name of the known character or the player's name (e.g., '{{playerName}}', 'Rina')."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
@@ -425,7 +425,7 @@ Tasks:
         *   targetName: The name of the other character involved (or {{playerName}}).
         *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
         *   reason: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: \{{ characterName: "Rina", targetName: "{{playerName}}", newRelation: "Relation tendue", reason: "Suite à la dispute au sujet de Kentaro." \}\}
+    *   **Example (Player-NPC):** If Rina's affinity for {{../playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: \{{ characterName: "Rina", targetName: "\{{../playerName}}", newRelation: "Relation tendue", reason: "Suite à la dispute au sujet de Kentaro." \}\}
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: \{{ characterName: "Kentaro", targetName: "Yuki", newRelation: "Rivaux déclarés", reason: "Confrontation directe au sujet de leurs objectifs opposés." \}\}
 {{else}}
 (Affinity and Relation updates are disabled.)
