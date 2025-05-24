@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 
 export interface Message {
@@ -94,14 +93,23 @@ export interface Character {
   _lastSaved?: number; // Timestamp of last global save to help UI distinguish new characters
 }
 
+export interface PlayerInventoryItem {
+  name: string;
+  quantity: number;
+  description?: string;
+  effect?: string;
+  type?: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
+  // iconUrl?: string; // Optional: for custom item icons
+  // iconName?: string; // Optional: for lucide-react icon names
+}
+
 export interface AdventureSettings {
     world: string;
     initialSituation: string;
     rpgMode: boolean;
-    relationsMode?: boolean; // Added for the new "Mode jeux de Relations"
-    currencyName?: string; // e.g., "Gold", "Credits"
+    relationsMode?: boolean;
+    currencyName?: string;
     playerName?: string; 
-    // Player specific RPG stats, only relevant if rpgMode is true
     playerClass?: string;
     playerLevel?: number;
     playerCurrentHp?: number;
@@ -110,16 +118,17 @@ export interface AdventureSettings {
     playerMaxMp?: number;   
     playerCurrentExp?: number;
     playerExpToNextLevel?: number;
+    playerInventory?: PlayerInventoryItem[]; // Player's inventory
 }
 
-// Add other shared types as the application grows
 export interface SaveData {
     adventureSettings: AdventureSettings;
     characters: Character[];
-    narrative: Message[]; // Changed from string to Message[]
+    narrative: Message[];
     currentLanguage: string;
-    activeCombat?: ActiveCombat; // Save combat state
-    // Add versioning or timestamp if needed
-    saveFormatVersion?: number; // Bump version for AI relation updates (1.6)
+    activeCombat?: ActiveCombat;
+    saveFormatVersion?: number;
     timestamp?: string;
 }
+
+```

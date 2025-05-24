@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat } from "@/types"; // Added ActiveCombat
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem } from "@/types";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -32,11 +32,11 @@ import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar";
 import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from '../app/page';
-import type { SuggestQuestHookInput, SuggestQuestHookOutput } from '@/ai/flows/suggest-quest-hook'; // Import quest hook types
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Added Avatar for player
-import { Progress } from '@/components/ui/progress'; // Added Progress for player stats
-import { Label } from '@/components/ui/label'; // Added Label for player stats
-import { Card, CardContent, CardDescription } from '@/components/ui/card'; // Added Card for player section
+import type { SuggestQuestHookInput, SuggestQuestHookOutput } from '@/ai/flows/suggest-quest-hook';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription } from '@/components/ui/card';
 
 
 interface PageStructureProps {
@@ -69,6 +69,7 @@ interface PageStructureProps {
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
+  playerName: string; // Explicitly pass playerName
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
@@ -106,6 +107,7 @@ export function PageStructure({
   handleRegenerateLastResponse,
   handleUndoLastMessage,
   playerId,
+  playerName, // Receive playerName
   onRestartAdventure,
   activeCombat,
   onCombatUpdates,
@@ -300,7 +302,7 @@ export function PageStructure({
                             <AccordionItem value="player-character-accordion">
                                 <AccordionTrigger>
                                     <div className="flex items-center gap-2">
-                                        <UserCircle className="h-5 w-5" /> {adventureSettings.playerName || "Mon Personnage"}
+                                        <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 space-y-3">
@@ -312,7 +314,7 @@ export function PageStructure({
                                                     <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <p className="font-semibold">{adventureSettings.playerName || "Héros"}</p>
+                                                    <p className="font-semibold">{playerName || "Héros"}</p>
                                                     <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>
                                                 </div>
                                             </div>
@@ -341,15 +343,58 @@ export function PageStructure({
                                                 </div>
                                                 <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                                             </div>
+                                            
                                             <CardDescription className="text-xs pt-2">
-                                                <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire (conceptuel, géré par l'IA).
+                                              <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
                                             </CardDescription>
-                                             <CardDescription className="text-xs">
-                                                <SparklesIcon className="inline h-3 w-3 mr-1" /> Caractéristiques (Force, etc.) à venir.
-                                            </CardDescription>
-                                             <CardDescription className="text-xs">
-                                                <SwordsIcon className="inline h-3 w-3 mr-1" /> Sorts & Compétences à venir.
-                                            </CardDescription>
+                                            <Card className="mt-1 bg-muted/30 border">
+                                              <CardContent className="p-2">
+                                                {(!adventureSettings.playerInventory || adventureSettings.playerInventory.length === 0) ? (
+                                                  <p className="text-xs text-muted-foreground italic">Inventaire vide.</p>
+                                                ) : (
+                                                  <ScrollArea className="h-auto max-h-48">
+                                                    <div className="grid grid-cols-5 gap-2 p-1">
+                                                      {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
+                                                        <TooltipProvider key={`${item.name}-${index}`}>
+                                                          <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                              <div className="flex flex-col items-center justify-center aspect-square border rounded-md bg-background hover:bg-accent/50 cursor-default p-1 shadow-sm relative overflow-hidden">
+                                                                <Package size={20} className="text-foreground/80 mb-0.5" />
+                                                                <span className="text-[10px] leading-tight truncate w-full text-center text-foreground/90 block">{item.name}</span>
+                                                                {item.quantity > 1 && (
+                                                                  <span
+                                                                    className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                                  >
+                                                                    {item.quantity}
+                                                                  </span>
+                                                                )}
+                                                              </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top" align="center">
+                                                              <p className="font-semibold">{item.name} (x{item.quantity})</p>
+                                                              {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                              {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                              {item.type && <p className="text-xs">Type: {item.type}</p>}
+                                                            </TooltipContent>
+                                                          </Tooltip>
+                                                        </TooltipProvider>
+                                                      ))}
+                                                    </div>
+                                                  </ScrollArea>
+                                                )}
+                                              </CardContent>
+                                            </Card>
+
+                                             {adventureSettings.rpgMode && (
+                                                <>
+                                                    <CardDescription className="text-xs pt-2">
+                                                        <SparklesIcon className="inline h-3 w-3 mr-1" /> Caractéristiques (Force, etc.) à venir.
+                                                    </CardDescription>
+                                                    <CardDescription className="text-xs">
+                                                        <SwordsIcon className="inline h-3 w-3 mr-1" /> Sorts & Compétences à venir.
+                                                    </CardDescription>
+                                                </>
+                                             )}
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
@@ -406,7 +451,159 @@ export function PageStructure({
                 </Button>
             </SidebarFooter>
        </Sidebar>
+       <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés). L'état de combat et les statistiques du joueur seront également réinitialisés.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowRestartConfirm(false)}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={onRestartAdventure}>Recommencer</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }
 
+```></change>
+  <change>
+    <file>/src/types/index.ts</file>
+    <content><![CDATA[
+// src/types/index.ts
+
+export interface Message {
+  id: string; // Unique ID for the message
+  type: 'user' | 'ai' | 'system'; // system for initial setup messages
+  content: string;
+  timestamp: number; // For ordering and potential display
+  sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
+}
+
+export interface StatusEffect {
+  name: string; // ex: "Empoisonné", "Étourdi"
+  description: string; // ex: "Subit 2 dégâts par tour", "Ne peut pas agir"
+  duration: number; // Nombre de tours restants, -1 pour permanent/jusqu'à guérison
+}
+
+export interface CombatAction {
+  actorId: string; // player or character.id
+  actionType: 'attack' | 'spell' | 'skill' | 'defend' | 'flee' | 'dialogue';
+  targetId?: string; // character.id or player
+  description: string; // "Player attacks Goblin with sword"
+  outcome: string; // "Hit for 5 damage", "Missed", "Goblin is stunned"
+  damageDealt?: number;
+  healingDone?: number;
+}
+
+export interface Combatant {
+  characterId: string; // Corresponds to Character.id or 'player'
+  name: string; // Name of the combatant
+  currentHp: number;
+  maxHp: number;
+  currentMp?: number; // Current Mana Points
+  maxMp?: number; // Maximum Mana Points
+  team: 'player' | 'enemy' | 'neutral'; // Team alignment
+  isDefeated: boolean;
+  statusEffects?: StatusEffect[]; // Active status effects
+  // Potentially more combat-specific stats like temporary AC boost, conditions etc.
+}
+
+export interface ActiveCombat {
+  isActive: boolean;
+  combatants: Combatant[];
+  environmentDescription?: string; // e.g., "a dark cave", "a bustling tavern"
+  turnLog?: string[]; // Summary of major events from previous turns
+  playerAttemptedDeescalation?: boolean; // Flag if player tried to talk out of it
+}
+
+
+export interface Character {
+  id: string; // Unique ID for the character
+  name: string;
+  details: string; // Base description, SHOULD be in target language
+  biographyNotes?: string; // Detailed biography or private notes, SHOULD be in target language if user-provided
+
+  // RPG specific fields (optional based on rpgMode)
+  stats?: Record<string, number | string>; // e.g., { HP: 10, STR: 5, Class: 'Warrior' }
+  inventory?: Record<string, number>; // e.g., { Gold: 100, Sword: 1 }
+  history?: string[]; // Log of significant events, actions, or quotes involving the character, SHOULD be in target language
+  opinion?: Record<string, string>; // e.g., { Player: 'Friendly', Rina: 'Suspicious' }, SHOULD be in target language
+  portraitUrl?: string | null; // URL for generated portrait or uploaded Data URI
+  affinity?: number; // Affinity towards the player (0-100)
+  relations?: Record<string, string>; // Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., "Petite amie", "Meilleur ami", "Ennemi juré"), SHOULD be in target language
+
+  // Potential future fields for RPG mode (aligned with D&D concepts)
+  level?: number;
+  experience?: number; // Current EXP towards next level
+  characterClass?: string; // e.g., 'Fighter', 'Wizard', 'Rogue'
+  // D&D style ability scores
+  strength?: number;
+  dexterity?: number;
+  constitution?: number;
+  intelligence?: number;
+  wisdom?: number;
+  charisma?: number;
+  baseHitPoints?: number; // Base HP before CON modifier, etc.
+  hitPoints?: number; // Current HP
+  maxHitPoints?: number; // Maximum HP
+  manaPoints?: number; // Current MP/Mana
+  maxManaPoints?: number; // Maximum MP/Mana
+  armorClass?: number;
+  attackBonus?: number; // General to-hit bonus
+  damageBonus?: string; // e.g. "+2", "1d4+STR" - simplified for LLM for now
+  // Skills/Proficiencies might be a list or record
+  skills?: Record<string, boolean | number>; // e.g., { 'Athletics': true, 'Stealth': 2 }
+  // Spells/Techniques could be lists
+  spells?: string[]; // Known spells
+  techniques?: string[]; // Special combat moves
+  passiveAbilities?: string[]; // Innate abilities
+  
+  isHostile?: boolean; // Indicates if the character is currently hostile towards the player
+  isQuestGiver?: boolean; // Flag for quest-related NPCs
+  
+  _lastSaved?: number; // Timestamp of last global save to help UI distinguish new characters
+}
+
+export interface PlayerInventoryItem {
+  name: string;
+  quantity: number;
+  description?: string;
+  effect?: string;
+  type?: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
+  // iconUrl?: string; // Optional: for custom item icons
+  // iconName?: string; // Optional: for lucide-react icon names
+}
+
+export interface AdventureSettings {
+    world: string;
+    initialSituation: string;
+    rpgMode: boolean;
+    relationsMode?: boolean;
+    currencyName?: string;
+    playerName?: string; 
+    playerClass?: string;
+    playerLevel?: number;
+    playerCurrentHp?: number;
+    playerMaxHp?: number;
+    playerCurrentMp?: number; 
+    playerMaxMp?: number;   
+    playerCurrentExp?: number;
+    playerExpToNextLevel?: number;
+    playerInventory?: PlayerInventoryItem[]; // Player's inventory
+}
+
+export interface SaveData {
+    adventureSettings: AdventureSettings;
+    characters: Character[];
+    narrative: Message[];
+    currentLanguage: string;
+    activeCombat?: ActiveCombat;
+    saveFormatVersion?: number;
+    timestamp?: string;
+}
+
+```
