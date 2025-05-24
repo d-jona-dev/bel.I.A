@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat } from "@/types"; // Added ActiveCombat
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Added CombatUpdatesSchema
@@ -33,6 +33,10 @@ import { CharacterSidebar } from "@/components/character-sidebar";
 import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from '../app/page';
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from '@/ai/flows/suggest-quest-hook'; // Import quest hook types
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Added Avatar for player
+import { Progress } from '@/components/ui/progress'; // Added Progress for player stats
+import { Label } from '@/components/ui/label'; // Added Label for player stats
+import { Card, CardContent, CardDescription } from '@/components/ui/card'; // Added Card for player section
 
 
 interface PageStructureProps {
@@ -40,7 +44,7 @@ interface PageStructureProps {
   characters: Character[];
   stagedAdventureSettings: AdventureFormValues;
   stagedCharacters: Character[];
-  formPropKey: number; 
+  formPropKey: number;
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
@@ -59,17 +63,16 @@ interface PageStructureProps {
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
-  generateAdventureAction: (input: GenerateAdventureInput) => Promise<GenerateAdventureOutput>;
+  generateAdventureAction: (input: GenerateAdventureInput) => Promise<void>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
-  playerName: string;
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
-  suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<SuggestQuestHookOutput>;
+  suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
   isSuggestingQuest: boolean;
 }
 
@@ -103,7 +106,6 @@ export function PageStructure({
   handleRegenerateLastResponse,
   handleUndoLastMessage,
   playerId,
-  playerName,
   onRestartAdventure,
   activeCombat,
   onCombatUpdates,
@@ -284,7 +286,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={formPropKey.toString()} 
+                                    key={formPropKey.toString()}
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />
@@ -292,19 +294,69 @@ export function PageStructure({
                          </AccordionItem>
                      </Accordion>
 
-                      {/* AI Configuration */}
-                     <Accordion type="single" collapsible className="w-full">
-                         <AccordionItem value="ai-config-accordion">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
-                                </div>
-                             </AccordionTrigger>
-                            <AccordionContent className="pt-2 px-0">
-                                <ModelLoader />
-                            </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
+                    {/* Player Character Section (RPG Mode) */}
+                    {adventureSettings.rpgMode && (
+                        <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
+                            <AccordionItem value="player-character-accordion">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <UserCircle className="h-5 w-5" /> Mon Personnage
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2 space-y-3">
+                                    <Card>
+                                        <CardContent className="p-4 space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-16 w-16">
+                                                    {/* TODO: Add player portraitUrl from adventureSettings if available */}
+                                                    <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-semibold">{adventureSettings.playerName || "Héros"}</p>
+                                                    <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <Label htmlFor="player-hp-sidebar" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
+                                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
+                                                </div>
+                                                <Progress id="player-hp-sidebar" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                                            </div>
+
+                                            {(adventureSettings.playerMaxMp ?? 0) > 0 && (
+                                                <div>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <Label htmlFor="player-mp-sidebar" className="text-sm font-medium flex items-center"><Zap className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
+                                                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
+                                                    </div>
+                                                    <Progress id="player-mp-sidebar" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                                                </div>
+                                            )}
+
+                                            <div>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <Label htmlFor="player-exp-sidebar" className="text-sm font-medium flex items-center"><BarChart2Icon className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
+                                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
+                                                </div>
+                                                <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
+                                            </div>
+                                            <CardDescription className="text-xs pt-2">
+                                                <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire (conceptuel, géré par l'IA).
+                                            </CardDescription>
+                                             <CardDescription className="text-xs">
+                                                <SparklesIcon className="inline h-3 w-3 mr-1" /> Caractéristiques (Force, etc.) à venir.
+                                            </CardDescription>
+                                             <CardDescription className="text-xs">
+                                                <SwordsIcon className="inline h-3 w-3 mr-1" /> Sorts & Compétences à venir.
+                                            </CardDescription>
+                                        </CardContent>
+                                    </Card>
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    )}
+
 
                      {/* Characters */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
@@ -329,6 +381,20 @@ export function PageStructure({
                                      currentLanguage={currentLanguage}
                                  />
                              </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
+                      {/* AI Configuration */}
+                     <Accordion type="single" collapsible className="w-full">
+                         <AccordionItem value="ai-config-accordion">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
+                                </div>
+                             </AccordionTrigger>
+                            <AccordionContent className="pt-2 px-0">
+                                <ModelLoader />
+                            </AccordionContent>
                          </AccordionItem>
                      </Accordion>
                  </SidebarContent>
