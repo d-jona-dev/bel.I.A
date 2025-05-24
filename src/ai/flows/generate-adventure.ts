@@ -15,7 +15,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character } from '@/types'; // Import Character type
+import type { Character, PlayerInventoryItem } from '@/types'; // Import Character type
 
 // Define RPG context schema (optional)
 const RpgContextSchema = z.object({
@@ -135,6 +135,7 @@ const InventoryItemSchema = z.object({
     itemName: z.string().describe("Name of the item."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
+export type InventoryItem = z.infer<typeof InventoryItemSchema>;
 
 const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
@@ -142,11 +143,11 @@ const NewCharacterSchema = z.object({
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
-        z.object({ 
-            targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."), 
+        z.object({
+            targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
-    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\"targetName\": \"PLAYER_NAME_EXAMPLE\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
+    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: '[{\"targetName\": \"PLAYER_NAME_EXAMPLE\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]'. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
     isHostile: z.boolean().optional().default(false).describe("Is this new character initially hostile to the player? Relevant if rpgModeActive is true."),
     hitPoints: z.number().optional().describe("Initial HP for the new character if introduced as a combatant in RPG mode."),
     maxHitPoints: z.number().optional().describe("Max HP, same as initial HP for new characters."),
@@ -186,14 +187,18 @@ const CombatOutcomeSchema = z.object({
     newStatusEffects: z.array(StatusEffectSchema).optional().describe("Updated list of status effects for this combatant."),
 });
 
+const LootedItemSchema = z.object({
+    itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', '50 {{../currencyName}}'."),
+    quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
+    description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
+    effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
+    itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).optional().describe("Type of the item."),
+});
+
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    lootDropped: z.array(z.object({
-        itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', '50 {{../currencyName}}'."),
-        quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
-        effectHint: z.string().optional().describe("Brève indication de l'effet si non évident par le nom (ex: 'Restaure PV', 'Arme'). L'IA doit déduire les effets basés sur les tropes RPG si non spécifié.")
-    })).optional().describe("Items looted from defeated enemies. Be creative and appropriate for the enemy type, world setting, and {{../currencyName}}. The AI should determine item effects based on common RPG knowledge and context if 'effectHint' is not provided or is vague."),
+    lootDropped: z.array(LootedItemSchema).optional().describe("Items looted from defeated enemies. Be creative and appropriate for the enemy type, world setting, and {{../currencyName}}. Item descriptions and effects MUST be in {{../currentLanguage}}."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -306,7 +311,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema,
   },
-  prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, character details, history entries, relation descriptions) is **{{currentLanguage}}**.
+  prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, character details, history entries, relation descriptions, item details) is **{{currentLanguage}}**.
 
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Ensure narrative continuity from the 'Current Situation/Recent Narrative'. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 
@@ -384,7 +389,7 @@ Tasks:
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
         *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes"), narrate the action.
             *   If the item has a clear mechanical effect (like healing, damage, or applying a status effect), reflect this in combatUpdates.updatedCombatants for the player or target. For example, if "Potion de Soin" is used, increase player's HP. If "Bombe Fumigène" is used on "gardes", consider applying a 'Blinded' or 'Distracted' status effect to them with a short duration (e.g., 1-2 turns).
-            *   Conceptually, the player uses up one of these items. The AI should remember recently looted items for a short duration if the player attempts to use them. If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
+            *   Conceptually, the player uses up one of these items if it's a consumable. If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
         *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
         *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
         *   **Status Effects Handling for NPCs:**
@@ -396,7 +401,11 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level (e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', 'Sacoche de 15 {{currencyName}}'). List these in combatUpdates.lootDropped. For items, provide an itemName, quantity, and optionally an effectHint (e.g., itemName: "Potion de Soin Mineure", quantity: 1, effectHint: "Restaure un peu de PV.").
+        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level.
+            *   For each item, provide itemName, quantity.
+            *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+            *   Example: [{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}].
+            *   List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
     *   **Regardless of combat, if relationsModeActive is true:**
@@ -405,7 +414,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}, {"itemName": "Quelques {{../currencyName}}", "quantity": 5}]).{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g., [{"itemName": "Dague Rouillée", "quantity": 1}]).{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -422,7 +431,7 @@ Tasks:
     *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' or 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
     *   Populate relationUpdates with:
         *   characterName: The name of the character whose perspective of the relationship is changing.
-        *   targetName: The name of the other character involved (or {{playerName}}).
+        *   targetName: The name of the other character involved (or PLAYER_NAME_EXAMPLE).
         *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
         *   reason: A brief justification for the change.
     *   **Example (Player-NPC):** If Rina's affinity for {{../playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
@@ -484,6 +493,12 @@ const generateAdventureFlow = ai.defineFlow<
             console.log("Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
             output.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
                  console.log(`Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
+            });
+        }
+         if (output.combatUpdates.lootDropped) {
+            output.combatUpdates.lootDropped.forEach(loot => {
+                if (loot.description) console.log(`Loot ${loot.itemName} description language check (should be ${input.currentLanguage}): ${loot.description.substring(0,20)}`);
+                if (loot.effect) console.log(`Loot ${loot.itemName} effect language check (should be ${input.currentLanguage}): ${loot.effect.substring(0,20)}`);
             });
         }
     }

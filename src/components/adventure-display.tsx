@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Image as ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, Undo2, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb } from "lucide-react"; 
+import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -18,11 +18,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, LootedItemSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, StatusEffect } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, StatusEffect } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,16 +32,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTrigger, // Added missing import
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 
 
 interface AdventureDisplayProps {
-    generateAdventureAction: (input: GenerateAdventureInput) => Promise<void>; // Changed return type
+    generateAdventureAction: (input: GenerateAdventureInput) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>; // Changed return type
+    suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
     adventureSettings: AdventureSettings;
     characters: Character[];
     initialMessages: Message[];
@@ -70,15 +70,10 @@ export function AdventureDisplay({
     initialMessages,
     currentLanguage,
     onNarrativeChange,
-    // onNewCharacters, // Not directly used by AdventureDisplay, but by parent through generateAdventureAction
-    // onCharacterHistoryUpdate, // Not directly used by AdventureDisplay
-    // onAffinityUpdates, // Not directly used by AdventureDisplay
-    // onRelationUpdates, // Not directly used by AdventureDisplay
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
-    // onCombatUpdates, // Not directly used by AdventureDisplay
     onRestartAdventure,
     isSuggestingQuest,
 }: AdventureDisplayProps) {
@@ -86,8 +81,6 @@ export function AdventureDisplay({
   const [userAction, setUserAction] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
-  // isRegenerating state is now managed by the parent (Home component)
-  // const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false); 
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration");
   const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
@@ -96,7 +89,7 @@ export function AdventureDisplay({
   const [editContent, setEditContent] = React.useState<string>("");
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
-  const messagesRef = React.useRef(messages); // To get latest messages in async callbacks
+  const messagesRef = React.useRef(messages);
   const { toast } = useToast();
 
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
@@ -110,10 +103,10 @@ export function AdventureDisplay({
 
     React.useEffect(() => {
         setMessages(initialMessages);
-        messagesRef.current = initialMessages; // Update ref when initialMessages change
+        messagesRef.current = initialMessages;
         const latestAiMessage = [...initialMessages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
         setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
-        setImageUrl(null); // Reset image when messages change significantly
+        setImageUrl(null);
 
         if (scrollAreaRef.current) {
           const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
@@ -126,7 +119,7 @@ export function AdventureDisplay({
     }, [initialMessages]);
 
     React.useEffect(() => {
-        messagesRef.current = messages; // Keep ref updated with current messages
+        messagesRef.current = messages;
         const latestAiMessage = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
         setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
     }, [messages]);
@@ -140,28 +133,28 @@ export function AdventureDisplay({
     }, [activeCombat, adventureSettings.rpgMode]);
 
   const handleSendSpecificAction = async (action: string) => {
-    if (!action || isLoading /*|| isRegenerating - parent state */) return;
+    if (!action || isLoading) return;
 
     setIsLoading(true);
     onNarrativeChange(action, 'user');
 
     try {
-        const historyForAIContext = messagesRef.current // Use ref for most up-to-date messages
-            .slice(-5) 
+        const historyForAIContext = messagesRef.current
+            .slice(-5) // Get last 5 messages for context
             .map(msg =>
                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
             ).join('\n\n');
 
         const input: GenerateAdventureInput = {
             world: adventureSettings.world,
-            initialSituation: historyForAIContext,
-            characters: characters, // Use characters prop from parent
+            initialSituation: historyForAIContext, // Use the crafted history
+            characters: characters,
             userAction: action,
             currentLanguage: currentLanguage,
             playerName: adventureSettings.playerName || "Player",
             rpgModeActive: adventureSettings.rpgMode,
             relationsModeActive: adventureSettings.relationsMode ?? true,
-            activeCombat: activeCombat, // Use activeCombat prop from parent
+            activeCombat: activeCombat,
             currencyName: adventureSettings.currencyName,
             playerClass: adventureSettings.playerClass,
             playerLevel: adventureSettings.playerLevel,
@@ -172,13 +165,11 @@ export function AdventureDisplay({
             playerCurrentExp: adventureSettings.playerCurrentExp,
             playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
         };
-        // The generateAdventureAction now handles its own state updates (narrative, characters, etc.)
-        // It's passed from the parent (Home component)
-        await generateAdventureAction(input); 
+        await generateAdventureAction(input);
 
-    } catch (error) { // Error handling is now primarily in the parent
+    } catch (error) {
+        // Error is already handled and toasted in page.tsx's callGenerateAdventure
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
-        // Toast is shown by parent's error handler
     } finally {
         setIsLoading(false);
     }
@@ -187,20 +178,21 @@ export function AdventureDisplay({
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
     if (!currentTextAction) return;
-    setUserAction(""); 
+    setUserAction(""); // Clear textarea immediately
     await handleSendSpecificAction(currentTextAction);
   };
 
 
   const handleRegenerate = async () => {
-    if (isLoading /*|| isRegenerating - parent state */) return;
-    // setIsRegenerating(true); // Parent handles this state
+    if (isLoading) return;
+    // setIsLoading(true); // Consider adding a specific loading state for regeneration
     try {
-        await onRegenerateLastResponse(); // Call parent's handler
+        await onRegenerateLastResponse();
     } catch (error) {
         console.error("Error during regeneration triggered from display:", error);
+        // Toast for regeneration error could be handled here or in onRegenerateLastResponse
     } finally {
-        // setIsRegenerating(false); // Parent handles this state
+        // setIsLoading(false);
     }
   };
 
@@ -208,7 +200,7 @@ export function AdventureDisplay({
   const handleGenerateImage = async () => {
      const descriptionForImage = currentSceneDescription;
 
-     if (isImageLoading || !descriptionForImage || isLoading /*|| isRegenerating - parent state */) {
+     if (isImageLoading || !descriptionForImage || isLoading) {
          if (!descriptionForImage) {
             React.startTransition(() => {
                 toast({
@@ -221,7 +213,7 @@ export function AdventureDisplay({
          return;
      };
      setIsImageLoading(true);
-     setImageUrl(null);
+     setImageUrl(null); // Clear previous image
 
     try {
         const result = await generateSceneImageAction({ sceneDescription: descriptionForImage });
@@ -237,7 +229,7 @@ export function AdventureDisplay({
         React.startTransition(() => {
             toast({
                 title: "Erreur de Génération d'Image",
-                description: `Impossible de générer l'image de la scène: ${error instanceof Error ? error.message : 'Unknown error'}.`,
+                description: `Impossible de générer l'image de la scène: ${error instanceof Error ? error.message : String(error)}.`,
                 variant: "destructive",
             });
         });
@@ -262,8 +254,8 @@ export function AdventureDisplay({
 
     const handleSaveChanges = () => {
         if (editingMessage && editContent.trim()) {
-            onEditMessage(editingMessage.id, editContent.trim()); // Call parent's handler
-            setEditingMessage(null);
+            onEditMessage(editingMessage.id, editContent.trim());
+            setEditingMessage(null); // Close dialog
         }
     };
 
@@ -274,7 +266,8 @@ export function AdventureDisplay({
     }
   };
 
-  const canUndo = messages.length > 1; // Parent will manage actual narrative state for undo
+  const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
+  const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
   const playerCombatant = activeCombat?.combatants.find(c => c.characterId === 'player');
 
   return (
@@ -292,7 +285,7 @@ export function AdventureDisplay({
                 <CardContent className="flex-1 overflow-hidden p-0">
                     <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
                         <div className="space-y-4">
-                            {messages.map((message, index) => { // Use messages prop
+                            {messages.map((message, index) => {
                                 const isLastMessage = index === messages.length - 1;
                                 const isLastAiMessage = isLastMessage && message.type === 'ai';
                                 const isFirstMessage = index === 0;
@@ -300,13 +293,13 @@ export function AdventureDisplay({
                                 return (
                                     <div key={message.id} className="group relative flex flex-col">
                                         <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
-                                        {message.type === 'ai' && ( 
+                                        {message.type === 'ai' && (
                                             <Avatar className="h-8 w-8 border">
                                                 <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                             </Avatar>
                                         )}
                                         <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
-                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full') 
+                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
                                             }`}>
                                                 {message.content}
 
@@ -359,8 +352,7 @@ export function AdventureDisplay({
                                                             <TooltipProvider>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading /*|| isRegenerating - parent state */}>
-                                                                            {/* isRegenerating state now from parent */}
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading}>
                                                                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                                         </Button>
                                                                     </TooltipTrigger>
@@ -380,7 +372,7 @@ export function AdventureDisplay({
                                     </div>
                                 );
                             })}
-                            {isLoading && /* !isRegenerating - parent state */ (
+                            {isLoading && (
                                 <div className="flex items-center justify-start gap-3">
                                      <Avatar className="h-8 w-8 border">
                                          <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
@@ -390,7 +382,6 @@ export function AdventureDisplay({
                                     </span>
                                 </div>
                             )}
-                             {/* Removed isRegenerating display as it's managed by parent */}
                         </div>
                     </ScrollArea>
                 </CardContent>
@@ -400,7 +391,7 @@ export function AdventureDisplay({
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button variant="destructive" size="sm" onClick={() => handleSendSpecificAction("Attaquer avec mon arme principale")} disabled={isLoading /*|| isRegenerating*/}>
+                                      <Button variant="destructive" size="sm" onClick={() => handleSendSpecificAction("Attaquer avec mon arme principale")} disabled={isLoading}>
                                         <Swords className="h-4 w-4 mr-1"/>Attaquer
                                       </Button>
                                     </TooltipTrigger>
@@ -408,7 +399,7 @@ export function AdventureDisplay({
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button variant="secondary" size="sm" onClick={() => handleSendSpecificAction("Prendre une posture défensive")} disabled={isLoading /*|| isRegenerating*/}>
+                                      <Button variant="secondary" size="sm" onClick={() => handleSendSpecificAction("Prendre une posture défensive")} disabled={isLoading}>
                                         <Shield className="h-4 w-4 mr-1"/>Défendre
                                       </Button>
                                     </TooltipTrigger>
@@ -420,7 +411,7 @@ export function AdventureDisplay({
                                         <Tooltip>
                                         <TooltipTrigger asChild>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="secondary" size="sm" disabled={isLoading /*|| isRegenerating*/ || (playerSpells.length === 0 && playerSkills.length === 0 && genericSkills.length === 0)}>
+                                                <Button variant="secondary" size="sm" disabled={isLoading || (playerSpells.length === 0 && playerSkills.length === 0 && genericSkills.length === 0)}>
                                                     <Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -467,22 +458,35 @@ export function AdventureDisplay({
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="secondary" size="sm" disabled={isLoading /*|| isRegenerating*/}>
-                                                        <ScrollText className="h-4 w-4 mr-1"/>Objet
+                                                    <Button variant="secondary" size="sm" disabled={isLoading || playerInventoryItems.length === 0}>
+                                                        <Briefcase className="h-4 w-4 mr-1"/>Objet
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                             </TooltipTrigger>
-                                            <TooltipContent>Utiliser un objet de l'inventaire (décrire l'objet).</TooltipContent>
+                                            <TooltipContent>Utiliser un objet de l'inventaire.</TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                     <DropdownMenuContent>
-                                        {/* TODO: Populate this dynamically based on player's (conceptual) inventory */}
-                                        <DropdownMenuItem onSelect={() => handleSendSpecificAction("Utiliser Potion de Soins")}>
-                                        Potion de Soins
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleSendSpecificAction("Utiliser Parchemin de Feu")}>
-                                        Parchemin de Feu
-                                        </DropdownMenuItem>
+                                        {playerInventoryItems.length > 0 ? (
+                                            playerInventoryItems.map(item => (
+                                                <TooltipProvider key={item.name}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <DropdownMenuItem onSelect={() => handleSendSpecificAction(`J'utilise ${item.name}`)}>
+                                                                {item.name} (x{item.quantity})
+                                                            </DropdownMenuItem>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right" align="start">
+                                                            <p className="font-semibold">{item.name}</p>
+                                                            {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                            {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ))
+                                        ) : (
+                                            <DropdownMenuItem disabled>Inventaire vide</DropdownMenuItem>
+                                        )}
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onSelect={() => setUserAction("Utiliser un objet : ")}>
                                             Autre... (Décrire)
@@ -497,8 +501,8 @@ export function AdventureDisplay({
                          <TooltipProvider>
                              <Tooltip>
                                  <TooltipTrigger asChild>
-                                     <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading /*|| isRegenerating*/ || !canUndo}>
-                                         <Undo2 className="h-5 w-5" />
+                                     <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || !canUndo}>
+                                         <Trash className="h-5 w-5" /> {/* Changed icon to Trash for Undo */}
                                      </Button>
                                  </TooltipTrigger>
                                  <TooltipContent>Annuler la dernière action/réponse</TooltipContent>
@@ -509,7 +513,7 @@ export function AdventureDisplay({
                                   <TooltipTrigger asChild>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button type="button" variant="outline" size="icon" disabled={isLoading /*|| isRegenerating*/}>
+                                            <Button type="button" variant="outline" size="icon" disabled={isLoading}>
                                                 <RotateCcw className="h-5 w-5" />
                                             </Button>
                                         </AlertDialogTrigger>
@@ -533,11 +537,11 @@ export function AdventureDisplay({
                           <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={suggestQuestHookAction as () => void} // Cast to () => void to match expected type
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={suggestQuestHookAction as () => void}
                                         disabled={isLoading || isSuggestingQuest}
                                     >
                                         {isSuggestingQuest ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lightbulb className="h-5 w-5" />}
@@ -554,13 +558,13 @@ export function AdventureDisplay({
                             onKeyPress={handleKeyPress}
                             rows={1}
                             className="min-h-[40px] max-h-[150px] resize-y flex-1"
-                            disabled={isLoading /*|| isRegenerating*/}
+                            disabled={isLoading}
                         />
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading /*|| isRegenerating*/ || !userAction.trim()}>
-                                        {isLoading /*|| isRegenerating*/ ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim()}>
+                                        {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Envoyer</TooltipContent>
@@ -600,7 +604,7 @@ export function AdventureDisplay({
                         <TooltipProvider>
                             <Tooltip>
                                  <TooltipTrigger asChild>
-                                    <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading /*|| isRegenerating*/ || !currentSceneDescription}>
+                                    <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
                                         <Wand2 className="mr-2 h-4 w-4" />
                                         Générer Image Scène
                                     </Button>
