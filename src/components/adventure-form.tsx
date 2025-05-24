@@ -37,7 +37,7 @@ const adventureFormSchema = z.object({
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0, "Au moins un personnage secondaire est recommandé"),
   enableRpgMode: z.boolean().default(false).optional(),
-  enableRelationsMode: z.boolean().default(true).optional(), 
+  enableRelationsMode: z.boolean().default(true).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé)."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
@@ -48,7 +48,7 @@ const adventureFormSchema = z.object({
 });
 
 interface AdventureFormProps {
-    formPropKey: number; // Changed from propKey to formPropKey for clarity
+    formPropKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
 }
@@ -58,20 +58,12 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
-    // The form will re-initialize with new defaultValues when the component's key (formPropKey) changes.
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "characters",
   });
-  
-  // The useEffect that called form.reset(initialValues) based on initialValues changing has been removed.
-  // It was causing an infinite loop because initialValues were updated by the form.watch callback,
-  // leading to continuous form resets and watch triggers.
-  // The form's re-initialization with new "base" data (e.g., after loading a save)
-  // is now solely handled by the `formPropKey` prop changing, which causes this component to re-mount
-  // and `useForm` to re-initialize with the new `initialValues`.
 
   React.useEffect(() => {
     const subscription = form.watch((value ) => {
@@ -81,6 +73,12 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       subscription.unsubscribe();
     };
   }, [form, onSettingsChange]);
+
+  // This effect listens for changes in `initialValues` (which happens when `formPropKey` changes)
+  // and resets the form with the new `initialValues`.
+  React.useEffect(() => {
+    form.reset(initialValues);
+  }, [formPropKey, initialValues, form]);
 
 
   const handleLoadPrompt = () => {
@@ -92,7 +90,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         enableRpgMode: true,
-        enableRelationsMode: true, 
+        enableRelationsMode: true,
         playerName: "Héros",
         currencyName: "Or",
         playerClass: "Étudiant Combattant",
@@ -101,8 +99,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerMaxMp: 10,
         playerExpToNextLevel: 100,
     };
-    onSettingsChange(loadedData); // Update staged settings in parent
-    form.reset(loadedData); // Reset the form directly with new values
+    onSettingsChange(loadedData); 
+    form.reset(loadedData);
     
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
@@ -310,7 +308,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
               )}
             />
 
-             <Accordion type="single" collapsible className="w-full border-t pt-4">
+             <Accordion type="single" collapsible className="w-full border-t pt-4" defaultValue="character-definitions">
                <AccordionItem value="character-definitions">
                 <AccordionTrigger>Définir les Personnages Initiaux</AccordionTrigger>
                 <AccordionContent>
@@ -319,7 +317,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     {fields.map((item, index) => (
                     <Card key={item.id} className="relative pt-6 bg-muted/30 border">
                          <Button
-                            type="button" 
+                            type="button"
                             variant="ghost"
                             size="icon"
                             className="absolute top-1 right-1 h-6 w-6"
@@ -363,7 +361,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     </Card>
                   ))}
                    <Button
-                      type="button" 
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => append({ name: "", details: "" })}
@@ -386,4 +384,3 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     </Form>
   );
 }
-
