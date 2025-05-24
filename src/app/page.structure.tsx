@@ -300,7 +300,7 @@ export function PageStructure({
                             <AccordionItem value="player-character-accordion">
                                 <AccordionTrigger>
                                     <div className="flex items-center gap-2">
-                                        <UserCircle className="h-5 w-5" /> Mon Personnage
+                                        <UserCircle className="h-5 w-5" /> {adventureSettings.playerName || "Mon Personnage"}
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 space-y-3">
