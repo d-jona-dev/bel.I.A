@@ -1,4 +1,5 @@
 // src/types/index.ts
+import type { LootedItemSchema } from "@/ai/flows/generate-adventure"; // Import LootedItemSchema
 
 export interface Message {
   id: string; // Unique ID for the message
@@ -6,6 +7,8 @@ export interface Message {
   content: string;
   timestamp: number; // For ordering and potential display
   sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
+  loot?: LootedItemSchema[]; // Optional: Loot items associated with this AI message
+  lootTaken?: boolean; // Optional: Flag to indicate if the loot has been processed
 }
 
 export interface StatusEffect {
@@ -130,5 +133,3 @@ export interface SaveData {
     saveFormatVersion?: number;
     timestamp?: string;
 }
-
-```

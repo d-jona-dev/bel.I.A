@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem } from "@/types";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, LootedItemSchema, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Ensure LootedItemSchema is imported
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -50,7 +50,7 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string) => void;
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItemSchema[]) => void; // Added lootItems
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -69,7 +69,7 @@ interface PageStructureProps {
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
-  playerName: string; // Explicitly pass playerName
+  playerName: string; 
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
@@ -77,6 +77,8 @@ interface PageStructureProps {
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
   setShowRestartConfirm: (open: boolean) => void;
+  handleTakeLoot: (messageId: string, itemsToTake: LootedItemSchema[]) => void; // Added
+  handleDiscardLoot: (messageId: string) => void; // Added
 }
 
 export function PageStructure({
@@ -109,7 +111,7 @@ export function PageStructure({
   handleRegenerateLastResponse,
   handleUndoLastMessage,
   playerId,
-  playerName, // Receive playerName
+  playerName, 
   onRestartAdventure,
   activeCombat,
   onCombatUpdates,
@@ -117,6 +119,8 @@ export function PageStructure({
   isSuggestingQuest,
   showRestartConfirm,
   setShowRestartConfirm,
+  handleTakeLoot, // Added
+  handleDiscardLoot, // Added
 }: PageStructureProps) {
   return (
     <>
@@ -271,6 +275,8 @@ export function PageStructure({
                 onRestartAdventure={() => setShowRestartConfirm(true)}
                 suggestQuestHookAction={suggestQuestHookAction}
                 isSuggestingQuest={isSuggestingQuest}
+                handleTakeLoot={handleTakeLoot} // Pass down
+                handleDiscardLoot={handleDiscardLoot} // Pass down
              />
         </main>
       </SidebarInset>
@@ -292,7 +298,7 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
-                                    key={formPropKey.toString()}
+                                    formPropKey={formPropKey}
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                 />

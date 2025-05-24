@@ -3,11 +3,11 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, StatusEffect } from "@/types"; 
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, StatusEffect, PlayerInventoryItem } from "@/types"; 
 import { PageStructure } from "./page.structure"; 
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, LootedItemSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -32,52 +32,65 @@ const PLAYER_ID = "player";
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
-export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp'> & {
+// Base type for form values matches AdventureSettings more closely for RPG fields
+export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp' | 'playerInventory'> & {
   characters: FormCharacterDefinition[];
 };
 
 
 export default function Home() {
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
-    world: "Grande université populaire nommée \"hight scoole of futur\".",
-    initialSituation: "Vous marchez dans les couloirs animés de Hight School of Future lorsque vous apercevez Rina, votre petite amie, en pleine conversation avec Kentaro, votre meilleur ami. Ils semblent étrangement proches, riant doucement. Un sentiment de malaise vous envahit.",
+    world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
+    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Ancienne Elara, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true, 
     relationsMode: true,
-    playerName: "Player",
+    playerName: "Héros",
     currencyName: "Pièces d'Or",
-    playerClass: "Étudiant",
+    playerClass: "Guerrier",
     playerLevel: 1,
-    playerMaxHp: 20,
-    playerCurrentHp: 20,
-    playerMaxMp: 10, 
-    playerCurrentMp: 10,
+    playerMaxHp: 30,
+    playerCurrentHp: 30,
+    playerMaxMp: 0, 
+    playerCurrentMp: 0,
     playerExpToNextLevel: 100,
     playerCurrentExp: 0,
+    playerInventory: [{name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable"}],
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
-        id: 'rina-1',
-        name: "Rina",
-        details: "jeune femme de 19 ans, votre petite amie. Elle se rapproche de Kentaro. Étudiante populaire, calme, aimante, parfois secrète. 165 cm, yeux marron, cheveux mi-longs bruns, traits fins, athlétique.",
-        biographyNotes: "Rina semble troublée par les récentes attentions de Kentaro mais n'ose pas en parler.",
-        history: ["Ceci est un exemple d'historique pour Rina."],
+        id: 'elara-1',
+        name: "Ancienne Elara",
+        details: "Vieille femme sage et respectée de Bourgenval. Elle porte le fardeau des espoirs de son village. Environ 70 ans, cheveux gris tressés, yeux perçants et bienveillants.",
+        biographyNotes: "Elara a vu des générations grandir et tomber. Elle est déterminée à protéger Bourgenval, quitte à faire confiance à des étrangers.",
+        history: ["A demandé de l'aide au joueur pour les gobelins."],
         opinion: {},
-        affinity: 70,
-        relations: { [PLAYER_ID]: "Petite amie", 'kentaro-1': "Ami Proche" },
-        hitPoints: 15, maxHitPoints: 15, manaPoints: 5, maxManaPoints: 5, armorClass: 10, attackBonus: 1, damageBonus: "1d4", characterClass: "Étudiante Artiste", level: 1, isHostile: false,
-        inventory: {"Manuel Scolaire": 1, "Stylo": 3}
+        affinity: 60,
+        relations: { [PLAYER_ID]: "Espoir du village" },
+        hitPoints: 10, maxHitPoints: 10, characterClass: "Sage", level: 1, isHostile: false,
       },
       {
-        id: 'kentaro-1',
-        name: "Kentaro",
-        details: "Jeune homme de 20 ans, votre meilleur ami. Étudiant populaire, charmant mais calculateur et impulsif. 185 cm, athlétique, yeux bleus, cheveux courts blonds. Aime draguer et voir son meilleur ami souffrir. Se rapproche de Rina.",
-        biographyNotes: "Kentaro est secrètement jaloux de votre relation avec Rina et cherche à semer la zizanie.",
-        history: ["Kentaro a été vu parlant à Rina."],
+        id: 'frak-1',
+        name: "Frak, Chef Gobelin",
+        details: "Un gobelin particulièrement grand et méchant, avec une cicatrice en travers du museau et armé d'une hache rouillée. Il dirige la tribu de la Grotte Grinçante.",
+        biographyNotes: "Frak est devenu plus agressif récemment, poussé par une force mystérieuse ou un besoin désespéré.",
+        history: ["Dirige les raids contre Bourgenval."],
         opinion: {},
-        affinity: 30,
-        relations: { [PLAYER_ID]: "Meilleur ami (tendancieux)", 'rina-1': "Intérêt romantique" },
-        hitPoints: 20, maxHitPoints: 20, manaPoints: 0, maxManaPoints: 0, armorClass: 12, attackBonus: 2, damageBonus: "1d6", characterClass: "Sportif Populaire", level: 1, isHostile: false,
-        inventory: {"Téléphone Moderne": 1, "Clés de Moto": 1}
+        affinity: 5,
+        relations: { [PLAYER_ID]: "Intrus à tuer" },
+        hitPoints: 25, maxHitPoints: 25, characterClass: "Chef Gobelin", level: 2, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1", isHostile: true,
+        inventory: {"Hache Rouillée": 1, "Quelques Pièces de Cuivre": 12}
+      },
+      {
+        id: 'snirf-1',
+        name: "Snirf, Gobelin Fureteur",
+        details: "Un petit gobelin agile et sournois, armé d'une courte dague. Sert d'éclaireur pour sa tribu.",
+        biographyNotes: "Snirf est plus couard que méchant, mais loyal à Frak par peur.",
+        history: ["A été aperçu rôdant près de Bourgenval."],
+        opinion: {},
+        affinity: 10,
+        relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
+        hitPoints: 8, maxHitPoints: 8, characterClass: "Fureteur Gobelin", level: 1, armorClass: 12, attackBonus: 2, damageBonus: "1d4", isHostile: true,
+        inventory: {"Dague Courte": 1, "Cailloux pointus": 5}
       }
   ]);
 
@@ -103,7 +116,6 @@ export default function Home() {
 
   const { toast } = useToast();
 
-  // Effect to reset live and staged states when base settings/characters change (e.g., after loading a game)
   React.useEffect(() => {
     const currentBaseAdventureSettings = baseAdventureSettings; 
     const currentBaseCharacters = baseCharacters; 
@@ -114,6 +126,7 @@ export default function Home() {
         playerCurrentHp: initialSettings.rpgMode ? initialSettings.playerMaxHp : undefined,
         playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
         playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
+        playerInventory: initialSettings.playerInventory || [],
     };
     const newLiveCharacters = JSON.parse(JSON.stringify(currentBaseCharacters));
     const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: currentBaseAdventureSettings.initialSituation, timestamp: Date.now() }];
@@ -125,11 +138,10 @@ export default function Home() {
 
     setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
     setStagedCharacters(JSON.parse(JSON.stringify(newLiveCharacters)));
-    setFormPropKey(prev => prev + 1); // Force AdventureForm re-initialization
+    setFormPropKey(prev => prev + 1); 
 
   }, [baseAdventureSettings, baseCharacters]); 
 
-  // Effect to sync live game state (adventureSettings, characters) to staged versions
   React.useEffect(() => {
     setStagedAdventureSettings(prevStaged => {
         const newLiveSettingsCopy = JSON.parse(JSON.stringify(adventureSettings));
@@ -148,11 +160,10 @@ export default function Home() {
   }, [adventureSettings, characters]);
 
 
-  // Callback for AdventureForm when its values change (user input)
   const handleSettingsUpdate = React.useCallback((newSettingsFromForm: AdventureFormValues) => {
     setStagedAdventureSettings(prevStagedSettings => {
-        const newStagedSettings = {
-            ...prevStagedSettings,
+        const newSettingsCandidate = {
+            ...prevStagedSettings, // Keep playerCurrentHp, playerCurrentMp, playerCurrentExp, playerInventory from existing live/staged state
             world: newSettingsFromForm.world,
             initialSituation: newSettingsFromForm.initialSituation,
             rpgMode: newSettingsFromForm.enableRpgMode ?? false,
@@ -164,9 +175,14 @@ export default function Home() {
             playerMaxHp: newSettingsFromForm.playerMaxHp,
             playerMaxMp: newSettingsFromForm.playerMaxMp,
             playerExpToNextLevel: newSettingsFromForm.playerExpToNextLevel,
+             // Keep current player stats if they exist
+            playerCurrentHp: prevStagedSettings.playerCurrentHp,
+            playerCurrentMp: prevStagedSettings.playerCurrentMp,
+            playerCurrentExp: prevStagedSettings.playerCurrentExp,
+            playerInventory: prevStagedSettings.playerInventory,
         };
-        if (JSON.stringify(prevStagedSettings) !== JSON.stringify(newStagedSettings)) {
-            return newStagedSettings;
+        if (JSON.stringify(prevStagedSettings) !== JSON.stringify(newSettingsCandidate)) {
+            return newSettingsCandidate;
         }
         return prevStagedSettings;
     });
@@ -247,25 +263,30 @@ export default function Home() {
     });
   }, [currentLanguage]); 
 
-  // Callback to apply staged changes to live game state
   const handleApplyStagedChanges = React.useCallback(() => {
     setAdventureSettings(prevLiveSettings => {
         let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
         if (stagedAdventureSettings.initialSituation === prevLiveSettings.initialSituation) {
+            // If initial situation hasn't changed, preserve current player HP/MP/EXP/Inventory
             newLiveSettings.playerCurrentHp = prevLiveSettings.playerCurrentHp;
             newLiveSettings.playerCurrentMp = prevLiveSettings.playerCurrentMp;
             newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp;
-            newLiveSettings.playerLevel = prevLiveSettings.playerLevel; 
+            newLiveSettings.playerInventory = prevLiveSettings.playerInventory;
+            newLiveSettings.playerLevel = prevLiveSettings.playerLevel; // Ensure level is also preserved if initial situation is same
         } else {
+            // If initial situation changed, reset narrative and combat
             setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
             setActiveCombat(undefined); 
+            // And reset player HP/MP/EXP to max/initial values
             if(stagedAdventureSettings.rpgMode) { 
                 newLiveSettings.playerCurrentHp = stagedAdventureSettings.playerMaxHp;
                 newLiveSettings.playerCurrentMp = stagedAdventureSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
-                newLiveSettings.playerLevel = stagedAdventureSettings.playerLevel || 1; 
+                newLiveSettings.playerInventory = stagedAdventureSettings.playerInventory || []; // Use staged inventory or default to empty
+                newLiveSettings.playerLevel = stagedAdventureSettings.playerLevel || 1; // Reset level to form value
             }
         }
+        // Ensure playerCurrentHp/Mp are not greater than maxHp/Mp
         if (stagedAdventureSettings.rpgMode) {
              newLiveSettings.playerCurrentHp = Math.min(newLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp, newLiveSettings.playerMaxHp);
              newLiveSettings.playerCurrentMp = Math.min(newLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp, newLiveSettings.playerMaxMp);
@@ -273,7 +294,7 @@ export default function Home() {
         return newLiveSettings;
     });
     setCharacters(JSON.parse(JSON.stringify(stagedCharacters))); 
-    setFormPropKey(prev => prev + 1); 
+    setFormPropKey(prev => prev + 1); // Force AdventureForm re-initialization with new live values as base
 
     React.startTransition(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
@@ -281,13 +302,15 @@ export default function Home() {
   }, [stagedAdventureSettings, stagedCharacters, toast, setNarrativeMessages, setActiveCombat]);
 
 
-   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string) => {
+   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItemSchema[]) => {
        const newMessage: Message = {
             id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`, 
             type: type,
             content: content,
             timestamp: Date.now(),
             sceneDescription: type === 'ai' ? sceneDesc : undefined, 
+            loot: type === 'ai' ? lootItems : undefined,
+            lootTaken: false, // Initialize lootTaken to false
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []); 
@@ -349,20 +372,9 @@ export default function Home() {
                     toastsToShow.push({ title: "Niveau Supérieur!", description: `Vous avez atteint le niveau ${newSettings.playerLevel}! Vos PV et PM max ont augmenté.`, variant: "default" });
                 }
             }
-             if (combatUpdates.lootDropped && combatUpdates.lootDropped.length > 0) {
-                const lootLines = combatUpdates.lootDropped.map(l => {
-                    let line = `${l.itemName} (x${l.quantity})`;
-                    if (l.effectHint) {
-                        line += ` - ${l.effectHint}`;
-                    }
-                    return line;
-                });
-                toastsToShow.push({ 
-                    title: "Butin Récupéré!", 
-                    description: `Vous avez trouvé:\n${lootLines.join('\n')}. (Inventaire conceptuel mis à jour)`, 
-                    duration: 7000 
-                });
-            }
+            // Loot is now handled by handleNarrativeUpdate by associating it with the AI message
+            // So, no direct inventory update here from combatUpdates.lootDropped.
+            // The narrative message from the AI will contain the loot, and the user will interact with that.
             return newSettings;
         });
 
@@ -380,6 +392,49 @@ export default function Home() {
         }
 
     }, [toast, adventureSettings.rpgMode]); 
+
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: LootedItemSchema[]) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            itemsToTake.forEach(item => {
+                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName);
+                if (existingItemIndex > -1) {
+                    newInventory[existingItemIndex].quantity += item.quantity;
+                } else {
+                    newInventory.push({
+                        name: item.itemName,
+                        quantity: item.quantity,
+                        description: item.description,
+                        effect: item.effect,
+                        type: item.itemType,
+                    });
+                }
+            });
+            return { ...prevSettings, playerInventory: newInventory };
+        });
+
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
+        React.startTransition(() => {
+          toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });
+        });
+    }, [toast]);
+
+    const handleDiscardLoot = React.useCallback((messageId: string) => {
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
+        React.startTransition(() => {
+          toast({ title: "Objets Laissés", description: "Vous avez décidé de ne pas prendre ces objets." });
+        });
+    }, [toast]);
 
 
    const handleNewCharacters = React.useCallback((newChars: Array<NewCharacterSchema>) => {
@@ -740,6 +795,8 @@ export default function Home() {
                      content: result.narrative,
                      timestamp: Date.now(),
                      sceneDescription: result.sceneDescriptionForImage,
+                     loot: result.combatUpdates?.lootDropped, // Ensure loot is passed here
+                     lootTaken: false,
                  };
                  if (lastAiIndex !== -1) {
                      newNarrative.splice(lastAiIndex, 1, newAiMessage); 
@@ -771,7 +828,7 @@ export default function Home() {
          } finally {
              setIsRegenerating(false);
          }
-     }, [isRegenerating, narrativeMessages, adventureSettings, characters, currentLanguage, toast, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI, activeCombat, handleCombatUpdates]);
+     }, [isRegenerating, narrativeMessages, adventureSettings, characters, currentLanguage, toast, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI, activeCombat, handleCombatUpdates, handleNarrativeUpdate]);
 
 
    const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -1007,6 +1064,7 @@ export default function Home() {
                     playerCurrentHp: loadedData.adventureSettings.rpgMode ? (loadedData.adventureSettings.playerCurrentHp ?? loadedData.adventureSettings.playerMaxHp) : undefined,
                     playerCurrentMp: loadedData.adventureSettings.rpgMode ? (loadedData.adventureSettings.playerCurrentMp ?? loadedData.adventureSettings.playerMaxMp) : undefined,
                     playerCurrentExp: loadedData.adventureSettings.rpgMode ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
+                    playerInventory: loadedData.adventureSettings.playerInventory || [], // Load player inventory
                 };
 
                 setBaseAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
@@ -1032,6 +1090,7 @@ export default function Home() {
             playerCurrentHp: initialSettings.rpgMode ? initialSettings.playerMaxHp : undefined,
             playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
             playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
+            playerInventory: initialSettings.playerInventory || [], // Reset inventory from base
         };
         const newLiveCharacters = JSON.parse(JSON.stringify(baseCharacters)); 
         const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }];
@@ -1076,7 +1135,7 @@ export default function Home() {
         try {
             const result = await generateAdventure(input); 
             
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage);
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.combatUpdates?.lootDropped);
             
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
@@ -1174,6 +1233,10 @@ export default function Home() {
         onCombatUpdates={handleCombatUpdates} 
         suggestQuestHookAction={callSuggestQuestHook} 
         isSuggestingQuest={isSuggestingQuest}
+        showRestartConfirm={showRestartConfirm}
+        setShowRestartConfirm={setShowRestartConfirm}
+        handleTakeLoot={handleTakeLoot}
+        handleDiscardLoot={handleDiscardLoot}
       />
        <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
             <AlertDialogContent>
@@ -1192,4 +1255,3 @@ export default function Home() {
       </>
   );
 }
-
