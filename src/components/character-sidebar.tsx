@@ -208,11 +208,12 @@ export function CharacterSidebar({
   const availableGlobalChars = React.useMemo(() => {
     if (!isClient) return [];
     return globalCharactersList.filter(
-        gc => !characters.some(sc => sc.name.toLowerCase() === gc.name.toLowerCase() || sc.id === gc.id)
+        gc => !characters.some(sc => sc.id === gc.id) 
     );
   }, [globalCharactersList, characters, isClient]);
 
   const handleAddGlobalCharToAdventure = (charId: string) => {
+    if (!charId) return; // Do nothing if no character is selected
     const charToAdd = globalCharactersList.find(gc => gc.id === charId);
     if (charToAdd) {
         onAddStagedCharacter(charToAdd);
@@ -394,7 +395,7 @@ export function CharacterSidebar({
 
   return (
     <div className="w-full">
-        {isClient && availableGlobalChars.length > 0 && (
+        {isClient && (
             <Card className="mb-4 border-dashed">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
@@ -403,20 +404,25 @@ export function CharacterSidebar({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Select onValueChange={handleAddGlobalCharToAdventure} disabled={availableGlobalChars.length === 0}>
-                        <SelectTrigger>
-                            <SelectValue placeholder={currentLanguage === 'fr' ? 'Sélectionner un personnage...' : 'Select a character...'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableGlobalChars.map(gc => (
-                                <SelectItem key={gc.id} value={gc.id}>
-                                    {gc.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {availableGlobalChars.length === 0 && (
-                         <p className="text-xs text-muted-foreground mt-2">
+                    {globalCharactersList.length === 0 ? (
+                         <p className="text-sm text-muted-foreground mt-1">
+                           {currentLanguage === 'fr' ? 'Aucun personnage global sauvegardé pour l\'instant.' : 'No global characters saved yet.'}
+                         </p>
+                    ) : availableGlobalChars.length > 0 ? (
+                        <Select onValueChange={handleAddGlobalCharToAdventure}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={currentLanguage === 'fr' ? 'Sélectionner pour ajouter...' : 'Select to add...'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableGlobalChars.map(gc => (
+                                    <SelectItem key={gc.id} value={gc.id}>
+                                        {gc.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                         <p className="text-sm text-muted-foreground mt-1">
                            {currentLanguage === 'fr' ? 'Tous les personnages sauvegardés sont déjà dans cette aventure.' : 'All saved characters are already in this adventure.'}
                          </p>
                     )}
@@ -434,7 +440,7 @@ export function CharacterSidebar({
                         try {
                             const globalCharsStr = localStorage.getItem('globalCharacters');
                             const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
-                            isPotentiallyNew = !globalChars.some(gc => gc.id === char.id || gc.name.toLowerCase() === char.name.toLowerCase()) && !(char as any)._lastSaved;
+                            isPotentiallyNew = !globalChars.some(gc => gc.id === char.id) && !(char as any)._lastSaved;
                         } catch (e) {
                             console.error("Error accessing localStorage:", e);
                         }
@@ -629,3 +635,6 @@ export function CharacterSidebar({
     </div>
   );
 }
+
+
+    
