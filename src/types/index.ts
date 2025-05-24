@@ -1,5 +1,16 @@
 // src/types/index.ts
-import type { LootedItemSchema } from "@/ai/flows/generate-adventure"; // Import LootedItemSchema
+import { z } from 'genkit'; // Import z from genkit
+
+// Déplacé depuis generate-adventure.ts pour éviter les problèmes avec 'use server'
+export const LootedItemSchema = z.object({
+  itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée', 'Parchemin de Feu Faible', '50 {{../currencyName}}'."),
+  quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
+  description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
+  effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
+  itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).optional().describe("Type of the item."),
+});
+export type LootedItem = z.infer<typeof LootedItemSchema>;
+
 
 export interface Message {
   id: string; // Unique ID for the message
@@ -7,7 +18,7 @@ export interface Message {
   content: string;
   timestamp: number; // For ordering and potential display
   sceneDescription?: string; // Optional: Description of the scene for image generation (added by AI message)
-  loot?: LootedItemSchema[]; // Optional: Loot items associated with this AI message
+  loot?: LootedItem[]; // Utilise le type LootedItem importé
   lootTaken?: boolean; // Optional: Flag to indicate if the loot has been processed
 }
 
