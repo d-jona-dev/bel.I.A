@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem } from "@/types";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -31,7 +31,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { AdventureFormValues } from '../app/page';
+import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
+import { CharacterSidebar } from '@/components/character-sidebar';
+import { ModelLoader } from '@/components/model-loader';
+import { AdventureDisplay } from '@/components/adventure-display';
+import { LanguageSelector } from '@/components/language-selector'; // Added this import
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -74,7 +78,7 @@ interface PageStructureProps {
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
-  suggestQuestHookAction: () => Promise<void>; 
+  suggestQuestHookAction: () => Promise<void>;
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
   setShowRestartConfirm: (open: boolean) => void;
@@ -274,8 +278,9 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                adventureSettings={adventureSettings}
-                characters={characters}
+                suggestQuestHookAction={suggestQuestHookAction as any} // Cast to any if type mismatch is complex
+                adventureSettings={adventureSettings} // Use applied settings
+                characters={characters} // Use applied characters
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
@@ -288,8 +293,7 @@ export function PageStructure({
                 onUndoLastMessage={handleUndoLastMessage}
                 activeCombat={activeCombat}
                 onCombatUpdates={onCombatUpdates}
-                onRestartAdventure={() => setShowRestartConfirm(true)}
-                suggestQuestHookAction={suggestQuestHookAction}
+                onRestartAdventure={onRestartAdventure}
                 isSuggestingQuest={isSuggestingQuest}
                 handleTakeLoot={handleTakeLoot}
                 handleDiscardLoot={handleDiscardLoot}
@@ -355,7 +359,7 @@ export function PageStructure({
                                             {(adventureSettings.playerMaxMp ?? 0) > 0 && (
                                                 <div>
                                                     <div className="flex justify-between items-center mb-1">
-                                                        <Label htmlFor="player-mp-sidebar" className="text-sm font-medium flex items-center"><Zap className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
+                                                        <Label htmlFor="player-mp-sidebar" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
                                                         <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
                                                     </div>
                                                     <Progress id="player-mp-sidebar" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
@@ -415,7 +419,7 @@ export function PageStructure({
                                                           <DropdownMenuContent>
                                                             <DropdownMenuItem
                                                               onSelect={() => handlePlayerItemAction(item.name, 'use')}
-                                                              disabled={item.type !== 'consumable'} 
+                                                              disabled={item.type !== 'consumable'}
                                                             >
                                                               <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                             </DropdownMenuItem>
@@ -514,5 +518,3 @@ export function PageStructure({
     </>
   );
 }
-
-    
