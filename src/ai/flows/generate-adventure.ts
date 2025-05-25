@@ -401,8 +401,8 @@ Tasks:
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
         *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level.
-            *   For each item, provide itemName, quantity.
-            *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+            *   For each item, provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+            *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV").
             *   Example: '[{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}]'.
             *   List these in itemsObtained (top-level field).
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
@@ -509,3 +509,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
