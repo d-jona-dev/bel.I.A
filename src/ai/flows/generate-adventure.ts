@@ -191,10 +191,10 @@ const CombatOutcomeSchema = z.object({
 
 
 const CombatUpdatesSchema = z.object({
-    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
-    expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
+    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn. THIS IS MANDATORY if combat took place."),
+    expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses)."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
-    turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
+    turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. THIS IS MANDATORY if combat took place. This will be part of the main narrative output as well."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
 });
 
@@ -374,6 +374,7 @@ User Action (from {{playerName}}): {{{userAction}}}
 **Do NOT narrate actions for {{playerName}}. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. Do NOT repeat or summarize the user's action.**
 
+**RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les étapes de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
@@ -381,34 +382,21 @@ Tasks:
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
-    *   **RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les règles de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
-    *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
-        *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes", "Je jette Dague Rouillée"):
-            *   If the action is "Je jette [Nom de l'objet]", simply narrate that {{playerName}} discards the item. The item is conceptually removed from their possession.
-            *   If the action is "J'utilise [Nom de l'objet]" for a consumable:
-                *   Narrate the action. Based on the item's name or known effect (e.g., "Potion de Soin Mineure" restores a small amount of HP like 10; "Potion de Mana Faible" restores a small amount of MP like 5), reflect this in combatUpdates.updatedCombatants for {{playerName}}'s HP/MP.
-                *   The item is conceptually consumed.
-            *   **Narrate equipping items:** If the player states "J'équipe l'Épée d'Acier", acknowledge it: "Vous équipez l'Épée d'Acier." Do NOT try to change player stats based on this yet.
-        *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
-        *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
-        *   **Status Effects Handling for NPCs:**
-            *   At the start of an NPC's turn (or end), apply damage/effects from ongoing statusEffects (e.g., 'Poisoned' deals damage).
-            *   If an NPC has a status like 'Stunned' or 'Paralyzed', they might skip their action or act with disadvantage.
-            *   Decrement the 'duration' of temporary status effects on NPCs. If duration reaches 0, the effect wears off. Narrate this.
-        *   Narrate these NPC actions and their outcomes. If an NPC casts a spell, estimate a reasonable MP cost (e.g., 3-5 MP for minor, 8-12 for moderate) and deduct it.
-        *   **Applying New Status Effects:** If an NPC or player action (including item usage) would logically apply a status effect (e.g., venomous bite applies 'Poisoned', a critical hit might apply 'Stunned' for 1 turn), describe it and include it in newStatusEffects for the affected combatant in combatUpdates.updatedCombatants. Provide name, description, and duration (e.g., 2-3 turns, or -1 for permanent/until cured).
-        *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
-        *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
-        *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level.
-            *   For each item, provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
-            *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV").
-            *   Example: '[{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}]'.
-            *   List these in itemsObtained (top-level field).
-        *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
-        *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
-    *   **Item Acquisition (Exploration/Gift - NOT from combat loot):** If the player finds items (e.g., in a chest, on a table) or is given items by an NPC, list these in the top-level itemsObtained field.
-        *   For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+    *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
+        *   **Étape 1: Tour du Joueur ({{playerName}}).**
+            *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), ou une autre manœuvre.
+            *   **Si le joueur utilise ou jette un objet:** Narrez l'action. L'effet de l'objet (ex: restauration de PV pour une potion de soin, dégâts pour une bombe) DOIT être pris en compte dans le calcul des combatUpdates.updatedCombatants pour le joueur ou la cible. Un objet consommé est conceptuellement retiré de son inventaire (la gestion réelle de l'inventaire se fait côté client).
+            *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
+        *   **Étape 2: Tour des PNJ.** Déterminez les actions pour TOUS les autres PNJ actifs et non vaincus dans activeCombat.combatants (surtout l'équipe 'enemy'). Leurs actions doivent être basées sur leurs détails, characterClass, statut isHostile, PV/PM actuels, statusEffects, affinité envers le joueur/autres combattants, et leur sens tactique. Les lanceurs de sorts doivent utiliser des sorts appropriés à leurs PM et à la situation.
+        *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
+        *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ, ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
+        *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
+        *   **Étape 6: Récompenses.** Si un ou plusieurs ennemis sont vaincus, calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. Pour le butin, générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie).
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
+        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
+        *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
+    *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
+        *   For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
         *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}).
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
@@ -467,6 +455,10 @@ const generateAdventureFlow = ai.defineFlow<
         throw new Error("AI failed to generate a narrative.");
     }
     console.log("AI Output:", JSON.stringify(output, null, 2));
+    if (output.combatUpdates) {
+        console.log("Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
+    }
+
 
     if (output.newCharacters) {
         output.newCharacters.forEach(nc => {
@@ -490,7 +482,7 @@ const generateAdventureFlow = ai.defineFlow<
         });
     }
     if (input.rpgModeActive && output.combatUpdates) {
-        console.log("Combat Turn Narration:", output.combatUpdates.turnNarration.substring(0, 100));
+        console.log("Combat Turn Narration (from output.combatUpdates.turnNarration):", output.combatUpdates.turnNarration.substring(0, 100));
         if(output.combatUpdates.nextActiveCombatState) {
             console.log("Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
             output.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
@@ -509,4 +501,5 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
 
