@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, Users, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem } from "@/types";
-import type { GenerateAdventureInput, LootedItemSchema, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; // Ensure LootedItemSchema is imported
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; 
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -32,11 +32,12 @@ import { LanguageSelector } from "@/components/language-selector";
 import { CharacterSidebar } from "@/components/character-sidebar";
 import { AdventureDisplay } from '@/components/adventure-display';
 import type { AdventureFormValues } from '../app/page';
-import type { SuggestQuestHookInput, SuggestQuestHookOutput } from '@/ai/flows/suggest-quest-hook';
+import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription } from '@/components/ui/card';
+import { cn } from "@/lib/utils";
 
 
 interface PageStructureProps {
@@ -50,7 +51,7 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItemSchema[]) => void; // Added lootItems
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -73,12 +74,12 @@ interface PageStructureProps {
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
-  suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
+  suggestQuestHookAction: () => Promise<void>; // Updated type
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
   setShowRestartConfirm: (open: boolean) => void;
-  handleTakeLoot: (messageId: string, itemsToTake: LootedItemSchema[]) => void; // Added
-  handleDiscardLoot: (messageId: string) => void; // Added
+  handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void; 
+  handleDiscardLoot: (messageId: string) => void; 
 }
 
 export function PageStructure({
@@ -119,9 +120,22 @@ export function PageStructure({
   isSuggestingQuest,
   showRestartConfirm,
   setShowRestartConfirm,
-  handleTakeLoot, // Added
-  handleDiscardLoot, // Added
+  handleTakeLoot, 
+  handleDiscardLoot, 
 }: PageStructureProps) {
+
+  const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined) => {
+    switch (type) {
+      case 'consumable': return 'border-blue-500';
+      case 'weapon': return 'border-red-500';
+      case 'armor': return 'border-gray-500';
+      case 'quest': return 'border-purple-500';
+      case 'misc': return 'border-yellow-600';
+      default: return 'border-border'; // Default border from theme
+    }
+  };
+
+
   return (
     <>
       {/* Left Sidebar: Global Actions & Navigation */}
@@ -275,8 +289,8 @@ export function PageStructure({
                 onRestartAdventure={() => setShowRestartConfirm(true)}
                 suggestQuestHookAction={suggestQuestHookAction}
                 isSuggestingQuest={isSuggestingQuest}
-                handleTakeLoot={handleTakeLoot} // Pass down
-                handleDiscardLoot={handleDiscardLoot} // Pass down
+                handleTakeLoot={handleTakeLoot} 
+                handleDiscardLoot={handleDiscardLoot} 
              />
         </main>
       </SidebarInset>
@@ -368,7 +382,10 @@ export function PageStructure({
                                                         <TooltipProvider key={`${item.name}-${index}`}>
                                                           <Tooltip>
                                                             <TooltipTrigger asChild>
-                                                              <div className="flex flex-col items-center justify-center aspect-square border rounded-md bg-background hover:bg-accent/50 cursor-default p-1 shadow-sm relative overflow-hidden">
+                                                              <div className={cn(
+                                                                  "flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-default p-1 shadow-sm relative overflow-hidden",
+                                                                  getItemTypeColor(item.type)
+                                                                  )}>
                                                                 <Package size={20} className="text-foreground/80 mb-0.5" />
                                                                 <span className="text-[10px] leading-tight truncate w-full text-center text-foreground/90 block">{item.name}</span>
                                                                 {item.quantity > 1 && (
@@ -384,7 +401,7 @@ export function PageStructure({
                                                               <p className="font-semibold">{item.name} (x{item.quantity})</p>
                                                               {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                                                               {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                              {item.type && <p className="text-xs">Type: {item.type}</p>}
+                                                              {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
                                                             </TooltipContent>
                                                           </Tooltip>
                                                         </TooltipProvider>
@@ -418,7 +435,7 @@ export function PageStructure({
                          <AccordionItem value="characters-accordion">
                              <AccordionTrigger>
                                  <div className="flex items-center gap-2">
-                                     <Users className="h-5 w-5" /> Personnages Secondaires
+                                     <Users2 className="h-5 w-5" /> Personnages Secondaires
                                  </div>
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
@@ -478,3 +495,4 @@ export function PageStructure({
     </>
   );
 }
+

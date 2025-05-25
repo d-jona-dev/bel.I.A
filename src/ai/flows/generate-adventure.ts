@@ -193,7 +193,6 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    // lootDropped is removed from here, will be top-level in GenerateAdventureOutputSchema
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -223,7 +222,7 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn, either from combat loot, finding them, or being given them. Be creative and appropriate for the world setting, and {{currencyName}}. Item descriptions and effects MUST be in {{currentLanguage}}."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn, either from combat loot, finding them, or being given them. Be creative and appropriate for the world setting, and {{currencyName}}. For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}})."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -385,7 +384,8 @@ Tasks:
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
         *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes"), narrate the action.
             *   If the item has a clear mechanical effect (like healing, damage, or applying a status effect), reflect this in combatUpdates.updatedCombatants for the player or target. For example, if "Potion de Soin" is used, increase player's HP. If "Bombe Fumigène" is used on "gardes", consider applying a 'Blinded' or 'Distracted' status effect to them with a short duration (e.g., 1-2 turns).
-            *   Conceptually, the player uses up one of these items if it's a consumable. If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
+            *   **Conceptually, the player uses up one of these items if it's a consumable.** If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
+            *   **Narrate equipping items:** If the player states "J'équipe l'Épée d'Acier", acknowledge it: "Vous équipez l'Épée d'Acier." Do NOT try to change player stats based on this yet.
         *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
         *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
         *   **Status Effects Handling for NPCs:**
@@ -400,9 +400,9 @@ Tasks:
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
     *   **Item Acquisition (Combat or Exploration):** If the player finds items (e.g., in a chest, on a table, given by an NPC, or looted from a defeated enemy), list these items in the top-level itemsObtained field.
-        *   For each item, provide itemName, quantity.
-        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
-        *   Example: [{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}].
+        *   For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV").
+        *   Example for itemsObtained: '[{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}]'.
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
@@ -429,7 +429,7 @@ Tasks:
         *   targetName: The name of the other character involved (or 'PLAYER_NAME_EXAMPLE').
         *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
         *   reason: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
+    *   **Example (Player-NPC):** If Rina's affinity for {{../playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
 {{else}}
 (Affinity and Relation updates are disabled.)
@@ -491,10 +491,11 @@ const generateAdventureFlow = ai.defineFlow<
             });
         }
     }
-    if (output.itemsObtained) { // Check the new top-level field
-        output.itemsObtained.forEach(loot => {
-            if (loot.description) console.log(`Item ${loot.itemName} description language check (should be ${input.currentLanguage}): ${loot.description.substring(0,20)}`);
-            if (loot.effect) console.log(`Item ${loot.itemName} effect language check (should be ${input.currentLanguage}): ${loot.effect.substring(0,20)}`);
+    if (output.itemsObtained) {
+        output.itemsObtained.forEach(item => {
+            if (item.description) console.log(`Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
+            if (item.effect) console.log(`Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
+            if (item.itemType) console.log(`Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
         });
     }
 

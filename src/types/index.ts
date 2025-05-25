@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit'; // Import z from genkit
 
@@ -7,7 +8,7 @@ export const LootedItemSchema = z.object({
   quantity: z.number().int().min(1).describe("Quantity of the item dropped."),
   description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
   effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
-  itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).optional().describe("Type of the item."),
+  itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).describe("Type of the item. This is CRUCIAL. 'consumable' items are used up. 'weapon', 'armor' can be equipped. 'quest' items are for specific objectives. 'misc' for others."),
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
@@ -112,7 +113,7 @@ export interface PlayerInventoryItem {
   quantity: number;
   description?: string;
   effect?: string;
-  type?: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
+  type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc'; // Made type mandatory
   // iconUrl?: string; // Optional: for custom item icons
   // iconName?: string; // Optional: for lucide-react icon names
 }
@@ -144,3 +145,4 @@ export interface SaveData {
     saveFormatVersion?: number;
     timestamp?: string;
 }
+
