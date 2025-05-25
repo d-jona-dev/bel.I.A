@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem } from "@/types";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure"; 
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -24,13 +24,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-
-import { AdventureForm } from '@/components/adventure-form';
-import { ModelLoader } from '@/components/model-loader';
-import { LanguageSelector } from "@/components/language-selector";
-import { CharacterSidebar } from "@/components/character-sidebar";
-import { AdventureDisplay } from '@/components/adventure-display';
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { AdventureFormValues } from '../app/page';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -70,16 +70,17 @@ interface PageStructureProps {
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
   playerId: string;
-  playerName: string; 
+  playerName: string;
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
   onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
-  suggestQuestHookAction: () => Promise<void>; // Updated type
+  suggestQuestHookAction: () => Promise<void>; 
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
   setShowRestartConfirm: (open: boolean) => void;
-  handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void; 
-  handleDiscardLoot: (messageId: string) => void; 
+  handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
+  handleDiscardLoot: (messageId: string) => void;
+  handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void;
 }
 
 export function PageStructure({
@@ -112,7 +113,7 @@ export function PageStructure({
   handleRegenerateLastResponse,
   handleUndoLastMessage,
   playerId,
-  playerName, 
+  playerName,
   onRestartAdventure,
   activeCombat,
   onCombatUpdates,
@@ -120,8 +121,9 @@ export function PageStructure({
   isSuggestingQuest,
   showRestartConfirm,
   setShowRestartConfirm,
-  handleTakeLoot, 
-  handleDiscardLoot, 
+  handleTakeLoot,
+  handleDiscardLoot,
+  handlePlayerItemAction,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined) => {
@@ -131,7 +133,7 @@ export function PageStructure({
       case 'armor': return 'border-gray-500';
       case 'quest': return 'border-purple-500';
       case 'misc': return 'border-yellow-600';
-      default: return 'border-border'; // Default border from theme
+      default: return 'border-border';
     }
   };
 
@@ -289,8 +291,9 @@ export function PageStructure({
                 onRestartAdventure={() => setShowRestartConfirm(true)}
                 suggestQuestHookAction={suggestQuestHookAction}
                 isSuggestingQuest={isSuggestingQuest}
-                handleTakeLoot={handleTakeLoot} 
-                handleDiscardLoot={handleDiscardLoot} 
+                handleTakeLoot={handleTakeLoot}
+                handleDiscardLoot={handleDiscardLoot}
+                handlePlayerItemAction={handlePlayerItemAction}
              />
         </main>
       </SidebarInset>
@@ -334,7 +337,6 @@ export function PageStructure({
                                         <CardContent className="p-4 space-y-3">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-16 w-16">
-                                                    {/* TODO: Add player portraitUrl from adventureSettings if available */}
                                                     <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
                                                 </Avatar>
                                                 <div>
@@ -367,44 +369,61 @@ export function PageStructure({
                                                 </div>
                                                 <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                                             </div>
-                                            
+
                                             <CardDescription className="text-xs pt-2">
                                               <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
                                             </CardDescription>
                                             <Card className="mt-1 bg-muted/30 border">
                                               <CardContent className="p-2">
-                                                {(!adventureSettings.playerInventory || adventureSettings.playerInventory.length === 0) ? (
+                                                {(!adventureSettings.playerInventory || adventureSettings.playerInventory.filter(item => item.quantity > 0).length === 0) ? (
                                                   <p className="text-xs text-muted-foreground italic">Inventaire vide.</p>
                                                 ) : (
                                                   <ScrollArea className="h-auto max-h-48">
                                                     <div className="grid grid-cols-5 gap-2 p-1">
                                                       {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
-                                                        <TooltipProvider key={`${item.name}-${index}`}>
-                                                          <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                              <div className={cn(
-                                                                  "flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-default p-1 shadow-sm relative overflow-hidden",
-                                                                  getItemTypeColor(item.type)
-                                                                  )}>
-                                                                <Package size={20} className="text-foreground/80 mb-0.5" />
-                                                                <span className="text-[10px] leading-tight truncate w-full text-center text-foreground/90 block">{item.name}</span>
-                                                                {item.quantity > 1 && (
-                                                                  <span
-                                                                    className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                        <DropdownMenu key={`${item.name}-${index}-${item.quantity}`}>
+                                                          <TooltipProvider>
+                                                            <Tooltip>
+                                                              <TooltipTrigger asChild>
+                                                                <DropdownMenuTrigger asChild>
+                                                                  <div
+                                                                    className={cn(
+                                                                      "flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm relative overflow-hidden",
+                                                                      getItemTypeColor(item.type)
+                                                                    )}
                                                                   >
-                                                                    {item.quantity}
-                                                                  </span>
-                                                                )}
-                                                              </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="top" align="center">
-                                                              <p className="font-semibold">{item.name} (x{item.quantity})</p>
-                                                              {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                                                              {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                              {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
-                                                            </TooltipContent>
-                                                          </Tooltip>
-                                                        </TooltipProvider>
+                                                                    <Package size={20} className="text-foreground/80 mb-0.5" />
+                                                                    <span className="text-[10px] leading-tight truncate w-full text-center text-foreground/90 block">{item.name}</span>
+                                                                    {item.quantity > 1 && (
+                                                                      <span
+                                                                        className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                                      >
+                                                                        {item.quantity}
+                                                                      </span>
+                                                                    )}
+                                                                  </div>
+                                                                </DropdownMenuTrigger>
+                                                              </TooltipTrigger>
+                                                              <TooltipContent side="top" align="center">
+                                                                <p className="font-semibold">{item.name} (x{item.quantity})</p>
+                                                                {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                                {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                                {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
+                                                              </TooltipContent>
+                                                            </Tooltip>
+                                                          </TooltipProvider>
+                                                          <DropdownMenuContent>
+                                                            <DropdownMenuItem
+                                                              onSelect={() => handlePlayerItemAction(item.name, 'use')}
+                                                              disabled={item.type !== 'consumable'} 
+                                                            >
+                                                              <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'discard')}>
+                                                              <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
+                                                            </DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                       ))}
                                                     </div>
                                                   </ScrollArea>
@@ -496,3 +515,4 @@ export function PageStructure({
   );
 }
 
+    
