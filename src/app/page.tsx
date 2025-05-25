@@ -7,7 +7,7 @@ import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, Sta
 import { PageStructure } from "./page.structure"; 
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, LootedItem } from "@/ai/flows/generate-adventure"; // Updated to LootedItem
+import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, LootedItem } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -783,7 +783,7 @@ export default function Home() {
                      content: result.narrative,
                      timestamp: Date.now(),
                      sceneDescription: result.sceneDescriptionForImage,
-                     loot: result.combatUpdates?.lootDropped, 
+                     loot: result.itemsObtained, // Use new top-level itemsObtained
                      lootTaken: false,
                  };
                  if (lastAiIndex !== -1) {
@@ -801,6 +801,7 @@ export default function Home() {
              if(adventureSettings.rpgMode && result.combatUpdates) {
                 handleCombatUpdates(result.combatUpdates);
              }
+             // If itemsObtained exists and is not from combat, we already pass it to handleNarrativeUpdate
 
 
              React.startTransition(() => { toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." }); });
@@ -1133,7 +1134,7 @@ export default function Home() {
         try {
             const result = await generateAdventure(input); 
             
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.combatUpdates?.lootDropped);
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained); // Use result.itemsObtained
             
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
@@ -1253,3 +1254,4 @@ export default function Home() {
       </>
   );
 }
+

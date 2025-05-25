@@ -133,7 +133,7 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
 };
 
-const InventoryItemSchema = z.object({ // For new characters from AI
+const InventoryItemSchema = z.object({
     itemName: z.string().describe("Name of the item."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
@@ -145,7 +145,7 @@ const NewCharacterSchema = z.object({
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
-        z.object({ // Removed .passthrough() as it's not needed and might cause issues
+        z.object({
             targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
@@ -193,7 +193,7 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn."),
     expGained: z.number().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 EXP for easy, 25-75 for medium, 100+ for hard/bosses)."),
-    lootDropped: z.array(LootedItemSchema).optional().describe("Items looted from defeated enemies. Be creative and appropriate for the enemy type, world setting, and {{../currencyName}}. Item descriptions and effects MUST be in {{../currentLanguage}}."), // Uses imported LootedItemSchema
+    // lootDropped is removed from here, will be top-level in GenerateAdventureOutputSchema
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This will be part of the main narrative output as well, but summarized here for combat logic."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
@@ -223,6 +223,7 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn, either from combat loot, finding them, or being given them. Be creative and appropriate for the world setting, and {{currencyName}}. Item descriptions and effects MUST be in {{currentLanguage}}."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -396,13 +397,12 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
-        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level.
-            *   For each item, provide itemName, quantity.
-            *   Optionally, provide itemDescription (in {{../currentLanguage}}), itemEffect (in {{../currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
-            *   Example: [{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}].
-            *   List these in combatUpdates.lootDropped.
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
+    *   **Item Acquisition (Combat or Exploration):** If the player finds items (e.g., in a chest, on a table, given by an NPC, or looted from a defeated enemy), list these items in the top-level itemsObtained field.
+        *   For each item, provide itemName, quantity.
+        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+        *   Example: [{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}].
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
@@ -429,7 +429,7 @@ Tasks:
         *   targetName: The name of the other character involved (or 'PLAYER_NAME_EXAMPLE').
         *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
         *   reason: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{../playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
+    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
 {{else}}
 (Affinity and Relation updates are disabled.)
@@ -490,15 +490,15 @@ const generateAdventureFlow = ai.defineFlow<
                  console.log(`Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
             });
         }
-         if (output.combatUpdates.lootDropped) {
-            output.combatUpdates.lootDropped.forEach(loot => {
-                if (loot.description) console.log(`Loot ${loot.itemName} description language check (should be ${input.currentLanguage}): ${loot.description.substring(0,20)}`);
-                if (loot.effect) console.log(`Loot ${loot.itemName} effect language check (should be ${input.currentLanguage}): ${loot.effect.substring(0,20)}`);
-            });
-        }
     }
-
+    if (output.itemsObtained) { // Check the new top-level field
+        output.itemsObtained.forEach(loot => {
+            if (loot.description) console.log(`Item ${loot.itemName} description language check (should be ${input.currentLanguage}): ${loot.description.substring(0,20)}`);
+            if (loot.effect) console.log(`Item ${loot.itemName} effect language check (should be ${input.currentLanguage}): ${loot.effect.substring(0,20)}`);
+        });
+    }
 
     return output;
   }
 );
+
