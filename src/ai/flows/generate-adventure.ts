@@ -381,10 +381,13 @@ Tasks:
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
+    *   **RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les règles de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true:**
-        *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes"), narrate the action.
-            *   If the item has a clear mechanical effect (like healing, damage, or applying a status effect), reflect this in combatUpdates.updatedCombatants for the player or target. For example, if "Potion de Soin" is used, increase player's HP. If "Bombe Fumigène" is used on "gardes", consider applying a 'Blinded' or 'Distracted' status effect to them with a short duration (e.g., 1-2 turns).
-            *   **Conceptually, the player uses up one of these items if it's a consumable.** If the player tries to use an item they clearly don't have (e.g. "J'utilise l'Épée de Légende" when none was found), narrate accordingly (e.g., "Vous cherchez cette épée, mais ne la trouvez pas.").
+        *   **Player Item Usage:** If the player's userAction involves using an item (e.g., "J'utilise une Potion de Soin", "Je lance la Bombe Fumigène sur les gardes", "Je jette Dague Rouillée"):
+            *   If the action is "Je jette [Nom de l'objet]", simply narrate that {{playerName}} discards the item. The item is conceptually removed from their possession.
+            *   If the action is "J'utilise [Nom de l'objet]" for a consumable:
+                *   Narrate the action. Based on the item's name or known effect (e.g., "Potion de Soin Mineure" restores a small amount of HP like 10; "Potion de Mana Faible" restores a small amount of MP like 5), reflect this in combatUpdates.updatedCombatants for {{playerName}}'s HP/MP.
+                *   The item is conceptually consumed.
             *   **Narrate equipping items:** If the player states "J'équipe l'Épée d'Acier", acknowledge it: "Vous équipez l'Épée d'Acier." Do NOT try to change player stats based on this yet.
         *   Narrate the userAction (player's combat move). Determine its success and effect based on player stats (from prompt context) and target's stats (e.g., AC). If the player casts a spell, note any MP cost implied or stated by the user.
         *   Determine actions for ALL OTHER active, non-defeated NPCs in activeCombat.combatants (especially 'enemy' team). Their actions should be based on their details, characterClass, isHostile status, current HP/MP, statusEffects, affinity towards player/other combatants, and combat sense. Spellcasters should use spells appropriate to their MP and the situation.
@@ -397,12 +400,16 @@ Tasks:
         *   The combined narration of player and NPC actions forms this turn's combatUpdates.turnNarration and should be the primary part of the main narrative output.
         *   Calculate HP/MP changes and populate combatUpdates.updatedCombatants. Mark isDefeated: true if HP <= 0. Include newMp if MP changed. Also include the newStatusEffects list for each combatant.
         *   If an enemy is defeated, award {{playerName}} EXP (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses, considering player level) in combatUpdates.expGained.
+        *   **Loot Generation:** Defeated enemies MUST drop {{#if currencyName}}{{currencyName}}{{else}}items{{/if}} or simple items appropriate to their type/level.
+            *   For each item, provide itemName, quantity.
+            *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV"), and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
+            *   Example: '[{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}]'.
+            *   List these in itemsObtained (top-level field).
         *   If all enemies are defeated/fled or player is defeated, set combatUpdates.combatEnded: true. Update combatUpdates.nextActiveCombatState.isActive to false.
         *   If combat continues, update combatUpdates.nextActiveCombatState with current combatant HPs, MPs, statuses, and statusEffects for the next turn. Remember to decrement player's status effect durations too.
-    *   **Item Acquisition (Combat or Exploration):** If the player finds items (e.g., in a chest, on a table, given by an NPC, or looted from a defeated enemy), list these items in the top-level itemsObtained field.
+    *   **Item Acquisition (Exploration/Gift - NOT from combat loot):** If the player finds items (e.g., in a chest, on a table) or is given items by an NPC, list these in the top-level itemsObtained field.
         *   For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc').
-        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}, e.g., "Restaure 10 PV").
-        *   Example for itemsObtained: '[{"itemName": "Potion de Soin Mineure", "quantity": 1, "itemDescription": "Une potion qui restaure légèrement la santé.", "itemEffect": "Restaure 10 PV", "itemType": "consumable"}]'.
+        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}).
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
@@ -502,4 +509,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-

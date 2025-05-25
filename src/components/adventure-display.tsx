@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen } from "lucide-react";
+import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar"; // Avatar importée
+import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -17,12 +17,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, LootedItemSchema, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +49,7 @@ interface AdventureDisplayProps {
     characters: Character[];
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItemSchema[]) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
     onNewCharacters: (newChars: NewCharacterSchema[]) => void;
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
@@ -58,8 +61,9 @@ interface AdventureDisplayProps {
     onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
-    handleTakeLoot: (messageId: string, itemsToTake: LootedItemSchema[]) => void;
+    handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
     handleDiscardLoot: (messageId: string) => void;
+    handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void; // Added this prop
 }
 
 
@@ -72,14 +76,20 @@ export function AdventureDisplay({
     initialMessages,
     currentLanguage,
     onNarrativeChange,
+    onNewCharacters,
+    onCharacterHistoryUpdate,
+    onAffinityUpdates,
+    onRelationUpdates,
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
+    onCombatUpdates,
     onRestartAdventure,
     isSuggestingQuest,
     handleTakeLoot,
     handleDiscardLoot,
+    handlePlayerItemAction, // Destructure the new prop
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -123,9 +133,17 @@ export function AdventureDisplay({
     }, [initialMessages]);
 
     React.useEffect(() => {
-        messagesRef.current = messages; 
+        messagesRef.current = messages;
         const latestAiMessage = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
         setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
+         if (scrollAreaRef.current) {
+            const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+            if(scrollElement) {
+                requestAnimationFrame(() => {
+                    scrollElement.scrollTop = scrollElement.scrollHeight;
+                });
+            }
+        }
     }, [messages]);
 
     React.useEffect(() => {
@@ -140,14 +158,14 @@ export function AdventureDisplay({
     if (!action || isLoading) return;
 
     setIsLoading(true);
-    onNarrativeChange(action, 'user');
+    onNarrativeChange(action, 'user'); // Met à jour l'UI immédiatement
 
     try {
-        const historyForAIContext = messagesRef.current 
-            .slice(-5) 
+        const historyForAIContext = messagesRef.current
+            .slice(-5)
             .map(msg =>
                 msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
-            ).join('\n\n');
+            ).join('\n\n') + `\n> ${adventureSettings.playerName || 'Player'}: ${action}`; // Ajoute l'action actuelle pour le contexte
 
         const input: GenerateAdventureInput = {
             world: adventureSettings.world,
@@ -181,7 +199,7 @@ export function AdventureDisplay({
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
     if (!currentTextAction) return;
-    setUserAction(""); 
+    setUserAction("");
     await handleSendSpecificAction(currentTextAction);
   };
 
@@ -212,7 +230,7 @@ export function AdventureDisplay({
          return;
      };
      setIsImageLoading(true);
-     setImageUrl(null); 
+     setImageUrl(null);
 
     try {
         const result = await generateSceneImageAction({ sceneDescription: descriptionForImage });
@@ -254,7 +272,7 @@ export function AdventureDisplay({
     const handleSaveChanges = () => {
         if (editingMessage && editContent.trim()) {
             onEditMessage(editingMessage.id, editContent.trim());
-            setEditingMessage(null); 
+            setEditingMessage(null);
         }
     };
 
@@ -306,18 +324,18 @@ export function AdventureDisplay({
                                                 {message.type !== 'system' && !isFirstMessage && (
                                                     <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
                                                         <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
-                                                            <AlertDialogTrigger asChild>
-                                                                <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
-                                                                                <Edit className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top">Modifier</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            </AlertDialogTrigger>
+                                                          <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                  <AlertDialogTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                  </AlertDialogTrigger>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top">Modifier</TooltipContent>
+                                                            </Tooltip>
+                                                          </TooltipProvider>
                                                             <AlertDialogContent>
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
@@ -363,7 +381,7 @@ export function AdventureDisplay({
                                                     </div>
                                                 )}
                                                  {showLootInteraction && (
-                                                    <div className="absolute bottom-1 right-1">
+                                                    <div className="absolute bottom-1 right-1 z-20">
                                                       <AlertDialog>
                                                           <TooltipProvider>
                                                               <Tooltip>
@@ -511,20 +529,31 @@ export function AdventureDisplay({
                                     <DropdownMenuContent>
                                         {playerInventoryItems.length > 0 ? (
                                             playerInventoryItems.map(item => (
-                                                <TooltipProvider key={item.name}>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <DropdownMenuItem onSelect={() => handleSendSpecificAction(`J'utilise ${item.name}`)}>
-                                                                {item.name} (x{item.quantity})
-                                                            </DropdownMenuItem>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="right" align="start">
-                                                            <p className="font-semibold">{item.name}</p>
-                                                            {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                                                            {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                <DropdownMenuSub key={item.name}>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <DropdownMenuSubTrigger disabled={item.type !== 'consumable' && item.type !== 'misc' /* Permet de jeter aussi les misc */}>
+                                                                    {item.name} (x{item.quantity})
+                                                                </DropdownMenuSubTrigger>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="right" align="start">
+                                                                <p className="font-semibold">{item.name}</p>
+                                                                {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                                {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                                {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                    <DropdownMenuSubContent>
+                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'use')} disabled={item.type !== 'consumable'}>
+                                                            <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'discard')}>
+                                                            <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuSubContent>
+                                                </DropdownMenuSub>
                                             ))
                                         ) : (
                                             <DropdownMenuItem disabled>Inventaire vide</DropdownMenuItem>
@@ -544,7 +573,7 @@ export function AdventureDisplay({
                              <Tooltip>
                                  <TooltipTrigger asChild>
                                      <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || !canUndo}>
-                                         <Trash className="h-5 w-5" /> 
+                                         <Trash2Icon className="h-5 w-5" />
                                      </Button>
                                  </TooltipTrigger>
                                  <TooltipContent>Annuler la dernière action/réponse</TooltipContent>
@@ -563,7 +592,7 @@ export function AdventureDisplay({
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                Toute la progression narrative sera perdue et l'aventure recommencera depuis la situation initiale. Les paramètres de l'aventure (monde, personnages initiaux, etc.) ne seront pas modifiés.
+                                                Toute la progression narrative sera perdue et l'aventure recommencera depuis la situation initiale. Les paramètres de l'aventure (monde, personnages initiaux, etc.) ne seront pas modifiés. L'état de combat et les statistiques du joueur seront également réinitialisés.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -583,7 +612,7 @@ export function AdventureDisplay({
                                         type="button"
                                         variant="outline"
                                         size="icon"
-                                        onClick={suggestQuestHookAction as () => void}
+                                        onClick={suggestQuestHookAction as () => Promise<void>}
                                         disabled={isLoading || isSuggestingQuest}
                                     >
                                         {isSuggestingQuest ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lightbulb className="h-5 w-5" />}
