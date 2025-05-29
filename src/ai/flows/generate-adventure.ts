@@ -200,7 +200,7 @@ const CombatUpdatesSchema = z.object({
 
 
 const GenerateAdventureOutputSchema = z.object({
-  narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn.'),
+  narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here.**'),
   sceneDescriptionForImage: z
     .string()
     .optional()
@@ -431,7 +431,7 @@ Tasks:
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
-[Generate the story here. If combat, this IS the combat turn narration. Adhere to affinity/relations if active. If combat starts/ends, clearly state it.]
+[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
 `,
 });
 
