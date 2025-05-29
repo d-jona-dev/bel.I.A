@@ -8,7 +8,6 @@ import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, InventoryItem as AIInventoryItem } from "@/ai/flows/generate-adventure";
-import { LootedItemSchema } from '@/types';
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -22,7 +21,7 @@ export type FormCharacterDefinition = { id?: string; name: string; details: stri
 export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp' | 'playerInventory' | 'playerCurrencyTiers'> & {
   characters: FormCharacterDefinition[];
   currencyLabel?: string;
-  currencyTiers?: Array<{name: string; valueInPreviousTier: number; initialAmount?: number}>;
+  currencyTiers?: Array<{name: string; valueInPreviousTier: number; initialAmount?: number}>; // valueInPreviousTier is how many of the smaller unit make this one.
   playerClass?: string;
   playerLevel?: number;
   playerMaxHp?: number;
@@ -75,7 +74,7 @@ export default function Home() {
         affinity: 5,
         relations: { [PLAYER_ID]: "Intrus à tuer" },
         hitPoints: 25, maxHitPoints: 25, characterClass: "Chef Gobelin", level: 2, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1", isHostile: true,
-        inventory: {"Hache Rouillée": 1} // No currency here
+        inventory: {"Hache Rouillée": 1}
       },
       {
         id: 'snirf-1',
@@ -87,7 +86,7 @@ export default function Home() {
         affinity: 10,
         relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
         hitPoints: 8, maxHitPoints: 8, characterClass: "Fureteur Gobelin", level: 1, armorClass: 12, attackBonus: 2, damageBonus: "1d4", isHostile: true,
-        inventory: {"Dague Courte": 1, "Cailloux pointus": 5} // No currency here
+        inventory: {"Dague Courte": 1, "Cailloux pointus": 5}
       }
   ]);
 
@@ -101,8 +100,8 @@ export default function Home() {
 
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
-  const [formPropKey, setFormPropKey] = React.useState(0);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [formPropKey, setFormPropKey] = React.useState(0); // Used to force re-render of AdventureForm with new initialValues
+  const [isLoading, setIsLoading] = React.useState<boolean>(false); // For AI generation
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
   const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
   const [isSuggestingQuest, setIsSuggestingQuest] = React.useState<boolean>(false);
@@ -110,6 +109,7 @@ export default function Home() {
 
   const { toast } = useToast();
 
+  // Effect to reset live adventure state when base settings/characters change (e.g., after loading a new base adventure)
   React.useEffect(() => {
     const currentBaseAdventureSettings = baseAdventureSettings;
     const currentBaseCharacters = baseCharacters;
@@ -121,7 +121,7 @@ export default function Home() {
         playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
         playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
         playerInventory: initialSettings.playerInventory || [],
-        playerCurrencyTiers: initialSettings.playerCurrencyTiers?.map(tier => ({ ...tier, amount: tier.amount || 0 })) || [],
+        playerCurrencyTiers: initialSettings.playerCurrencyTiers?.map((tier: CurrencyTier) => ({ ...tier, amount: tier.amount || 0 })) || [],
     };
     const newLiveCharacters = JSON.parse(JSON.stringify(currentBaseCharacters));
     const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: currentBaseAdventureSettings.initialSituation, timestamp: Date.now() }];
@@ -129,14 +129,16 @@ export default function Home() {
     setAdventureSettings(newLiveAdventureSettings);
     setCharacters(newLiveCharacters);
     setNarrativeMessages(newNarrative);
-    setActiveCombat(undefined);
+    setActiveCombat(undefined); // Reset combat state
 
+    // Also reset staged settings to reflect the new live state
     setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
     setStagedCharacters(JSON.parse(JSON.stringify(newLiveCharacters)));
-    setFormPropKey(prev => prev + 1);
+    setFormPropKey(prev => prev + 1); // Trigger form reset
   }, [baseAdventureSettings, baseCharacters]);
 
 
+  // Effect to sync live state to staged state when live state changes from non-form interactions (e.g. combat, AI updates)
   React.useEffect(() => {
     setStagedAdventureSettings(prevStaged => {
       const newLiveSettingsCopy = JSON.parse(JSON.stringify(adventureSettings));
@@ -145,6 +147,9 @@ export default function Home() {
       }
       return prevStaged;
     });
+  }, [adventureSettings]);
+
+  React.useEffect(() => {
     setStagedCharacters(prevStagedChars => {
       const newLiveCharsCopy = JSON.parse(JSON.stringify(characters));
       if (JSON.stringify(prevStagedChars) !== JSON.stringify(newLiveCharsCopy)) {
@@ -152,17 +157,18 @@ export default function Home() {
       }
       return prevStagedChars;
     });
-  }, [adventureSettings, characters]);
+  }, [characters]);
+
 
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => {
        const newMessage: Message = {
-            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`, // More unique ID
             type: type,
             content: content,
             timestamp: Date.now(),
             sceneDescription: type === 'ai' ? sceneDesc : undefined,
-            loot: type === 'ai' ? lootItems : undefined,
-            lootTaken: false,
+            loot: type === 'ai' ? lootItems : undefined, // Store loot with the AI message
+            lootTaken: false, // Initialize as not taken
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
@@ -199,7 +205,6 @@ export default function Home() {
                if (updatedTiers[smallestTierIndex].valueInBaseTier === 1) {
                    updatedTiers[smallestTierIndex].amount += Math.floor(newTotalInBase); // Add remaining as integer
                } else {
-                    // This case should ideally not happen if the smallest tier is correctly defined as base.
                     console.warn("Smallest currency tier valueInBaseTier is not 1, cannot accurately distribute remainder of:", newTotalInBase);
                }
           }
@@ -212,7 +217,7 @@ export default function Home() {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
 
     setCharacters(prevChars => {
-        const currentRpgMode = adventureSettings.rpgMode;
+        const currentRpgMode = adventureSettings.rpgMode; // Read directly from live settings
         if (!currentRpgMode) {
              console.warn("handleCombatUpdates called when RPG mode is disabled.");
              return prevChars;
@@ -224,7 +229,7 @@ export default function Home() {
                     ...char,
                     hitPoints: combatantUpdate.newHp,
                     manaPoints: combatantUpdate.newMp ?? char.manaPoints,
-                    isHostile: combatantUpdate.isDefeated ? char.isHostile : true, // Keep hostility unless defeated
+                    isHostile: combatantUpdate.isDefeated ? char.isHostile : true,
                     statusEffects: combatantUpdate.newStatusEffects || char.statusEffects,
                 };
             }
@@ -245,27 +250,27 @@ export default function Home() {
             }
         }
 
-        // MP Regeneration (1 per turn if not max)
+        // MP Regeneration (1 per turn if not max and MP is used)
         if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
-             newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp ?? 0) + 1);
+             newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
         }
 
         if (combatUpdates.expGained && combatUpdates.expGained > 0 && newSettings.playerCurrentExp !== undefined && newSettings.playerExpToNextLevel !== undefined && newSettings.playerLevel !== undefined) {
             newSettings.playerCurrentExp += combatUpdates.expGained;
-             setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
+            setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
 
 
-            while (newSettings.playerCurrentExp >= newSettings.playerExpToNextLevel!) { // Loop for multiple level ups
+            while (newSettings.playerCurrentExp >= newSettings.playerExpToNextLevel!) {
                 newSettings.playerLevel! += 1;
                 newSettings.playerCurrentExp -= newSettings.playerExpToNextLevel!;
-                newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5); // Example: EXP needed increases
-                newSettings.playerMaxHp = (newSettings.playerMaxHp || 0) + Math.floor(Math.random() * 6) + 2; // Example: HP gain
-                newSettings.playerCurrentHp = newSettings.playerMaxHp; // Full heal on level up
+                newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5);
+                newSettings.playerMaxHp = (newSettings.playerMaxHp || 0) + Math.floor(Math.random() * 6) + 2;
+                newSettings.playerCurrentHp = newSettings.playerMaxHp;
                 if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
-                    newSettings.playerMaxMp = (newSettings.playerMaxMp || 0) + Math.floor(Math.random() * 4) + 1; // Example: MP gain
-                    newSettings.playerCurrentMp = newSettings.playerMaxMp; // Full mana on level up
+                    newSettings.playerMaxMp = (newSettings.playerMaxMp || 0) + Math.floor(Math.random() * 4) + 1;
+                    newSettings.playerCurrentMp = newSettings.playerMaxMp;
                 }
-                 setTimeout(() => { toast({ title: "Niveau Supérieur!", description: `Vous avez atteint le niveau ${newSettings.playerLevel}! Vos PV et PM max ont augmenté.`, variant: "default" }); }, 0);
+                setTimeout(() => { toast({ title: "Niveau Supérieur!", description: `Vous avez atteint le niveau ${newSettings.playerLevel}! Vos PV et PM max ont augmenté.`, variant: "default" }); }, 0);
             }
         }
         return newSettings;
@@ -449,6 +454,32 @@ export default function Home() {
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [toast, stagedAdventureSettings.relationsMode]);
 
+  const handleRelationUpdate = React.useCallback((charId: string, targetId: string, newRelation: string) => {
+    const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+    if (!currentRelationsMode) return;
+
+    setStagedCharacters(prevChars =>
+      prevChars.map(char => {
+        if (char.id === charId) {
+          const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
+          return { ...char, relations: updatedRelations };
+        }
+        // Also update the other side of the relation if it's between two NPCs
+        // This simplistic approach might need refinement for nuanced inverse relations.
+        if (targetId !== PLAYER_ID && char.id === targetId ) { // Check if this character is the target of the relation update
+            const sourceChar = prevChars.find(c => c.id === charId);
+            if (sourceChar) { // Ensure source character exists for the inverse relation
+                 // For now, assume the relation is symmetrical or use a generic inverse like "Concerned by X"
+                 // A more complex system might involve mapping relation types (e.g. "Parent of" -> "Child of")
+                const updatedRelations = { ...(char.relations || {}), [charId]: newRelation }; // Simplified: using the same relation name for inverse.
+                return { ...char, relations: updatedRelations };
+            }
+        }
+        return char;
+      })
+    );
+  }, [stagedAdventureSettings.relationsMode, PLAYER_ID]);
+
   const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
     const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
     const currentPlayerName = stagedAdventureSettings.playerName || "Player";
@@ -533,8 +564,7 @@ export default function Home() {
         });
     }
   }, [
-      adventureSettings, // Keep this, but be mindful of its impact if not all fields are used.
-      characters, currentLanguage, toast,
+      adventureSettings, characters, currentLanguage, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer
   ]);
@@ -551,7 +581,7 @@ export default function Home() {
         const currentCurrencyTiers = adventureSettings.playerCurrencyTiers;
 
         if (!currentRpgMode) {
-             setTimeout(() => {toast({ title: "Mode RPG Désactivé", description: "L'inventaire et l'utilisation d'objets sont désactivés.", variant: "default" });},0);
+            setTimeout(() => {toast({ title: "Mode RPG Désactivé", description: "L'inventaire et l'utilisation d'objets sont désactivés.", variant: "default" });},0);
             return;
         }
 
@@ -568,7 +598,7 @@ export default function Home() {
             const itemIndex = newInventory.findIndex(invItem => invItem.name === itemName && invItem.quantity > 0);
 
             if (itemIndex === -1) {
-                 setTimeout(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${itemName}" utilisable ou en quantité suffisante.`, variant: "destructive" });},0);
+                setTimeout(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${itemName}" utilisable ou en quantité suffisante.`, variant: "destructive" });},0);
                 return prevSettings;
             }
 
@@ -598,9 +628,9 @@ export default function Home() {
                     effectAppliedMessage = `${item.name} utilisé.`;
                     newInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
                 } else {
-                     setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${item.name} de cette manière directement. Décrivez votre action si vous souhaitez l'équiper ou l'utiliser autrement.`, variant: "default" });},0);
-                    itemUsedOrDiscarded = false; // Reset flag as item was not actually used
-                    return prevSettings; // Return previous settings without changes
+                    setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${item.name} de cette manière directement. Décrivez votre action si vous souhaitez l'équiper ou l'utiliser autrement.`, variant: "default" });},0);
+                    itemUsedOrDiscarded = false;
+                    return prevSettings;
                 }
             } else if (action === 'discard') {
                 narrativeAction = `Je jette ${item.name}.`;
@@ -617,14 +647,13 @@ export default function Home() {
 
         if (itemUsedOrDiscarded && narrativeAction) {
             if(effectAppliedMessage) {
-                 setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); },0);
+                 setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
             }
             handleNarrativeUpdate(narrativeAction, 'user');
 
             const currentCharactersSnapshot = JSON.parse(JSON.stringify(characters));
             const currentNarrativeSnapshot = narrativeMessages.slice(-5).map(msg => msg.type === 'user' ? `> ${currentPlayerName}: ${msg.content}` : msg.content).join('\n\n') + `\n> ${currentPlayerName}: ${narrativeAction}`;
             
-            // Get the latest player stats AFTER the setAdventureSettings for HP/MP has potentially run
             const latestPlayerStats = adventureSettings;
 
 
@@ -651,11 +680,7 @@ export default function Home() {
              callGenerateAdventure(inputForAI);
         }
     });
-  }, [
-      adventureSettings, // Main dependency
-      characters, currentLanguage, narrativeMessages, activeCombat, // Other state dependencies
-      callGenerateAdventure, handleNarrativeUpdate, toast // Memoized functions
-  ]);
+  }, [adventureSettings, characters, currentLanguage, narrativeMessages, activeCombat, callGenerateAdventure, handleNarrativeUpdate, toast]);
 
 
     const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: LootedItem[]) => {
@@ -685,7 +710,7 @@ export default function Home() {
                 msg.id === messageId ? { ...msg, lootTaken: true } : msg
             )
         );
-         setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
     }, [toast]);
 
     const handleDiscardLoot = React.useCallback((messageId: string) => {
@@ -694,7 +719,7 @@ export default function Home() {
                 msg.id === messageId ? { ...msg, lootTaken: true } : msg
             )
         );
-         setTimeout(() => {toast({ title: "Objets Laissés", description: "Vous avez décidé de ne pas prendre ces objets." });},0);
+        setTimeout(() => {toast({ title: "Objets Laissés", description: "Vous avez décidé de ne pas prendre ces objets." });},0);
     }, [toast]);
 
 
@@ -734,12 +759,18 @@ export default function Home() {
                     const newNarrative = prevNarrative.slice(0, lastUserIndex);
                     messageForToast = { title: "Dernier tour annulé" };
 
+                    // Attempt to restore combat state from the AI message before the user's turn
                     const lastAiMessageBeforeUndo = prevNarrative[lastUserIndex -1];
                     if (lastAiMessageBeforeUndo?.sceneDescription?.toLowerCase().includes("combat started") || lastAiMessageBeforeUndo?.content.toLowerCase().includes("combat commence")) {
+                        // If the AI message right before the user's undone turn started combat, reset combat
                         newActiveCombatState = undefined;
                     }
+                    // More sophisticated combat state restoration would be needed for mid-combat undo
+                    // For now, this simplistic approach might clear combat if undoing the turn that started it.
+
                     return newNarrative;
                 } else if (prevNarrative.length > 1 && prevNarrative[0]?.type === 'system') {
+                     // If only AI messages after system intro, remove the last AI message
                      const newNarrative = prevNarrative.slice(0, -1);
                      messageForToast = { title: "Dernier message IA annulé" };
                      return newNarrative;
@@ -747,13 +778,14 @@ export default function Home() {
                 messageForToast = { title: "Annulation non applicable", description:"Aucune action utilisateur claire à annuler ou déjà à l'état initial."};
                 return prevNarrative;
             });
-            setActiveCombat(newActiveCombatState);
+            setActiveCombat(newActiveCombatState); // Apply combat state change
         });
 
         if (messageForToast) {
              setTimeout(() => { toast(messageForToast as Parameters<typeof toast>[0]); }, 0);
         }
-    }, [activeCombat, toast]);
+    }, [activeCombat, toast]); // Include activeCombat as a dependency
+
 
     const handleRegenerateLastResponse = React.useCallback(async () => {
          if (isRegenerating) return;
@@ -763,17 +795,18 @@ export default function Home() {
          let contextMessages: Message[] = [];
          let lastAiIndex = -1;
 
-         const currentNarrative = [...narrativeMessages];
+         const currentNarrative = [...narrativeMessages]; // Create a mutable copy
 
+         // Find the last AI message and the user action that preceded it
          for (let i = currentNarrative.length - 1; i >= 0; i--) {
              const message = currentNarrative[i];
              if (message.type === 'ai' && !lastAiMessage) {
                  lastAiMessage = message;
                  lastAiIndex = i;
-             } else if (message.type === 'user' && lastAiMessage) {
+             } else if (message.type === 'user' && lastAiMessage) { // Found AI, now look for preceding user
                  lastUserAction = message.content;
-                 const contextEndIndex = i;
-                 contextMessages = currentNarrative.slice(Math.max(0, contextEndIndex - 4), contextEndIndex + 1);
+                 const contextEndIndex = i; // User message index
+                 contextMessages = currentNarrative.slice(Math.max(0, contextEndIndex - 4), contextEndIndex + 1); // Get user message + up to 4 prior messages
                  break;
              }
          }
@@ -789,6 +822,7 @@ export default function Home() {
          });
          setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); },0);
 
+        // Use live adventureSettings and characters state for regeneration context
         const {
             world, playerName, relationsMode, rpgMode, playerCurrencyTiers,
             playerClass, playerLevel, playerCurrentHp, playerMaxHp,
@@ -803,14 +837,14 @@ export default function Home() {
          try {
              const input: GenerateAdventureInput = {
                  world: world,
-                 initialSituation: narrativeContextForRegen,
-                 characters: characters,
-                 userAction: lastUserAction,
+                 initialSituation: narrativeContextForRegen, // Context before the AI message to be regenerated
+                 characters: characters, // Current state of characters
+                 userAction: lastUserAction, // The user action that led to the AI response we are regenerating
                  currentLanguage: currentLanguage,
                  playerName: playerName || "Player",
                  relationsModeActive: relationsMode ?? true,
                  rpgModeActive: rpgMode ?? false,
-                 activeCombat: activeCombat,
+                 activeCombat: activeCombat, // Current combat state
                  currencyTiers: playerCurrencyTiers,
                  playerClass: playerClass,
                  playerLevel: playerLevel,
@@ -836,19 +870,24 @@ export default function Home() {
                         loot: result.itemsObtained,
                         lootTaken: false,
                     };
-                    if (lastAiIndex !== -1) {
-                        newNarrative.splice(lastAiIndex, 1, newAiMessage);
+                    if (lastAiIndex !== -1) { // Ensure we found an AI message to replace
+                        newNarrative.splice(lastAiIndex, 1, newAiMessage); // Replace the old AI message
                     } else {
+                        // This case should ideally not happen if the logic to find lastAiMessage is correct
                         newNarrative.push(newAiMessage);
                     }
                     return newNarrative;
                 });
 
+                // Re-apply side effects based on the new AI response
                 if (result.newCharacters) handleNewCharacters(result.newCharacters);
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
+                    // IMPORTANT: Combat updates from regeneration might need careful handling
+                    // to avoid desyncing player stats if the regenerated combat turn was different.
+                    // For now, we apply it directly.
                     handleCombatUpdates(result.combatUpdates);
                 }
                  if (adventureSettings.rpgMode && result.currencyGained && result.currencyGained > 0 && adventureSettings.playerCurrencyTiers) {
@@ -874,7 +913,7 @@ export default function Home() {
      }, [
          isRegenerating, narrativeMessages, adventureSettings, characters, currentLanguage, toast,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
-         activeCombat, handleCombatUpdates, addCurrencyToPlayer, callGenerateAdventure // Added callGenerateAdventure
+         activeCombat, handleCombatUpdates, addCurrencyToPlayer // Removed callGenerateAdventure as it's being called inside
      ]);
 
 
@@ -882,23 +921,29 @@ export default function Home() {
        setStagedCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
    }, []);
 
+
     const handleSaveNewCharacter = React.useCallback((character: Character) => {
+        // Ensure this runs only on the client
         if (typeof window !== 'undefined') {
             try {
                 const existingCharsStr = localStorage.getItem('globalCharacters');
                 let existingChars: Character[] = existingCharsStr ? JSON.parse(existingCharsStr) : [];
 
+                // Check if character already exists (by ID or by name as a fallback)
                 const charIndex = existingChars.findIndex(c => c.id === character.id || c.name.toLowerCase() === character.name.toLowerCase());
 
                 if (charIndex > -1) {
+                    // Update existing character
                     existingChars[charIndex] = { ...character, _lastSaved: Date.now() };
                 } else {
+                    // Add new character
                     existingChars.push({ ...character, _lastSaved: Date.now() });
                 }
                 localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
                 setTimeout(() => {
                     toast({ title: "Personnage Sauvegardé Globalement", description: `${character.name} est maintenant disponible pour d'autres aventures et pour le chat.` });
                  },0);
+                // Update the _lastSaved timestamp in the stagedCharacters as well, if present
                 setStagedCharacters(prev => prev.map(c => c.id === character.id ? { ...c, _lastSaved: Date.now() } : c));
 
             } catch (error) {
@@ -922,30 +967,36 @@ export default function Home() {
 
 
         setStagedCharacters(prevStagedChars => {
+            // Check if character with same ID or name already exists in stagedCharacters
             if (prevStagedChars.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase())) {
-                characterWasAdded = false;
-                return prevStagedChars;
+                characterWasAdded = false; // Character already exists
+                return prevStagedChars; // Return current state without changes
             }
 
-            characterWasAdded = true;
+            characterWasAdded = true; // Character will be added
             const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-            const newChar = { ...globalCharToAdd };
+            const newChar = { ...globalCharToAdd }; // Clone to avoid direct mutation of global char
 
+            // Initialize/update relations if relationsMode is active
             if (currentRelationsMode) {
-                newChar.relations = newChar.relations || {};
+                newChar.relations = newChar.relations || {}; // Ensure relations object exists
+                // Set relation towards player
                 if (!newChar.relations[PLAYER_ID]) {
                     newChar.relations[PLAYER_ID] = defaultRelation;
                 }
+                // Set relations towards other existing staged characters
                 prevStagedChars.forEach(existingChar => {
                     if (!newChar.relations![existingChar.id]) {
                         newChar.relations![existingChar.id] = defaultRelation;
                     }
                 });
             } else {
+                // If relations mode is off, clear relations and affinity for the adventure
                 newChar.relations = undefined;
                 newChar.affinity = undefined;
             }
 
+            // Update existing characters to include a relation towards the new character
             const updatedPrevChars = prevStagedChars.map(existingChar => {
                 if (currentRelationsMode) {
                     const updatedRelations = { ...(existingChar.relations || {}), [newChar.id]: defaultRelation };
@@ -954,6 +1005,7 @@ export default function Home() {
                 return existingChar;
             });
 
+            // Initialize RPG stats if RPG mode is active and stats are missing
             if (currentRpgMode) {
                 newChar.level = newChar.level ?? 1;
                 newChar.experience = newChar.experience ?? 0;
@@ -980,6 +1032,7 @@ export default function Home() {
                 newChar.damageBonus = newChar.damageBonus ?? "1";
                 newChar.isHostile = newChar.isHostile ?? false;
             } else {
+                // If RPG mode is off, clear RPG specific fields for the adventure context
                 delete newChar.level; delete newChar.experience; delete newChar.characterClass;
                 delete newChar.stats; delete newChar.inventory; delete newChar.skills;
                 delete newChar.spells; delete newChar.techniques; delete newChar.passiveAbilities;
@@ -993,6 +1046,7 @@ export default function Home() {
             return [...updatedPrevChars, newChar];
         });
 
+        // Show toast outside of setState updater
         setTimeout(() => {
             if (characterWasAdded) {
                 toast({ title: "Personnage Ajouté à l'Aventure", description: `${characterNameForToast} a été ajouté aux modifications en attente pour cette aventure. N'oubliez pas d'enregistrer les modifications.` });
@@ -1000,18 +1054,20 @@ export default function Home() {
                 toast({ title: "Personnage déjà présent", description: `${characterNameForToast} est déjà dans l'aventure actuelle.`, variant: "default" });
             }
         },0);
-    }, [currentLanguage, toast, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, stagedAdventureSettings.playerName]);
+    }, [currentLanguage, toast, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, stagedAdventureSettings.playerName]); // Removed characters as dependency
 
 
    const handleSave = React.useCallback(() => {
-        const charactersToSave = characters.map(({ ...char }) => char);
+        // Ensure characters array in saveData reflects the current "live" characters
+        const charactersToSave = characters.map(({ ...char }) => char); // Use live characters
+
         const saveData: SaveData = {
-            adventureSettings,
+            adventureSettings, // Live adventure settings
             characters: charactersToSave,
             narrative: narrativeMessages,
             currentLanguage,
-            activeCombat: activeCombat,
-            saveFormatVersion: 1.6,
+            activeCombat: activeCombat, // Current combat state
+            saveFormatVersion: 1.6, // Increment if schema changes significantly
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1027,7 +1083,7 @@ export default function Home() {
         setTimeout(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
         },0);
-    }, [adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, toast]);
+    }, [adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, toast]); // Depend on live states
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -1038,44 +1094,64 @@ export default function Home() {
                 const jsonString = e.target?.result as string;
                 const loadedData: Partial<SaveData> = JSON.parse(jsonString);
 
+                // Validate core structure
                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
                     throw new Error("Structure de fichier de sauvegarde invalide ou manquante.");
                 }
+
+                // Validate narrative messages structure (simple check)
                 const isValidNarrative = loadedData.narrative.every(msg =>
                     typeof msg === 'object' && msg !== null && typeof msg.id === 'string' &&
                     ['user', 'ai', 'system'].includes(msg.type) && typeof msg.content === 'string' &&
                     typeof msg.timestamp === 'number'
                 );
+
                 if (!isValidNarrative) {
+                    // Attempt to migrate simple string narrative to new format
                     if (typeof loadedData.narrative === 'string') {
+                        // This case should be rare now, but good for very old saves
                         loadedData.narrative = [{ id: `migrated-${Date.now()}`, type: 'system', content: loadedData.narrative as unknown as string, timestamp: Date.now() }];
-                    } else throw new Error("Structure des messages narratifs invalide.");
+                    } else {
+                        throw new Error("Structure des messages narratifs invalide.");
+                    }
                 }
 
+                // --- Data Migrations for older save formats ---
                  if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.4) {
+                     // Migration for saves before history, opinion, affinity, relations
                      loadedData.characters = loadedData.characters.map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [], opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {}, affinity: c.affinity ?? 50, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
                      loadedData.adventureSettings.playerName = loadedData.adventureSettings.playerName || "Player";
                  }
                  if (loadedData.saveFormatVersion < 1.5) {
+                       // Migration for saves before relationsMode was explicit
                        loadedData.adventureSettings.relationsMode = loadedData.adventureSettings.relationsMode ?? true;
                        loadedData.characters = loadedData.characters.map(c => ({ ...c, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
                  }
-                  if (loadedData.saveFormatVersion < 1.6) {
+
+                  if (loadedData.saveFormatVersion < 1.6) { // For currency system
                        loadedData.characters = loadedData.characters.map(c => ({ ...c, relations: typeof c.relations === 'object' && c.relations !== null ? c.relations : { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
-                       loadedData.adventureSettings.playerCurrencyTiers = loadedData.adventureSettings.playerCurrencyTiers || [];
+                       loadedData.adventureSettings.playerCurrencyTiers = loadedData.adventureSettings.playerCurrencyTiers || baseAdventureSettings.playerCurrencyTiers;
                        loadedData.adventureSettings.currencyLabel = loadedData.adventureSettings.currencyLabel || baseAdventureSettings.currencyLabel;
                  }
+                // --- End Data Migrations ---
+
 
                 const rpgModeActive = loadedData.adventureSettings.rpgMode;
-                const relationsModeActive = loadedData.adventureSettings.relationsMode ?? true;
+                const relationsModeActive = loadedData.adventureSettings.relationsMode ?? true; // Default to true if not present
                 const loadedLang = loadedData.currentLanguage || "fr";
                 const defaultRelation = loadedLang === 'fr' ? "Inconnu" : "Unknown";
 
+                // Validate and fill missing fields for characters
                 const validatedCharacters = loadedData.characters.map((c: any) => {
                     const charId = c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
                     let relations = relationsModeActive && typeof c.relations === 'object' && c.relations !== null ? c.relations : (relationsModeActive ? { [PLAYER_ID]: defaultRelation } : undefined);
-                    if (relationsModeActive && relations && !relations[PLAYER_ID]) relations[PLAYER_ID] = defaultRelation;
 
+                    // Ensure relation to player exists if relations mode is on
+                    if (relationsModeActive && relations && !relations[PLAYER_ID]) {
+                        relations[PLAYER_ID] = defaultRelation;
+                    }
+
+                    // Ensure relations to other loaded characters exist
                     if (relationsModeActive && relations && loadedData.characters) {
                         loadedData.characters.forEach(otherC => {
                             if (otherC.id !== charId && !relations![otherC.id]) {
@@ -1085,23 +1161,33 @@ export default function Home() {
                     }
 
                     return {
-                        id: charId, name: c.name || "Inconnu", details: c.details || "", biographyNotes: c.biographyNotes,
+                        id: charId,
+                        name: c.name || "Inconnu",
+                        details: c.details || "",
+                        biographyNotes: c.biographyNotes, // Keep if present
                         history: Array.isArray(c.history) ? c.history : [],
                         opinion: typeof c.opinion === 'object' && c.opinion !== null ? c.opinion : {},
                         portraitUrl: c.portraitUrl || null,
                         affinity: relationsModeActive ? (c.affinity ?? 50) : undefined,
                         relations: relations,
-                        _lastSaved: c._lastSaved,
+                        _lastSaved: c._lastSaved, // Preserve if exists
+                        // RPG Stats - apply defaults if missing and RPG mode is on
                         ...(rpgModeActive ? {
-                            level: c.level ?? 1, experience: c.experience ?? 0, characterClass: c.characterClass ?? '',
+                            level: c.level ?? 1,
+                            experience: c.experience ?? 0,
+                            characterClass: c.characterClass ?? '',
                             stats: typeof c.stats === 'object' && c.stats !== null ? c.stats : {},
                             inventory: typeof c.inventory === 'object' && c.inventory !== null ? c.inventory : {},
                             skills: typeof c.skills === 'object' && c.skills !== null ? c.skills : {},
                             spells: Array.isArray(c.spells) ? c.spells : [],
                             techniques: Array.isArray(c.techniques) ? c.techniques : [],
                             passiveAbilities: Array.isArray(c.passiveAbilities) ? c.passiveAbilities : [],
-                            strength: c.strength ?? 10, dexterity: c.dexterity ?? 10, constitution: c.constitution ?? 10,
-                            intelligence: c.intelligence ?? 10, wisdom: c.wisdom ?? 10, charisma: c.charisma ?? 10,
+                            strength: c.strength ?? 10,
+                            dexterity: c.dexterity ?? 10,
+                            constitution: c.constitution ?? 10,
+                            intelligence: c.intelligence ?? 10,
+                            wisdom: c.wisdom ?? 10,
+                            charisma: c.charisma ?? 10,
                             baseHitPoints: c.baseHitPoints ?? 10,
                             hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10,
                             maxHitPoints: c.maxHitPoints ?? 10,
@@ -1115,25 +1201,31 @@ export default function Home() {
                     }
                 });
 
+                // Validate and fill missing AdventureSettings
                 const finalAdventureSettings: AdventureSettings = {
-                    ...baseAdventureSettings,
-                    ...loadedData.adventureSettings,
-                    relationsMode: relationsModeActive,
-                    rpgMode: rpgModeActive,
+                    ...baseAdventureSettings, // Start with base defaults
+                    ...loadedData.adventureSettings, // Override with loaded settings
+                    relationsMode: relationsModeActive, // Ensure this is set
+                    rpgMode: rpgModeActive, // Ensure this is set
+                    // Ensure player stats are consistent with RPG mode
                     playerCurrentHp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentHp ?? loadedData.adventureSettings.playerMaxHp) : undefined,
                     playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? loadedData.adventureSettings.playerMaxMp) : undefined,
                     playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
-                    playerInventory: loadedData.adventureSettings.playerInventory || [],
-                    playerCurrencyTiers: loadedData.adventureSettings.playerCurrencyTiers?.map(tier => ({...tier, amount: tier.amount || 0})) || [],
+                    playerInventory: loadedData.adventureSettings.playerInventory || [], // Ensure it's an array
+                    playerCurrencyTiers: loadedData.adventureSettings.playerCurrencyTiers?.map((tier: any) => ({...tier, amount: tier.amount || 0})) || baseAdventureSettings.playerCurrencyTiers,
                     currencyLabel: loadedData.adventureSettings.currencyLabel || baseAdventureSettings.currencyLabel,
                 };
 
+                // Update the base state to trigger a full reset and re-initialization
                 setBaseAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
                 setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
+                // Narrative and language will be reset by the useEffect that depends on baseAdventureSettings
+                // setActiveCombat(loadedData.activeCombat || undefined); // This will also be reset by the useEffect
 
                 setTimeout(() => {
                     toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
                 },0);
+
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
                 setTimeout(() => {
@@ -1142,19 +1234,20 @@ export default function Home() {
             }
         };
         reader.readAsText(file);
-        if(event.target) event.target.value = '';
-    }, [toast, baseAdventureSettings]);
+        if(event.target) event.target.value = ''; // Reset file input
+    }, [toast, baseAdventureSettings]); // Added baseAdventureSettings
 
   const confirmRestartAdventure = React.useCallback(() => {
     React.startTransition(() => {
+        // Reset live state to the current base state
         const initialSettings = JSON.parse(JSON.stringify(baseAdventureSettings));
         const newLiveAdventureSettings: AdventureSettings = {
             ...initialSettings,
             playerCurrentHp: initialSettings.rpgMode ? initialSettings.playerMaxHp : undefined,
             playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
             playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
-            playerInventory: initialSettings.playerInventory || [],
-            playerCurrencyTiers: initialSettings.playerCurrencyTiers?.map(tier => ({...tier, amount: tier.amount || 0})) || [],
+            playerInventory: initialSettings.playerInventory || [], // Ensure inventory is an array
+            playerCurrencyTiers: initialSettings.playerCurrencyTiers?.map((tier: CurrencyTier) => ({ ...tier, amount: tier.amount || 0 })) || [],
         };
         const newLiveCharacters = JSON.parse(JSON.stringify(baseCharacters));
         const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }];
@@ -1162,18 +1255,19 @@ export default function Home() {
         setAdventureSettings(newLiveAdventureSettings);
         setCharacters(newLiveCharacters);
         setNarrativeMessages(newNarrative);
-        setActiveCombat(undefined);
+        setActiveCombat(undefined); // Reset combat state
 
+        // Also reset staged settings to reflect the new live state
         setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
         setStagedCharacters(JSON.parse(JSON.stringify(newLiveCharacters)));
-        setFormPropKey(prev => prev + 1);
+        setFormPropKey(prev => prev + 1); // Trigger form reset
 
         setShowRestartConfirm(false);
     });
     setTimeout(() => {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
     },0);
-  }, [baseAdventureSettings, baseCharacters, toast]);
+  }, [baseAdventureSettings, baseCharacters, toast]); // Depend on base states
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -1185,23 +1279,23 @@ export default function Home() {
         let calculatedTiers: CurrencyTier[] = [];
         if (newSettingsFromForm.currencyTiers && newSettingsFromForm.currencyTiers.length > 0) {
             let baseValueAccumulator = 1;
-            const reversedFormTiers = [...newSettingsFromForm.currencyTiers].reverse();
+            const reversedFormTiers = [...newSettingsFromForm.currencyTiers].reverse(); // Process from smallest to largest
 
             calculatedTiers = reversedFormTiers.map((formTier, index) => {
                 const currentTierValueInBase = baseValueAccumulator;
                 if (index < reversedFormTiers.length - 1) { // For all but the new base tier
-                    baseValueAccumulator *= (formTier.valueInPreviousTier || 100);
+                    baseValueAccumulator *= (formTier.valueInPreviousTier || 100); // Default conversion rate if not specified
                 }
                 return {
                     name: formTier.name || `Devise ${reversedFormTiers.length - index}`,
                     valueInBaseTier: currentTierValueInBase,
-                    amount: formTier.initialAmount || 0,
+                    amount: formTier.initialAmount || 0, // Keep initial amount from form
                 };
-            }).reverse();
-        } else if (prevStagedSettings.playerCurrencyTiers && prevStagedSettings.playerCurrencyTiers.length > 0) {
-            calculatedTiers = prevStagedSettings.playerCurrencyTiers;
+            }).reverse(); // Reverse back to original order (largest to smallest)
+        } else if (prevStagedSettings.playerCurrencyTiers && prevStagedSettings.playerCurrencyTiers.length > 0){
+            calculatedTiers = prevStagedSettings.playerCurrencyTiers; // Keep existing if form is empty
         } else {
-            calculatedTiers = baseAdventureSettings.playerCurrencyTiers || [];
+             calculatedTiers = baseAdventureSettings.playerCurrencyTiers || []; // Fallback to base
         }
 
 
@@ -1219,12 +1313,13 @@ export default function Home() {
             playerMaxHp: newSettingsFromForm.playerMaxHp,
             playerMaxMp: newSettingsFromForm.playerMaxMp,
             playerExpToNextLevel: newSettingsFromForm.playerExpToNextLevel,
-            // Preserve current HP/MP/EXP unless initialSituation changes
-            playerCurrentHp: prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation ? prevStagedSettings.playerCurrentHp : (newSettingsFromForm.enableRpgMode ? newSettingsFromForm.playerMaxHp : undefined),
-            playerCurrentMp: prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation ? prevStagedSettings.playerCurrentMp : (newSettingsFromForm.enableRpgMode ? newSettingsFromForm.playerMaxMp : undefined),
-            playerCurrentExp: prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation ? prevStagedSettings.playerCurrentExp : (newSettingsFromForm.enableRpgMode ? 0 : undefined),
-            playerInventory: prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation ? prevStagedSettings.playerInventory : (newSettingsFromForm.enableRpgMode ? prevStagedSettings.playerInventory || [] : undefined),
+            // Preserve current HP/MP/EXP unless initialSituation changes or RPG mode is toggled off
+            playerCurrentHp: (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && (newSettingsFromForm.enableRpgMode ?? false)) ? prevStagedSettings.playerCurrentHp : ((newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerMaxHp : undefined),
+            playerCurrentMp: (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && (newSettingsFromForm.enableRpgMode ?? false)) ? prevStagedSettings.playerCurrentMp : ((newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerMaxMp : undefined),
+            playerCurrentExp: (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && (newSettingsFromForm.enableRpgMode ?? false)) ? prevStagedSettings.playerCurrentExp : ((newSettingsFromForm.enableRpgMode ?? false) ? 0 : undefined),
+            playerInventory: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerInventory || [] : undefined,
         };
+        // Only update if the content has actually changed
         if (JSON.stringify(prevStagedSettings) !== JSON.stringify(newSettingsCandidate)) {
             return newSettingsCandidate;
         }
@@ -1234,17 +1329,23 @@ export default function Home() {
     setStagedCharacters(prevStagedChars => {
       const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
       const newRPGMode = newSettingsFromForm.enableRpgMode ?? false;
+      const newRelationsMode = newSettingsFromForm.enableRelationsMode ?? true;
 
       let updatedCharsList: Character[] = newSettingsFromForm.characters.map(formDef => {
         const existingChar = formDef.id
-            ? prevStagedChars.find(sc => sc.id === formDef.id)
+            ? prevStagedChars.find(sc => sc.id === formDef.id) // Find by ID if available
+            // Fallback to finding by name if ID is not in formDef (e.g., character defined only by name in form)
+            // AND ensure we are not picking up a *different* character that happens to have the same name but was already processed with an ID
             : prevStagedChars.find(sc => sc.name === formDef.name && !prevStagedChars.some(otherSc => otherSc.id === sc.id && otherSc.id !== formDef.id && !formDef.id));
 
+
         if (existingChar) {
+          // Update existing character
           return {
             ...existingChar,
             name: formDef.name,
             details: formDef.details,
+            // Conditionally apply/remove RPG and Relations stats
             ...(newRPGMode ? {
                 level: existingChar.level || 1, experience: existingChar.experience || 0, characterClass: existingChar.characterClass || '',
                 stats: existingChar.stats || {}, inventory: existingChar.inventory || {}, skills: existingChar.skills || {},
@@ -1267,13 +1368,20 @@ export default function Home() {
                 baseHitPoints: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
                 armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
              }),
+             ...(newRelationsMode ? {
+                affinity: existingChar.affinity ?? 50,
+                relations: existingChar.relations || { [PLAYER_ID]: defaultRelation },
+             } : {
+                affinity: undefined,
+                relations: undefined,
+             })
           };
         } else {
+          // Create new character
           const newId = formDef.id || `${formDef.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
           return {
             id: newId, name: formDef.name, details: formDef.details,
-            history: [], opinion: {}, portraitUrl: null, affinity: 50,
-            relations: { [PLAYER_ID]: defaultRelation },
+            history: [], opinion: {}, portraitUrl: null, // Default empty/null values
              ...(newRPGMode ? {
                 level: 1, experience: 0, characterClass: '', stats: {}, inventory: {}, skills: {},
                 spells: [], techniques: [], passiveAbilities: [], strength: 10, dexterity: 10,
@@ -1281,18 +1389,23 @@ export default function Home() {
                 baseHitPoints: 10, hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
                 attackBonus: 0, damageBonus: "1", isHostile: false,
             } : {}),
+            ...(newRelationsMode ? {
+                affinity: 50,
+                relations: { [PLAYER_ID]: defaultRelation },
+            } : {})
           };
         }
       });
 
-      if (newSettingsFromForm.enableRelationsMode ?? true) {
+      // Ensure all characters have mutual relations if relationsMode is active
+      if (newRelationsMode) {
           updatedCharsList.forEach(char => {
-            char.relations = char.relations || {};
-            if (!char.relations[PLAYER_ID]) {
+            char.relations = char.relations || {}; // Ensure relations object exists
+            if (!char.relations[PLAYER_ID]) { // Relation to player
                 char.relations[PLAYER_ID] = defaultRelation;
             }
             updatedCharsList.forEach(otherChar => {
-                if (char.id !== otherChar.id) {
+                if (char.id !== otherChar.id) { // Relation to other NPCs
                     if (!char.relations![otherChar.id]) {
                         char.relations![otherChar.id] = defaultRelation;
                     }
@@ -1300,38 +1413,54 @@ export default function Home() {
             });
           });
       }
+      // Only update if the content has actually changed
        if (JSON.stringify(prevStagedChars) !== JSON.stringify(updatedCharsList)) {
           return updatedCharsList;
       }
       return prevStagedChars;
     });
-  }, [currentLanguage, baseAdventureSettings.playerCurrencyTiers]);
+  }, [currentLanguage, baseAdventureSettings.playerCurrencyTiers]); // Added baseAdventureSettings.playerCurrencyTiers
 
   const handleApplyStagedChanges = React.useCallback(() => {
     let initialSituationChanged = false;
     setAdventureSettings(prevLiveSettings => {
         initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
-        let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
+        let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings)); // Deep copy
 
-        if (initialSituationChanged) { // If situation changed, reset progress for current HP/MP/EXP
+        // If initialSituation changed OR if RPG mode was just turned ON, reset HP/MP/EXP.
+        // Otherwise, preserve current progress.
+        if (initialSituationChanged || (stagedAdventureSettings.rpgMode && !prevLiveSettings.rpgMode) ) {
             if(stagedAdventureSettings.rpgMode) {
                 newLiveSettings.playerCurrentHp = stagedAdventureSettings.playerMaxHp;
                 newLiveSettings.playerCurrentMp = stagedAdventureSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
-                // playerInventory is already part of stagedAdventureSettings
-                // playerCurrencyTiers is already part of stagedAdventureSettings
+                // Inventory and currency tiers are already part of stagedAdventureSettings, so they'll be applied.
                 newLiveSettings.playerLevel = stagedAdventureSettings.playerLevel || 1;
+            } else { // RPG mode turned off
+                 newLiveSettings.playerCurrentHp = undefined;
+                 newLiveSettings.playerCurrentMp = undefined;
+                 newLiveSettings.playerCurrentExp = undefined;
+                 newLiveSettings.playerInventory = undefined;
+                 newLiveSettings.playerCurrencyTiers = undefined; // Also clear currency if RPG is off
+                 newLiveSettings.playerLevel = undefined;
             }
-        } else { // If situation IS THE SAME, preserve current progress
+        } else if (stagedAdventureSettings.rpgMode) { // RPG mode is on and situation didn't change
             newLiveSettings.playerCurrentHp = prevLiveSettings.playerCurrentHp;
             newLiveSettings.playerCurrentMp = prevLiveSettings.playerCurrentMp;
             newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp;
-            newLiveSettings.playerInventory = prevLiveSettings.playerInventory;
+            newLiveSettings.playerInventory = prevLiveSettings.playerInventory; // Keep current inventory
             newLiveSettings.playerLevel = prevLiveSettings.playerLevel;
-            newLiveSettings.playerCurrencyTiers = prevLiveSettings.playerCurrencyTiers;
+            newLiveSettings.playerCurrencyTiers = prevLiveSettings.playerCurrencyTiers; // Keep current currency
+        } else { // RPG mode is off and situation didn't change (or was already off)
+            newLiveSettings.playerCurrentHp = undefined;
+            newLiveSettings.playerCurrentMp = undefined;
+            newLiveSettings.playerCurrentExp = undefined;
+            newLiveSettings.playerInventory = undefined;
+            newLiveSettings.playerCurrencyTiers = undefined;
+            newLiveSettings.playerLevel = undefined;
         }
 
-        // Ensure HP/MP don't exceed max if they were preserved or reset
+        // Ensure HP/MP don't exceed max if they were preserved or reset and RPG mode is on
         if (stagedAdventureSettings.rpgMode) {
              newLiveSettings.playerCurrentHp = Math.min(newLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
              newLiveSettings.playerCurrentMp = Math.min(newLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp ?? 0, newLiveSettings.playerMaxMp ?? 0);
@@ -1344,7 +1473,7 @@ export default function Home() {
         setActiveCombat(undefined); // Reset combat state if situation changes
     }
 
-    setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
+    setCharacters(JSON.parse(JSON.stringify(stagedCharacters))); // Apply staged characters
     setFormPropKey(prev => prev + 1); // Force re-render of AdventureForm with new initialValues from staged state
 
     setTimeout(() => {
@@ -1359,9 +1488,9 @@ export default function Home() {
     });
       try {
           const recentMessages = narrativeMessages.slice(-3).map(m => m.content).join("\n");
-          const characterNames = characters.map(c => c.name).join(", ");
+          const characterNames = characters.map(c => c.name).join(", "); // Use live characters
           const input: SuggestQuestHookInput = {
-              worldDescription: adventureSettings.world,
+              worldDescription: adventureSettings.world, // Use live world setting
               currentSituation: recentMessages,
               involvedCharacters: characterNames,
               language: currentLanguage,
@@ -1371,7 +1500,7 @@ export default function Home() {
               toast({
                   title: "Suggestion d'Objectif",
                   description: `${result.questHook} (Raison: ${result.justification})`,
-                  duration: 10000,
+                  duration: 10000, // Show longer
               });
           },0);
       } catch (error) {
@@ -1385,10 +1514,13 @@ export default function Home() {
           setIsSuggestingQuest(false);
         });
       }
-  }, [narrativeMessages, characters, adventureSettings.world, currentLanguage, toast]);
+  }, [narrativeMessages, characters, adventureSettings.world, currentLanguage, toast]); // Depend on live states
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Memoize the transformation for characters passed to the form
+  // This depends on stagedCharacters (which is an array of objects)
+  // To ensure stability, we stringify the relevant parts of stagedCharacters for the dependency array
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => (
     JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })))
   ), [stagedCharacters]);
@@ -1398,51 +1530,23 @@ export default function Home() {
   }, [stringifiedStagedCharsForFormMemo]);
 
 
+  // Memoize the AdventureFormValues object passed to AdventureForm
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
     const formCurrencyTiers = stagedAdventureSettings.playerCurrencyTiers?.map((tier, index, arr) => {
-        let valPrevTier = 1; // Default for the base currency
-        if (index > 0) { // For tiers above the base
-            // valueInBaseTier of current divided by valueInBaseTier of PREVIOUS (smaller) tier
-            valPrevTier = tier.valueInBaseTier / (arr[index -1]?.valueInBaseTier || 1);
-        } else if (arr.length > 1) { // For the base currency itself, if there are other tiers
-             // It's valueInPreviousTier is effectively its own value in base if it's the smallest defined
-             // Or more simply, for the form, we might want to show 1 if it's the absolute base.
-             // Let's make the form field "Units of this make 1 of NEXT LARGER tier"
-             // For the SMALLEST tier (last in display, first in reversed processing), this is not applicable.
-             // Let's stick to: "How many of the PREVIOUS (smaller) tier make ONE of THIS tier"
-             // For the smallest tier, this is 1 of itself.
-             // For Silver, how many copper make 1 silver. For Gold, how many silver make 1 gold.
-             // The stored `valueInBaseTier` is absolute. We need to convert back for the form.
-             // Example: Gold (10000 base), Silver (100 base), Copper (1 base)
-             // Form: Copper: valueInPrev: 1 (of itself)
-             //       Silver: valueInPrev: 100 (100 copper = 1 silver)
-             //       Gold:   valueInPrev: 100 (100 silver = 1 gold)
-
-            if (arr.length > 1 && index === 0) { // Smallest displayed tier (e.g. Copper)
-                valPrevTier = arr[0].valueInBaseTier / 1; // Itself relative to absolute base (1)
-            } else if (index > 0) {
-                valPrevTier = arr[index].valueInBaseTier / (arr[index-1]?.valueInBaseTier || 1);
-            }
+        // valueInPreviousTier: How many of the *previous smaller* tier make one of THIS tier.
+        // Example: Copper (base, valInBase:1), Silver (valInBase:100), Gold (valInBase:10000)
+        // Form for Copper: valueInPreviousTier=1 (1 copper = 1 copper)
+        // Form for Silver: valueInPreviousTier=100 (100 copper = 1 silver)
+        // Form for Gold:   valueInPreviousTier=100 (100 silver = 1 gold)
+        let valPrevTier = 1;
+        if (index > 0 && arr[index-1]) { // If not the smallest tier and previous tier exists
+            valPrevTier = tier.valueInBaseTier / arr[index-1].valueInBaseTier;
+        } else { // Smallest tier (or only tier)
+            valPrevTier = tier.valueInBaseTier; // Its value relative to base (should be 1 if it's the base)
         }
-        // This logic is complex for the form.
-        // Let's simplify: form expects valueInPreviousTier.
-        // Base tier (last in array usually) has valueInPreviousTier of 1 relative to itself.
-        // For Gold (valBase:10000), Silver (valBase:100), Copper (valBase:1)
-        // Copper -> form valueInPrev = 1 (conceptual)
-        // Silver -> form valueInPrev = 100 (100 Copper for 1 Silver)
-        // Gold -> form valueInPrev = 100 (100 Silver for 1 Gold)
-        // So, for tier[i], valueInPreviousTier is tier[i].valueInBaseTier / tier[i-1].valueInBaseTier
-        // For the smallest (base) tier (index 0 of a reversed array or last of original) valueInPreviousTier is effectively 1.
-        if (index === arr.length - 1) { // This is the base currency (e.g. Copper)
-            valPrevTier = tier.valueInBaseTier; // Should be 1
-        } else if (index < arr.length - 1 && arr[index+1]) { // A higher-value currency
-            valPrevTier = tier.valueInBaseTier / arr[index+1].valueInBaseTier;
-        }
-
-
       return {
         name: tier.name,
-        valueInPreviousTier: valPrevTier, // This needs to be conversion from PREVIOUS tier
+        valueInPreviousTier: valPrevTier,
         initialAmount: tier.amount
       };
     }) || [];
@@ -1454,7 +1558,7 @@ export default function Home() {
       playerName: stagedAdventureSettings.playerName,
       enableRpgMode: stagedAdventureSettings.rpgMode,
       enableRelationsMode: stagedAdventureSettings.relationsMode ?? true,
-      characters: memoizedFormCharacters,
+      characters: memoizedFormCharacters, // Use the memoized character list for the form
       currencyLabel: stagedAdventureSettings.currencyLabel,
       currencyTiers: formCurrencyTiers,
       playerClass: stagedAdventureSettings.playerClass,
@@ -1463,16 +1567,16 @@ export default function Home() {
       playerMaxMp: stagedAdventureSettings.playerMaxMp,
       playerExpToNextLevel: stagedAdventureSettings.playerExpToNextLevel,
     };
-  }, [stagedAdventureSettings, memoizedFormCharacters]);
+  }, [stagedAdventureSettings, memoizedFormCharacters]); // Depend on stagedAdventureSettings and memoizedFormCharacters
 
   return (
     <>
       <PageStructure
         adventureSettings={adventureSettings}
         characters={characters}
-        stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
+        stagedAdventureSettings={memoizedStagedAdventureSettingsForForm} // Pass memoized settings
         stagedCharacters={stagedCharacters}
-        formPropKey={formPropKey}
+        formPropKey={formPropKey} // Pass key to trigger AdventureForm reset
         handleApplyStagedChanges={handleApplyStagedChanges}
         narrativeMessages={narrativeMessages}
         currentLanguage={currentLanguage}
@@ -1497,7 +1601,7 @@ export default function Home() {
         handleRegenerateLastResponse={handleRegenerateLastResponse}
         handleUndoLastMessage={handleUndoLastMessage}
         playerId={PLAYER_ID}
-        playerName={adventureSettings.playerName || "Player"}
+        playerName={adventureSettings.playerName || "Player"} // Use live playerName
         onRestartAdventure={onRestartAdventure}
         activeCombat={activeCombat}
         onCombatUpdates={handleCombatUpdates}
@@ -1512,3 +1616,4 @@ export default function Home() {
       </>
   );
 }
+
