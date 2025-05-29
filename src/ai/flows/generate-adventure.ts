@@ -57,7 +57,7 @@ const BaseCharacterSchema = z.object({
   characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
-  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."),
+  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity). DO NOT include currency here."),
 }).passthrough();
 
 
@@ -113,7 +113,7 @@ const GenerateAdventureInputSchema = z.object({
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
-  currencyName: z.string().optional().describe("The name of the currency used in RPG mode (e.g., 'gold', 'credits'). Defaults appropriately if not provided and RPG mode is active."),
+  currencyTiers: z.array(z.object({name: z.string(), valueInBaseTier: z.number()})).optional().describe("Names and relative values of currency tiers, e.g., [{name: 'Or', valueInBaseTier: 10000}, {name: 'Argent', valueInBaseTier: 100}, {name: 'Cuivre', valueInBaseTier: 1}]. Used for narrative and calculating currencyGained."),
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
@@ -134,7 +134,7 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
 };
 
 const InventoryItemSchema = z.object({
-    itemName: z.string().describe("Name of the item."),
+    itemName: z.string().describe("Name of the item. DO NOT include currency here (e.g., 'Gold', 'Pièces'). Currency is handled by currencyGained."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
 export type InventoryItem = z.infer<typeof InventoryItemSchema>;
@@ -160,7 +160,7 @@ const NewCharacterSchema = z.object({
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice')."),
     level: z.number().optional().describe("Level if relevant."),
-    inventory: z.array(InventoryItemSchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]"),
+    inventory: z.array(InventoryItemSchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]. DO NOT include currency here."),
 });
 
 const CharacterUpdateSchema = z.object({
@@ -222,7 +222,8 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn, either from combat loot, finding them, or being given them. Be creative and appropriate for the world setting, and {{currencyName}}. For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}})."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}})."),
+  currencyGained: z.number().int().optional().describe("Total amount of the BASE currency (e.g., Cuivre, Credits) gained by the player this turn. Describe this gain in the narrative using the appropriate currency names from currencyTiers. Example: If player gains 125 base units, and currencyTiers include Or (100 base), Argent (10 base), Cuivre (1 base), narrate as '1 Or, 2 Argent, 5 Cuivre' and return 125 here."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -269,12 +270,6 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         };
     });
 
-    let finalCurrencyName = input.currencyName;
-    if (input.rpgModeActive && (finalCurrencyName === undefined || finalCurrencyName === null || finalCurrencyName.trim() === "")) {
-        finalCurrencyName = input.currentLanguage === 'fr' ? 'pièces d\'or' : 'gold coins';
-    } else if (!input.rpgModeActive) {
-        finalCurrencyName = undefined;
-    }
 
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
@@ -282,7 +277,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
-        currencyName: finalCurrencyName,
+        currencyTiers: input.currencyTiers,
         // Pass player stats explicitly
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
@@ -351,7 +346,7 @@ Known Characters (excluding player unless explicitly listed for context):
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
-  Inventory (conceptual): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
+  Inventory (conceptual - DO NOT list currency): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
@@ -391,20 +386,25 @@ Tasks:
         *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
         *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ, ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
         *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
-        *   **Étape 6: Récompenses.** Si un ou plusieurs ennemis sont vaincus, calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. Pour le butin, générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie).
+        *   **Étape 6: Récompenses.** Si un ou plusieurs ennemis sont vaincus, calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. Pour le butin, générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). Si de la monnaie est obtenue, décrivez-la en utilisant les noms de {{currencyTiers}} et calculez la valeur totale en devise de base pour currencyGained.
         *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
-        *   For each item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
+        *   **CRITICAL RULE: DO NOT include any currency (gold, coins, credits, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
+        *   For each non-currency item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
         *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}).
+    *   **Currency Acquisition (General):** If the player finds currency, is given currency, or gets it from combat loot:
+        *   Narrate the gain using the currency names provided in currencyTiers (e.g., "You find 2 {{currencyTiers.[0].name}} and 50 {{currencyTiers.[2].name}}.").
+        *   Calculate the TOTAL value of all gained currency in the BASE currency (the one with valueInBaseTier: 1, usually the last in the currencyTiers array).
+        *   Set this total base currency value to the top-level currencyGained field. Example: if player gets 1 Gold (worth 100 copper) and 20 Copper, currencyGained should be 120.
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]).{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). DO NOT include currency in this inventory.{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -501,5 +501,7 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
+
 
 

@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon, Coins } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, CurrencyTier } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -35,7 +35,7 @@ import { AdventureForm, type AdventureFormValues } from '@/components/adventure-
 import { CharacterSidebar } from '@/components/character-sidebar';
 import { ModelLoader } from '@/components/model-loader';
 import { AdventureDisplay } from '@/components/adventure-display';
-import { LanguageSelector } from '@/components/language-selector'; // Added this import
+import { LanguageSelector } from '@/components/language-selector';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -373,6 +373,19 @@ export function PageStructure({
                                                 </div>
                                                 <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                                             </div>
+                                            
+                                            {/* Currency Display */}
+                                            {adventureSettings.playerCurrencyTiers && Array.isArray(adventureSettings.playerCurrencyTiers) && adventureSettings.playerCurrencyTiers.length > 0 && (
+                                                <div className="mt-3 pt-3 border-t">
+                                                    <Label className="text-sm font-medium flex items-center">
+                                                        <Coins className="h-4 w-4 mr-1 text-yellow-600"/>
+                                                        {adventureSettings.currencyLabel || (currentLanguage === 'fr' ? "Trésorerie" : "Treasury")}
+                                                    </Label>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        {adventureSettings.playerCurrencyTiers.map(tier => `${tier.name}: ${tier.amount || 0}`).join(' / ')}
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             <CardDescription className="text-xs pt-2">
                                               <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
@@ -518,3 +531,4 @@ export function PageStructure({
     </>
   );
 }
+
