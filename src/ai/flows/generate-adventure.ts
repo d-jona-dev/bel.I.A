@@ -7,6 +7,7 @@
  * Detects newly introduced characters, logs significant character events/quotes in the specified language,
  * and calculates changes in character affinity towards the player. Includes dynamic character relation updates (player-NPC and NPC-NPC).
  * Handles combat initiation, turn-based combat narration, enemy actions, rewards (EXP, Loot), HP/MP, and status effects.
+ * NPCs can act as merchants, offering items for sale.
  *
  * - generateAdventure - A function that generates adventure narratives.
  * - GenerateAdventureInput - The input type for the generateAdventure function.
@@ -54,7 +55,7 @@ const BaseCharacterSchema = z.object({
   armorClass: z.number().optional().describe("Armor Class. If undefined in RPG mode, assume a default like 10."),
   attackBonus: z.number().optional().describe("Bonus to attack rolls. If undefined, assume 0."),
   damageBonus: z.string().optional().describe("Damage bonus, e.g., '+2' or '1d4'. If undefined, assume basic unarmed damage (e.g., 1d3 or 1)."),
-  characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage'."),
+  characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage', 'Marchand'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
   inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity). DO NOT include currency here."),
@@ -102,7 +103,6 @@ const ActiveCombatSchema = z.object({
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
 });
 
-// Used for schema definition only for new characters, not for item drops.
 const InventoryItemForAISchema = z.object({
     itemName: z.string().describe("Name of the item. DO NOT include currency here."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
@@ -113,13 +113,13 @@ const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
   characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
-  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing"). If not in combat, it is a general narrative action.'),
+  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée"). If not in combat, it is a general narrative action.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
-  currencyTiers: z.array(z.object({name: z.string(), valueInBaseTier: z.number()})).optional().describe("Names and relative values of currency tiers, e.g., [{name: 'Or', valueInBaseTier: 10000}, {name: 'Argent', valueInBaseTier: 100}, {name: 'Cuivre', valueInBaseTier: 1}]. Used for narrative and calculating currencyGained."),
+  // currencyTiers is removed. playerGold is the single currency.
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
@@ -132,6 +132,7 @@ const GenerateAdventureInputSchema = z.object({
   playerMaxMp: z.number().optional().describe("Player's maximum MP if RPG mode is active and applicable."),
   playerCurrentExp: z.number().optional().describe("Player's current EXP if RPG mode is active."),
   playerExpToNextLevel: z.number().optional().describe("EXP needed for player's next level if RPG mode is active."),
+  playerGold: z.number().optional().describe("Player's current amount of gold pieces if RPG mode is active."),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
@@ -142,11 +143,11 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
 
 const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
-    details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
+    details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper', 'Marchand'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
-        z.object({ // Explicitly define properties for the object within the array
+        z.object({
             targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
@@ -159,7 +160,7 @@ const NewCharacterSchema = z.object({
     armorClass: z.number().optional().describe("AC for new combatant."),
     attackBonus: z.number().optional().describe("Attack bonus for new combatant."),
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
-    characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice')."),
+    characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice', 'Marchand d'armes')."),
     level: z.number().optional().describe("Level if relevant."),
     inventory: z.array(InventoryItemForAISchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]. DO NOT include currency here."),
 });
@@ -223,8 +224,8 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
-  currencyGained: z.number().int().optional().describe("Total amount of the BASE currency (e.g., Cuivre, Credits) gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50). Describe this gain/loss in the narrative using the appropriate currency names from currencyTiers. Example: If player gains 1 Or (100 base) and 25 base units, narrate gain and return 125. If player pays 50 base units, narrate expense and return -50. IF NO CURRENCY CHANGE, PROVIDE 0."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+  currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). If the player buys an item, this should be the negative price of the item. IF NO CURRENCY CHANGE, PROVIDE 0."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -278,7 +279,6 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
-        currencyTiers: input.currencyTiers,
         // Pass player stats explicitly
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
@@ -288,6 +288,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         playerMaxMp: input.rpgModeActive ? (input.playerMaxMp || 0) : undefined,
         playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
         playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
+        playerGold: input.rpgModeActive ? (input.playerGold || 0) : undefined,
     };
 
   return generateAdventureFlow(flowInput);
@@ -317,6 +318,7 @@ Class: {{playerClass}} | Level: {{playerLevel}}
 HP: {{playerCurrentHp}}/{{playerMaxHp}}
 {{#if playerMaxMp}}MP: {{playerCurrentMp}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used){{/if}}
 EXP: {{playerCurrentExp}}/{{playerExpToNextLevel}}
+Gold Pieces: {{playerGold}}
 ---
 {{/if}}
 
@@ -376,6 +378,14 @@ Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
+        *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
+            *   Present a list of 3-5 items for sale using the format: QUANTITY* NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or. Example: '5* Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'.
+            *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
+        *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
+            1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
+            2.  Conceptually check if {{playerName}} can afford it (using playerGold if available in context, or by general estimation).
+            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details. Indicate in narration if merchant stock decreases.
+            4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
@@ -390,17 +400,17 @@ Tasks:
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus :
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
-            *   Si de la monnaie est obtenue, décrivez-la en utilisant les noms de {{currencyTiers}} et calculez la valeur totale en devise de base pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
+            *   Si de la monnaie (Pièces d'Or) est obtenue, décrivez-la et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
         *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
-    *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (gold, coins, credits, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
+    *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
     *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
         *   For each non-currency item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
         *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}).
     *   **Currency Management (General):**
-        *   If the player finds, is given, or loots currency: Narrate the gain using currency names from {{currencyTiers}}. Calculate TOTAL value in BASE currency and set currencyGained (positive value).
-        *   If the player PAYS or LOSES currency (e.g., buys item, pays NPC, is robbed): Narrate the loss. Calculate TOTAL value in BASE currency and set currencyGained to a **NEGATIVE** value (e.g., -50).
+        *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
+        *   If the player PAYS or LOSES Gold Pieces (e.g., buys item, pays NPC, is robbed): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
         *   **If no currency change, set currencyGained to 0.**
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
@@ -508,4 +518,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
