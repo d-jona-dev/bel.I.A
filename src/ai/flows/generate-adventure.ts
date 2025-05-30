@@ -102,10 +102,12 @@ const ActiveCombatSchema = z.object({
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
 });
 
+// Used for schema definition only for new characters, not for item drops.
 const InventoryItemForAISchema = z.object({
-    itemName: z.string().describe("Name of the item. DO NOT include currency here (e.g., 'Gold', 'Pièces'). Currency is handled by currencyGained."),
+    itemName: z.string().describe("Name of the item. DO NOT include currency here."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
+
 
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
@@ -144,7 +146,7 @@ const NewCharacterSchema = z.object({
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
-        z.object({
+        z.object({ // Explicitly define properties for the object within the array
             targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
@@ -386,20 +388,20 @@ Tasks:
         *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ, ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
         *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus :
-            *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans `combatUpdates.expGained`. **Si pas d'EXP, mettre 0.**
-            *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ `itemsObtained` (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
-            *   Si de la monnaie est obtenue, décrivez-la en utilisant les noms de `{{currencyTiers}}` et calculez la valeur totale en devise de base pour `currencyGained`. **Si pas de monnaie, mettre 0 pour `currencyGained`.**
-        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez `combatUpdates.combatEnded: true`.
-        *   **Étape 8: État du Combat Suivant.** Si `combatUpdates.combatEnded` est false, alors `combatUpdates.nextActiveCombatState` DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si `combatUpdates.combatEnded` est true, `combatUpdates.nextActiveCombatState` peut être omis ou avoir `isActive: false`.
-        *   **LA STRUCTURE `combatUpdates` EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
-    *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (gold, coins, credits, etc.) in `itemsObtained`. Currency is handled EXCLUSIVELY by the `currencyGained` field.**
-    *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level `itemsObtained` field.
-        *   For each non-currency item, YOU MUST provide `itemName`, `quantity`, and `itemType` ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
-        *   Optionally, provide `itemDescription` (in {{currentLanguage}}), `itemEffect` (in {{currentLanguage}}).
+            *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
+            *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
+            *   Si de la monnaie est obtenue, décrivez-la en utilisant les noms de {{currencyTiers}} et calculez la valeur totale en devise de base pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
+        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
+        *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
+    *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (gold, coins, credits, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
+    *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
+        *   For each non-currency item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
+        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}).
     *   **Currency Management (General):**
-        *   If the player finds, is given, or loots currency: Narrate the gain using currency names from `{{currencyTiers}}`. Calculate TOTAL value in BASE currency and set `currencyGained` (positive value).
-        *   If the player PAYS or LOSES currency (e.g., buys item, pays NPC, is robbed): Narrate the loss. Calculate TOTAL value in BASE currency and set `currencyGained` to a **NEGATIVE** value (e.g., -50).
-        *   **If no currency change, set `currencyGained` to 0.**
+        *   If the player finds, is given, or loots currency: Narrate the gain using currency names from {{currencyTiers}}. Calculate TOTAL value in BASE currency and set currencyGained (positive value).
+        *   If the player PAYS or LOSES currency (e.g., buys item, pays NPC, is robbed): Narrate the loss. Calculate TOTAL value in BASE currency and set currencyGained to a **NEGATIVE** value (e.g., -50).
+        *   **If no currency change, set currencyGained to 0.**
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
@@ -459,7 +461,7 @@ const generateAdventureFlow = ai.defineFlow<
     console.log("AI Output:", JSON.stringify(output, null, 2));
     if (output.combatUpdates) {
         console.log("Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
-        if (output.combatUpdates.expGained === undefined) console.warn("AI_WARNING: combatUpdates.expGained is undefined");
+        if (output.combatUpdates.expGained === undefined) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
     }
      if (output.itemsObtained === undefined) console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
      if (output.currencyGained === undefined) console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
@@ -506,3 +508,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
