@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
@@ -85,7 +85,9 @@ interface PageStructureProps {
   handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
   handleDiscardLoot: (messageId: string) => void;
   handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void;
-  handleSellItem: (itemName: string) => void; // Added prop for selling items
+  handleSellItem: (itemName: string) => void;
+  handleGenerateItemImage: (item: PlayerInventoryItem) => Promise<void>;
+  isGeneratingItemImage: boolean;
 }
 
 export function PageStructure({
@@ -129,7 +131,9 @@ export function PageStructure({
   handleTakeLoot,
   handleDiscardLoot,
   handlePlayerItemAction,
-  handleSellItem, // Destructure the new prop
+  handleSellItem,
+  handleGenerateItemImage,
+  isGeneratingItemImage,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined) => {
@@ -293,7 +297,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction as any} // Cast to any to avoid TS error due to different function signatures
+                suggestQuestHookAction={suggestQuestHookAction}
                 adventureSettings={adventureSettings}
                 characters={characters}
                 initialMessages={narrativeMessages}
@@ -457,6 +461,12 @@ export function PageStructure({
                                                             >
                                                               <Coins className="mr-2 h-4 w-4" /> Vendre (pour {Math.floor((item.goldValue || 0) / 2)} PO)
                                                             </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                              onSelect={() => handleGenerateItemImage(item)}
+                                                              disabled={isGeneratingItemImage}
+                                                            >
+                                                              <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
+                                                            </DropdownMenuItem>
                                                           </DropdownMenuContent>
                                                         </DropdownMenu>
                                                       ))}
@@ -465,6 +475,13 @@ export function PageStructure({
                                                 )}
                                               </CardContent>
                                             </Card>
+                                            {/* Placeholders for future RPG elements */}
+                                            {adventureSettings.rpgMode && (
+                                                <>
+                                                    <CardDescription className="text-xs pt-2">Caractéristiques (Force, etc.) à venir.</CardDescription>
+                                                    <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
+                                                </>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
