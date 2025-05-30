@@ -85,6 +85,7 @@ interface PageStructureProps {
   handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
   handleDiscardLoot: (messageId: string) => void;
   handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void;
+  handleSellItem: (itemName: string) => void; // Added prop for selling items
 }
 
 export function PageStructure({
@@ -128,6 +129,7 @@ export function PageStructure({
   handleTakeLoot,
   handleDiscardLoot,
   handlePlayerItemAction,
+  handleSellItem, // Destructure the new prop
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined) => {
@@ -291,7 +293,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction as any}
+                suggestQuestHookAction={suggestQuestHookAction as any} // Cast to any to avoid TS error due to different function signatures
                 adventureSettings={adventureSettings}
                 characters={characters}
                 initialMessages={narrativeMessages}
@@ -352,6 +354,7 @@ export function PageStructure({
                                         <CardContent className="p-4 space-y-3">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-16 w-16">
+                                                    {/* TODO: Add player portrait if available from /avatars page or adventureSettings */}
                                                     <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
                                                 </Avatar>
                                                 <div>
@@ -448,6 +451,12 @@ export function PageStructure({
                                                             <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'discard')}>
                                                               <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
                                                             </DropdownMenuItem>
+                                                             <DropdownMenuItem 
+                                                              onSelect={() => handleSellItem(item.name)}
+                                                              disabled={!item.goldValue || item.goldValue <= 0}
+                                                            >
+                                                              <Coins className="mr-2 h-4 w-4" /> Vendre (pour {Math.floor((item.goldValue || 0) / 2)} PO)
+                                                            </DropdownMenuItem>
                                                           </DropdownMenuContent>
                                                         </DropdownMenu>
                                                       ))}
@@ -514,3 +523,4 @@ export function PageStructure({
     </>
   );
 }
+

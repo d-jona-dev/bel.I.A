@@ -16,8 +16,8 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character } from '@/types'; // Import Character type
-import { LootedItemSchema } from '@/types'; // Import LootedItemSchema from types
+import type { Character } from '@/types';
+import { LootedItemSchema } from '@/types';
 
 
 // Define RPG context schema (optional)
@@ -113,13 +113,13 @@ const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
   characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
-  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée"). If not in combat, it is a general narrative action.'),
+  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée"). If not in combat, it is a general narrative action.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
-  rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP) are active. If true, combat rules apply."),
+  rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP, Gold) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
-  playerGold: z.number().int().optional().describe("Player's current amount of gold pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
+  playerGold: z.number().int().optional().describe("Player's current amount of Gold Pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
@@ -383,6 +383,10 @@ Tasks:
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
             3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details (itemName, itemType, description, effect, goldValue if applicable).
             4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
+        *   **Player Selling to Merchant/NPC:** If userAction indicates selling an item (e.g., "Je vends ma Dague Rouillée"):
+            1.  Identify the item. The game system handles player inventory and gold changes.
+            2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
+            3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system based on player's action.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
@@ -407,7 +411,8 @@ Tasks:
         *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}), and goldValue (estimated gold piece value).
     *   **Currency Management (General):**
         *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
-        *   If the player PAYS or LOSES Gold Pieces (e.g., buys item, pays NPC, is robbed): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
+        *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
+        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained; this is handled by the game system prior to this call.
         *   **If no currency change, set currencyGained to 0.**
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
@@ -435,7 +440,7 @@ Tasks:
         *   targetName: The name of the other character involved (or PLAYER_NAME_EXAMPLE).
         *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
         *   reason: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{../playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
+    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
 {{else}}
 (Affinity and Relation updates are disabled.)
@@ -521,3 +526,4 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
