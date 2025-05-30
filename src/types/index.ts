@@ -21,7 +21,7 @@ export interface Message {
   content: string;
   timestamp: number;
   sceneDescription?: string;
-  loot?: LootedItem[]; // Utilise le schéma Zod pour le type
+  loot?: LootedItem[];
   lootTaken?: boolean;
 }
 
@@ -106,14 +106,15 @@ export interface PlayerInventoryItem {
   description?: string;
   effect?: string;
   type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
-  goldValue?: number; // Valeur en pièces d'or de l'objet
+  goldValue?: number;
+  generatedImageUrl?: string | null;
 }
 
 export interface AdventureSettings {
     world: string;
     initialSituation: string;
     rpgMode: boolean;
-    relationsMode?: boolean; // Mode relations optionnel
+    relationsMode?: boolean;
     playerName?: string;
     playerClass?: string;
     playerLevel?: number;
@@ -133,6 +134,6 @@ export interface SaveData {
     narrative: Message[];
     currentLanguage: string;
     activeCombat?: ActiveCombat;
-    saveFormatVersion?: number;
-    timestamp?: string;
+    saveFormatVersion: number;
+    timestamp: string;
 }
