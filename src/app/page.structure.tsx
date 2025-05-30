@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Import next/image
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -297,7 +298,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction}
+                suggestQuestHookAction={suggestQuestHookAction as () => Promise<void>}
                 adventureSettings={adventureSettings}
                 characters={characters}
                 initialMessages={narrativeMessages}
@@ -358,7 +359,6 @@ export function PageStructure({
                                         <CardContent className="p-4 space-y-3">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-16 w-16">
-                                                    {/* TODO: Add player portrait if available from /avatars page or adventureSettings */}
                                                     <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
                                                 </Avatar>
                                                 <div>
@@ -413,7 +413,7 @@ export function PageStructure({
                                                   <ScrollArea className="h-auto max-h-48">
                                                     <div className="grid grid-cols-5 gap-2 p-1">
                                                       {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
-                                                        <DropdownMenu key={`${item.name}-${index}-${item.quantity}`}>
+                                                        <DropdownMenu key={`inventory-item-${item.name}-${index}`}>
                                                           <TooltipProvider>
                                                             <Tooltip>
                                                               <TooltipTrigger asChild>
@@ -424,8 +424,10 @@ export function PageStructure({
                                                                       getItemTypeColor(item.type)
                                                                     )}
                                                                   >
-                                                                    <Package size={20} className="text-foreground/80 mb-0.5" />
-                                                                    <span className="text-[10px] leading-tight truncate w-full text-center text-foreground/90 block">{item.name}</span>
+                                                                    <Package size={20} className="text-foreground/80" />
+                                                                     <span className="absolute bottom-0.5 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
+                                                                        {item.name}
+                                                                      </span>
                                                                     {item.quantity > 1 && (
                                                                       <span
                                                                         className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
@@ -436,7 +438,19 @@ export function PageStructure({
                                                                   </div>
                                                                 </DropdownMenuTrigger>
                                                               </TooltipTrigger>
-                                                              <TooltipContent side="top" align="center">
+                                                              <TooltipContent side="top" align="center" className="w-auto max-w-xs">
+                                                                {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') && (
+                                                                    <div className="relative w-24 h-24 mb-2 mx-auto border rounded-md overflow-hidden bg-muted">
+                                                                        <Image
+                                                                            src={item.generatedImageUrl}
+                                                                            alt={`${item.name} image`}
+                                                                            fill
+                                                                            style={{ objectFit: 'contain' }}
+                                                                            sizes="96px"
+                                                                            data-ai-hint={`${item.name} icon`}
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                                 <p className="font-semibold">{item.name} (x{item.quantity})</p>
                                                                 {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                                                                 {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
@@ -475,7 +489,6 @@ export function PageStructure({
                                                 )}
                                               </CardContent>
                                             </Card>
-                                            {/* Placeholders for future RPG elements */}
                                             {adventureSettings.rpgMode && (
                                                 <>
                                                     <CardDescription className="text-xs pt-2">Caractéristiques (Force, etc.) à venir.</CardDescription>
@@ -540,4 +553,3 @@ export function PageStructure({
     </>
   );
 }
-
