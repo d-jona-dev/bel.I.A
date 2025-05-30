@@ -5,11 +5,12 @@ import { z } from 'genkit';
 // Déplacé depuis generate-adventure.ts pour éviter les problèmes avec 'use server'
 // Schéma pour les objets obtenus (loot, trouvés, donnés)
 export const LootedItemSchema = z.object({
-  itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée'. DO NOT include currency here."),
+  itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée'. CRITICAL: DO NOT include currency (gold, coins, etc.) here; use currencyGained instead."),
   quantity: z.number().int().min(1).describe("Quantity of the item."),
   description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
   effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
   itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).describe("Type of the item. This is CRUCIAL. 'consumable' items are used up. 'weapon', 'armor' can be equipped. 'quest' items are for specific objectives. 'misc' for others."),
+  goldValue: z.number().int().optional().describe("Estimated gold piece value of the item, if applicable. Only for non-currency items."),
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
@@ -20,7 +21,7 @@ export interface Message {
   content: string;
   timestamp: number;
   sceneDescription?: string;
-  loot?: LootedItem[];
+  loot?: LootedItem[]; // Utilise le schéma Zod pour le type
   lootTaken?: boolean;
 }
 
@@ -67,12 +68,12 @@ export interface Character {
   details: string;
   biographyNotes?: string;
   stats?: Record<string, number | string>;
-  inventory?: Record<string, number>;
+  inventory?: Record<string, number>; // nom de l'objet: quantité
   history?: string[];
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
   affinity?: number;
-  relations?: Record<string, string>;
+  relations?: Record<string, string>; // Clé: characterId ou 'player', Valeur: description de la relation
   level?: number;
   experience?: number;
   characterClass?: string;
@@ -96,7 +97,7 @@ export interface Character {
   passiveAbilities?: string[];
   isHostile?: boolean;
   isQuestGiver?: boolean;
-  _lastSaved?: number;
+  _lastSaved?: number; // Timestamp of last global save
 }
 
 export interface PlayerInventoryItem {
@@ -105,13 +106,14 @@ export interface PlayerInventoryItem {
   description?: string;
   effect?: string;
   type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
+  goldValue?: number; // Valeur en pièces d'or de l'objet
 }
 
 export interface AdventureSettings {
     world: string;
     initialSituation: string;
     rpgMode: boolean;
-    relationsMode?: boolean;
+    relationsMode?: boolean; // Mode relations optionnel
     playerName?: string;
     playerClass?: string;
     playerLevel?: number;
@@ -122,7 +124,7 @@ export interface AdventureSettings {
     playerCurrentExp?: number;
     playerExpToNextLevel?: number;
     playerInventory?: PlayerInventoryItem[];
-    playerGold?: number; // Nouvelle monnaie unique
+    playerGold?: number;
 }
 
 export interface SaveData {

@@ -206,6 +206,19 @@ export function PageStructure({
                      </Tooltip>
                   </TooltipProvider>
               </nav>
+               <Accordion type="single" collapsible className="w-full">
+                 <AccordionItem value="ai-model-config-accordion-left">
+                   <AccordionTrigger>
+                     <div className="flex items-center gap-2">
+                       <BrainCircuit className="h-5 w-5" />
+                       <span className="group-data-[collapsible=icon]:hidden">Modèle IA</span>
+                     </div>
+                   </AccordionTrigger>
+                   <AccordionContent className="pt-2 px-0 group-data-[collapsible=icon]:hidden">
+                     <ModelLoader />
+                   </AccordionContent>
+                 </AccordionItem>
+               </Accordion>
 
            </SidebarContent>
         </ScrollArea>
@@ -421,6 +434,7 @@ export function PageStructure({
                                                                 {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                                                                 {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
                                                                 {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
+                                                                {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
                                                               </TooltipContent>
                                                             </Tooltip>
                                                           </TooltipProvider>
@@ -474,18 +488,6 @@ export function PageStructure({
                          </AccordionItem>
                      </Accordion>
 
-                     <Accordion type="single" collapsible className="w-full">
-                         <AccordionItem value="ai-config-accordion">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                     <BrainCircuit className="h-5 w-5" /> Configuration IA
-                                </div>
-                             </AccordionTrigger>
-                            <AccordionContent className="pt-2 px-0">
-                                <ModelLoader />
-                            </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
                  </SidebarContent>
              </ScrollArea>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
