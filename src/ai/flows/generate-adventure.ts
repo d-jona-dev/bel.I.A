@@ -103,7 +103,7 @@ const ActiveCombatSchema = z.object({
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
 });
 
-const InventoryItemForAISchema = z.object({
+const InventoryItemForAISchema = z.object({ // Used for inventory of *new* characters
     itemName: z.string().describe("Name of the item. DO NOT include currency here."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
@@ -119,7 +119,7 @@ const GenerateAdventureInputSchema = z.object({
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP) are active. If true, combat rules apply."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
-  // currencyTiers is removed. playerGold is the single currency.
+  playerGold: z.number().optional().describe("Player's current amount of gold pieces if RPG mode is active. This is a single currency value."),
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
@@ -132,7 +132,6 @@ const GenerateAdventureInputSchema = z.object({
   playerMaxMp: z.number().optional().describe("Player's maximum MP if RPG mode is active and applicable."),
   playerCurrentExp: z.number().optional().describe("Player's current EXP if RPG mode is active."),
   playerExpToNextLevel: z.number().optional().describe("EXP needed for player's next level if RPG mode is active."),
-  playerGold: z.number().optional().describe("Player's current amount of gold pieces if RPG mode is active."),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
@@ -379,12 +378,12 @@ Tasks:
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
-            *   Present a list of 3-5 items for sale using the format: QUANTITY* NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or. Example: '5* Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'.
+            *   Present a list of 3-5 items for sale using the format: `NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or`. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
-            2.  Conceptually check if {{playerName}} can afford it (using playerGold if available in context, or by general estimation).
-            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details. Indicate in narration if merchant stock decreases.
+            2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
+            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details.
             4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
@@ -400,7 +399,7 @@ Tasks:
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus :
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
-            *   Si de la monnaie (Pièces d'Or) est obtenue, décrivez-la et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
+            *   Si de la monnaie est obtenue, décrivez-la et calculez la valeur totale en Pièces d'Or pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
         *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
@@ -471,10 +470,10 @@ const generateAdventureFlow = ai.defineFlow<
     console.log("AI Output:", JSON.stringify(output, null, 2));
     if (output.combatUpdates) {
         console.log("Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
-        if (output.combatUpdates.expGained === undefined) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
+        if (output.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
     }
      if (output.itemsObtained === undefined) console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-     if (output.currencyGained === undefined) console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
+     if (output.currencyGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
 
 
     if (output.newCharacters) {
@@ -518,3 +517,6 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
+
+  
