@@ -103,7 +103,7 @@ const ActiveCombatSchema = z.object({
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
 });
 
-const InventoryItemForAISchema = z.object({ // Used for inventory of *new* characters
+const InventoryItemForAISchema = z.object({
     itemName: z.string().describe("Name of the item. DO NOT include currency here."),
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
@@ -123,7 +123,6 @@ const GenerateAdventureInputSchema = z.object({
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
-  // Player specific RPG stats for context
   playerClass: z.string().optional().describe("Player's character class if RPG mode is active."),
   playerLevel: z.number().optional().describe("Player's current level if RPG mode is active."),
   playerCurrentHp: z.number().optional().describe("Player's current HP if RPG mode is active."),
@@ -147,10 +146,10 @@ const NewCharacterSchema = z.object({
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
         z.object({
-            targetName: z.string().describe("Name of the known character or the player's name (e.g., 'PLAYER_NAME_EXAMPLE', 'Rina')."),
+            targetName: z.string().describe("Name of the known character or the player's name."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
-    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: '[{\"targetName\": \"PLAYER_NAME_EXAMPLE\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]'. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
+    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\"targetName\": \"PLAYER_NAME_EXAMPLE\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
     isHostile: z.boolean().optional().default(false).describe("Is this new character initially hostile to the player? Relevant if rpgModeActive is true."),
     hitPoints: z.number().optional().describe("Initial HP for the new character if introduced as a combatant in RPG mode."),
     maxHitPoints: z.number().optional().describe("Max HP, same as initial HP for new characters."),
@@ -278,7 +277,6 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
-        // Pass player stats explicitly
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
         playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp ?? input.playerMaxHp ?? 10) : undefined,
@@ -305,6 +303,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, character details, history entries, relation descriptions, item details) is **{{currentLanguage}}**.
 
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Ensure narrative continuity from the 'Current Situation/Recent Narrative'. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
+**The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
+**Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 
 World: {{{world}}}
 
@@ -368,8 +368,6 @@ Known Characters (excluding player unless explicitly listed for context):
 {{/each}}
 
 User Action (from {{playerName}}): {{{userAction}}}
-**Do NOT narrate actions for {{playerName}}. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
-**Start the narrative directly from the consequences of the user's action. Do NOT repeat or summarize the user's action.**
 
 **RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les étapes de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
 
@@ -378,7 +376,7 @@ Tasks:
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
-            *   Present a list of 3-5 items for sale using the format: `NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or`. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
+            *   Present a list of 3-5 items for sale using the format: NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
@@ -399,7 +397,7 @@ Tasks:
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus :
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
-            *   Si de la monnaie est obtenue, décrivez-la et calculez la valeur totale en Pièces d'Or pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
+            *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
         *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
@@ -418,7 +416,7 @@ Tasks:
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
     *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.**{{/if}}
-    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction.{{/if}}
+    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
 
@@ -472,8 +470,14 @@ const generateAdventureFlow = ai.defineFlow<
         console.log("Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
         if (output.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
     }
-     if (output.itemsObtained === undefined) console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-     if (output.currencyGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
+     if (output.itemsObtained === undefined) {
+        console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
+        output.itemsObtained = []; // Ensure it's an array if AI misses it
+     }
+     if (output.currencyGained === undefined && input.rpgModeActive) {
+        console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
+        output.currencyGained = 0; // Ensure it's a number if AI misses it
+     }
 
 
     if (output.newCharacters) {
@@ -517,6 +521,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
-
-  
