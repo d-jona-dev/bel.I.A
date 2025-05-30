@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
@@ -43,6 +43,7 @@ import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription } from '@/components/ui/card';
 import { cn } from "@/lib/utils";
+import { Separator } from '@/components/ui/separator';
 
 
 interface PageStructureProps {
@@ -213,20 +214,6 @@ export function PageStructure({
                      </Tooltip>
                   </TooltipProvider>
               </nav>
-               <Accordion type="single" collapsible className="w-full">
-                 <AccordionItem value="ai-model-config-accordion-left">
-                   <AccordionTrigger>
-                     <div className="flex items-center gap-2">
-                       <BrainCircuit className="h-5 w-5" />
-                       <span className="group-data-[collapsible=icon]:hidden">Modèle IA</span>
-                     </div>
-                   </AccordionTrigger>
-                   <AccordionContent className="pt-2 px-0 group-data-[collapsible=icon]:hidden">
-                     <ModelLoader />
-                   </AccordionContent>
-                 </AccordionItem>
-               </Accordion>
-
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
@@ -298,7 +285,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction as () => Promise<void>}
+                suggestQuestHookAction={suggestQuestHookAction}
                 adventureSettings={adventureSettings}
                 characters={characters}
                 initialMessages={narrativeMessages}
@@ -393,9 +380,9 @@ export function PageStructure({
                                             </div>
                                             
                                             {adventureSettings.rpgMode && adventureSettings.playerGold !== undefined && (
-                                                <div className="mt-3 pt-3 border-t">
+                                                <div className="mt-2 pt-2 border-t">
                                                     <Label className="text-sm font-medium flex items-center">
-                                                        <Coins className="h-4 w-4 mr-1 text-yellow-600"/>
+                                                        <Coins className="h-4 w-4 mr-1 text-amber-600"/>
                                                         Pièces d'Or
                                                     </Label>
                                                     <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
@@ -413,18 +400,30 @@ export function PageStructure({
                                                   <ScrollArea className="h-auto max-h-48">
                                                     <div className="grid grid-cols-5 gap-2 p-1">
                                                       {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
-                                                        <DropdownMenu key={`inventory-item-${item.name}-${index}`}>
+                                                        <DropdownMenu key={`inventory-item-${item.name}-${index}-${item.generatedImageUrl || 'noimg'}`}>
                                                           <TooltipProvider>
                                                             <Tooltip>
                                                               <TooltipTrigger asChild>
                                                                 <DropdownMenuTrigger asChild>
                                                                   <div
                                                                     className={cn(
-                                                                      "flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm relative overflow-hidden",
+                                                                      "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
                                                                       getItemTypeColor(item.type)
                                                                     )}
                                                                   >
-                                                                    <Package size={20} className="text-foreground/80" />
+                                                                    {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
+                                                                        <Image
+                                                                            key={item.generatedImageUrl} // Force re-render if URL changes
+                                                                            src={item.generatedImageUrl}
+                                                                            alt={`${item.name} icon`}
+                                                                            fill
+                                                                            style={{ objectFit: 'contain' }}
+                                                                            sizes="40px" // Adjust size as needed for a small cell
+                                                                            data-ai-hint={`${item.name} icon`}
+                                                                        />
+                                                                    ) : (
+                                                                        <PackageOpen size={20} className="text-foreground/80" />
+                                                                    )}
                                                                      <span className="absolute bottom-0.5 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
                                                                         {item.name}
                                                                       </span>
@@ -447,7 +446,7 @@ export function PageStructure({
                                                                             fill
                                                                             style={{ objectFit: 'contain' }}
                                                                             sizes="96px"
-                                                                            data-ai-hint={`${item.name} icon`}
+                                                                            data-ai-hint={`${item.name} preview`}
                                                                         />
                                                                     </div>
                                                                 )}
@@ -490,13 +489,33 @@ export function PageStructure({
                                               </CardContent>
                                             </Card>
                                             {adventureSettings.rpgMode && (
-                                                <>
-                                                    <CardDescription className="text-xs pt-2">Caractéristiques (Force, etc.) à venir.</CardDescription>
-                                                    <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
-                                                </>
+                                                <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
                                             )}
                                         </CardContent>
                                     </Card>
+                                     {adventureSettings.rpgMode && (
+                                        <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-attributes-accordion">
+                                            <AccordionItem value="player-attributes-accordion">
+                                                <AccordionTrigger>
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <Dices className="h-4 w-4" /> Caractéristiques Détaillées
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="pt-2 space-y-1 text-xs">
+                                                    <div className="flex justify-between"><span>Force (FOR):</span> <span>{adventureSettings.playerStrength ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Dextérité (DEX):</span> <span>{adventureSettings.playerDexterity ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Constitution (CON):</span> <span>{adventureSettings.playerConstitution ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Intelligence (INT):</span> <span>{adventureSettings.playerIntelligence ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Sagesse (SAG):</span> <span>{adventureSettings.playerWisdom ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Charisme (CHA):</span> <span>{adventureSettings.playerCharisma ?? 'N/A'}</span></div>
+                                                    <Separator className="my-1" />
+                                                    <div className="flex justify-between"><span>Classe d'Armure (CA):</span> <span>{adventureSettings.playerArmorClass ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Bonus d'Attaque:</span> <span>{adventureSettings.playerAttackBonus ?? 'N/A'}</span></div>
+                                                    <div className="flex justify-between"><span>Bonus de Dégâts:</span> <span>{adventureSettings.playerDamageBonus || 'N/A'}</span></div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                    )}
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
@@ -526,6 +545,18 @@ export function PageStructure({
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
+                    <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="ai-model-config-accordion">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                <BrainCircuit className="h-5 w-5" /> Modèle IA
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                                <ModelLoader />
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
 
                  </SidebarContent>
              </ScrollArea>
@@ -553,3 +584,4 @@ export function PageStructure({
     </>
   );
 }
+
