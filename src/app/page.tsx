@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, CurrencyTier } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -20,16 +20,9 @@ const PLAYER_ID = "player";
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
-export type FormCurrencyTier = {
-  name: string;
-  valueInPreviousTier: number; // How many of the PREVIOUS (smaller) tier make one of THIS tier. For base, this could be 1.
-  initialAmount?: number;
-};
-
-export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp' | 'playerInventory' | 'playerCurrencyTiers'> & {
+// Form values no longer need currency tiers configuration
+export type AdventureFormValues = Omit<AdventureSettings, 'characters' | 'playerCurrentHp' | 'playerCurrentMp' | 'playerCurrentExp' | 'playerInventory' | 'playerGold'> & {
   characters: FormCharacterDefinition[];
-  currencyLabel?: string;
-  currencyTiers?: FormCurrencyTier[];
   playerClass?: string;
   playerLevel?: number;
   playerMaxHp?: number;
@@ -55,12 +48,7 @@ export default function Home() {
     playerExpToNextLevel: 100,
     playerCurrentExp: 0,
     playerInventory: [{name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable"}, {name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base", type: "weapon"}],
-    currencyLabel: "Trésorerie",
-    playerCurrencyTiers: [
-      { name: "Or", valueInBaseTier: 10000, amount: 0 },
-      { name: "Argent", valueInBaseTier: 100, amount: 0 },
-      { name: "Cuivre", valueInBaseTier: 1, amount: 15 },
-    ],
+    playerGold: 15, // Initial gold
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -110,7 +98,7 @@ export default function Home() {
 
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
-  const [formPropKey, setFormPropKey] = React.useState(0); // Used to force re-render of AdventureForm if initialValues change identity
+  const [formPropKey, setFormPropKey] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
   const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
@@ -128,7 +116,7 @@ export default function Home() {
         playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
         playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
         playerInventory: initialSettings.playerInventory || [],
-        playerCurrencyTiers: initialSettings.playerCurrencyTiers?.map((tier: CurrencyTier) => ({ ...tier, amount: tier.amount || 0 })) || [],
+        playerGold: initialSettings.playerGold ?? 0,
     };
     const newLiveCharacters = JSON.parse(JSON.stringify(baseCharacters));
     const newNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: currentBaseAdventureSettings.initialSituation, timestamp: Date.now() }];
@@ -146,29 +134,25 @@ export default function Home() {
 
   React.useEffect(() => {
     let keyShouldIncrement = false;
-
     setStagedAdventureSettings(prevStaged => {
-      const newLiveSettingsCopy = JSON.parse(JSON.stringify(adventureSettings));
-      if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveSettingsCopy)) {
-        keyShouldIncrement = true;
-        return newLiveSettingsCopy;
-      }
-      return prevStaged;
+        const newLiveSettingsCopy = JSON.parse(JSON.stringify(adventureSettings));
+        if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveSettingsCopy)) {
+            keyShouldIncrement = true;
+            return newLiveSettingsCopy;
+        }
+        return prevStaged;
     });
-
     setStagedCharacters(prevStaged => {
-      const newLiveCharsCopy = JSON.parse(JSON.stringify(characters));
-      if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveCharsCopy)) {
-        keyShouldIncrement = true;
-        return newLiveCharsCopy;
-      }
-      return prevStaged;
+        const newLiveCharsCopy = JSON.parse(JSON.stringify(characters));
+        if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveCharsCopy)) {
+            keyShouldIncrement = true;
+            return newLiveCharsCopy;
+        }
+        return prevStaged;
     });
-
-    // Only increment if a change was detected in either settings or characters
-    if (keyShouldIncrement) {
-       setFormPropKey(k => k + 1);
-    }
+    // if (keyShouldIncrement) {
+    //   setFormPropKey(k => k + 1); // Temporarily removed to fight update loop
+    // }
   }, [adventureSettings, characters]);
 
 
@@ -185,47 +169,20 @@ export default function Home() {
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
 
-  const addCurrencyToPlayer = React.useCallback((baseAmountToAdd: number) => {
-      setAdventureSettings(prevSettings => {
-          if (!prevSettings.rpgMode || !prevSettings.playerCurrencyTiers || prevSettings.playerCurrencyTiers.length === 0) {
-              return prevSettings;
-          }
-          let currentTotalInBase = 0;
-          prevSettings.playerCurrencyTiers.forEach(tier => {
-              currentTotalInBase += (tier.amount || 0) * tier.valueInBaseTier;
-          });
-
-          let newTotalInBase = currentTotalInBase + baseAmountToAdd;
-          if (newTotalInBase < 0) newTotalInBase = 0;
-
-          const updatedTiers = prevSettings.playerCurrencyTiers.map(t => ({...t, amount: 0}));
-
-          // Iterate from most valuable to least valuable tier to distribute
-          for (let i = 0; i < updatedTiers.length; i++) {
-              const tier = updatedTiers[i];
-              if (newTotalInBase >= tier.valueInBaseTier) {
-                  const count = Math.floor(newTotalInBase / tier.valueInBaseTier);
-                  tier.amount = count;
-                  newTotalInBase -= count * tier.valueInBaseTier;
-              }
-          }
-          // Handle any remainder by adding it to the smallest currency tier (if its valueInBaseTier is 1)
-          if (newTotalInBase > 0 && updatedTiers.length > 0) {
-               const smallestTierIndex = updatedTiers.findIndex(t => t.valueInBaseTier === 1);
-               if (smallestTierIndex !== -1) {
-                   updatedTiers[smallestTierIndex].amount += Math.floor(newTotalInBase); // Add integer remainder
-               } else {
-                    console.warn("Smallest currency tier (valueInBaseTier: 1) not found. Cannot accurately distribute remainder of:", newTotalInBase);
-               }
-          }
-          return { ...prevSettings, playerCurrencyTiers: updatedTiers };
-      });
+   const updatePlayerGold = React.useCallback((amount: number) => {
+    setAdventureSettings(prevSettings => {
+        if (!prevSettings.rpgMode) return prevSettings;
+        const currentGold = prevSettings.playerGold ?? 0;
+        const newGold = Math.max(0, currentGold + amount); // Ensure gold doesn't go below 0
+        return { ...prevSettings, playerGold: newGold };
+    });
   }, []);
+
 
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     setCharacters(prevChars => {
-        const currentRpgMode = adventureSettings.rpgMode; // Read from live settings
+        const currentRpgMode = adventureSettings.rpgMode;
         if (!currentRpgMode) {
              console.warn("handleCombatUpdates called when RPG mode is disabled.");
              return prevChars;
@@ -255,7 +212,7 @@ export default function Home() {
                 toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
             }
         }
-        // MP Regeneration
+
         if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
              newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
         }
@@ -338,7 +295,6 @@ export default function Home() {
      toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [toast, stagedAdventureSettings.relationsMode]);
 
-
   const handleRelationUpdate = React.useCallback((charId: string, targetId: string, newRelation: string) => {
     const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
     if (!currentRelationsMode) return;
@@ -360,7 +316,6 @@ export default function Home() {
       })
     );
   }, [stagedAdventureSettings.relationsMode]);
-
 
   const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
     const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
@@ -411,7 +366,6 @@ export default function Home() {
      toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
-
   const handleNewCharacters = React.useCallback((newChars: Array<NewCharacterSchema>) => {
     if (!newChars || newChars.length === 0) return;
     const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
@@ -453,7 +407,7 @@ export default function Home() {
                 
                 const processedInventory: Record<string, number> = {};
                 if (currentRpgMode && newCharData.inventory && Array.isArray(newCharData.inventory)) {
-                   newCharData.inventory.forEach(item => {
+                   newCharData.inventory.forEach((item: AIInventoryItem) => {
                         if (item.itemName && typeof item.itemName === 'string' && typeof item.quantity === 'number' && item.quantity > 0) {
                             processedInventory[item.itemName] = (processedInventory[item.itemName] || 0) + item.quantity;
                         }
@@ -521,7 +475,6 @@ export default function Home() {
     }
   }, [currentLanguage, stagedAdventureSettings.playerName, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, toast, characters]);
 
-
   const callGenerateAdventure = React.useCallback(async (input: GenerateAdventureInput) => {
     React.startTransition(() => {
       setIsLoading(true);
@@ -537,12 +490,12 @@ export default function Home() {
             if (adventureSettings.rpgMode && result.combatUpdates) {
                 handleCombatUpdates(result.combatUpdates);
             }
-            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerCurrencyTiers) {
+            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
                 const amount = result.currencyGained;
-                addCurrencyToPlayer(amount);
+                updatePlayerGold(amount); // Utilise la nouvelle fonction pour l'or
                 setTimeout(() => {
                     toast({
-                        title: amount > 0 ? "Monnaie Reçue !" : "Monnaie Dépensée !",
+                        title: amount > 0 ? "Pièces d'Or Reçues !" : "Pièces d'Or Dépensées !",
                         description: `Votre trésorerie a été mise à jour.`
                     });
                 }, 0);
@@ -568,7 +521,7 @@ export default function Home() {
   }, [
       adventureSettings, characters, currentLanguage,
       toast, handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer
+      handleRelationUpdatesFromAI, handleCombatUpdates, updatePlayerGold
   ]);
 
   const handlePlayerItemAction = React.useCallback((itemName: string, action: 'use' | 'discard') => {
@@ -578,7 +531,6 @@ export default function Home() {
         const currentPlayerName = adventureSettings.playerName || "Player";
         const currentWorld = adventureSettings.world;
         const currentRelationsMode = adventureSettings.relationsMode ?? true;
-        const currentCurrencyTiers = adventureSettings.playerCurrencyTiers;
 
         if (!currentRpgMode) {
             setTimeout(() => {toast({ title: "Mode RPG Désactivé", description: "L'inventaire et l'utilisation d'objets sont désactivés.", variant: "default" });},0);
@@ -588,10 +540,15 @@ export default function Home() {
         let itemUsedOrDiscarded = false;
         let narrativeAction = "";
         let effectAppliedMessage = "";
-        let itemToUpdate: PlayerInventoryItem | undefined = undefined;
 
         setAdventureSettings(prevSettings => {
-            let newInventory = [...(prevSettings.playerInventory || [])];
+            if (!prevSettings.playerInventory) {
+                 setTimeout(() => {toast({ title: "Inventaire Vide", description: "Vous n'avez pas d'objets à utiliser ou jeter.", variant: "default" });},0);
+                itemUsedOrDiscarded = false;
+                return prevSettings;
+            }
+
+            let newInventory = [...prevSettings.playerInventory];
             const itemIndex = newInventory.findIndex(invItem => invItem.name === itemName && invItem.quantity > 0);
 
             if (itemIndex === -1) {
@@ -600,7 +557,7 @@ export default function Home() {
                 return prevSettings;
             }
 
-            itemToUpdate = { ...newInventory[itemIndex] };
+            const itemToUpdate = { ...newInventory[itemIndex] };
             itemUsedOrDiscarded = true;
             let newSettings = { ...prevSettings };
 
@@ -649,14 +606,8 @@ export default function Home() {
             }
             handleNarrativeUpdate(narrativeAction, 'user');
 
-            // It's crucial that adventureSettings used here is the most up-to-date.
-            // Since setAdventureSettings is async, we get the latest state using its functional update form or rely on the next render.
-            // For an immediate AI call, it's better to construct the input based on the state *as it will be after the current updates*.
-            // However, `callGenerateAdventure` already reads from the component's `adventureSettings` state,
-            // which will be updated by the time `callGenerateAdventure` is executed (due to React.startTransition).
-
-            const latestCharacters = characters; // Current live characters
-            const latestNarrative = [...narrativeMessages, {id: 'temp-user', type: 'user', content: narrativeAction, timestamp: Date.now()}]; // Include the action just added
+            const latestCharacters = characters;
+            const latestNarrative = [...narrativeMessages, {id: 'temp-user', type: 'user', content: narrativeAction, timestamp: Date.now()}];
             const latestActiveCombat = activeCombat;
 
             const currentCharactersSnapshot = JSON.parse(JSON.stringify(latestCharacters));
@@ -672,10 +623,10 @@ export default function Home() {
                 rpgModeActive: currentRpgMode,
                 relationsModeActive: currentRelationsMode,
                 activeCombat: latestActiveCombat,
-                currencyTiers: currentCurrencyTiers,
-                playerClass: adventureSettings.playerClass, // Use live adventureSettings
+                // currencyTiers n'est plus utilisé, l'IA est informée de "pièces d'or"
+                playerClass: adventureSettings.playerClass,
                 playerLevel: adventureSettings.playerLevel,
-                playerCurrentHp: adventureSettings.playerCurrentHp, // This will be the value *before* potential potion effect if used in combat
+                playerCurrentHp: adventureSettings.playerCurrentHp,
                 playerMaxHp: adventureSettings.playerMaxHp,
                 playerCurrentMp: adventureSettings.playerCurrentMp,
                 playerMaxMp: adventureSettings.playerMaxMp,
@@ -808,7 +759,7 @@ export default function Home() {
          setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); },0);
 
         const {
-            world, playerName, relationsMode, rpgMode, playerCurrencyTiers,
+            world, playerName, relationsMode, rpgMode,
             playerClass, playerLevel, playerCurrentHp, playerMaxHp,
             playerCurrentMp, playerMaxMp, playerCurrentExp, playerExpToNextLevel
         } = adventureSettings;
@@ -829,7 +780,7 @@ export default function Home() {
                  relationsModeActive: relationsMode ?? true,
                  rpgModeActive: rpgMode ?? false,
                  activeCombat: activeCombat,
-                 currencyTiers: playerCurrencyTiers,
+                 // currencyTiers n'est plus utilisé, l'IA est informée de "pièces d'or"
                  playerClass: playerClass,
                  playerLevel: playerLevel,
                  playerCurrentHp: playerCurrentHp,
@@ -868,11 +819,11 @@ export default function Home() {
                 if(adventureSettings.rpgMode && result.combatUpdates) {
                     handleCombatUpdates(result.combatUpdates);
                 }
-                if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerCurrencyTiers) {
-                    addCurrencyToPlayer(result.currencyGained);
+                if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
+                    updatePlayerGold(result.currencyGained);
                      setTimeout(() => {
                         toast({
-                            title: result.currencyGained! > 0 ? "Monnaie Reçue !" : "Monnaie Dépensée !",
+                            title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Pièces d'Or Dépensées !",
                             description: `Votre trésorerie a été mise à jour.`
                         });
                     }, 0);
@@ -896,7 +847,7 @@ export default function Home() {
      }, [
          isRegenerating, narrativeMessages, adventureSettings, characters, currentLanguage, toast,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
-         activeCombat, handleCombatUpdates, addCurrencyToPlayer
+         activeCombat, handleCombatUpdates, updatePlayerGold // updatePlayerGold au lieu de addCurrencyToPlayer
      ]);
 
    const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -936,7 +887,6 @@ export default function Home() {
         let characterNameForToast = globalCharToAdd.name;
         const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
         const currentRpgMode = stagedAdventureSettings.rpgMode;
-        const currentPlayerName = stagedAdventureSettings.playerName || "Player";
 
         setStagedCharacters(prevStagedChars => {
             if (prevStagedChars.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase())) {
@@ -1008,14 +958,14 @@ export default function Home() {
             }
             return [...updatedPrevChars, newChar];
         });
-        setTimeout(() => {
+        React.startTransition(() => {
             if (characterWasAdded) {
                 toast({ title: "Personnage Ajouté à l'Aventure", description: `${characterNameForToast} a été ajouté aux modifications en attente pour cette aventure. N'oubliez pas d'enregistrer les modifications.` });
             } else {
                 toast({ title: "Personnage déjà présent", description: `${characterNameForToast} est déjà dans l'aventure actuelle.`, variant: "default" });
             }
-        },0);
-    }, [currentLanguage, toast, stagedAdventureSettings.playerName, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode]);
+        });
+    }, [currentLanguage, toast, stagedAdventureSettings.relationsMode, stagedAdventureSettings.rpgMode]);
 
    const handleSave = React.useCallback(() => {
         const charactersToSave = characters.map(({ ...char }) => char);
@@ -1025,7 +975,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombat,
-            saveFormatVersion: 1.6,
+            saveFormatVersion: 1.6, // Updated version for gold system
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1038,9 +988,9 @@ export default function Home() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setTimeout(() => {
+        React.startTransition(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
-        },0);
+        });
     }, [adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, toast]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1078,10 +1028,10 @@ export default function Home() {
                        loadedData.adventureSettings.relationsMode = loadedData.adventureSettings.relationsMode ?? true;
                        loadedData.characters = loadedData.characters.map(c => ({ ...c, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
                  }
-                  if (loadedData.saveFormatVersion < 1.6) {
-                       loadedData.characters = loadedData.characters.map(c => ({ ...c, relations: typeof c.relations === 'object' && c.relations !== null ? c.relations : { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
-                       loadedData.adventureSettings.playerCurrencyTiers = loadedData.adventureSettings.playerCurrencyTiers || baseAdventureSettings.playerCurrencyTiers;
-                       loadedData.adventureSettings.currencyLabel = loadedData.adventureSettings.currencyLabel || baseAdventureSettings.currencyLabel;
+                 if (loadedData.saveFormatVersion < 1.6) { // Old saves with currencyTiers
+                    loadedData.adventureSettings.playerGold = loadedData.adventureSettings.playerCurrencyTiers?.find(t => t.name.toLowerCase() === "or")?.amount || 0;
+                    delete (loadedData.adventureSettings as any).playerCurrencyTiers;
+                    delete (loadedData.adventureSettings as any).currencyLabel;
                  }
 
 
@@ -1146,7 +1096,7 @@ export default function Home() {
                 });
 
                 const finalAdventureSettings: AdventureSettings = {
-                    ...baseAdventureSettings,
+                    ...baseAdventureSettings, // Ensure all base fields are present
                     ...loadedData.adventureSettings,
                     relationsMode: relationsModeActive,
                     rpgMode: rpgModeActive,
@@ -1154,39 +1104,58 @@ export default function Home() {
                     playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? loadedData.adventureSettings.playerMaxMp) : undefined,
                     playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
                     playerInventory: loadedData.adventureSettings.playerInventory || [],
-                    playerCurrencyTiers: loadedData.adventureSettings.playerCurrencyTiers?.map((tier: any) => ({...tier, amount: tier.amount || 0})) || baseAdventureSettings.playerCurrencyTiers,
-                    currencyLabel: loadedData.adventureSettings.currencyLabel || baseAdventureSettings.currencyLabel,
+                    playerGold: loadedData.adventureSettings.playerGold ?? 0,
                 };
+                // Remove old currency fields if they exist on loadedData
+                delete (finalAdventureSettings as any).playerCurrencyTiers;
+                delete (finalAdventureSettings as any).currencyLabel;
 
-                setBaseAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
-                setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
 
-                 setTimeout(() => {
-                    toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
-                },0);
+                React.startTransition(() => {
+                  setBaseAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
+                  setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
+                  // The useEffect depending on baseAdventureSettings/baseCharacters will handle the rest
+                  toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
+                });
+
 
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
-                setTimeout(() => {
+                React.startTransition(() => {
                     toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" });
-                },0);
+                });
             }
         };
         reader.readAsText(file);
         if(event.target) event.target.value = '';
-    }, [toast, baseAdventureSettings.playerCurrencyTiers, baseAdventureSettings.currencyLabel]);
+    }, [toast, baseAdventureSettings]);
 
 
   const confirmRestartAdventure = React.useCallback(() => {
     React.startTransition(() => {
-        setBaseAdventureSettings(prev => JSON.parse(JSON.stringify(prev)));
-        setBaseCharacters(prev => JSON.parse(JSON.stringify(prev)));
+        // Re-clone from the original base settings to ensure a true reset
+        const initialSettings = JSON.parse(JSON.stringify(baseAdventureSettings));
+         const newLiveAdventureSettings: AdventureSettings = {
+            ...initialSettings,
+            playerCurrentHp: initialSettings.rpgMode ? initialSettings.playerMaxHp : undefined,
+            playerCurrentMp: initialSettings.rpgMode ? initialSettings.playerMaxMp : undefined,
+            playerCurrentExp: initialSettings.rpgMode ? 0 : undefined,
+            playerInventory: initialSettings.playerInventory || [], // Keep initial inventory from base
+            playerGold: initialSettings.playerGold ?? 0, // Keep initial gold from base
+        };
+        setAdventureSettings(newLiveAdventureSettings);
+        setCharacters(JSON.parse(JSON.stringify(baseCharacters)));
+        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }]);
+        setActiveCombat(undefined);
+        setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
+        setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
+        setFormPropKey(prev => prev + 1); // Force re-render of AdventureForm with new initial values
         setShowRestartConfirm(false);
     });
-     setTimeout(() => {
+     React.startTransition(() => {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
-    },0);
-  }, [toast]);
+    });
+  }, [baseAdventureSettings, baseCharacters, toast]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -1194,53 +1163,6 @@ export default function Home() {
 
   const handleSettingsUpdate = React.useCallback((newSettingsFromForm: AdventureFormValues) => {
     setStagedAdventureSettings(prevStagedSettings => {
-        let calculatedTiers: CurrencyTier[] = [];
-        if (newSettingsFromForm.currencyTiers && newSettingsFromForm.currencyTiers.length > 0) {
-             let baseValueAccumulator = 1; // La dernière devise du formulaire est la base
-             const formTiersInOrderOfDefinition = newSettingsFromForm.currencyTiers; // ex: [Or, Argent, Cuivre]
-             // Pour calculer valueInBaseTier, on part de la devise la plus petite (la dernière dans le tableau du formulaire)
-             // et on remonte.
-             const reversedFormTiers = [...formTiersInOrderOfDefinition].reverse(); // [Cuivre, Argent, Or]
-
-             calculatedTiers = reversedFormTiers.map((formTier, index) => {
-                 const currentTierValueInBase = baseValueAccumulator;
-                 if (index < reversedFormTiers.length - 1) { // Si ce n'est pas la devise la plus précieuse
-                    // La valueInPreviousTier du *prochain* tier (qui est plus petit dans reversedFormTiers)
-                    // indique combien de CE tier actuel font UN du tier suivant plus grand.
-                    // Ou, dit autrement, valueInPreviousTier du tier actuel (dans l'ordre du formulaire)
-                    // est combien du tier précédent (plus petit) il faut pour faire CE tier.
-                    const originalIndexInForm = formTiersInOrderOfDefinition.findIndex(ft => ft.name === formTier.name);
-                    if (originalIndexInForm > 0) { // Il y a un tier précédent plus petit
-                        baseValueAccumulator *= (formTiersInOrderOfDefinition[originalIndexInForm].valueInPreviousTier || 100);
-                    } else { // C'est le tier de base par rapport au suivant plus grand
-                         baseValueAccumulator *= (formTiersInOrderOfDefinition[originalIndexInForm].valueInPreviousTier || 1); // Devrait être 1 pour le "base"
-                    }
-                 }
-                 return {
-                     name: formTier.name || `Devise ${reversedFormTiers.length - index}`,
-                     valueInBaseTier: currentTierValueInBase, // Cette valeur est calculée en remontant
-                     amount: formTier.initialAmount || 0,
-                 };
-             }).reverse(); // Remettre dans l'ordre initial (plus précieux au moins précieux)
-
-             // Recalculer valueInBaseTier correctement en partant de la base (valueInBaseTier = 1)
-             if (calculatedTiers.length > 0) {
-                calculatedTiers[calculatedTiers.length - 1].valueInBaseTier = 1; // La dernière est la base
-                for (let i = calculatedTiers.length - 2; i >= 0; i--) {
-                    // formTiersInOrderOfDefinition[i+1] est le tier suivant (plus petit) dans la définition du formulaire
-                    // sa valueInPreviousTier est combien de CE tier il faut pour faire calculatedTiers[i]
-                    const valueOfNextSmallerTierInForm = formTiersInOrderOfDefinition[i+1].valueInPreviousTier;
-                    calculatedTiers[i].valueInBaseTier = calculatedTiers[i+1].valueInBaseTier * valueOfNextSmallerTierInForm;
-                }
-            }
-
-
-        } else {
-             calculatedTiers = prevStagedSettings.playerCurrencyTiers && prevStagedSettings.playerCurrencyTiers.length > 0
-                             ? prevStagedSettings.playerCurrencyTiers
-                             : baseAdventureSettings.playerCurrencyTiers || [];
-        }
-
         const newSettingsCandidate: AdventureSettings = {
             ...prevStagedSettings,
             world: newSettingsFromForm.world,
@@ -1248,8 +1170,7 @@ export default function Home() {
             rpgMode: newSettingsFromForm.enableRpgMode ?? false,
             relationsMode: newSettingsFromForm.enableRelationsMode ?? true,
             playerName: newSettingsFromForm.playerName || "Player",
-            currencyLabel: newSettingsFromForm.currencyLabel,
-            playerCurrencyTiers: calculatedTiers,
+            // No currencyLabel or currencyTiers from form
             playerClass: newSettingsFromForm.playerClass,
             playerLevel: newSettingsFromForm.playerLevel,
             playerMaxHp: newSettingsFromForm.playerMaxHp,
@@ -1265,6 +1186,7 @@ export default function Home() {
                 ? (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation ? prevStagedSettings.playerCurrentExp : 0)
                 : undefined,
             playerInventory: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerInventory || [] : undefined,
+            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerGold || 0 : undefined,
         };
         if (JSON.stringify(prevStagedSettings) !== JSON.stringify(newSettingsCandidate)) {
             return newSettingsCandidate;
@@ -1357,7 +1279,7 @@ export default function Home() {
       }
       return prevStagedChars;
     });
-  }, [currentLanguage, baseAdventureSettings.playerCurrencyTiers]);
+  }, [currentLanguage, baseAdventureSettings]);
 
 
   const handleApplyStagedChanges = React.useCallback(() => {
@@ -1367,27 +1289,31 @@ export default function Home() {
         let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
 
         if (newLiveSettings.rpgMode) {
-            if (initialSituationChanged || !prevLiveSettings.rpgMode) {
+            if (initialSituationChanged || !prevLiveSettings.rpgMode) { // Reset stats if situation changed or RPG mode was just enabled
                 newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
                 newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
                 newLiveSettings.playerLevel = newLiveSettings.playerLevel || 1;
                 newLiveSettings.playerInventory = newLiveSettings.playerInventory || [];
-            } else {
+                newLiveSettings.playerGold = newLiveSettings.playerGold || 0;
+            } else { // Keep current live RPG stats if situation is the same and RPG mode was already on
                 newLiveSettings.playerCurrentHp = prevLiveSettings.playerCurrentHp;
                 newLiveSettings.playerCurrentMp = prevLiveSettings.playerCurrentMp;
                 newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp;
                 newLiveSettings.playerLevel = prevLiveSettings.playerLevel;
                 newLiveSettings.playerInventory = prevLiveSettings.playerInventory;
+                newLiveSettings.playerGold = prevLiveSettings.playerGold;
             }
+             // Ensure HP/MP don't exceed max
             newLiveSettings.playerCurrentHp = Math.min(newLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
             newLiveSettings.playerCurrentMp = Math.min(newLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp ?? 0, newLiveSettings.playerMaxMp ?? 0);
 
-        } else {
+        } else { // RPG Mode is off
             newLiveSettings.playerCurrentHp = undefined;
             newLiveSettings.playerCurrentMp = undefined;
             newLiveSettings.playerCurrentExp = undefined;
             newLiveSettings.playerInventory = undefined;
+            newLiveSettings.playerGold = undefined;
             newLiveSettings.playerLevel = undefined;
             newLiveSettings.playerClass = undefined;
             newLiveSettings.playerMaxHp = undefined;
@@ -1403,10 +1329,10 @@ export default function Home() {
     }
 
     setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
-    // Ne pas incrémenter formPropKey ici, laisser AdventureForm se réinitialiser via son propre useEffect
-    setTimeout(() => {
+    // setFormPropKey(k => k + 1); // Removed to rely on AdventureForm's internal reset
+    React.startTransition(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
-    }, 0);
+    });
   }, [stagedAdventureSettings, stagedCharacters, toast]);
 
 
@@ -1420,22 +1346,6 @@ export default function Home() {
 
 
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
-    const formCurrencyTiers = stagedAdventureSettings.playerCurrencyTiers?.map((tier, index, allTiers) => {
-        let valueInPrev = 1; // Default for the base tier (last in playerCurrencyTiers as sorted by value)
-        if (index < allTiers.length - 1) { // If not the absolute base tier (e.g. Copper)
-            const nextSmallerTier = allTiers[index + 1];
-            if (nextSmallerTier && nextSmallerTier.valueInBaseTier !== 0) {
-                 valueInPrev = tier.valueInBaseTier / nextSmallerTier.valueInBaseTier;
-            }
-        }
-      return {
-        name: tier.name,
-        valueInPreviousTier: valueInPrev,
-        initialAmount: tier.amount
-      };
-    }) || [];
-
-
     return {
       world: stagedAdventureSettings.world,
       initialSituation: stagedAdventureSettings.initialSituation,
@@ -1443,10 +1353,7 @@ export default function Home() {
       enableRpgMode: stagedAdventureSettings.rpgMode,
       enableRelationsMode: stagedAdventureSettings.relationsMode ?? true,
       characters: memoizedFormCharacters,
-
-      currencyLabel: stagedAdventureSettings.currencyLabel,
-      currencyTiers: formCurrencyTiers,
-
+      // No currencyLabel or currencyTiers here
       playerClass: stagedAdventureSettings.playerClass,
       playerLevel: stagedAdventureSettings.playerLevel,
       playerMaxHp: stagedAdventureSettings.playerMaxHp,
@@ -1465,17 +1372,17 @@ export default function Home() {
 
     const recentMessages = narrativeMessages.slice(-5).map(m => m.type === 'user' ? `${adventureSettings.playerName}: ${m.content}` : m.content).join('\n');
     
-    const characterNamesForQuestHook = characters.slice(0, 5).map(c => c.name).join(', ');
+    const characterNamesForHook = characters.slice(0, 5).map(c => c.name).join(', ');
 
     try {
       const input: SuggestQuestHookInput = {
         worldDescription: adventureSettings.world,
         currentSituation: recentMessages,
-        involvedCharacters: characterNamesForQuestHook,
+        involvedCharacters: characterNamesForHook,
         language: currentLanguage,
       };
       const result = await suggestQuestHook(input);
-      setTimeout(() => {
+      React.startTransition(() => {
         toast({
           title: "Suggestion de Quête:",
           description: (
@@ -1486,12 +1393,12 @@ export default function Home() {
           ),
           duration: 9000,
         });
-      }, 0);
+      });
     } catch (error) {
       console.error("Error suggesting quest hook:", error);
-      setTimeout(() => {
+      React.startTransition(() => {
         toast({ title: "Erreur", description: "Impossible de suggérer une quête.", variant: "destructive" });
-      }, 0);
+      });
     } finally {
       React.startTransition(() => {
         setIsSuggestingQuest(false);
@@ -1547,3 +1454,4 @@ export default function Home() {
       </>
   );
 }
+

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,21 +17,21 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, Dices, User, Users, Heart, Gamepad2, Coins } from "lucide-react"; // Added icons
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { AdventureFormValues } from '@/app/page';
 
-// Schema definition including characters array and player name
 const characterSchema = z.object({
-  id: z.string().optional(), // Keep ID if exists
+  id: z.string().optional(),
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
 });
 
+// Schema simplified, currency tiers are removed
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
@@ -39,7 +39,7 @@ const adventureFormSchema = z.object({
   enableRpgMode: z.boolean().default(false).optional(),
   enableRelationsMode: z.boolean().default(true).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
-  currencyName: z.string().optional().describe("Le nom de la monnaie (si RPG activé)."),
+  // Removed currencyName, playerGold is managed directly in AdventureSettings, not via form for now
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
   playerMaxHp: z.number().int().min(1).optional().default(20).describe("Points de vie maximum initiaux."),
@@ -74,11 +74,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     };
   }, [form, onSettingsChange]);
 
-  // This effect listens for changes in `initialValues` (which happens when `formPropKey` changes)
-  // and resets the form with the new `initialValues`.
   React.useEffect(() => {
     form.reset(initialValues);
-  }, [formPropKey, initialValues, form]);
+  }, [formPropKey, JSON.stringify(initialValues), form]); // Depend on stringified initialValues
 
 
   const handleLoadPrompt = () => {
@@ -92,7 +90,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         enableRpgMode: true,
         enableRelationsMode: true,
         playerName: "Héros",
-        currencyName: "Or",
         playerClass: "Étudiant Combattant",
         playerLevel: 1,
         playerMaxHp: 25,
@@ -248,25 +245,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="currencyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2"><Coins className="h-4 w-4"/>Nom de la Monnaie</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Or, Crédits, Gemmes..."
-                          {...field}
-                          value={field.value || ""}
-                          className="bg-background border"
-                        />
-                      </FormControl>
-                       <FormDescription>Le nom de la monnaie utilisée (optionnel).</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 {/* Currency name configuration removed, assuming "Pièces d'Or" */}
               </Card>
             )}
 
@@ -378,7 +357,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                  </AccordionContent>
               </AccordionItem>
             </Accordion>
-
           </div>
       </form>
     </Form>

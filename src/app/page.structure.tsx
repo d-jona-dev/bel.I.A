@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Sparkles as SparklesIcon, Shield as ShieldIcon, Swords as SwordsIcon, Package, PlayCircle, Trash2 as Trash2Icon, Coins } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, CurrencyTier } from "@/types";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -278,9 +278,9 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction as any} // Cast to any if type mismatch is complex
-                adventureSettings={adventureSettings} // Use applied settings
-                characters={characters} // Use applied characters
+                suggestQuestHookAction={suggestQuestHookAction as any}
+                adventureSettings={adventureSettings}
+                characters={characters}
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
@@ -309,7 +309,6 @@ export function PageStructure({
              </SidebarHeader>
              <ScrollArea className="flex-1">
                  <SidebarContent className="p-4 space-y-6">
-                      {/* Adventure Configuration */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
                          <AccordionItem value="adventure-config-accordion">
                              <AccordionTrigger>
@@ -327,7 +326,6 @@ export function PageStructure({
                          </AccordionItem>
                      </Accordion>
 
-                    {/* Player Character Section (RPG Mode) */}
                     {adventureSettings.rpgMode && (
                         <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
                             <AccordionItem value="player-character-accordion">
@@ -374,16 +372,13 @@ export function PageStructure({
                                                 <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                                             </div>
                                             
-                                            {/* Currency Display */}
-                                            {adventureSettings.playerCurrencyTiers && Array.isArray(adventureSettings.playerCurrencyTiers) && adventureSettings.playerCurrencyTiers.length > 0 && (
+                                            {adventureSettings.rpgMode && adventureSettings.playerGold !== undefined && (
                                                 <div className="mt-3 pt-3 border-t">
                                                     <Label className="text-sm font-medium flex items-center">
                                                         <Coins className="h-4 w-4 mr-1 text-yellow-600"/>
-                                                        {adventureSettings.currencyLabel || (currentLanguage === 'fr' ? "Trésorerie" : "Treasury")}
+                                                        Pièces d'Or
                                                     </Label>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {adventureSettings.playerCurrencyTiers.map(tier => `${tier.name}: ${tier.amount || 0}`).join(' / ')}
-                                                    </p>
+                                                    <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
                                                 </div>
                                             )}
 
@@ -447,17 +442,6 @@ export function PageStructure({
                                                 )}
                                               </CardContent>
                                             </Card>
-
-                                             {adventureSettings.rpgMode && (
-                                                <>
-                                                    <CardDescription className="text-xs pt-2">
-                                                        <SparklesIcon className="inline h-3 w-3 mr-1" /> Caractéristiques (Force, etc.) à venir.
-                                                    </CardDescription>
-                                                    <CardDescription className="text-xs">
-                                                        <SwordsIcon className="inline h-3 w-3 mr-1" /> Sorts & Compétences à venir.
-                                                    </CardDescription>
-                                                </>
-                                             )}
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
@@ -465,8 +449,6 @@ export function PageStructure({
                         </Accordion>
                     )}
 
-
-                     {/* Characters */}
                      <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
                          <AccordionItem value="characters-accordion">
                              <AccordionTrigger>
@@ -492,7 +474,6 @@ export function PageStructure({
                          </AccordionItem>
                      </Accordion>
 
-                      {/* AI Configuration */}
                      <Accordion type="single" collapsible className="w-full">
                          <AccordionItem value="ai-config-accordion">
                             <AccordionTrigger>
@@ -531,4 +512,3 @@ export function PageStructure({
     </>
   );
 }
-
