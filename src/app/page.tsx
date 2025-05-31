@@ -18,8 +18,8 @@ import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/s
 
 const PLAYER_ID = "player";
 const BASE_ATTRIBUTE_VALUE = 8;
-const INITIAL_CREATION_ATTRIBUTE_POINTS = 10; // Points à distribuer à la création en plus des valeurs de base
-const ATTRIBUTE_POINTS_PER_LEVEL_GAIN = 5; // Points gagnés à chaque niveau après le premier
+const INITIAL_CREATION_ATTRIBUTE_POINTS = 10; 
+const ATTRIBUTE_POINTS_PER_LEVEL_GAIN = 5; 
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
@@ -36,7 +36,7 @@ export type AdventureFormValues = {
   playerMaxMp?: number; 
   playerExpToNextLevel?: number;
   playerGold?: number;
-  playerInitialAttributePoints?: number; // Ce sera le *total* de points distribuables pour le niveau actuel, calculé
+  playerInitialAttributePoints?: number; 
   playerStrength?: number;
   playerDexterity?: number;
   playerConstitution?: number;
@@ -48,58 +48,110 @@ export type AdventureFormValues = {
   playerDamageBonus?: string;
 };
 
-const calculateDerivedStats = (settings: Partial<AdventureFormValues>) => {
+// Calculates base stats derived from attributes, before equipment
+const calculateBaseDerivedStats = (settings: Partial<AdventureSettings>) => {
   const constitution = settings.playerConstitution || BASE_ATTRIBUTE_VALUE;
   const intelligence = settings.playerIntelligence || BASE_ATTRIBUTE_VALUE;
   const dexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
+  const strength = settings.playerStrength || BASE_ATTRIBUTE_VALUE;
   const playerClass = settings.playerClass || "";
   const playerLevel = settings.playerLevel || 1;
 
-  // PV: Base + CON bonus par niveau + Modificateur de classe par niveau
   let maxHp = 10 + (Math.floor((constitution - 10) / 2) + constitution) * playerLevel;
-
   if (playerClass.toLowerCase().includes("guerrier") || playerClass.toLowerCase().includes("barbare")) {
     maxHp += playerLevel * 2; 
   } else if (playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
     maxHp -= playerLevel * 1; 
   }
 
-
   let maxMp = 0;
   if (playerClass.toLowerCase().includes("magicien") || playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
     maxMp = 10 + Math.max(0, (intelligence - 10)) * 2 + Math.floor(playerLevel / 2) * 5;
   }
 
-  const armorClass = 10 + Math.floor((dexterity - 10) / 2); 
+  const baseArmorClass = 10 + Math.floor((dexterity - 10) / 2); 
+  // Base attack bonus: can be from STR or DEX depending on class/weapon type later, plus proficiency (level based)
+  // For now, let's use STR for melee, DEX for ranged/finesse - simplified to STR + proficiency part
+  const proficiencyBonus = Math.floor((playerLevel - 1) / 4) + 2; // Common D&D style proficiency
+  const baseAttackBonus = Math.floor((strength - 10) / 2) + proficiencyBonus;
+  const baseDamageBonus = `${Math.floor((strength - 10) / 2) >= 0 ? '+' : ''}${Math.floor((strength - 10) / 2)}`; // e.g. "+1", "-1", or "+0" from STR, unarmed could be "1"
 
   return {
-    playerMaxHp: Math.max(5, maxHp), // Ensure a minimum HP
+    playerMaxHp: Math.max(5, maxHp),
     playerMaxMp: Math.max(0, maxMp),
-    playerArmorClass: armorClass,
+    playerArmorClass: baseArmorClass, // This is the base AC before armor
+    playerAttackBonus: baseAttackBonus, // Base attack bonus before weapon
+    playerDamageBonus: baseDamageBonus === "+0" ? "1" : (parseInt(baseDamageBonus) > 0 ? baseDamageBonus : "1"), // Unarmed damage, minimum 1
   };
+};
+
+// Calculates effective stats including equipment
+const calculateEffectiveStats = (settings: AdventureSettings) => {
+    const baseDerived = calculateBaseDerivedStats(settings);
+    let effectiveAC = baseDerived.playerArmorClass;
+    let effectiveAttackBonus = baseDerived.playerAttackBonus;
+    let effectiveDamageBonus = baseDerived.playerDamageBonus; // Base unarmed or from STR
+
+    const inventory = settings.playerInventory || [];
+    const weaponId = settings.equippedItemIds?.weapon;
+    const armorId = settings.equippedItemIds?.armor;
+    const jewelryId = settings.equippedItemIds?.jewelry;
+
+    const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
+    const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
+    const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
+
+    if (equippedArmor?.statBonuses?.ac) {
+        effectiveAC += equippedArmor.statBonuses.ac;
+    }
+    if (equippedJewelry?.statBonuses?.ac) {
+        effectiveAC += equippedJewelry.statBonuses.ac;
+    }
+
+    if (equippedWeapon?.statBonuses?.attack) {
+        effectiveAttackBonus += equippedWeapon.statBonuses.attack;
+    }
+    if (equippedJewelry?.statBonuses?.attack) {
+        effectiveAttackBonus += equippedJewelry.statBonuses.attack;
+    }
+    
+    // Weapon damage overrides player's base damage bonus string
+    if (equippedWeapon?.statBonuses?.damage) {
+        effectiveDamageBonus = equippedWeapon.statBonuses.damage;
+    }
+    // Note: Jewelry damage bonus might need a more complex addition logic if it's not a simple string.
+    // For now, jewelry won't modify damage string directly but could add a numeric bonus if we adapt.
+
+    return {
+        ...baseDerived, // Includes base MaxHP, MaxMP
+        playerArmorClass: effectiveAC,
+        playerAttackBonus: effectiveAttackBonus,
+        playerDamageBonus: effectiveDamageBonus,
+    };
 };
 
 
 export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const initialPlayerStats = {
-    playerName: "Héros",
-    playerClass: "Guerrier",
-    playerLevel: 1,
-    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS, // Points de création
+  const initialPlayerAttributes = {
+    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS, 
     playerStrength: BASE_ATTRIBUTE_VALUE,
     playerDexterity: BASE_ATTRIBUTE_VALUE,
     playerConstitution: BASE_ATTRIBUTE_VALUE,
     playerIntelligence: BASE_ATTRIBUTE_VALUE,
     playerWisdom: BASE_ATTRIBUTE_VALUE,
     playerCharisma: BASE_ATTRIBUTE_VALUE,
-    playerAttackBonus: 0, 
-    playerDamageBonus: "1", 
+  };
+
+  const initialBaseDerivedStats = calculateBaseDerivedStats({
+    ...initialPlayerAttributes,
+    playerName: "Héros",
+    playerClass: "Guerrier",
+    playerLevel: 1,
     playerExpToNextLevel: 100,
     playerGold: 15,
-  };
-  const derivedInitialStats = calculateDerivedStats(initialPlayerStats);
+  });
 
 
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
@@ -107,15 +159,21 @@ export default function Home() {
     initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Ancienne Elara, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true,
     relationsMode: true,
-    ...initialPlayerStats,
-    ...derivedInitialStats,
-    playerCurrentHp: derivedInitialStats.playerMaxHp,
-    playerCurrentMp: derivedInitialStats.playerMaxMp,
+    playerName: "Héros",
+    playerClass: "Guerrier",
+    playerLevel: 1,
+    ...initialPlayerAttributes,
+    ...initialBaseDerivedStats, // Base MaxHP, MaxMP, AC, Attack, Damage before equipment
+    playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
+    playerCurrentMp: initialBaseDerivedStats.playerMaxMp,
     playerCurrentExp: 0,
+    playerExpToNextLevel: 100,
+    playerGold: 15,
     playerInventory: [
-        {name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable", goldValue: 10, generatedImageUrl: null},
-        {name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base", type: "weapon", goldValue: 2, generatedImageUrl: null}
+        {id: "potion-soin-initial-1", name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable", goldValue: 10, generatedImageUrl: null, isEquipped: false},
+        {id: "dague-rouillee-initial-1", name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base.", type: "weapon", goldValue: 2, generatedImageUrl: null, isEquipped: false, statBonuses: { damage: "1d4" }}
     ],
+    equippedItemIds: { weapon: null, armor: null, jewelry: null },
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -199,13 +257,20 @@ export default function Home() {
   }, [characters]);
 
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => {
+       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
+           ...item,
+           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+           quantity: item.quantity,
+           isEquipped: false, // New items are never equipped by default
+       }));
+
        const newMessage: Message = {
             id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             type: type,
             content: content,
             timestamp: Date.now(),
             sceneDescription: type === 'ai' ? sceneDesc : undefined,
-            loot: type === 'ai' && lootItems && lootItems.length > 0 ? lootItems : undefined,
+            loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
             lootTaken: false,
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
@@ -216,7 +281,7 @@ export default function Home() {
         if (!prevSettings.rpgMode) return prevSettings;
         let currentGold = prevSettings.playerGold ?? 0;
         let newGold = currentGold + amount;
-        if (newGold < 0) newGold = 0; // Prevent negative gold
+        if (newGold < 0) newGold = 0; 
         return { ...prevSettings, playerGold: newGold };
     });
   }, []);
@@ -271,16 +336,17 @@ export default function Home() {
                 newSettings.playerLevel! += 1;
                 newSettings.playerCurrentExp -= newSettings.playerExpToNextLevel!;
                 newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5); 
-                // playerInitialAttributePoints n'est plus directement incrémenté ici.
-                // Les points supplémentaires seront calculés par le formulaire basé sur le nouveau niveau.
                 
-                const newDerivedStats = calculateDerivedStats(newSettings); 
-                newSettings.playerMaxHp = newDerivedStats.playerMaxHp;
+                const derivedStats = calculateEffectiveStats(newSettings); 
+                newSettings.playerMaxHp = derivedStats.playerMaxHp;
                 newSettings.playerCurrentHp = newSettings.playerMaxHp; 
                 if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
-                    newSettings.playerMaxMp = newDerivedStats.playerMaxMp;
+                    newSettings.playerMaxMp = derivedStats.playerMaxMp;
                     newSettings.playerCurrentMp = newSettings.playerMaxMp; 
                 }
+                 newSettings.playerArmorClass = derivedStats.playerArmorClass;
+                 newSettings.playerAttackBonus = derivedStats.playerAttackBonus;
+                 newSettings.playerDamageBonus = derivedStats.playerDamageBonus;
             }
             if (gainedLevel) {
                  setTimeout(() => { 
@@ -405,7 +471,7 @@ export default function Home() {
                 const newHistory = charUpdates.map(u => u.historyEntry);
                 return {
                     ...char,
-                    history: [...(char.history || []), ...newHistory].slice(-20), // Keep last 20 entries
+                    history: [...(char.history || []), ...newHistory].slice(-20), 
                 };
             }
             return char;
@@ -508,14 +574,49 @@ export default function Home() {
      toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
-  const callGenerateAdventure = React.useCallback(async (input: GenerateAdventureInput) => {
+  const callGenerateAdventure = React.useCallback(async (userActionText: string) => {
     React.startTransition(() => {
       setIsLoading(true);
     });
+
+    // Use a fresh copy of adventureSettings to calculate effective stats for this turn
+    const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
+    const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
+
+    const input: GenerateAdventureInput = {
+        world: currentTurnSettings.world,
+        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+        characters: characters,
+        userAction: userActionText,
+        currentLanguage: currentLanguage,
+        playerName: currentTurnSettings.playerName || "Player",
+        rpgModeActive: currentTurnSettings.rpgMode,
+        relationsModeActive: currentTurnSettings.relationsMode ?? true,
+        activeCombat: activeCombat,
+        playerGold: currentTurnSettings.playerGold,
+        playerClass: currentTurnSettings.playerClass,
+        playerLevel: currentTurnSettings.playerLevel,
+        playerCurrentHp: currentTurnSettings.playerCurrentHp,
+        playerMaxHp: effectiveStatsThisTurn.playerMaxHp, // Use effective MaxHP for AI
+        playerCurrentMp: currentTurnSettings.playerCurrentMp,
+        playerMaxMp: effectiveStatsThisTurn.playerMaxMp, // Use effective MaxMP for AI
+        playerCurrentExp: currentTurnSettings.playerCurrentExp,
+        playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
+        playerStrength: currentTurnSettings.playerStrength,
+        playerDexterity: currentTurnSettings.playerDexterity,
+        playerConstitution: currentTurnSettings.playerConstitution,
+        playerIntelligence: currentTurnSettings.playerIntelligence,
+        playerWisdom: currentTurnSettings.playerWisdom,
+        playerCharisma: currentTurnSettings.playerCharisma,
+        playerArmorClass: effectiveStatsThisTurn.playerArmorClass, // Effective AC
+        playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus, // Effective Attack Bonus
+        playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus, // Effective Damage Bonus
+    };
+
     try {
         const result = await generateAdventure(input);
         React.startTransition(() => {
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained as PlayerInventoryItem[]);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
@@ -542,11 +643,16 @@ export default function Home() {
                            setAdventureSettings(prev => {
                                 const newInventory = [...(prev.playerInventory || [])];
                                 result.itemsObtained!.forEach(item => {
-                                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName);
+                                    const newItemWithId: PlayerInventoryItem = {
+                                        ...item,
+                                        id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                                        isEquipped: false,
+                                    };
+                                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === newItemWithId.name);
                                     if (existingItemIndex > -1) {
-                                        newInventory[existingItemIndex].quantity += item.quantity;
+                                        newInventory[existingItemIndex].quantity += newItemWithId.quantity;
                                     } else {
-                                        newInventory.push({ ...item, generatedImageUrl: null });
+                                        newInventory.push(newItemWithId);
                                     }
                                 });
                                 return { ...prev, playerInventory: newInventory };
@@ -588,15 +694,13 @@ export default function Home() {
         });
     }
   }, [
-      adventureSettings, 
-      characters, 
-      currentLanguage, toast,
+      adventureSettings, characters, currentLanguage, narrativeMessages, activeCombat, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer
   ]);
 
 
-  const handlePlayerItemAction = React.useCallback((itemName: string, action: 'use' | 'discard') => {
+  const handlePlayerItemAction = React.useCallback((itemId: string, action: 'use' | 'discard') => {
     React.startTransition(() => {
         let itemActionSuccessful = false;
         let narrativeAction = "";
@@ -613,10 +717,11 @@ export default function Home() {
             }
 
             let newInventory = [...prevSettings.playerInventory];
-            const itemIndex = newInventory.findIndex(invItem => invItem.name === itemName && invItem.quantity > 0);
+            const itemIndex = newInventory.findIndex(invItem => invItem.id === itemId && invItem.quantity > 0);
 
             if (itemIndex === -1) {
-                 setTimeout(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${itemName}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });},0);
+                 const item = prevSettings.playerInventory.find(i => i.id === itemId);
+                 setTimeout(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });},0);
                 itemActionSuccessful = false;
                 return prevSettings;
             }
@@ -657,12 +762,27 @@ export default function Home() {
                 narrativeAction = `Je jette ${itemToUpdate.name}.`;
                 newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                 effectAppliedMessage = `${itemToUpdate.name} a été jeté.`;
+                // If discarding an equipped item, unequip it first
+                if (itemToUpdate.isEquipped) {
+                    if (newSettings.equippedItemIds?.weapon === itemToUpdate.id) newSettings.equippedItemIds.weapon = null;
+                    else if (newSettings.equippedItemIds?.armor === itemToUpdate.id) newSettings.equippedItemIds.armor = null;
+                    else if (newSettings.equippedItemIds?.jewelry === itemToUpdate.id) newSettings.equippedItemIds.jewelry = null;
+                    newInventory[itemIndex].isEquipped = false; // Ensure it's marked as not equipped
+                }
             }
 
             if (newInventory[itemIndex].quantity <= 0) {
                 newInventory.splice(itemIndex, 1);
             }
             newSettings.playerInventory = newInventory;
+            
+            // Recalculate effective stats if an equipped item was discarded or if a consumable might have changed stats (though less common)
+             if (action === 'discard' && itemToUpdate.isEquipped) {
+                const effectiveStats = calculateEffectiveStats(newSettings);
+                newSettings.playerArmorClass = effectiveStats.playerArmorClass;
+                newSettings.playerAttackBonus = effectiveStats.playerAttackBonus;
+                newSettings.playerDamageBonus = effectiveStats.playerDamageBonus;
+            }
             return newSettings;
         });
 
@@ -672,9 +792,6 @@ export default function Home() {
              }
             handleNarrativeUpdate(narrativeAction, 'user');
             
-            const latestCharactersSnapshot = JSON.parse(JSON.stringify(characters)); 
-            const latestNarrativeSnapshot = [...narrativeMessages, {id: 'temp-user', type: 'user', content: narrativeAction, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n');
-
             const settingsForAICall = JSON.parse(JSON.stringify(adventureSettings)); 
 
             if (action === 'use' && !activeCombat?.isActive) {
@@ -685,45 +802,15 @@ export default function Home() {
                     settingsForAICall.playerCurrentMp = Math.min(settingsForAICall.playerMaxMp || 0, (settingsForAICall.playerCurrentMp || 0) + mpChange);
                 }
             }
-
-            const inputForAI: GenerateAdventureInput = {
-                world: settingsForAICall.world,
-                initialSituation: latestNarrativeSnapshot,
-                characters: latestCharactersSnapshot,
-                userAction: narrativeAction,
-                currentLanguage: currentLanguage,
-                playerName: settingsForAICall.playerName || "Player",
-                rpgModeActive: settingsForAICall.rpgMode,
-                relationsModeActive: settingsForAICall.relationsMode ?? true,
-                activeCombat: activeCombat,
-                playerGold: settingsForAICall.playerGold,
-                playerClass: settingsForAICall.playerClass,
-                playerLevel: settingsForAICall.playerLevel,
-                playerCurrentHp: settingsForAICall.playerCurrentHp,
-                playerMaxHp: settingsForAICall.playerMaxHp,
-                playerCurrentMp: settingsForAICall.playerCurrentMp,
-                playerMaxMp: settingsForAICall.playerMaxMp,
-                playerCurrentExp: settingsForAICall.playerCurrentExp,
-                playerExpToNextLevel: settingsForAICall.playerExpToNextLevel,
-                playerStrength: settingsForAICall.playerStrength,
-                playerDexterity: settingsForAICall.playerDexterity,
-                playerConstitution: settingsForAICall.playerConstitution,
-                playerIntelligence: settingsForAICall.playerIntelligence,
-                playerWisdom: settingsForAICall.playerWisdom,
-                playerCharisma: settingsForAICall.playerCharisma,
-                playerArmorClass: settingsForAICall.playerArmorClass,
-                playerAttackBonus: settingsForAICall.playerAttackBonus,
-                playerDamageBonus: settingsForAICall.playerDamageBonus,
-            };
-            callGenerateAdventure(inputForAI);
+            callGenerateAdventure(narrativeAction);
         }
     });
   }, [
-    adventureSettings, characters, currentLanguage, narrativeMessages, activeCombat,
+    adventureSettings, activeCombat,
     callGenerateAdventure, handleNarrativeUpdate, toast
   ]);
 
-  const handleSellItem = React.useCallback((itemName: string) => {
+  const handleSellItem = React.useCallback((itemId: string) => {
     React.startTransition(() => {
         let itemSoldSuccessfully = false;
         let sellPrice = 0;
@@ -738,10 +825,11 @@ export default function Home() {
                 return prevSettings;
             }
 
-            const itemIndex = prevSettings.playerInventory.findIndex(invItem => invItem.name === itemName && invItem.quantity > 0);
+            const itemIndex = prevSettings.playerInventory.findIndex(invItem => invItem.id === itemId && invItem.quantity > 0);
             if (itemIndex === -1) {
+                const item = prevSettings.playerInventory.find(i => i.id === itemId);
                 setTimeout(() => {
-                    toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${itemName}" à vendre.`, variant: "destructive" });
+                    toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" à vendre.`, variant: "destructive" });
                 }, 0);
                 return prevSettings;
             }
@@ -762,17 +850,31 @@ export default function Home() {
             const newInventory = [...prevSettings.playerInventory];
             newInventory[itemIndex] = { ...itemToSell, quantity: itemToSell.quantity - 1 };
             if (newInventory[itemIndex].quantity <= 0) {
+                 // If selling an equipped item that runs out, unequip it
+                if (itemToSell.isEquipped) {
+                    if (prevSettings.equippedItemIds?.weapon === itemToSell.id) prevSettings.equippedItemIds.weapon = null;
+                    else if (prevSettings.equippedItemIds?.armor === itemToSell.id) prevSettings.equippedItemIds.armor = null;
+                    else if (prevSettings.equippedItemIds?.jewelry === itemToSell.id) prevSettings.equippedItemIds.jewelry = null;
+                }
                 newInventory.splice(itemIndex, 1);
             }
 
+
             itemSoldSuccessfully = true;
             userAction = `Je vends ${itemToSellName}.`; 
-
-            return {
+            let newSettings = {
                 ...prevSettings,
                 playerInventory: newInventory,
                 playerGold: (prevSettings.playerGold ?? 0) + sellPrice,
             };
+            // Recalculate effective stats if an equipped item was sold
+            if (itemToSell.isEquipped && newInventory.findIndex(i => i.id === itemToSell.id) === -1) {
+                 const effectiveStats = calculateEffectiveStats(newSettings);
+                 newSettings.playerArmorClass = effectiveStats.playerArmorClass;
+                 newSettings.playerAttackBonus = effectiveStats.playerAttackBonus;
+                 newSettings.playerDamageBonus = effectiveStats.playerDamageBonus;
+            }
+            return newSettings;
         });
 
         if (itemSoldSuccessfully) {
@@ -781,68 +883,128 @@ export default function Home() {
             }, 0);
 
             handleNarrativeUpdate(userAction, 'user');
-            const settingsForAICall = JSON.parse(JSON.stringify(adventureSettings));
-            const inputForAI: GenerateAdventureInput = {
-                world: settingsForAICall.world,
-                initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userAction, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${settingsForAICall.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
-                characters: JSON.parse(JSON.stringify(characters)),
-                userAction: userAction,
-                currentLanguage: currentLanguage,
-                playerName: settingsForAICall.playerName || "Player",
-                rpgModeActive: settingsForAICall.rpgMode,
-                relationsModeActive: settingsForAICall.relationsMode ?? true,
-                activeCombat: activeCombat,
-                playerGold: (adventureSettings.playerGold ?? 0), 
-                playerClass: settingsForAICall.playerClass,
-                playerLevel: settingsForAICall.playerLevel,
-                playerCurrentHp: settingsForAICall.playerCurrentHp,
-                playerMaxHp: settingsForAICall.playerMaxHp,
-                playerCurrentMp: settingsForAICall.playerCurrentMp,
-                playerMaxMp: settingsForAICall.playerMaxMp,
-                playerCurrentExp: settingsForAICall.playerCurrentExp,
-                playerExpToNextLevel: settingsForAICall.playerExpToNextLevel,
-                playerStrength: settingsForAICall.playerStrength,
-                playerDexterity: settingsForAICall.playerDexterity,
-                playerConstitution: settingsForAICall.playerConstitution,
-                playerIntelligence: settingsForAICall.playerIntelligence,
-                playerWisdom: settingsForAICall.playerWisdom,
-                playerCharisma: settingsForAICall.playerCharisma,
-                playerArmorClass: settingsForAICall.playerArmorClass,
-                playerAttackBonus: settingsForAICall.playerAttackBonus,
-                playerDamageBonus: settingsForAICall.playerDamageBonus,
-            };
-            callGenerateAdventure(inputForAI);
+            callGenerateAdventure(userAction);
         }
     });
   }, [
-    adventureSettings, characters, currentLanguage, narrativeMessages, activeCombat,
+    adventureSettings, 
     handleNarrativeUpdate, callGenerateAdventure, toast
   ]);
 
+  const handleEquipItem = React.useCallback((itemIdToEquip: string) => {
+    setAdventureSettings(prevSettings => {
+        if (!prevSettings.rpgMode || !prevSettings.playerInventory) return prevSettings;
+        const item = prevSettings.playerInventory.find(i => i.id === itemIdToEquip);
+        if (!item || item.quantity <= 0) {
+            toast({ title: "Erreur", description: "Objet introuvable ou quantité insuffisante.", variant: "destructive" });
+            return prevSettings;
+        }
 
-    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: LootedItem[]) => {
+        let slotToEquip: keyof NonNullable<AdventureSettings['equippedItemIds']> | null = null;
+        if (item.type === 'weapon') slotToEquip = 'weapon';
+        else if (item.type === 'armor') slotToEquip = 'armor';
+        else if (item.type === 'jewelry') slotToEquip = 'jewelry';
+
+        if (!slotToEquip) {
+            toast({ title: "Non Équipable", description: `"${item.name}" n'est pas un objet équipable dans un slot standard.`, variant: "default" });
+            return prevSettings;
+        }
+
+        const newEquippedItemIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
+        const newInventory = prevSettings.playerInventory.map(invItem => ({ ...invItem }));
+
+        // Unequip current item in the slot if any
+        const currentEquippedItemId = newEquippedItemIds[slotToEquip];
+        if (currentEquippedItemId) {
+            const currentlyEquippedItemIndex = newInventory.findIndex(i => i.id === currentEquippedItemId);
+            if (currentlyEquippedItemIndex > -1) {
+                newInventory[currentlyEquippedItemIndex].isEquipped = false;
+            }
+        }
+        
+        // Equip the new item
+        newEquippedItemIds[slotToEquip] = item.id;
+        const newItemIndex = newInventory.findIndex(i => i.id === item.id);
+        if (newItemIndex > -1) {
+            newInventory[newItemIndex].isEquipped = true;
+        } else {
+             // This case should not happen if item was found initially
+            console.error("Item to equip not found in inventory during map");
+            return prevSettings;
+        }
+        
+        const updatedSettings = {
+            ...prevSettings,
+            equippedItemIds: newEquippedItemIds,
+            playerInventory: newInventory,
+        };
+        
+        const effectiveStats = calculateEffectiveStats(updatedSettings);
+        
+        toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` });
+        return {
+            ...updatedSettings,
+            playerArmorClass: effectiveStats.playerArmorClass,
+            playerAttackBonus: effectiveStats.playerAttackBonus,
+            playerDamageBonus: effectiveStats.playerDamageBonus,
+        };
+    });
+  }, [toast]);
+
+  const handleUnequipItem = React.useCallback((slotToUnequip: keyof NonNullable<AdventureSettings['equippedItemIds']>) => {
+      setAdventureSettings(prevSettings => {
+          if (!prevSettings.rpgMode || !prevSettings.equippedItemIds || !prevSettings.playerInventory) return prevSettings;
+
+          const itemIdToUnequip = prevSettings.equippedItemIds[slotToUnequip];
+          if (!itemIdToUnequip) {
+              toast({ title: "Information", description: `Aucun objet à déséquiper dans le slot ${slotToUnequip}.`, variant: "default" });
+              return prevSettings;
+          }
+
+          const newEquippedItemIds = { ...prevSettings.equippedItemIds, [slotToUnequip]: null };
+          const newInventory = prevSettings.playerInventory.map(invItem => {
+              if (invItem.id === itemIdToUnequip) {
+                  return { ...invItem, isEquipped: false };
+              }
+              return invItem;
+          });
+          
+          const itemUnequipped = prevSettings.playerInventory.find(i => i.id === itemIdToUnequip);
+
+          const updatedSettings = {
+              ...prevSettings,
+              equippedItemIds: newEquippedItemIds,
+              playerInventory: newInventory,
+          };
+          
+          const effectiveStats = calculateEffectiveStats(updatedSettings);
+
+          toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` });
+          return {
+              ...updatedSettings,
+              playerArmorClass: effectiveStats.playerArmorClass,
+              playerAttackBonus: effectiveStats.playerAttackBonus,
+              playerDamageBonus: effectiveStats.playerDamageBonus,
+          };
+      });
+  }, [toast]);
+
+
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[]) => {
         React.startTransition(() => {
             setAdventureSettings(prevSettings => {
                 if (!prevSettings.rpgMode) return prevSettings;
                 const newInventory = [...(prevSettings.playerInventory || [])];
                 itemsToTake.forEach(item => {
-                    if (!item.itemName || !item.quantity || !item.itemType) {
+                    if (!item.id || !item.itemName || !item.quantity || !item.type) {
                         console.warn("Skipping invalid loot item:", item);
                         return;
                     }
-                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName);
+                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName); // Match by name for stacking
                     if (existingItemIndex > -1) {
                         newInventory[existingItemIndex].quantity += item.quantity;
                     } else {
-                        newInventory.push({
-                            name: item.itemName,
-                            quantity: item.quantity,
-                            description: item.description,
-                            effect: item.effect,
-                            type: item.itemType,
-                            goldValue: item.goldValue,
-                            generatedImageUrl: null, 
-                        });
+                        newInventory.push({ ...item, isEquipped: false }); // Ensure isEquipped is false
                     }
                 });
                 return { ...prevSettings, playerInventory: newInventory };
@@ -953,40 +1115,38 @@ export default function Home() {
         });
          setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); },0);
 
-        const {
-            world, playerName, relationsMode, rpgMode,
-            playerClass, playerLevel, playerCurrentHp, playerMaxHp,
-            playerCurrentMp, playerMaxMp, playerCurrentExp, playerExpToNextLevel, playerGold,
-            playerStrength, playerDexterity, playerConstitution, playerIntelligence, playerWisdom, playerCharisma,
-            playerArmorClass, playerAttackBonus, playerDamageBonus
-        } = adventureSettings;
-
-         const narrativeContextForRegen = contextMessages
-             .map(msg =>
-                 msg.type === 'user' ? `> ${playerName || 'Player'}: ${msg.content}` : msg.content
-             ).join('\n\n'); 
+        const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
+        const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
 
          try {
              const input: GenerateAdventureInput = {
-                 world: world,
-                 initialSituation: narrativeContextForRegen, 
+                 world: currentTurnSettings.world,
+                 initialSituation: contextMessages.map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'), 
                  characters: characters, 
                  userAction: lastUserAction, 
                  currentLanguage: currentLanguage,
-                 playerName: playerName || "Player",
-                 relationsModeActive: relationsMode ?? true,
-                 rpgModeActive: rpgMode ?? false,
+                 playerName: currentTurnSettings.playerName || "Player",
+                 relationsModeActive: currentTurnSettings.relationsMode ?? true,
+                 rpgModeActive: currentTurnSettings.rpgMode ?? false,
                  activeCombat: activeCombat, 
-                 playerGold: playerGold,
-                 playerClass: playerClass,
-                 playerLevel: playerLevel,
-                 playerCurrentHp: playerCurrentHp,
-                 playerMaxHp: playerMaxHp,
-                 playerCurrentMp: playerCurrentMp, playerMaxMp: playerMaxMp,
-                 playerCurrentExp: playerCurrentExp,
-                 playerExpToNextLevel: playerExpToNextLevel,
-                 playerStrength, playerDexterity, playerConstitution, playerIntelligence, playerWisdom, playerCharisma,
-                 playerArmorClass, playerAttackBonus, playerDamageBonus,
+                 playerGold: currentTurnSettings.playerGold,
+                 playerClass: currentTurnSettings.playerClass,
+                 playerLevel: currentTurnSettings.playerLevel,
+                 playerCurrentHp: currentTurnSettings.playerCurrentHp,
+                 playerMaxHp: effectiveStatsThisTurn.playerMaxHp, 
+                 playerCurrentMp: currentTurnSettings.playerCurrentMp, 
+                 playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
+                 playerCurrentExp: currentTurnSettings.playerCurrentExp,
+                 playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
+                 playerStrength: currentTurnSettings.playerStrength, 
+                 playerDexterity: currentTurnSettings.playerDexterity, 
+                 playerConstitution: currentTurnSettings.playerConstitution, 
+                 playerIntelligence: currentTurnSettings.playerIntelligence, 
+                 playerWisdom: currentTurnSettings.playerWisdom, 
+                 playerCharisma: currentTurnSettings.playerCharisma,
+                 playerArmorClass: effectiveStatsThisTurn.playerArmorClass, 
+                 playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus, 
+                 playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
              };
 
              const result = await generateAdventure(input); 
@@ -1000,7 +1160,7 @@ export default function Home() {
                         content: result.narrative,
                         timestamp: Date.now(),
                         sceneDescription: result.sceneDescriptionForImage,
-                        loot: result.itemsObtained,
+                        loot: result.itemsObtained as PlayerInventoryItem[],
                         lootTaken: false,
                     };
                     if (lastAiIndex !== -1) {
@@ -1029,11 +1189,16 @@ export default function Home() {
                                 setAdventureSettings(prev => {
                                     const newInventory = [...(prev.playerInventory || [])];
                                     result.itemsObtained!.forEach(item => {
-                                        const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName);
+                                         const newItemWithId: PlayerInventoryItem = {
+                                            ...item,
+                                            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                                            isEquipped: false,
+                                        };
+                                        const existingItemIndex = newInventory.findIndex(invItem => invItem.name === newItemWithId.name);
                                         if (existingItemIndex > -1) {
-                                            newInventory[existingItemIndex].quantity += item.quantity;
+                                            newInventory[existingItemIndex].quantity += newItemWithId.quantity;
                                         } else {
-                                            newInventory.push({ ...item, generatedImageUrl: null });
+                                            newInventory.push(newItemWithId);
                                         }
                                     });
                                     return { ...prev, playerInventory: newInventory };
@@ -1186,7 +1351,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombat,
-            saveFormatVersion: 1.9, 
+            saveFormatVersion: 2.0, // Increment version for new equip system
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1256,8 +1421,11 @@ export default function Home() {
                     }
                      loadedData.adventureSettings.playerInventory = loadedData.adventureSettings.playerInventory.map(item => ({
                         ...item,
+                        id: item.id || item.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7), // Add ID if missing
                         goldValue: item.goldValue ?? 0,
                         generatedImageUrl: item.generatedImageUrl ?? null,
+                        isEquipped: item.isEquipped ?? false, // Add isEquipped
+                        statBonuses: item.statBonuses ?? {}, // Add statBonuses
                     }));
                  }
                  if (loadedData.saveFormatVersion < 1.9) {
@@ -1270,6 +1438,15 @@ export default function Home() {
                     loadedData.adventureSettings.playerCharisma = loadedData.adventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE;
                     loadedData.adventureSettings.playerAttackBonus = loadedData.adventureSettings.playerAttackBonus ?? 0;
                     loadedData.adventureSettings.playerDamageBonus = loadedData.adventureSettings.playerDamageBonus ?? "1";
+                 }
+                 if (loadedData.saveFormatVersion < 2.0) {
+                    loadedData.adventureSettings.equippedItemIds = loadedData.adventureSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null };
+                    loadedData.adventureSettings.playerInventory = (loadedData.adventureSettings.playerInventory || []).map(item => ({
+                        ...item,
+                        id: item.id || `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+                        isEquipped: item.isEquipped ?? false,
+                        statBonuses: item.statBonuses ?? {},
+                    }));
                  }
 
 
@@ -1312,31 +1489,27 @@ export default function Home() {
                         } : {}),
                     } as Character; 
                 });
-                const loadedPlayerSettings = {
-                    ...loadedData.adventureSettings,
-                    playerInitialAttributePoints: loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS,
-                    playerStrength: loadedData.adventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE,
-                    playerDexterity: loadedData.adventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE,
-                    playerConstitution: loadedData.adventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE,
-                    playerIntelligence: loadedData.adventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE,
-                    playerWisdom: loadedData.adventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE,
-                    playerCharisma: loadedData.adventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE,
-                };
-                const derivedStats = calculateDerivedStats(loadedPlayerSettings);
+                
+                const settingsWithDefaults = { ...baseAdventureSettings, ...loadedData.adventureSettings };
+                const effectiveStats = calculateEffectiveStats(settingsWithDefaults);
 
                 const finalAdventureSettings: AdventureSettings = {
-                    ...baseAdventureSettings, 
-                    ...loadedPlayerSettings, 
-                    ...derivedStats,
+                    ...settingsWithDefaults, 
+                    ...effectiveStats, // This applies AC, Attack, Damage based on equipment and base attributes
                     relationsMode: relationsModeActive,
                     rpgMode: rpgModeActive,
-                    playerCurrentHp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentHp ?? derivedStats.playerMaxHp) : undefined,
-                    playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? derivedStats.playerMaxMp) : undefined,
+                    playerCurrentHp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp) : undefined,
+                    playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp) : undefined,
                     playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
-                    playerInventory: (loadedData.adventureSettings.playerInventory || []).map(item => ({...item, generatedImageUrl: item.generatedImageUrl ?? null})),
+                    playerInventory: (loadedData.adventureSettings.playerInventory || []).map(item => ({
+                        ...item,
+                        id: item.id || `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
+                        generatedImageUrl: item.generatedImageUrl ?? null,
+                        isEquipped: item.isEquipped ?? false,
+                        statBonuses: item.statBonuses ?? {},
+                    })),
                     playerGold: loadedData.adventureSettings.playerGold ?? 0,
-                    playerAttackBonus: loadedData.adventureSettings.playerAttackBonus ?? 0,
-                    playerDamageBonus: loadedData.adventureSettings.playerDamageBonus ?? "1",
+                    equippedItemIds: loadedData.adventureSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null },
                 };
 
 
@@ -1372,15 +1545,16 @@ export default function Home() {
   const confirmRestartAdventure = React.useCallback(() => {
     React.startTransition(() => {
         const initialSettingsFromBase = JSON.parse(JSON.stringify(baseAdventureSettings)); 
-        const derivedStats = calculateDerivedStats(initialSettingsFromBase);
+        const effectiveStats = calculateEffectiveStats(initialSettingsFromBase);
          const newLiveAdventureSettings: AdventureSettings = {
             ...initialSettingsFromBase,
-            ...derivedStats,
-            playerCurrentHp: initialSettingsFromBase.rpgMode ? derivedStats.playerMaxHp : undefined,
-            playerCurrentMp: initialSettingsFromBase.rpgMode ? derivedStats.playerMaxMp : undefined,
+            ...effectiveStats,
+            playerCurrentHp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxHp : undefined,
+            playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxMp : undefined,
             playerCurrentExp: initialSettingsFromBase.rpgMode ? 0 : undefined,
-            playerInventory: initialSettingsFromBase.playerInventory || [],
+            playerInventory: initialSettingsFromBase.playerInventory?.map(item => ({...item, isEquipped: false})) || [], // Ensure items are not equipped
             playerGold: initialSettingsFromBase.playerGold ?? 0,
+            equippedItemIds: { weapon: null, armor: null, jewelry: null }, // Reset equipped items
         };
         setAdventureSettings(newLiveAdventureSettings);
         setCharacters(JSON.parse(JSON.stringify(baseCharacters))); 
@@ -1402,9 +1576,9 @@ export default function Home() {
 
   const handleSettingsUpdate = React.useCallback((newSettingsFromForm: AdventureFormValues) => {
     setStagedAdventureSettings(prevStagedSettings => {
-        const derivedStats = calculateDerivedStats(newSettingsFromForm);
-        const newSettingsCandidate: AdventureSettings = {
-            ...prevStagedSettings,
+        
+        const tempSettingsForCalc: AdventureSettings = {
+            ...prevStagedSettings, // start with previous staged to keep inventory, equipped items etc.
             world: newSettingsFromForm.world,
             initialSituation: newSettingsFromForm.initialSituation,
             rpgMode: newSettingsFromForm.enableRpgMode ?? false,
@@ -1414,37 +1588,42 @@ export default function Home() {
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
             playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerExpToNextLevel : undefined,
             playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
-            // playerInitialAttributePoints is NOT directly taken from form; it's fixed in state, form calculates based on level
-            playerInitialAttributePoints: prevStagedSettings.playerInitialAttributePoints, // Conserve les points de création
+            playerInitialAttributePoints: newSettingsFromForm.playerInitialAttributePoints, 
             playerStrength: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerDexterity: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerConstitution: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerIntelligence: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerWisdom: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerCharisma: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
-            playerAttackBonus: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerAttackBonus : undefined,
-            playerDamageBonus: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerDamageBonus : undefined,
+            // Base stats (AC, Attack, Damage) are now calculated by calculateEffectiveStats based on attributes and equipment
+        };
 
-            playerMaxHp: (newSettingsFromForm.enableRpgMode ?? false) ? derivedStats.playerMaxHp : undefined,
-            playerArmorClass: (newSettingsFromForm.enableRpgMode ?? false) ? derivedStats.playerArmorClass : undefined,
-            playerMaxMp: (newSettingsFromForm.enableRpgMode ?? false) ? derivedStats.playerMaxMp : undefined,
+        const effectiveStats = calculateEffectiveStats(tempSettingsForCalc);
+
+        const newSettingsCandidate: AdventureSettings = {
+            ...tempSettingsForCalc,
+            playerMaxHp: (newSettingsFromForm.enableRpgMode ?? false) ? effectiveStats.playerMaxHp : undefined,
+            playerMaxMp: (newSettingsFromForm.enableRpgMode ?? false) ? effectiveStats.playerMaxMp : undefined,
+            playerArmorClass: (newSettingsFromForm.enableRpgMode ?? false) ? effectiveStats.playerArmorClass : undefined,
+            playerAttackBonus: (newSettingsFromForm.enableRpgMode ?? false) ? effectiveStats.playerAttackBonus : undefined,
+            playerDamageBonus: (newSettingsFromForm.enableRpgMode ?? false) ? effectiveStats.playerDamageBonus : undefined,
             
             playerCurrentHp: (newSettingsFromForm.enableRpgMode ?? false)
                 ? (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && prevStagedSettings.rpgMode === (newSettingsFromForm.enableRpgMode ?? false)
                     ? prevStagedSettings.playerCurrentHp 
-                    : derivedStats.playerMaxHp) 
+                    : effectiveStats.playerMaxHp) 
                 : undefined,
             playerCurrentMp: (newSettingsFromForm.enableRpgMode ?? false)
                 ? (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && prevStagedSettings.rpgMode === (newSettingsFromForm.enableRpgMode ?? false)
                     ? prevStagedSettings.playerCurrentMp
-                    : derivedStats.playerMaxMp)
+                    : effectiveStats.playerMaxMp)
                 : undefined,
             playerCurrentExp: (newSettingsFromForm.enableRpgMode ?? false)
                 ? (prevStagedSettings.initialSituation === newSettingsFromForm.initialSituation && prevStagedSettings.rpgMode === (newSettingsFromForm.enableRpgMode ?? false)
                     ? prevStagedSettings.playerCurrentExp
                     : 0) 
                 : undefined,
-            playerInventory: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerInventory || [] : undefined,
+            // playerInventory and equippedItemIds are preserved from prevStagedSettings within tempSettingsForCalc
         };
 
         if (newSettingsCandidate.playerCurrentHp !== undefined && newSettingsCandidate.playerMaxHp !== undefined) {
@@ -1528,10 +1707,12 @@ export default function Home() {
         initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
         let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings)); 
 
-        const derivedStats = calculateDerivedStats(newLiveSettings);
-        newLiveSettings.playerMaxHp = derivedStats.playerMaxHp;
-        newLiveSettings.playerMaxMp = derivedStats.playerMaxMp;
-        newLiveSettings.playerArmorClass = derivedStats.playerArmorClass;
+        const effectiveStats = calculateEffectiveStats(newLiveSettings);
+        newLiveSettings.playerMaxHp = effectiveStats.playerMaxHp;
+        newLiveSettings.playerMaxMp = effectiveStats.playerMaxMp;
+        newLiveSettings.playerArmorClass = effectiveStats.playerArmorClass;
+        newLiveSettings.playerAttackBonus = effectiveStats.playerAttackBonus;
+        newLiveSettings.playerDamageBonus = effectiveStats.playerDamageBonus;
 
 
         if (newLiveSettings.rpgMode) {
@@ -1539,15 +1720,17 @@ export default function Home() {
                 newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
                 newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
-                newLiveSettings.playerInventory = newLiveSettings.playerInventory || [];
+                newLiveSettings.playerInventory = newLiveSettings.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [];
                 newLiveSettings.playerGold = newLiveSettings.playerGold ?? (baseAdventureSettings.playerGold ?? 0);
+                newLiveSettings.equippedItemIds = { weapon: null, armor: null, jewelry: null };
 
             } else {
                 newLiveSettings.playerCurrentHp = Math.min(prevLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
                 newLiveSettings.playerCurrentMp = Math.min(prevLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp ?? 0, newLiveSettings.playerMaxMp ?? 0);
                 newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp ?? 0;
-                 newLiveSettings.playerInventory = newLiveSettings.playerInventory || prevLiveSettings.playerInventory || [];
+                newLiveSettings.playerInventory = newLiveSettings.playerInventory || prevLiveSettings.playerInventory || [];
                 newLiveSettings.playerGold = newLiveSettings.playerGold ?? prevLiveSettings.playerGold ?? 0;
+                newLiveSettings.equippedItemIds = newLiveSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null };
             }
              if (newLiveSettings.playerCurrentHp !== undefined && newLiveSettings.playerMaxHp !== undefined) {
                  newLiveSettings.playerCurrentHp = Math.min(newLiveSettings.playerCurrentHp, newLiveSettings.playerMaxHp);
@@ -1561,10 +1744,10 @@ export default function Home() {
             newLiveSettings.playerMaxMp = undefined; newLiveSettings.playerCurrentMp = undefined;
             newLiveSettings.playerExpToNextLevel = undefined; newLiveSettings.playerCurrentExp = undefined;
             newLiveSettings.playerInventory = undefined; newLiveSettings.playerGold = undefined;
-            // playerInitialAttributePoints est conservé car il s'agit des points de création.
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
             newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined; newLiveSettings.playerCharisma = undefined;
             newLiveSettings.playerArmorClass = undefined; newLiveSettings.playerAttackBonus = undefined; newLiveSettings.playerDamageBonus = undefined;
+            newLiveSettings.equippedItemIds = undefined;
         }
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
@@ -1590,9 +1773,8 @@ export default function Home() {
 
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
     const formCharacters: FormCharacterDefinition[] = JSON.parse(stringifiedStagedCharsForFormMemo);
-    const derivedStats = calculateDerivedStats(stagedAdventureSettings);
+    const effectiveStats = calculateEffectiveStats(stagedAdventureSettings);
     
-    // Calcule le total des points distribuables pour le niveau actuel
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS;
     const levelPoints = stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1 
                         ? (stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN 
@@ -1610,18 +1792,19 @@ export default function Home() {
       playerLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerLevel : undefined,
       playerExpToNextLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerExpToNextLevel : undefined,
       playerGold: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerGold : undefined,
-      playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? totalDistributablePoints : undefined, // Ce sera le total affiché dans le form
+      playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? totalDistributablePoints : undefined, 
       playerStrength: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerDexterity: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerConstitution: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerIntelligence: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerWisdom: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerCharisma: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerAttackBonus: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerAttackBonus : undefined,
-      playerDamageBonus: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerDamageBonus : undefined,
-      playerMaxHp: stagedAdventureSettings.rpgMode ? derivedStats.playerMaxHp : undefined,
-      playerMaxMp: stagedAdventureSettings.rpgMode ? derivedStats.playerMaxMp : undefined,
-      playerArmorClass: stagedAdventureSettings.rpgMode ? derivedStats.playerArmorClass : undefined,
+      
+      playerAttackBonus: stagedAdventureSettings.rpgMode ? effectiveStats.playerAttackBonus : undefined,
+      playerDamageBonus: stagedAdventureSettings.rpgMode ? effectiveStats.playerDamageBonus : undefined,
+      playerMaxHp: stagedAdventureSettings.rpgMode ? effectiveStats.playerMaxHp : undefined,
+      playerMaxMp: stagedAdventureSettings.rpgMode ? effectiveStats.playerMaxMp : undefined,
+      playerArmorClass: stagedAdventureSettings.rpgMode ? effectiveStats.playerArmorClass : undefined,
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
 
@@ -1699,6 +1882,10 @@ export default function Home() {
     if (item.type) {
         promptDescription += ` Type: ${item.type}.`;
     }
+    if (item.statBonuses) {
+        promptDescription += ` Grants bonuses: ${Object.entries(item.statBonuses).map(([key, value]) => `${key} ${value}`).join(', ')}.`;
+    }
+
 
     try {
       const result = await generateSceneImageAction({ sceneDescription: promptDescription });
@@ -1706,12 +1893,12 @@ export default function Home() {
 
       setAdventureSettings(prevSettings => {
         const newInventory = (prevSettings.playerInventory || []).map(invItem => {
-          if (invItem.name === item.name) {
+          if (invItem.id === item.id) { // Match by ID
             return { ...invItem, generatedImageUrl: result.imageUrl };
           }
           return invItem;
         });
-        return { ...prev, playerInventory: newInventory };
+        return { ...prevSettings, playerInventory: newInventory };
       });
 
       setTimeout(() => {
@@ -1720,6 +1907,7 @@ export default function Home() {
             description: (
               <div className="flex flex-col gap-2">
                 <p>{item.name} visualisé.</p>
+                {result.imageUrl && <img src={result.imageUrl} alt={item.name} className="w-16 h-16 object-contain border rounded-md" data-ai-hint="generated item image"/>}
                 <p className="text-xs">L'image devrait apparaître dans l'inventaire.</p>
               </div>
             ),
@@ -1740,7 +1928,7 @@ export default function Home() {
     } finally {
       setIsGeneratingItemImage(false);
     }
-  }, [generateSceneImageAction, toast, isGeneratingItemImage]); 
+  }, [generateSceneImageAction, toast, isGeneratingItemImage, adventureSettings.playerInventory]); 
 
 
   return (
@@ -1808,6 +1996,8 @@ export default function Home() {
         handleSellItem={handleSellItem}
         handleGenerateItemImage={handleGenerateItemImage}
         isGeneratingItemImage={isGeneratingItemImage}
+        handleEquipItem={handleEquipItem}
+        handleUnequipItem={handleUnequipItem}
       />
       </>
   );

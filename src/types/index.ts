@@ -9,8 +9,19 @@ export const LootedItemSchema = z.object({
   quantity: z.number().int().min(1).describe("Quantity of the item."),
   description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
   effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
-  itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc']).describe("Type of the item. This is CRUCIAL. 'consumable' items are used up. 'weapon', 'armor' can be equipped. 'quest' items are for specific objectives. 'misc' for others."),
+  itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc', 'jewelry']).describe("Type of the item. This is CRUCIAL. 'consumable' items are used up. 'weapon', 'armor', 'jewelry' can be equipped. 'quest' items are for specific objectives. 'misc' for others."),
   goldValue: z.number().int().optional().describe("Estimated gold piece value of the item, if applicable. Only for non-currency items."),
+  statBonuses: z.object({
+    ac: z.number().optional().describe("Armor Class bonus."),
+    attack: z.number().optional().describe("Attack roll bonus."),
+    damage: z.string().optional().describe("Damage bonus or dice (e.g., '+2', '1d6'). This will typically override player's base damage if it's a weapon."),
+    str: z.number().optional().describe("Strength bonus."),
+    dex: z.number().optional().describe("Dexterity bonus."),
+    con: z.number().optional().describe("Constitution bonus."),
+    int: z.number().optional().describe("Intelligence bonus."),
+    wis: z.number().optional().describe("Wisdom bonus."),
+    cha: z.number().optional().describe("Charisma bonus."),
+  }).optional().describe("Stat bonuses provided by the item if equipped."),
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
@@ -101,13 +112,26 @@ export interface Character {
 }
 
 export interface PlayerInventoryItem {
+  id: string; // Unique ID for each item instance
   name: string;
   quantity: number;
   description?: string;
   effect?: string;
-  type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc';
+  type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc' | 'jewelry';
   goldValue?: number;
   generatedImageUrl?: string | null;
+  isEquipped?: boolean;
+  statBonuses?: {
+    ac?: number;
+    attack?: number;
+    damage?: string; // e.g. "1d8", "+2"
+    str?: number;
+    dex?: number;
+    con?: number;
+    int?: number;
+    wis?: number;
+    cha?: number;
+  };
 }
 
 export interface AdventureSettings {
@@ -126,16 +150,21 @@ export interface AdventureSettings {
     playerExpToNextLevel?: number;
     playerInventory?: PlayerInventoryItem[];
     playerGold?: number;
-    playerInitialAttributePoints?: number; // Points à distribuer au démarrage
+    playerInitialAttributePoints?: number; 
     playerStrength?: number;
     playerDexterity?: number;
     playerConstitution?: number;
     playerIntelligence?: number;
     playerWisdom?: number;
     playerCharisma?: number;
-    playerArmorClass?: number;
-    playerAttackBonus?: number;
-    playerDamageBonus?: string;
+    playerArmorClass?: number; // This will become the base AC before equipment
+    playerAttackBonus?: number; // This will become the base attack bonus
+    playerDamageBonus?: string; // This will become the base/unarmed damage bonus
+    equippedItemIds?: { // IDs of equipped items
+        weapon: string | null;
+        armor: string | null;
+        jewelry: string | null;
+    };
 }
 
 export interface SaveData {
@@ -144,7 +173,6 @@ export interface SaveData {
     narrative: Message[];
     currentLanguage: string;
     activeCombat?: ActiveCombat;
-    saveFormatVersion: number;
+    saveFormatVersion: number; 
     timestamp: string;
 }
-

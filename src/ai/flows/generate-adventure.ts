@@ -17,7 +17,7 @@
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 import type { Character } from '@/types';
-import { LootedItemSchema } from '@/types';
+import { LootedItemSchema } from '@/types'; // This should be PlayerInventoryItem equivalent
 
 
 // Define RPG context schema (optional)
@@ -123,6 +123,7 @@ const GenerateAdventureInputSchema = z.object({
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
+  // Player's effective stats including equipment
   playerClass: z.string().optional().describe("Player's character class if RPG mode is active."),
   playerLevel: z.number().optional().describe("Player's current level if RPG mode is active."),
   playerCurrentHp: z.number().optional().describe("Player's current HP if RPG mode is active."),
@@ -131,6 +132,19 @@ const GenerateAdventureInputSchema = z.object({
   playerMaxMp: z.number().optional().describe("Player's maximum MP if RPG mode is active and applicable."),
   playerCurrentExp: z.number().optional().describe("Player's current EXP if RPG mode is active."),
   playerExpToNextLevel: z.number().optional().describe("EXP needed for player's next level if RPG mode is active."),
+  playerStrength: z.number().optional(),
+  playerDexterity: z.number().optional(),
+  playerConstitution: z.number().optional(),
+  playerIntelligence: z.number().optional(),
+  playerWisdom: z.number().optional(),
+  playerCharisma: z.number().optional(),
+  playerArmorClass: z.number().optional().describe("Player's effective Armor Class including equipment."),
+  playerAttackBonus: z.number().optional().describe("Player's effective Attack Bonus including equipment."),
+  playerDamageBonus: z.string().optional().describe("Player's effective Damage (e.g. '1d8+3') including equipment."),
+  // Equipped items (names for AI context)
+  equippedWeaponName: z.string().optional().describe("Name of the player's equipped weapon, if any."),
+  equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
+  equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
@@ -222,7 +236,7 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). Include goldValue if the item has a monetary worth. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'jewelry', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). Include goldValue if the item has a monetary worth and statBonuses if applicable. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). If the player buys an item, this should be the negative price of the item. IF NO CURRENCY CHANGE, PROVIDE 0."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
@@ -279,13 +293,25 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         activeCombat: input.activeCombat,
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
-        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp ?? input.playerMaxHp ?? 10) : undefined,
-        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp || 10) : undefined,
-        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp ?? input.playerMaxMp ?? 0) : undefined,
-        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp || 0) : undefined,
+        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined, // Pass through calculated from page.tsx
+        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined, // Pass through calculated from page.tsx
+        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined, // Pass through calculated from page.tsx
+        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined, // Pass through calculated from page.tsx
         playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
         playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
         playerGold: input.rpgModeActive ? (input.playerGold || 0) : undefined,
+        playerStrength: input.rpgModeActive ? input.playerStrength : undefined,
+        playerDexterity: input.rpgModeActive ? input.playerDexterity : undefined,
+        playerConstitution: input.rpgModeActive ? input.playerConstitution : undefined,
+        playerIntelligence: input.rpgModeActive ? input.playerIntelligence : undefined,
+        playerWisdom: input.rpgModeActive ? input.playerWisdom : undefined,
+        playerCharisma: input.rpgModeActive ? input.playerCharisma : undefined,
+        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined, // Effective AC from page.tsx
+        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined, // Effective Attack Bonus from page.tsx
+        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined, // Effective Damage Bonus from page.tsx
+        equippedWeaponName: input.equippedWeaponName,
+        equippedArmorName: input.equippedArmorName,
+        equippedJewelryName: input.equippedJewelryName,
     };
 
   return generateAdventureFlow(flowInput);
@@ -318,6 +344,9 @@ HP: {{playerCurrentHp}}/{{playerMaxHp}}
 {{#if playerMaxMp}}MP: {{playerCurrentMp}}/{{playerMaxMp}} (MP regenerates by 1 each turn if below max and used){{/if}}
 EXP: {{playerCurrentExp}}/{{playerExpToNextLevel}}
 Gold Pieces: {{playerGold}}
+Attributes: FOR:{{playerStrength}}, DEX:{{playerDexterity}}, CON:{{playerConstitution}}, INT:{{playerIntelligence}}, SAG:{{playerWisdom}}, CHA:{{playerCharisma}}
+Combat Stats: AC:{{playerArmorClass}}, Attaque: +{{playerAttackBonus}}, Dégâts: {{playerDamageBonus}}
+Équipement: {{#if equippedWeaponName}}Arme: {{equippedWeaponName}}{{else}}Arme: Mains nues{{/if}}{{#if equippedArmorName}}, Armure: {{equippedArmorName}}{{/if}}{{#if equippedJewelryName}}, Bijou: {{equippedJewelryName}}{{/if}}
 ---
 {{/if}}
 
@@ -381,7 +410,7 @@ Tasks:
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
-            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details (itemName, itemType, description, effect, goldValue if applicable).
+            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details (itemName, itemType, description, effect, goldValue, statBonuses if applicable).
             4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
         *   **Player Selling to Merchant/NPC:** If userAction indicates selling an item (e.g., "Je vends ma Dague Rouillée"):
             1.  Identify the item. The game system handles player inventory and gold changes.
@@ -407,8 +436,8 @@ Tasks:
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
     *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
-        *   For each non-currency item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'quest', 'misc'). This is CRUCIAL.
-        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}), and goldValue (estimated gold piece value).
+        *   For each non-currency item, YOU MUST provide itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'jewelry', 'quest', 'misc'). This is CRUCIAL.
+        *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}), goldValue (estimated gold piece value), and statBonuses (object with ac, attack, damage, str, dex, etc. bonuses).
     *   **Currency Management (General):**
         *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
         *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
@@ -520,6 +549,7 @@ const generateAdventureFlow = ai.defineFlow<
             if (item.description) console.log(`Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
             if (item.effect) console.log(`Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
             if (item.itemType) console.log(`Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
+            if (item.statBonuses) console.log(`Item ${item.itemName} stat bonuses: ${JSON.stringify(item.statBonuses)}`);
         });
     }
 

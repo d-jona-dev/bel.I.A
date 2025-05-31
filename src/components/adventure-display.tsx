@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar"; // Avatar importée
-import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -39,17 +39,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 
 
 interface AdventureDisplayProps {
-    generateAdventureAction: (input: GenerateAdventureInput) => Promise<void>;
+    generateAdventureAction: (userActionText: string) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
     adventureSettings: AdventureSettings;
     characters: Character[];
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
     onNewCharacters: (newChars: NewCharacterSchema[]) => void;
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
@@ -61,9 +62,11 @@ interface AdventureDisplayProps {
     onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
-    handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
+    handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
     handleDiscardLoot: (messageId: string) => void;
-    handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void; // Added this prop
+    handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void; 
+    handleEquipItem: (itemId: string) => void;
+    handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
 }
 
 
@@ -76,20 +79,22 @@ export function AdventureDisplay({
     initialMessages,
     currentLanguage,
     onNarrativeChange,
-    onNewCharacters,
-    onCharacterHistoryUpdate,
-    onAffinityUpdates,
-    onRelationUpdates,
+    // onNewCharacters, // Not used directly, but generateAdventureAction handles it
+    // onCharacterHistoryUpdate, // Not used directly
+    // onAffinityUpdates, // Not used directly
+    // onRelationUpdates, // Not used directly
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
-    onCombatUpdates,
+    // onCombatUpdates, // Not used directly
     onRestartAdventure,
     isSuggestingQuest,
     handleTakeLoot,
     handleDiscardLoot,
-    handlePlayerItemAction, // Destructure the new prop
+    handlePlayerItemAction, 
+    handleEquipItem,
+    handleUnequipItem,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -158,39 +163,13 @@ export function AdventureDisplay({
     if (!action || isLoading) return;
 
     setIsLoading(true);
-    onNarrativeChange(action, 'user'); // Met à jour l'UI immédiatement
+    onNarrativeChange(action, 'user'); 
 
     try {
-        const historyForAIContext = messagesRef.current
-            .slice(-5)
-            .map(msg =>
-                msg.type === 'user' ? `> ${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content
-            ).join('\n\n') + `\n> ${adventureSettings.playerName || 'Player'}: ${action}`; // Ajoute l'action actuelle pour le contexte
-
-        const input: GenerateAdventureInput = {
-            world: adventureSettings.world,
-            initialSituation: historyForAIContext,
-            characters: characters,
-            userAction: action,
-            currentLanguage: currentLanguage,
-            playerName: adventureSettings.playerName || "Player",
-            rpgModeActive: adventureSettings.rpgMode,
-            relationsModeActive: adventureSettings.relationsMode ?? true,
-            activeCombat: activeCombat,
-            currencyName: adventureSettings.currencyName,
-            playerClass: adventureSettings.playerClass,
-            playerLevel: adventureSettings.playerLevel,
-            playerCurrentHp: adventureSettings.playerCurrentHp,
-            playerMaxHp: adventureSettings.playerMaxHp,
-            playerCurrentMp: adventureSettings.playerCurrentMp,
-            playerMaxMp: adventureSettings.playerMaxMp,
-            playerCurrentExp: adventureSettings.playerCurrentExp,
-            playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
-        };
-        await generateAdventureAction(input);
-
+        await generateAdventureAction(action);
     } catch (error) {
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
+         toast({ title: "Erreur de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -380,7 +359,7 @@ export function AdventureDisplay({
                                                         )}
                                                     </div>
                                                 )}
-                                                 {showLootInteraction && (
+                                                 {showLootInteraction && message.loot && (
                                                     <div className="absolute bottom-1 right-1 z-20">
                                                       <AlertDialog>
                                                           <TooltipProvider>
@@ -405,7 +384,7 @@ export function AdventureDisplay({
                                                               <ScrollArea className="max-h-60 my-4">
                                                                   <div className="space-y-3 py-2 pr-2">
                                                                       {message.loot!.map((item, itemIdx) => (
-                                                                          <Card key={itemIdx} className="p-3 bg-muted/50 shadow-sm">
+                                                                          <Card key={item.id || itemIdx} className="p-3 bg-muted/50 shadow-sm">
                                                                               <p className="font-semibold">{item.itemName} (x{item.quantity})</p>
                                                                               {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
                                                                               {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
@@ -529,16 +508,16 @@ export function AdventureDisplay({
                                     <DropdownMenuContent>
                                         {playerInventoryItems.length > 0 ? (
                                             playerInventoryItems.map(item => (
-                                                <DropdownMenuSub key={item.name}>
+                                                <DropdownMenuSub key={item.id}>
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
-                                                                <DropdownMenuSubTrigger disabled={item.type !== 'consumable' && item.type !== 'misc' /* Permet de jeter aussi les misc */}>
-                                                                    {item.name} (x{item.quantity})
+                                                                <DropdownMenuSubTrigger disabled={(item.type !== 'consumable' && item.type !== 'misc') && !(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry')}>
+                                                                    {item.name} (x{item.quantity}) {item.isEquipped ? <Shirt className="h-3 w-3 ml-1 text-green-500"/> : ""}
                                                                 </DropdownMenuSubTrigger>
                                                             </TooltipTrigger>
                                                             <TooltipContent side="right" align="start">
-                                                                <p className="font-semibold">{item.name}</p>
+                                                                <p className="font-semibold">{item.name} {item.isEquipped ? "(Équipé)" : ""}</p>
                                                                 {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                                                                 {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
                                                                 {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
@@ -546,10 +525,21 @@ export function AdventureDisplay({
                                                         </Tooltip>
                                                     </TooltipProvider>
                                                     <DropdownMenuSubContent>
-                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'use')} disabled={item.type !== 'consumable'}>
+                                                        {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
+                                                            item.isEquipped ? (
+                                                                <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
+                                                                    <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
+                                                                </DropdownMenuItem>
+                                                            ) : (
+                                                                <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
+                                                                    <Shirt className="mr-2 h-4 w-4" /> Équiper
+                                                                </DropdownMenuItem>
+                                                            )
+                                                        )}
+                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'use')} disabled={item.type !== 'consumable'}>
                                                             <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'discard')}>
+                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
                                                             <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
                                                         </DropdownMenuItem>
                                                     </DropdownMenuSubContent>
@@ -693,6 +683,21 @@ export function AdventureDisplay({
                             <CardDescription>{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3 pt-2">
+                             <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label className="text-xs font-medium">CA</Label>
+                                    <span className="text-xs font-semibold">{adventureSettings.playerArmorClass ?? 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label className="text-xs font-medium">Attaque</Label>
+                                    <span className="text-xs font-semibold">+{adventureSettings.playerAttackBonus ?? 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <Label className="text-xs font-medium">Dégâts</Label>
+                                    <span className="text-xs font-semibold">{adventureSettings.playerDamageBonus || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <Separator/>
                             <div>
                                 <div className="flex justify-between items-center mb-1">
                                     <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
@@ -792,3 +797,6 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+
+

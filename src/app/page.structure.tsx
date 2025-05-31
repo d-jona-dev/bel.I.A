@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
@@ -38,10 +38,10 @@ import { ModelLoader } from '@/components/model-loader';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { LanguageSelector } from '@/components/language-selector';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage as UIAvatarImage } from '@/components/ui/avatar'; // Renamed AvatarImage to UIAvatarImage
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter } from '@/components/ui/card'; // CardHeader, CardTitle removed as they are not used here.
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
 
@@ -57,7 +57,7 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -70,7 +70,7 @@ interface PageStructureProps {
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
-  generateAdventureAction: (input: GenerateAdventureInput) => Promise<void>;
+  generateAdventureAction: (userActionText: string) => Promise<void>;
   generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
   handleRegenerateLastResponse: () => Promise<void>;
@@ -84,12 +84,14 @@ interface PageStructureProps {
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
   setShowRestartConfirm: (open: boolean) => void;
-  handleTakeLoot: (messageId: string, itemsToTake: LootedItem[]) => void;
+  handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
   handleDiscardLoot: (messageId: string) => void;
-  handlePlayerItemAction: (itemName: string, action: 'use' | 'discard') => void;
-  handleSellItem: (itemName: string) => void;
+  handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
+  handleSellItem: (itemId: string) => void;
   handleGenerateItemImage: (item: PlayerInventoryItem) => Promise<void>;
   isGeneratingItemImage: boolean;
+  handleEquipItem: (itemId: string) => void;
+  handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
 }
 
 export function PageStructure({
@@ -136,17 +138,27 @@ export function PageStructure({
   handleSellItem,
   handleGenerateItemImage,
   isGeneratingItemImage,
+  handleEquipItem,
+  handleUnequipItem,
 }: PageStructureProps) {
 
-  const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined) => {
+  const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
+    if (isEquipped) return 'border-green-500 ring-2 ring-green-500'; // Special border for equipped items
     switch (type) {
       case 'consumable': return 'border-blue-500';
       case 'weapon': return 'border-red-500';
       case 'armor': return 'border-gray-500';
-      case 'quest': return 'border-purple-500';
-      case 'misc': return 'border-yellow-600';
+      case 'jewelry': return 'border-purple-500';
+      case 'quest': return 'border-yellow-600';
+      case 'misc': return 'border-orange-500';
       default: return 'border-border';
     }
+  };
+  
+  const getEquippedItem = (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => {
+    const itemId = adventureSettings.equippedItemIds?.[slot];
+    if (!itemId) return null;
+    return adventureSettings.playerInventory?.find(item => item.id === itemId);
   };
 
 
@@ -285,7 +297,7 @@ export function PageStructure({
              <AdventureDisplay
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction}
+                suggestQuestHookAction={suggestQuestHookAction as any}
                 adventureSettings={adventureSettings}
                 characters={characters}
                 initialMessages={narrativeMessages}
@@ -305,6 +317,8 @@ export function PageStructure({
                 handleTakeLoot={handleTakeLoot}
                 handleDiscardLoot={handleDiscardLoot}
                 handlePlayerItemAction={handlePlayerItemAction}
+                handleEquipItem={handleEquipItem} // Pass down new handlers
+                handleUnequipItem={handleUnequipItem} // Pass down new handlers
              />
         </main>
       </SidebarInset>
@@ -388,6 +402,40 @@ export function PageStructure({
                                                     <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
                                                 </div>
                                             )}
+                                            
+                                            <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
+                                                <AccordionItem value="player-equipment-accordion">
+                                                    <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
+                                                        <div className="flex items-center gap-2">
+                                                            <Shirt className="h-4 w-4" /> Équipement
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-2 space-y-2 text-xs">
+                                                        {[
+                                                            { slot: 'weapon', label: 'Arme', icon: Sword },
+                                                            { slot: 'armor', label: 'Armure', icon: ArmorIcon },
+                                                            { slot: 'jewelry', label: 'Bijou', icon: Gem },
+                                                        ].map(({slot, label, icon: SlotIcon}) => {
+                                                            const item = getEquippedItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>);
+                                                            return (
+                                                                <div key={slot} className="flex items-center justify-between p-2 border rounded-md bg-background shadow-sm">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <SlotIcon className="h-4 w-4 text-muted-foreground" />
+                                                                        <span className="font-medium">{label}:</span>
+                                                                        <span className="text-muted-foreground truncate max-w-[100px]">{item ? item.name : "Vide"}</span>
+                                                                    </div>
+                                                                    {item && (
+                                                                        <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)}>
+                                                                            Déséquiper
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
+
 
                                             <CardDescription className="text-xs pt-2">
                                               <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
@@ -400,16 +448,15 @@ export function PageStructure({
                                                   <ScrollArea className="h-auto max-h-48">
                                                     <div className="grid grid-cols-5 gap-2 p-1">
                                                       {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
-                                                        <DropdownMenu key={`inventory-item-${item.name}-${index}-${item.generatedImageUrl || 'noimg'}`}>
+                                                        <DropdownMenu key={`inventory-item-${item.id}`}>
                                                           <TooltipProvider>
                                                             <Tooltip>
                                                               <TooltipTrigger asChild>
                                                                 <DropdownMenuTrigger asChild>
                                                                   <div
-                                                                    key={`item-cell-${item.name}-${index}-${item.generatedImageUrl || 'noimg'}`}
                                                                     className={cn(
                                                                       "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
-                                                                      getItemTypeColor(item.type)
+                                                                      getItemTypeColor(item.type, item.isEquipped)
                                                                     )}
                                                                   >
                                                                     {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
@@ -419,7 +466,6 @@ export function PageStructure({
                                                                             alt={`${item.name} icon`}
                                                                             fill
                                                                             style={{ objectFit: 'contain' }}
-                                                                            className="p-0.5"
                                                                             sizes="40px"
                                                                             data-ai-hint={`${item.name} icon`}
                                                                         />
@@ -436,6 +482,7 @@ export function PageStructure({
                                                                         {item.quantity}
                                                                       </span>
                                                                     )}
+                                                                     {item.isEquipped && <CheckCircle size={12} className="absolute top-0.5 left-0.5 text-green-500 bg-background rounded-full"/>}
                                                                   </div>
                                                                 </DropdownMenuTrigger>
                                                               </TooltipTrigger>
@@ -452,26 +499,46 @@ export function PageStructure({
                                                                         />
                                                                     </div>
                                                                 )}
-                                                                <p className="font-semibold">{item.name} (x{item.quantity})</p>
+                                                                <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
                                                                 {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                                                                 {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                                {item.statBonuses && (
+                                                                    <div className="text-xs mt-1">
+                                                                        <p className="font-medium">Bonus:</p>
+                                                                        {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
+                                                                        {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
+                                                                        {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
+                                                                        {/* Add other stat bonuses if needed */}
+                                                                    </div>
+                                                                )}
                                                                 {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
                                                                 {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
                                                               </TooltipContent>
                                                             </Tooltip>
                                                           </TooltipProvider>
                                                           <DropdownMenuContent>
+                                                             {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
+                                                                item.isEquipped ? (
+                                                                    <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
+                                                                        <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
+                                                                    </DropdownMenuItem>
+                                                                ) : (
+                                                                    <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
+                                                                        <Shirt className="mr-2 h-4 w-4" /> Équiper
+                                                                    </DropdownMenuItem>
+                                                                )
+                                                            )}
                                                             <DropdownMenuItem
-                                                              onSelect={() => handlePlayerItemAction(item.name, 'use')}
+                                                              onSelect={() => handlePlayerItemAction(item.id, 'use')}
                                                               disabled={item.type !== 'consumable'}
                                                             >
                                                               <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.name, 'discard')}>
+                                                            <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
                                                               <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
                                                             </DropdownMenuItem>
                                                              <DropdownMenuItem 
-                                                              onSelect={() => handleSellItem(item.name)}
+                                                              onSelect={() => handleSellItem(item.id)}
                                                               disabled={!item.goldValue || item.goldValue <= 0}
                                                             >
                                                               <Coins className="mr-2 h-4 w-4" /> Vendre (pour {Math.floor((item.goldValue || 0) / 2)} PO)
@@ -490,9 +557,7 @@ export function PageStructure({
                                                 )}
                                               </CardContent>
                                             </Card>
-                                            {adventureSettings.rpgMode && (
-                                                <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
-                                            )}
+                                            <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
