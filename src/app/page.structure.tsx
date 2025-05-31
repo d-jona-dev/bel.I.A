@@ -406,6 +406,7 @@ export function PageStructure({
                                                               <TooltipTrigger asChild>
                                                                 <DropdownMenuTrigger asChild>
                                                                   <div
+                                                                    key={`item-cell-${item.name}-${index}-${item.generatedImageUrl || 'noimg'}`}
                                                                     className={cn(
                                                                       "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
                                                                       getItemTypeColor(item.type)
@@ -413,18 +414,19 @@ export function PageStructure({
                                                                   >
                                                                     {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
                                                                         <Image
-                                                                            key={item.generatedImageUrl} // Force re-render if URL changes
+                                                                            key={item.generatedImageUrl} 
                                                                             src={item.generatedImageUrl}
                                                                             alt={`${item.name} icon`}
                                                                             fill
                                                                             style={{ objectFit: 'contain' }}
-                                                                            sizes="40px" // Adjust size as needed for a small cell
+                                                                            className="p-0.5"
+                                                                            sizes="40px"
                                                                             data-ai-hint={`${item.name} icon`}
                                                                         />
                                                                     ) : (
                                                                         <PackageOpen size={20} className="text-foreground/80" />
                                                                     )}
-                                                                     <span className="absolute bottom-0.5 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
+                                                                     <span className="absolute bottom-0 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
                                                                         {item.name}
                                                                       </span>
                                                                     {item.quantity > 1 && (
@@ -493,29 +495,6 @@ export function PageStructure({
                                             )}
                                         </CardContent>
                                     </Card>
-                                     {adventureSettings.rpgMode && (
-                                        <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-attributes-accordion">
-                                            <AccordionItem value="player-attributes-accordion">
-                                                <AccordionTrigger>
-                                                    <div className="flex items-center gap-2 text-sm">
-                                                        <Dices className="h-4 w-4" /> Caractéristiques Détaillées
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="pt-2 space-y-1 text-xs">
-                                                    <div className="flex justify-between"><span>Force (FOR):</span> <span>{adventureSettings.playerStrength ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Dextérité (DEX):</span> <span>{adventureSettings.playerDexterity ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Constitution (CON):</span> <span>{adventureSettings.playerConstitution ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Intelligence (INT):</span> <span>{adventureSettings.playerIntelligence ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Sagesse (SAG):</span> <span>{adventureSettings.playerWisdom ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Charisme (CHA):</span> <span>{adventureSettings.playerCharisma ?? 'N/A'}</span></div>
-                                                    <Separator className="my-1" />
-                                                    <div className="flex justify-between"><span>Classe d'Armure (CA):</span> <span>{adventureSettings.playerArmorClass ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Bonus d'Attaque:</span> <span>{adventureSettings.playerAttackBonus ?? 'N/A'}</span></div>
-                                                    <div className="flex justify-between"><span>Bonus de Dégâts:</span> <span>{adventureSettings.playerDamageBonus || 'N/A'}</span></div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Accordion>
-                                    )}
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
