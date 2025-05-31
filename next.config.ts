@@ -32,6 +32,9 @@ const nextConfig: NextConfig = {
     // Important: return the modified config
     return config;
   },
+  experimental: {
+    turbo: {}, // Add empty turbo configuration to acknowledge Turbopack
+  },
 };
 
 export default nextConfig;
