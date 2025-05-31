@@ -47,25 +47,23 @@ export function LanguageSelector({
     const targetLanguageName = availableLanguages.find(l => l.code === newLangCode)?.name || newLangCode;
 
     // Show initial toast immediately
-    toast({
-      title: "Changement de langue...",
-      description: `Passage à ${targetLanguageName}.`,
-    });
+    setTimeout(() => {
+      toast({
+        title: "Changement de langue...",
+        description: `Passage à ${targetLanguageName}.`,
+      });
+    }, 0);
 
-    // Update the language in the parent component's state via callback
-    // We do this *before* translation so the UI feels responsive.
-    // The parent needs to handle the actual translation logic if desired.
     onLanguageChange(newLangCode);
 
-    // For now, we just update the setting and don't automatically translate
-    // existing content. The parent component could decide to trigger translation
-    // based on the onLanguageChange callback if needed.
     console.log("Language setting changed to:", newLangCode);
 
-    toast({
-        title: "Langue Changée",
-        description: `L'affichage est maintenant en ${targetLanguageName}.`,
-    });
+    setTimeout(() => {
+      toast({
+          title: "Langue Changée",
+          description: `L'affichage est maintenant en ${targetLanguageName}.`,
+      });
+    }, 0);
 
 
     // Optional: Trigger translation of existing content (requires parent implementation)
@@ -86,35 +84,40 @@ export function LanguageSelector({
             // This component only signals the change and potentially provides the translation.
             console.log("Translated text (requires parent handling):", result.translatedText);
 
-             toast({
-                title: "Traduction Terminée",
-                description: `Le contenu existant a été traduit en ${targetLanguageName}.`,
-            });
+            setTimeout(() => {
+              toast({
+                  title: "Traduction Terminée",
+                  description: `Le contenu existant a été traduit en ${targetLanguageName}.`,
+              });
+            }, 0);
 
 
        } else {
            console.log("No text to translate, just changing language setting.");
-           toast({
-                title: "Langue Changée",
-                description: `L'affichage est maintenant en ${targetLanguageName}.`,
-            });
+           setTimeout(() => {
+             toast({
+                  title: "Langue Changée",
+                  description: `L'affichage est maintenant en ${targetLanguageName}.`,
+              });
+           }, 0);
        }
 
     } catch (error) {
       console.error("Error translating text:", error);
-       toast({
-        title: "Erreur de Traduction",
-        description: "Impossible de traduire le texte existant. La langue a été changée.",
-        variant: "destructive",
-       });
+      setTimeout(() => {
+        toast({
+          title: "Erreur de Traduction",
+          description: "Impossible de traduire le texte existant. La langue a été changée.",
+          variant: "destructive",
+        });
+      }, 0);
       // Don't revert language selection optimistically, let parent handle state
     } finally {
       setIsLoading(false);
     }
     */
 
-    // Remove loading state immediately after signaling change
-     setIsLoading(false);
+    setIsLoading(false);
   };
 
 

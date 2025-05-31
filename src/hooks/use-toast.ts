@@ -136,11 +136,11 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  // Wrap listener notifications in a transition to defer state updates in subscribing components
-  React.startTransition(() => {
-    listeners.forEach((listener) => {
-      listener(memoryState)
-    })
+  // Notify listeners directly.
+  // Assumes that calls to toast() (which calls dispatch) are already deferred
+  // (e.g., via setTimeout or in direct event handlers not problematic for rendering).
+  listeners.forEach((listener) => {
+    listener(memoryState)
   })
 }
 
@@ -186,7 +186,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, []) // Changed dependency array from [state] to []
+  }, [])
 
   return {
     ...state,
