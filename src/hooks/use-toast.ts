@@ -136,12 +136,13 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  // Notify listeners directly.
-  // Assumes that calls to toast() (which calls dispatch) are already deferred
-  // (e.g., via setTimeout or in direct event handlers not problematic for rendering).
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
+  // Schedule the listener notifications to run after the current execution task.
+  // This helps prevent "cannot update during an existing state transition" errors.
+  setTimeout(() => {
+    listeners.forEach((listener) => {
+      listener(memoryState)
+    })
+  }, 0);
 }
 
 type Toast = Omit<ToasterToast, "id">
