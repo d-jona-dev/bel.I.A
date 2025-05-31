@@ -378,12 +378,12 @@ Compétences:
 Environment: {{activeCombat.environmentDescription}}
 Combatants (Player team listed first, then Enemies):
 {{#each activeCombat.combatants}}
-  {{#if (eq this.team "player")}}
+  {{#if this.isPlayerTeam}}
 - Name: {{this.name}} (Team: Joueur/Allié) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
   {{/if}}
 {{/each}}
 {{#each activeCombat.combatants}}
-  {{#if (eq this.team "enemy")}}
+  {{#if this.isEnemyTeam}}
 - Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
   {{/if}}
 {{/each}}
@@ -407,7 +407,7 @@ Known Characters (excluding player unless explicitly listed for context):
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}} | Ally: {{#if this.isAlly}}Yes{{else}}No{{/if}}
-  {{#if this.skills}}Skills: {{#each this.skills}}{{@key}}{{#if (isTruthy this)}}, {{/if}}{{/each}}{{/if}}
+  {{#if this.skills}}Skills: {{#each this.skills}}{{@key}}{{#if this}}, {{/if}}{{/each}}{{/if}}
   {{#if this.spells}}Spells: {{#each this.spells}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
   Inventory (conceptual - DO NOT list currency): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
   {{/if}}
@@ -541,6 +541,24 @@ const generateAdventureFlow = ai.defineFlow<
 
     console.log("Generating adventure with input:", JSON.stringify(input, null, 2));
 
+    // Pre-process input.activeCombat.combatants to add boolean flags for Handlebars
+    if (input.activeCombat && input.activeCombat.combatants) {
+      // Make a mutable copy if input is read-only, or ensure it's mutable
+      const mutableCombatants = input.activeCombat.combatants.map(combatant => {
+        const augmentedCombatant = { ...combatant } as any; // Use 'as any' to add dynamic properties
+        augmentedCombatant.isPlayerTeam = combatant.team === 'player';
+        augmentedCombatant.isEnemyTeam = combatant.team === 'enemy';
+        augmentedCombatant.isNeutralTeam = combatant.team === 'neutral';
+        return augmentedCombatant;
+      });
+      // Create a new activeCombat object with the modified combatants
+      input.activeCombat = {
+        ...input.activeCombat,
+        combatants: mutableCombatants
+      };
+    }
+
+
     const {output} = await prompt(input);
 
     if (!output?.narrative) {
@@ -605,6 +623,8 @@ const generateAdventureFlow = ai.defineFlow<
   }
 );
 
+
+    
 
     
 
