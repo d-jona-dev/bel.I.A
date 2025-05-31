@@ -126,6 +126,16 @@ export interface AdventureSettings {
     playerExpToNextLevel?: number;
     playerInventory?: PlayerInventoryItem[];
     playerGold?: number;
+    playerInitialAttributePoints?: number; // Points à distribuer au démarrage
+    playerStrength?: number;
+    playerDexterity?: number;
+    playerConstitution?: number;
+    playerIntelligence?: number;
+    playerWisdom?: number;
+    playerCharisma?: number;
+    playerArmorClass?: number;
+    playerAttackBonus?: number;
+    playerDamageBonus?: string;
 }
 
 export interface SaveData {
@@ -137,3 +147,4 @@ export interface SaveData {
     saveFormatVersion: number;
     timestamp: string;
 }
+
