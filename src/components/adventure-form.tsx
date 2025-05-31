@@ -33,8 +33,8 @@ const characterSchema = z.object({
   details: z.string().min(1, "Les détails sont requis"),
 });
 
-const BASE_ATTRIBUTE_VALUE_FORM = 8; 
-const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
+const BASE_ATTRIBUTE_VALUE_FORM = 8;
+const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5; // Correspond à ATTRIBUTE_POINTS_PER_LEVEL_GAIN dans page.tsx
 
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
@@ -45,8 +45,8 @@ const adventureFormSchema = z.object({
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
-  // playerInitialAttributePoints est le *total* de points distribuables pour le niveau actuel, il sera calculé et passé au formulaire
-  playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs totaux à distribuer pour le niveau actuel."),
+  playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs de création (au niveau 1)."),
+  totalDistributableAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs totaux à distribuer pour le niveau actuel (création + niveaux)."),
   playerStrength: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerDexterity: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerConstitution: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
@@ -70,15 +70,15 @@ const adventureFormSchema = z.object({
         attributes.forEach(attr => {
             spentPointsFromBase += (attr || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM;
         });
-        
-        const totalDistributablePointsForLevel = data.playerInitialAttributePoints || 0;
+
+        const totalDistributablePointsForLevel = data.totalDistributableAttributePoints || 0;
 
 
         if (spentPointsFromBase > totalDistributablePointsForLevel) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: `Vous avez dépassé le nombre de points d'attributs disponibles. (Dépensés au-delà de la base: ${spentPointsFromBase}, Disponibles: ${totalDistributablePointsForLevel})`,
-                path: ["playerInitialAttributePoints"], // Le message d'erreur s'affiche sous ce champ
+                path: ["totalDistributableAttributePoints"],
             });
         }
     }
@@ -96,7 +96,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
-    mode: "onChange", 
+    mode: "onChange",
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -113,7 +113,14 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
   React.useEffect(() => {
     const currentFormValues = form.getValues();
-    if (JSON.stringify(currentFormValues) !== JSON.stringify(initialValues)) {
+    // Check if any key in initialValues is different from currentFormValues
+    const formStateIsDifferent = Object.keys(initialValues).some(key => {
+        const formValue = currentFormValues[key as keyof AdventureFormValues];
+        const initialValue = initialValues[key as keyof AdventureFormValues];
+        return JSON.stringify(formValue) !== JSON.stringify(initialValue);
+    });
+
+    if (formStateIsDifferent) {
         form.reset(initialValues);
     }
   }, [formPropKey, initialValues, form]);
@@ -132,7 +139,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerName: "Héros",
         playerClass: "Étudiant Combattant",
         playerLevel: 1,
-        playerInitialAttributePoints: 10, // Points de création pour niveau 1
+        playerInitialAttributePoints: 10,
+        totalDistributableAttributePoints: 10, // Au niveau 1, total = création
         playerStrength: 8,
         playerDexterity: 8,
         playerConstitution: 8,
@@ -141,9 +149,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerCharisma: 8,
         playerAttackBonus: 0,
         playerDamageBonus: "1d4",
-        playerMaxHp: 25, 
-        playerMaxMp: 10, 
-        playerArmorClass: 10, 
+        playerMaxHp: 25,
+        playerMaxMp: 10,
+        playerArmorClass: 10,
         playerExpToNextLevel: 100,
         playerGold: 50,
     };
@@ -155,6 +163,13 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
   const isRpgModeEnabled = form.watch('enableRpgMode');
   const watchedPlayerLevel = form.watch('playerLevel');
+  const watchedCreationPoints = form.watch('playerInitialAttributePoints');
+
+
+  const totalDistributablePointsForCurrentLevel = React.useMemo(() => {
+    return initialValues.totalDistributableAttributePoints || 0;
+  }, [initialValues.totalDistributableAttributePoints]);
+
 
   const calculateSpentPoints = React.useCallback(() => {
     let spent = 0;
@@ -169,16 +184,15 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     return spent;
   }, [form]);
 
-  const [spentPoints, setSpentPoints] = React.useState(calculateSpentPoints());
+  const [spentPoints, setSpentPoints] = React.useState(() => calculateSpentPoints());
 
   React.useEffect(() => {
     setSpentPoints(calculateSpentPoints());
-  }, [form.watch("playerStrength"), form.watch("playerDexterity"), form.watch("playerConstitution"), form.watch("playerIntelligence"), form.watch("playerWisdom"), form.watch("playerCharisma"), calculateSpentPoints]);
-
-
-  const totalDistributablePointsForCurrentLevel = React.useMemo(() => {
-    return form.getValues("playerInitialAttributePoints") || 0;
-  }, [form.watch("playerInitialAttributePoints")]);
+  }, [
+      form.watch("playerStrength"), form.watch("playerDexterity"), form.watch("playerConstitution"),
+      form.watch("playerIntelligence"), form.watch("playerWisdom"), form.watch("playerCharisma"),
+      calculateSpentPoints, totalDistributablePointsForCurrentLevel // Ajout de totalDistributablePointsForCurrentLevel
+  ]);
 
   const remainingPoints = totalDistributablePointsForCurrentLevel - spentPoints;
 
@@ -193,19 +207,23 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
         newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
-    
-    const currentSpentPoints = calculateSpentPoints();
-    const diffFromCurrentValue = newAttributeValue - currentAttributeValue;
-    const projectedSpentPoints = currentSpentPoints + diffFromCurrentValue;
 
-    if (projectedSpentPoints > totalDistributablePointsForCurrentLevel) {
-        // Si on dépasse, on ajuste la nouvelle valeur pour utiliser seulement les points restants
-        const pointsOver = projectedSpentPoints - totalDistributablePointsForCurrentLevel;
+    // Calculer les points dépensés *avant* cette modification pour ce champ
+    const spentBeforeThisChange = calculateSpentPoints() - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
+    // Calculer combien de points cette nouvelle valeur va "coûter"
+    const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
+    const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
+
+
+    if (projectedTotalSpentPoints > totalDistributablePointsForCurrentLevel) {
+        // Si on dépasse, ajuster la nouvelle valeur pour utiliser seulement les points restants
+        const pointsOver = projectedTotalSpentPoints - totalDistributablePointsForCurrentLevel;
         newAttributeValue -= pointsOver;
+        if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
-    
-    form.setValue(fieldName, newAttributeValue as any, { shouldValidate: true });
-    setSpentPoints(calculateSpentPoints()); // Recalculer après la mise à jour
+
+    form.setValue(fieldName, newAttributeValue as any, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    // setSpentPoints est appelé par le useEffect qui observe les changements d'attributs.
   };
 
 
@@ -316,33 +334,46 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <Dices className="h-5 w-5 text-primary"/>
                     <h4 className="font-semibold">Distribution des Points d'Attributs</h4>
                 </div>
-                <FormField
+                 <FormField
                   control={form.control}
-                  name="playerInitialAttributePoints"
+                  name="playerInitialAttributePoints" // Points de création
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Points d'Attributs Totaux (pour ce niveau)</FormLabel>
+                      <FormLabel>Points d'Attributs de Création (Niv. 1)</FormLabel>
                       <FormControl>
-                        <Input 
-                            type="number" 
-                            {...field} 
-                            value={totalDistributablePointsForCurrentLevel} 
-                            readOnly 
-                            className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"
+                        <Input
+                            type="number"
+                            {...field}
+                            value={field.value || 0}
+                            onChange={e => field.onChange(parseInt(e.target.value,10) || 0)}
+                            className="bg-background border"
                         />
                       </FormControl>
                        <FormDescription>
-                         Total de points bonus à distribuer (niveau {watchedPlayerLevel || 1}). Base de {initialValues.playerInitialAttributePoints - ( (watchedPlayerLevel||1) > 1 ? ((watchedPlayerLevel||1)-1)*ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0 )} points de création + {(ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)} points par niveau après le Niv. 1.
+                         Points bonus à ajouter aux scores de base (8) lors de la création du personnage.
                        </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <FormItem>
+                    <FormLabel>Total de Points d'Attributs Bonus Distribuables (Niv. {watchedPlayerLevel || 1})</FormLabel>
+                    <Input
+                        type="number"
+                        value={totalDistributablePointsForCurrentLevel}
+                        readOnly
+                        className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"
+                    />
+                    <FormDescription>
+                        ({watchedCreationPoints || 0} points de création + {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points par niveau après le Niv. 1).
+                    </FormDescription>
+                     {form.formState.errors.totalDistributableAttributePoints && (
+                        <p className="text-xs text-destructive">{form.formState.errors.totalDistributableAttributePoints.message}</p>
+                    )}
+                </FormItem>
+
                  <div className="p-2 border rounded-md bg-background text-center">
                     <p className="text-sm font-medium">Points d'attributs restants à distribuer : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span></p>
-                    {form.formState.errors.playerInitialAttributePoints && (
-                        <p className="text-xs text-destructive">{form.formState.errors.playerInitialAttributePoints.message}</p>
-                    )}
                 </div>
 
                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -353,7 +384,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                             name={attr}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="capitalize">{attr.replace("player", "")}</FormLabel>
+                                    <FormLabel className="capitalize">{attr.replace("player", "")} (Base {BASE_ATTRIBUTE_VALUE_FORM})</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
@@ -373,7 +404,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                  <Separator className="my-3"/>
                  <div className="flex items-center gap-2">
                     <BarChart2 className="h-5 w-5 text-primary"/>
-                    <h4 className="font-semibold">Statistiques de Combat et Autres</h4>
+                    <h4 className="font-semibold">Statistiques de Combat et Autres (Indicatif)</h4>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <FormField
@@ -385,6 +416,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                           <FormControl>
                             <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
                           </FormControl>
+                           <FormDescription>Calculé : {initialValues.playerAttackBonus}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -398,6 +430,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                           <FormControl>
                             <Input placeholder="ex: 1d4, +2" {...field} value={field.value || ""} className="bg-background border"/>
                           </FormControl>
+                           <FormDescription>Calculé : {initialValues.playerDamageBonus}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -412,7 +445,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       <FormControl>
                         <Input type="number" placeholder="20" {...field} value={field.value || 20} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
                       </FormControl>
-                      <FormDescription>Auto-calculé : {initialValues.playerMaxHp} (basé sur CON, Niv. et Classe). Peut être surchargé.</FormDescription>
+                      <FormDescription>Calculé : {initialValues.playerMaxHp} (basé sur CON, Niv. et Classe).</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -426,7 +459,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       <FormControl>
                         <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
                       </FormControl>
-                       <FormDescription>Auto-calculé : {initialValues.playerMaxMp} (basé sur INT, Niv. et Classe). Peut être surchargé. Mettre 0 si pas de magie.</FormDescription>
+                       <FormDescription>Calculé : {initialValues.playerMaxMp} (basé sur INT, Niv. et Classe).</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -440,7 +473,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                         <FormControl>
                             <Input type="number" placeholder="10" {...field} value={field.value || 10} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
                         </FormControl>
-                         <FormDescription>Auto-calculé : {initialValues.playerArmorClass} (basé sur DEX). Peut être surchargé.</FormDescription>
+                         <FormDescription>Calculé : {initialValues.playerArmorClass} (basé sur DEX et équipement).</FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
