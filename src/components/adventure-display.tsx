@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar"; 
-import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react"; // Added BookOpen
+import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
+import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill } from "@/types"; // Added PlayerSkill
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +64,7 @@ interface AdventureDisplayProps {
     isSuggestingQuest: boolean;
     handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
     handleDiscardLoot: (messageId: string) => void;
-    handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void; 
+    handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
     handleEquipItem: (itemId: string) => void;
     handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
 }
@@ -87,7 +87,7 @@ export function AdventureDisplay({
     isSuggestingQuest,
     handleTakeLoot,
     handleDiscardLoot,
-    handlePlayerItemAction, 
+    handlePlayerItemAction,
     handleEquipItem,
     handleUnequipItem,
 }: AdventureDisplayProps) {
@@ -160,7 +160,7 @@ export function AdventureDisplay({
     if (!action || isLoading) return;
 
     setIsLoading(true);
-    onNarrativeChange(action, 'user'); 
+    onNarrativeChange(action, 'user');
 
     try {
         await generateAdventureAction(action);
@@ -262,6 +262,55 @@ export function AdventureDisplay({
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
   const playerCombatant = activeCombat?.combatants.find(c => c.characterId === 'player');
+
+  const renderCombatantCard = (combatant: typeof activeCombat.combatants[0], isPlayer: boolean = false) => {
+    const charDetails = isPlayer ? null : characters.find(c => c.id === combatant.characterId);
+    const name = isPlayer ? (adventureSettings.playerName || "Joueur") : combatant.name;
+    const charClass = isPlayer ? adventureSettings.playerClass : charDetails?.characterClass;
+    const level = isPlayer ? adventureSettings.playerLevel : charDetails?.level;
+
+    return (
+        <Card key={combatant.characterId} className="bg-muted/50 shadow-sm">
+            <CardHeader className="p-3 pb-2">
+                <CardTitle className="text-base flex items-center justify-between">
+                    <span className="truncate">{name}</span>
+                    {charClass && level !== undefined && (
+                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                            {charClass} Niv. {level}
+                        </span>
+                    )}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-1">
+                <div>
+                    <div className="flex justify-between items-center mb-0.5">
+                        <Label htmlFor={`${combatant.characterId}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                        <span className="text-xs text-muted-foreground">{combatant.currentHp} / {combatant.maxHp}</span>
+                    </div>
+                    <Progress id={`${combatant.characterId}-hp`} value={(combatant.currentHp / (combatant.maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
+                </div>
+                {(combatant.maxMp ?? 0) > 0 && (
+                    <div>
+                        <div className="flex justify-between items-center mb-0.5">
+                            <Label htmlFor={`${combatant.characterId}-mp`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                            <span className="text-xs text-muted-foreground">{combatant.currentMp ?? 0} / {combatant.maxMp ?? 0}</span>
+                        </div>
+                        <Progress id={`${combatant.characterId}-mp`} value={((combatant.currentMp ?? 0) / (combatant.maxMp || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                    </div>
+                )}
+                {combatant.statusEffects && combatant.statusEffects.length > 0 && (
+                    <div className="mt-1">
+                        <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts</Label>
+                        <div className="text-xs text-muted-foreground">
+                            {combatant.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
+                        </div>
+                    </div>
+                )}
+                 {combatant.isDefeated && <p className="text-xs text-destructive font-semibold text-center mt-1">VAINCU</p>}
+            </CardContent>
+        </Card>
+    );
+};
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -767,69 +816,37 @@ export function AdventureDisplay({
                     </Card>
                 )}
 
-                {adventureSettings.rpgMode && activeCombat?.isActive && activeCombat.combatants.some(c => c.team === 'enemy' && !c.isDefeated) && (
-                    <Card className="shadow-md rounded-lg mt-4">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">Ennemis</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 pt-2 max-h-48 overflow-y-auto">
-                            {activeCombat.combatants
-                                .filter(c => c.team === 'enemy' && !c.isDefeated)
-                                .map(enemyCombatant => {
-                                    const enemyCharacterDetails = characters.find(char => char.id === enemyCombatant.characterId);
-                                    const enemyName = enemyCombatant.name;
-                                    const enemyClass = enemyCharacterDetails?.characterClass || "Combattant";
-                                    const enemyLevel = enemyCharacterDetails?.level || (enemyCharacterDetails?.isHostile ? 1 : undefined);
+                 {adventureSettings.rpgMode && activeCombat?.isActive && (
+                    <div className="space-y-2">
+                        {activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== 'player' && !c.isDefeated).length > 0 && (
+                            <Card className="shadow-md rounded-lg">
+                                <CardHeader className="p-3 pb-1">
+                                    <CardTitle className="text-md">Alliés</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 pt-1 space-y-2 max-h-40 overflow-y-auto">
+                                    {activeCombat.combatants
+                                        .filter(c => c.team === 'player' && c.characterId !== 'player' && !c.isDefeated)
+                                        .map(ally => renderCombatantCard(ally))}
+                                </CardContent>
+                            </Card>
+                        )}
 
-                                    const enemyCurrentHp = enemyCombatant.currentHp;
-                                    const enemyMaxHp = enemyCombatant.maxHp;
-                                    const enemyCurrentMp = enemyCombatant.currentMp;
-                                    const enemyMaxMp = enemyCombatant.maxMp;
-
-                                    return (
-                                        <div key={enemyCombatant.characterId} className="border p-3 rounded-md bg-muted/50">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <Label htmlFor={`enemy-title-${enemyCombatant.characterId}`} className="text-sm font-semibold">{enemyName}</Label>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {enemyClass} {enemyLevel !== undefined ? `- Niv. ${enemyLevel}` : ''}
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <Label htmlFor={`enemy-hp-${enemyCombatant.characterId}`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                                                    <span className="text-xs text-muted-foreground">{enemyCurrentHp} / {enemyMaxHp}</span>
-                                                </div>
-                                                <Progress id={`enemy-hp-${enemyCombatant.characterId}`} value={(enemyCurrentHp / (enemyMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
-                                            </div>
-                                            {(enemyMaxMp ?? 0) > 0 && (
-                                                <div className="mt-2">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <Label htmlFor={`enemy-mp-${enemyCombatant.characterId}`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                                                        <span className="text-xs text-muted-foreground">{enemyCurrentMp ?? 0} / {enemyMaxMp ?? 0}</span>
-                                                    </div>
-                                                    <Progress id={`enemy-mp-${enemyCombatant.characterId}`} value={((enemyCurrentMp ?? 0) / (enemyMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
-                                                </div>
-                                            )}
-                                            {enemyCombatant.statusEffects && enemyCombatant.statusEffects.length > 0 && (
-                                                <div className="mt-2">
-                                                    <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts</Label>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {enemyCombatant.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                        </CardContent>
-                    </Card>
+                        {activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
+                            <Card className="shadow-md rounded-lg">
+                                <CardHeader className="p-3 pb-1">
+                                    <CardTitle className="text-md">Ennemis</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 pt-1 space-y-2 max-h-40 overflow-y-auto">
+                                    {activeCombat.combatants
+                                        .filter(c => c.team === 'enemy' && !c.isDefeated)
+                                        .map(enemy => renderCombatantCard(enemy))}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 )}
             </div>
       </div>
     </div>
   );
 }
-
-
-
-

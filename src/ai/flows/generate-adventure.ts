@@ -16,8 +16,8 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill } from '@/types'; // Added PlayerSkill
-import { LootedItemSchema } from '@/types'; 
+import type { Character, PlayerSkill } from '@/types';
+import { LootedItemSchema } from '@/types';
 
 
 // Define RPG context schema (optional)
@@ -58,6 +58,9 @@ const BaseCharacterSchema = z.object({
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
   inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity). DO NOT include currency here."),
+  isAlly: z.boolean().optional().default(false).describe("Is this character currently an ally of the player in combat?"),
+  skills: z.record(z.string(), z.union([z.boolean(), z.string()])).optional().describe("Character's skills (e.g., {'Coup Puissant': true, 'Crochetage': 'Avancé'}). For AI decision making."),
+  spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
 }).passthrough();
 
 
@@ -88,14 +91,14 @@ const CombatantSchema = z.object({
     maxHp: z.number().describe("Maximum HP of the combatant."),
     currentMp: z.number().optional().describe("Current MP of the combatant if applicable."),
     maxMp: z.number().optional().describe("Maximum MP of the combatant if applicable."),
-    team: z.enum(['player', 'enemy', 'neutral']).describe("Team alignment."),
+    team: z.enum(['player', 'enemy', 'neutral']).describe("Team alignment. 'player' team includes the main player and any allied NPCs."),
     isDefeated: z.boolean().default(false).describe("Is this combatant defeated?"),
     statusEffects: z.array(StatusEffectSchema).optional().describe("Active status effects on the combatant."),
 });
 
 const ActiveCombatSchema = z.object({
     isActive: z.boolean().describe("Is combat currently active?"),
-    combatants: z.array(CombatantSchema).describe("List of all characters involved in combat."),
+    combatants: z.array(CombatantSchema).describe("List of all characters involved in combat, including player, allies, and enemies."),
     environmentDescription: z.string().optional().describe("Brief description of the combat environment (e.g., 'a narrow corridor', 'an open field')."),
     turnLog: z.array(z.string()).optional().describe("Summary of major events from previous combat turns."),
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
@@ -116,13 +119,13 @@ const PlayerSkillSchemaForAI = z.object({
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
-  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include `isAlly` status.'),
   userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP, Gold) are active. If true, combat rules apply."),
-  activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing."),
+  activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing. If combat is active, ensure `combatants` includes the player, all their active allies (characters with `isAlly: true`), and all active enemies/neutrals."),
   playerGold: z.number().int().optional().describe("Player's current amount of Gold Pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
@@ -179,6 +182,7 @@ const NewCharacterSchema = z.object({
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice', 'Marchand d'armes')."),
     level: z.number().optional().describe("Level if relevant."),
     inventory: z.array(InventoryItemForAISchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]. DO NOT include currency here."),
+    isAlly: z.boolean().optional().default(false).describe("Is this new character initially an ally of the player?"),
 });
 
 const CharacterUpdateSchema = z.object({
@@ -211,9 +215,9 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn. THIS IS MANDATORY if combat took place."),
     expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
-    combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player defeated/fled)."),
+    combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. THIS IS MANDATORY if combat took place. This will be part of the main narrative output as well."),
-    nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false."),
+    nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false. Ensure this state includes all active combatants: player, allies, and enemies."),
 });
 
 
@@ -284,6 +288,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             level: input.rpgModeActive ? (char.level ?? 1) : undefined,
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
             inventory: input.rpgModeActive ? (char.inventory || {}) : undefined,
+            isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
+            skills: char.skills, // Pass skills
+            spells: char.spells, // Pass spells
         };
     });
 
@@ -303,10 +310,10 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         playerSkills: processedPlayerSkills,
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
-        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined, 
-        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined, 
-        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined, 
-        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined, 
+        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined,
+        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined,
+        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined,
+        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined,
         playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
         playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
         playerGold: input.rpgModeActive ? (input.playerGold || 0) : undefined,
@@ -316,9 +323,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         playerIntelligence: input.rpgModeActive ? input.playerIntelligence : undefined,
         playerWisdom: input.rpgModeActive ? input.playerWisdom : undefined,
         playerCharisma: input.rpgModeActive ? input.playerCharisma : undefined,
-        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined, 
-        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined, 
-        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined, 
+        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined,
+        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined,
+        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined,
         equippedWeaponName: input.equippedWeaponName,
         equippedArmorName: input.equippedArmorName,
         equippedJewelryName: input.equippedJewelryName,
@@ -369,9 +376,16 @@ Compétences:
 {{#if activeCombat.isActive}}
 --- COMBAT ACTIVE ---
 Environment: {{activeCombat.environmentDescription}}
-Combatants:
+Combatants (Player team listed first, then Enemies):
 {{#each activeCombat.combatants}}
-- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(DEFEATED){{/if}}
+  {{#if (eq this.team "player")}}
+- Name: {{this.name}} (Team: Joueur/Allié) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
+  {{/if}}
+{{/each}}
+{{#each activeCombat.combatants}}
+  {{#if (eq this.team "enemy")}}
+- Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
+  {{/if}}
 {{/each}}
 {{#if activeCombat.turnLog}}
 Previous Turn Summary:
@@ -392,7 +406,9 @@ Known Characters (excluding player unless explicitly listed for context):
   {{#if ../rpgModeActive}}
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
-  Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}}
+  Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}} | Ally: {{#if this.isAlly}}Yes{{else}}No{{/if}}
+  {{#if this.skills}}Skills: {{#each this.skills}}{{@key}}{{#if (isTruthy this)}}, {{/if}}{{/each}}{{/if}}
+  {{#if this.spells}}Spells: {{#each this.spells}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
   Inventory (conceptual - DO NOT list currency): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
@@ -434,23 +450,35 @@ Tasks:
             2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
             3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system based on player's action.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
-        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
+        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). **Ensure player's active allies (characters with isAlly: true) are included in the 'player' team.** Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
         *   **Étape 1: Tour du Joueur ({{playerName}}).**
             *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), l'utilisation d'une compétence de combat, ou une autre manœuvre.
             *   **Si le joueur utilise ou jette un objet:** Narrez l'action. L'effet de l'objet (ex: restauration de PV pour une potion de soin, dégâts pour une bombe) DOIT être pris en compte dans le calcul des combatUpdates.updatedCombatants pour le joueur ou la cible. Un objet consommé est conceptuellement retiré de son inventaire (la gestion réelle de l'inventaire se fait côté client).
             *   **Si le joueur utilise une compétence de combat:** Narrez l'action. L'effet de la compétence (basé sur son nom et sa description) DOIT être pris en compte. Par exemple, "Coup Puissant" devrait infliger plus de dégâts ou avoir une chance d'étourdir. Décrivez le succès ou l'échec et les conséquences dans combatUpdates.turnNarration et mettez à jour combatUpdates.updatedCombatants.
             *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
-        *   **Étape 2: Tour des PNJ.** Déterminez les actions pour TOUS les autres PNJ actifs et non vaincus dans activeCombat.combatants (surtout l'équipe 'enemy'). Leurs actions doivent être basées sur leurs détails, characterClass, statut isHostile, PV/PM actuels, statusEffects, affinité envers le joueur/autres combattants, et leur sens tactique. Les lanceurs de sorts doivent utiliser des sorts appropriés à leurs PM et à la situation.
+        *   **Étape 1.5: Tour des PNJ Alliés (si présents et actifs).**
+            *   Pour chaque PNJ allié (identifié par `team: 'player'` dans `activeCombat.combatants` et qui n'est PAS le joueur, et qui a `isAlly: true` dans ses détails de personnage connus) qui est actif et non vaincu :
+                *   Déterminez une action appropriée pour cet allié. Basez cette action sur ses détails de personnage fournis (characterClass, stats, inventory, level, skills, spells, damageBonus, attackBonus) et la situation tactique.
+                *   Les alliés devraient agir de manière à aider l'équipe du joueur (soigner, attaquer des ennemis dangereux, utiliser des buffs/debuffs, etc.). Si l'allié est un "Mage", il devrait préférer lancer des sorts. Si c'est un "Guerrier", il attaquera.
+                *   Narrez l'action de l'allié et déterminez son succès/effet (ex: "Ancienne Elara lance Boule de Feu sur le Gobelin Fureteur. Elle touche et inflige X dégâts de feu.").
+                *   Prenez en compte les PM pour les sorts, les objets consommés de leur inventaire conceptuel.
+                *   Mettez à jour les PV/PM et les effets de statut de l'allié (et de sa cible, si applicable) dans combatUpdates.updatedCombatants.
+            *   Les tours des alliés doivent être inclus dans combatUpdates.turnNarration avec la même attention qu'un ennemi.
+        *   **Étape 2: Tour des PNJ Ennemis.**
+            *   Pour chaque ennemi actif et non vaincu (identifié par `team: 'enemy'`):
+                *   Déterminez l'action de cet ennemi.
+                *   Narrez l'action de l'ennemi, les résultats (dégâts, effets), et intégrez-les dans `combatUpdates.turnNarration`.
+                *   Mettez à jour les PV/PM et les effets de statut de l'ennemi et de sa cible (si applicable) dans `combatUpdates.updatedCombatants`.
         *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
-        *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ, ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
+        *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ (alliés et ennemis), ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
         *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus :
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
             *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
-        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur vaincu/fui). Si oui, mettez combatUpdates.combatEnded: true.
-        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true.
+        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
     *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
@@ -468,7 +496,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.**{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set `isAlly` to `false` unless explicitly stated otherwise in the introduction context.{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -482,7 +510,7 @@ Tasks:
     *   Analyze the narrative for significant shifts in how characters view each other ({{playerName}} or other NPCs).
     *   **If a character's affinity towards {{playerName}} crosses a major threshold** (e.g., from neutral to friendly, friendly to loyal, neutral to wary, wary to hostile), consider if their relationship *status* towards {{playerName}} should change.
     *   **If a significant narrative event occurs** (e.g., betrayal, deep act of trust, declaration, prolonged conflict, new alliance forming), update the relationship *status* between the involved characters (NPC-{{playerName}} or NPC-NPC).
-    *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' or 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
+    *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' ou 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
     *   Populate relationUpdates with:
         *   characterName: The name of the character whose perspective of the relationship is changing.
         *   targetName: The name of the other character involved (or PLAYER_NAME_EXAMPLE).
@@ -497,7 +525,7 @@ Tasks:
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
 `,
-});
+        });
 
 
 const generateAdventureFlow = ai.defineFlow<
@@ -525,11 +553,11 @@ const generateAdventureFlow = ai.defineFlow<
     }
      if (output.itemsObtained === undefined) {
         console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-        output.itemsObtained = []; 
+        output.itemsObtained = [];
      }
      if (output.currencyGained === undefined && input.rpgModeActive) {
         console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
-        output.currencyGained = 0; 
+        output.currencyGained = 0;
      }
 
 
@@ -576,4 +604,3 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
-
