@@ -4,7 +4,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card"; 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon } from "lucide-react"; // Added ExpIcon
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch"; // Added Switch import
+import { Switch } from "@/components/ui/switch";
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
@@ -130,7 +130,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                           />
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"} disabled={disabled}>
                               <Trash2 className="h-4 w-4" />
-                          </Button>
+                           </Button>
                       </div>
                   ))}
                   {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && (
@@ -226,7 +226,7 @@ export function CharacterSidebar({
   }, [globalCharactersList, characters, isClient]);
 
   const handleAddGlobalCharToAdventure = (charId: string) => {
-    if (!charId) return; 
+    if (!charId) return;
     const charToAdd = globalCharactersList.find(gc => gc.id === charId);
     if (charToAdd) {
         onAddStagedCharacter(charToAdd);
@@ -269,14 +269,14 @@ export function CharacterSidebar({
         }
     };
     reader.readAsDataURL(file);
-    if(event.target) event.target.value = ''; 
+    if(event.target) event.target.value = '';
   };
 
 
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints'];
+            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints', 'currentExp', 'expToNextLevel'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
@@ -284,11 +284,15 @@ export function CharacterSidebar({
                     numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
                  } else if (field === 'initialAttributePoints') {
                     numValue = Math.max(0, isNaN(numValue) ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : numValue);
+                 } else if (field === 'currentExp' || field === 'expToNextLevel') {
+                    numValue = Math.max(0, isNaN(numValue) ? (field === 'expToNextLevel' ? 100 : 0) : numValue);
                  }
-                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : (field === 'manaPoints' || field === 'maxManaPoints' ? 0 :10 )) : numValue;
+                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : (field === 'manaPoints' || field === 'maxManaPoints' || field === 'currentExp' ? 0 : (field === 'expToNextLevel' ? 100 : 10) )) : numValue;
             } else if (field === 'affinity' && typeof processedValue === 'number') {
                 processedValue = Math.max(0, Math.min(100, processedValue));
             } else if (field === 'initialAttributePoints' && typeof processedValue === 'number') {
+                processedValue = Math.max(0, processedValue);
+            } else if ((field === 'currentExp' || field === 'expToNextLevel') && typeof processedValue === 'number') {
                 processedValue = Math.max(0, processedValue);
             }
             onCharacterUpdate({ ...character, [field]: processedValue });
@@ -422,7 +426,7 @@ export function CharacterSidebar({
     React.useEffect(() => {
         const newSpentPoints: Record<string, number> = {};
         characters.forEach(char => {
-            if (char.isAlly) {
+            if (char.isAlly && rpgMode) { // Check rpgMode here too
                 newSpentPoints[char.id] = calculateNpcSpentPoints(char);
             }
         });
@@ -440,7 +444,7 @@ export function CharacterSidebar({
         if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
-        
+
         const creationPoints = char.initialAttributePoints || 0;
         const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
@@ -513,7 +517,7 @@ export function CharacterSidebar({
                     }
                     const currentAffinity = char.affinity ?? 50;
                     const isAllyAndRpg = rpgMode && char.isAlly;
-                    const creationPointsNpc = char.initialAttributePoints ?? (rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : 0);
+                    const creationPointsNpc = char.initialAttributePoints || (rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : 0);
                     const levelPointsNpc = rpgMode && char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
                     const totalDistributableNpc = creationPointsNpc + levelPointsNpc;
                     const currentNpcSpentPoints = npcSpentPoints[char.id] || 0;
@@ -612,7 +616,7 @@ export function CharacterSidebar({
                                     <div className="space-y-0.5">
                                         <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
                                         <UICardDescription className="text-xs">
-                                            Permet de modifier ses attributs et de l'intégrer à l'équipe (future).
+                                            Permet de modifier ses attributs et de l'intégrer à l'équipe.
                                         </UICardDescription>
                                     </div>
                                     <Switch
@@ -634,6 +638,15 @@ export function CharacterSidebar({
                                     <CardContent className="space-y-2 text-sm">
                                         <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
                                         <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
+                                        {char.level !== undefined && char.level >=1 && (
+                                            <>
+                                            <div className="flex justify-between items-center mb-0.5">
+                                                <Label htmlFor={`${char.id}-exp`} className="text-xs font-medium flex items-center"><ExpIcon className="h-3 w-3 mr-1 text-yellow-500"/>EXP</Label>
+                                                <span className="text-xs text-muted-foreground">{char.currentExp ?? 0} / {char.expToNextLevel ?? (100 * Math.pow(1.5, char.level -1))}</span>
+                                            </div>
+                                            <Progress id={`${char.id}-exp`} value={(((char.currentExp ?? 0) / (char.expToNextLevel || 1))) * 100} className="h-1.5 [&>div]:bg-yellow-500" />
+                                            </>
+                                        )}
                                         <Separator className="my-1"/>
                                         <div className="flex justify-between items-center">
                                             <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
@@ -755,5 +768,3 @@ export function CharacterSidebar({
     </div>
   );
 }
-
-    

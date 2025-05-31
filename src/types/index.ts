@@ -110,6 +110,8 @@ export interface Character {
   isQuestGiver?: boolean;
   isAlly?: boolean; // New field to mark NPC as an ally
   initialAttributePoints?: number; // New field for NPC creation attribute points
+  currentExp?: number; // For NPC progression
+  expToNextLevel?: number; // For NPC progression
   _lastSaved?: number; // Timestamp of last global save
 }
 
@@ -160,17 +162,17 @@ export interface AdventureSettings {
     playerExpToNextLevel?: number;
     playerInventory?: PlayerInventoryItem[];
     playerGold?: number;
-    playerInitialAttributePoints?: number; 
+    playerInitialAttributePoints?: number;
     playerStrength?: number;
     playerDexterity?: number;
     playerConstitution?: number;
     playerIntelligence?: number;
     playerWisdom?: number;
     playerCharisma?: number;
-    playerArmorClass?: number; 
-    playerAttackBonus?: number; 
-    playerDamageBonus?: string; 
-    equippedItemIds?: { 
+    playerArmorClass?: number;
+    playerAttackBonus?: number;
+    playerDamageBonus?: string;
+    equippedItemIds?: {
         weapon: string | null;
         armor: string | null;
         jewelry: string | null;
@@ -184,6 +186,6 @@ export interface SaveData {
     narrative: Message[];
     currentLanguage: string;
     activeCombat?: ActiveCombat;
-    saveFormatVersion: number; 
+    saveFormatVersion: number;
     timestamp: string;
 }
