@@ -20,7 +20,8 @@ import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput } from "@/ai/flo
 
 const PLAYER_ID = "player";
 const BASE_ATTRIBUTE_VALUE = 8;
-const INITIAL_CREATION_ATTRIBUTE_POINTS = 10;
+const INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER = 10; // For player
+const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC = 5; // Default for NPCs
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN = 5;
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
@@ -52,28 +53,29 @@ export type AdventureFormValues = {
 };
 
 // Calculates base stats derived from attributes, before equipment
-const calculateBaseDerivedStats = (settings: Partial<AdventureSettings>) => {
-  const constitution = settings.playerConstitution || BASE_ATTRIBUTE_VALUE;
-  const intelligence = settings.playerIntelligence || BASE_ATTRIBUTE_VALUE;
-  const dexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
-  const strength = settings.playerStrength || BASE_ATTRIBUTE_VALUE;
-  const playerClass = settings.playerClass || "";
-  const playerLevel = settings.playerLevel || 1;
+const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Character>) => {
+  const constitution = settings.constitution || BASE_ATTRIBUTE_VALUE;
+  const intelligence = settings.intelligence || BASE_ATTRIBUTE_VALUE;
+  const dexterity = settings.dexterity || BASE_ATTRIBUTE_VALUE;
+  const strength = settings.strength || BASE_ATTRIBUTE_VALUE;
+  const charClass = settings.characterClass || settings.playerClass || ""; // Use characterClass for NPC, playerClass for player
+  const level = settings.level || settings.playerLevel || 1;
 
-  let maxHp = 10 + (Math.floor((constitution - 10) / 2) + constitution) * playerLevel;
-  if (playerClass.toLowerCase().includes("guerrier") || playerClass.toLowerCase().includes("barbare")) {
-    maxHp += playerLevel * 2;
-  } else if (playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
-    maxHp -= playerLevel * 1;
+
+  let maxHp = 10 + (Math.floor((constitution - 10) / 2) + constitution) * level;
+  if (charClass.toLowerCase().includes("guerrier") || charClass.toLowerCase().includes("barbare")) {
+    maxHp += level * 2;
+  } else if (charClass.toLowerCase().includes("mage") || charClass.toLowerCase().includes("sorcier") || charClass.toLowerCase().includes("étudiant")) {
+    maxHp -= level * 1;
   }
 
   let maxMp = 0;
-  if (playerClass.toLowerCase().includes("magicien") || playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
-    maxMp = 10 + Math.max(0, (intelligence - 10)) * 2 + Math.floor(playerLevel / 2) * 5;
+  if (charClass.toLowerCase().includes("magicien") || charClass.toLowerCase().includes("mage") || charClass.toLowerCase().includes("sorcier") || charClass.toLowerCase().includes("étudiant")) {
+    maxMp = 10 + Math.max(0, (intelligence - 10)) * 2 + Math.floor(level / 2) * 5;
   }
 
   const baseArmorClass = 10 + Math.floor((dexterity - 10) / 2);
-  const proficiencyBonus = Math.floor((playerLevel - 1) / 4) + 2;
+  const proficiencyBonus = Math.floor((level - 1) / 4) + 2;
   const baseAttackBonus = Math.floor(((strength || BASE_ATTRIBUTE_VALUE) - 10) / 2) + proficiencyBonus;
   
   const strengthModifier = Math.floor(((strength || BASE_ATTRIBUTE_VALUE) - 10) / 2);
@@ -84,19 +86,29 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings>) => {
 
 
   return {
-    playerMaxHp: Math.max(5, maxHp),
-    playerMaxMp: Math.max(0, maxMp),
-    playerArmorClass: baseArmorClass,
-    playerAttackBonus: baseAttackBonus,
-    playerDamageBonus: baseDamageBonusString,
+    maxHitPoints: Math.max(5, maxHp),
+    maxManaPoints: Math.max(0, maxMp),
+    armorClass: baseArmorClass,
+    attackBonus: baseAttackBonus,
+    damageBonus: baseDamageBonusString,
   };
 };
 
-// Calculates effective stats including equipment
+// Calculates effective stats including equipment (PLAYER ONLY FOR NOW)
 const calculateEffectiveStats = (settings: AdventureSettings) => {
-    const baseDerived = calculateBaseDerivedStats(settings);
-    let effectiveAC = baseDerived.playerArmorClass;
-    let effectiveAttackBonus = baseDerived.playerAttackBonus;
+    const basePlayerStats = {
+        strength: settings.playerStrength,
+        dexterity: settings.playerDexterity,
+        constitution: settings.playerConstitution,
+        intelligence: settings.playerIntelligence,
+        wisdom: settings.playerWisdom,
+        playerClass: settings.playerClass,
+        playerLevel: settings.playerLevel,
+    };
+    const baseDerived = calculateBaseDerivedStats(basePlayerStats as any);
+
+    let effectiveAC = baseDerived.armorClass;
+    let effectiveAttackBonus = baseDerived.attackBonus;
 
     const inventory = settings.playerInventory || [];
     const weaponId = settings.equippedItemIds?.weapon;
@@ -122,10 +134,10 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
     
     const strengthModifierValue = Math.floor(((settings.playerStrength || BASE_ATTRIBUTE_VALUE) - 10) / 2);
-    let weaponDamageDice = "1"; // Base unarmed damage dice
+    let weaponDamageDice = "1"; 
 
     if (equippedWeapon?.statBonuses?.damage) {
-        weaponDamageDice = equippedWeapon.statBonuses.damage; // e.g., "1d6"
+        weaponDamageDice = equippedWeapon.statBonuses.damage; 
     }
 
     let effectiveDamageBonus = weaponDamageDice;
@@ -135,7 +147,8 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     
 
     return {
-        ...baseDerived, 
+        playerMaxHp: baseDerived.maxHitPoints,
+        playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: effectiveAC,
         playerAttackBonus: effectiveAttackBonus,
         playerDamageBonus: effectiveDamageBonus,
@@ -151,7 +164,7 @@ export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const initialPlayerAttributes = {
-    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS,
+    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
     playerStrength: BASE_ATTRIBUTE_VALUE,
     playerDexterity: BASE_ATTRIBUTE_VALUE,
     playerConstitution: BASE_ATTRIBUTE_VALUE,
@@ -160,14 +173,14 @@ export default function Home() {
     playerCharisma: BASE_ATTRIBUTE_VALUE,
   };
 
-  const initialBaseDerivedStats = calculateBaseDerivedStats({
+  const initialBaseDerivedStats = calculateEffectiveStats({
     ...initialPlayerAttributes,
     playerName: "Héros",
     playerClass: "Guerrier",
     playerLevel: 1,
     playerExpToNextLevel: 100,
     playerGold: 15,
-  });
+  } as AdventureSettings);
 
 
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
@@ -202,7 +215,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 60,
         relations: { [PLAYER_ID]: "Espoir du village" },
-        hitPoints: 10, maxHitPoints: 10, characterClass: "Sage", level: 1, isHostile: false,
+        level: 1, isHostile: false, characterClass: "Sage",
+        initialAttributePoints: 0, strength: 7, dexterity: 8, constitution: 9, intelligence: 14, wisdom: 15, charisma: 12,
+        hitPoints: 10, maxHitPoints: 10, manaPoints: 20, maxManaPoints: 20, armorClass: 10, attackBonus: 0, damageBonus: "1", isAlly: false,
       },
       {
         id: 'frak-1',
@@ -213,7 +228,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 5,
         relations: { [PLAYER_ID]: "Intrus à tuer" },
-        hitPoints: 25, maxHitPoints: 25, characterClass: "Chef Gobelin", level: 2, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1", isHostile: true,
+        level: 2, characterClass: "Chef Gobelin", isHostile: true,
+        initialAttributePoints: 0, strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
+        hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1", isAlly: false,
         inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12}
       },
       {
@@ -225,7 +242,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 10,
         relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
-        hitPoints: 8, maxHitPoints: 8, characterClass: "Fureteur Gobelin", level: 1, armorClass: 12, attackBonus: 2, damageBonus: "1d4", isHostile: true,
+        level: 1, characterClass: "Fureteur Gobelin", isHostile: true,
+        initialAttributePoints: 0, strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
+        hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4", isAlly: false,
         inventory: {"Dague Courte": 1, "Cailloux pointus": 5}
       }
   ]);
@@ -507,10 +526,14 @@ export default function Home() {
         portraitUrl: null,
         affinity: currentStagedRelationsMode ? 50 : undefined,
         relations: currentStagedRelationsMode ? initialRelations : undefined,
+        isAlly: false, // Default for new characters from AI
+        initialAttributePoints: currentStagedRPGMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined,
         ...(currentStagedRPGMode ? {
             level: nc.level ?? 1,
             characterClass: nc.characterClass || "PNJ",
             inventory: inventoryRecord,
+            strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+            intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
             hitPoints: nc.hitPoints ?? nc.maxHitPoints ?? 10,
             maxHitPoints: nc.maxHitPoints ?? 10,
             manaPoints: nc.manaPoints ?? nc.maxManaPoints ?? 0,
@@ -673,7 +696,7 @@ export default function Home() {
     const input: GenerateAdventureInput = {
         world: currentTurnSettings.world,
         initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
-        characters: characters,
+        characters: characters, // Pass live characters
         userAction: userActionText,
         currentLanguage: currentLanguage,
         playerName: currentTurnSettings.playerName || "Player",
@@ -681,7 +704,7 @@ export default function Home() {
         relationsModeActive: currentTurnSettings.relationsMode ?? true,
         activeCombat: activeCombat,
         playerGold: currentTurnSettings.playerGold,
-        // playerSkills: currentTurnSettings.playerSkills, // TODO: Uncomment when generate-adventure schema is updated
+        playerSkills: currentTurnSettings.playerSkills,
         playerClass: currentTurnSettings.playerClass,
         playerLevel: currentTurnSettings.playerLevel,
         playerCurrentHp: currentTurnSettings.playerCurrentHp,
@@ -1231,7 +1254,7 @@ export default function Home() {
                  rpgModeActive: currentTurnSettings.rpgMode ?? false,
                  activeCombat: activeCombat,
                  playerGold: currentTurnSettings.playerGold,
-                 // playerSkills: currentTurnSettings.playerSkills, // TODO: Uncomment when schema updated
+                 playerSkills: currentTurnSettings.playerSkills,
                  playerClass: currentTurnSettings.playerClass,
                  playerLevel: currentTurnSettings.playerLevel,
                  playerCurrentHp: currentTurnSettings.playerCurrentHp,
@@ -1383,6 +1406,8 @@ export default function Home() {
                 const newChar: Character = {
                     ...globalCharToAdd,
                     history: [`Ajouté à l'aventure depuis les personnages globaux le ${new Date().toLocaleString()}`],
+                    isAlly: globalCharToAdd.isAlly ?? false,
+                    initialAttributePoints: globalCharToAdd.initialAttributePoints ?? (stagedAdventureSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined),
                     ...(stagedAdventureSettings.rpgMode ? {
                         level: globalCharToAdd.level ?? 1,
                         characterClass: globalCharToAdd.characterClass ?? '',
@@ -1406,6 +1431,7 @@ export default function Home() {
                         level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
                         armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
                         strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
+                        initialAttributePoints: undefined,
                      }),
                      ...(stagedAdventureSettings.relationsMode ?? true ? {
                         affinity: globalCharToAdd.affinity ?? 50,
@@ -1448,7 +1474,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombat,
-            saveFormatVersion: 2.1, // Updated version for playerSkills
+            saveFormatVersion: 2.2, // Updated version for NPC ally/attributes
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1527,7 +1553,7 @@ export default function Home() {
                     }));
                  }
                  if (loadedData.saveFormatVersion < 1.9) {
-                    loadedData.adventureSettings.playerInitialAttributePoints = loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS;
+                    loadedData.adventureSettings.playerInitialAttributePoints = loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
                     loadedData.adventureSettings.playerStrength = loadedData.adventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE;
                     loadedData.adventureSettings.playerDexterity = loadedData.adventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE;
                     loadedData.adventureSettings.playerConstitution = loadedData.adventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE;
@@ -1548,6 +1574,31 @@ export default function Home() {
                  }
                  if (loadedData.saveFormatVersion < 2.1) {
                      loadedData.adventureSettings.playerSkills = loadedData.adventureSettings.playerSkills || [];
+                 }
+                 if (loadedData.saveFormatVersion < 2.2) {
+                     loadedData.characters = loadedData.characters.map(c => ({
+                         ...c,
+                         isAlly: c.isAlly ?? false,
+                         initialAttributePoints: c.initialAttributePoints ?? (loadedData.adventureSettings?.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined),
+                         // Ensure RPG stats are present if RPG mode is on, otherwise undefined
+                         level: loadedData.adventureSettings?.rpgMode ? (c.level ?? 1) : undefined,
+                         characterClass: loadedData.adventureSettings?.rpgMode ? (c.characterClass ?? "PNJ") : undefined,
+                         strength: loadedData.adventureSettings?.rpgMode ? (c.strength ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         dexterity: loadedData.adventureSettings?.rpgMode ? (c.dexterity ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         constitution: loadedData.adventureSettings?.rpgMode ? (c.constitution ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         intelligence: loadedData.adventureSettings?.rpgMode ? (c.intelligence ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         wisdom: loadedData.adventureSettings?.rpgMode ? (c.wisdom ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         charisma: loadedData.adventureSettings?.rpgMode ? (c.charisma ?? BASE_ATTRIBUTE_VALUE) : undefined,
+                         hitPoints: loadedData.adventureSettings?.rpgMode ? (c.hitPoints ?? c.maxHitPoints ?? 10) : undefined,
+                         maxHitPoints: loadedData.adventureSettings?.rpgMode ? (c.maxHitPoints ?? 10) : undefined,
+                         manaPoints: loadedData.adventureSettings?.rpgMode ? (c.manaPoints ?? c.maxManaPoints ?? 0) : undefined,
+                         maxManaPoints: loadedData.adventureSettings?.rpgMode ? (c.maxManaPoints ?? 0) : undefined,
+                         armorClass: loadedData.adventureSettings?.rpgMode ? (c.armorClass ?? 10) : undefined,
+                         attackBonus: loadedData.adventureSettings?.rpgMode ? (c.attackBonus ?? 0) : undefined,
+                         damageBonus: loadedData.adventureSettings?.rpgMode ? (c.damageBonus ?? "1") : undefined,
+                         isHostile: loadedData.adventureSettings?.rpgMode ? (c.isHostile ?? false) : undefined,
+                         inventory: loadedData.adventureSettings?.rpgMode ? (c.inventory ?? {}) : undefined,
+                     }));
                  }
 
 
@@ -1575,6 +1626,8 @@ export default function Home() {
                         id: charId, name: c.name || "Inconnu", details: c.details || "", biographyNotes: c.biographyNotes,
                         history: Array.isArray(c.history) ? c.history : [], portraitUrl: c.portraitUrl || null,
                         affinity: relationsModeActive ? (c.affinity ?? 50) : undefined, relations: relations, _lastSaved: c._lastSaved,
+                        isAlly: c.isAlly ?? false,
+                        initialAttributePoints: rpgModeActive ? (c.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
                         ...(rpgModeActive ? {
                             level: c.level ?? 1, characterClass: c.characterClass ?? '', inventory: typeof c.inventory === 'object' && c.inventory !== null ? c.inventory : {},
                             hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10,
@@ -1691,7 +1744,7 @@ export default function Home() {
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
             playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerExpToNextLevel : undefined,
             playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
-            playerInitialAttributePoints: newSettingsFromForm.playerInitialAttributePoints, 
+            playerInitialAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined, 
             playerStrength: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerDexterity: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerConstitution: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
@@ -1745,6 +1798,7 @@ export default function Home() {
       const newRPGMode = newSettingsFromForm.enableRpgMode ?? false;
       const newRelationsMode = newSettingsFromForm.enableRelationsMode ?? true;
       const existingCharsMap = new Map(prevStagedChars.map(sc => [sc.id, sc]));
+      
       let updatedCharsList: Character[] = newSettingsFromForm.characters.map(formDef => {
         const existingChar = formDef.id
             ? existingCharsMap.get(formDef.id)
@@ -1753,6 +1807,8 @@ export default function Home() {
         if (existingChar) {
           return {
             ...existingChar, name: formDef.name, details: formDef.details,
+            isAlly: existingChar.isAlly ?? false,
+            initialAttributePoints: newRPGMode ? (existingChar.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
             ...(newRPGMode ? {
                 level: existingChar.level || 1, characterClass: existingChar.characterClass || '', inventory: existingChar.inventory || {},
                 hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10,
@@ -1765,6 +1821,7 @@ export default function Home() {
                 level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
                 armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
                 strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
+                initialAttributePoints: undefined,
              }),
              ...(newRelationsMode ? {
                 affinity: existingChar.affinity ?? 50, relations: existingChar.relations || { [PLAYER_ID]: defaultRelation },
@@ -1772,15 +1829,18 @@ export default function Home() {
           };
         } else {
           const newId = formDef.id || `${formDef.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          const defaultCharRPGStats = {
+            level: 1, characterClass: '', inventory: {}, hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
+            attackBonus: 0, damageBonus: "1", isHostile: false,
+            strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+            intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
+            initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          };
           return {
             id: newId, name: formDef.name, details: formDef.details, history: [`Créé via formulaire le ${new Date().toLocaleString()}`], portraitUrl: null,
-             ...(newRPGMode ? {
-                level: 1, characterClass: '', inventory: {}, hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
-                attackBonus: 0, damageBonus: "1", isHostile: false,
-                strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-            } : {}),
-            ...(newRelationsMode ? { affinity: 50, relations: { [PLAYER_ID]: defaultRelation }, } : {})
+            isAlly: false,
+             ...(newRPGMode ? defaultCharRPGStats : {level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined, armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined, strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined, initialAttributePoints: undefined}),
+            ...(newRelationsMode ? { affinity: 50, relations: { [PLAYER_ID]: defaultRelation }, } : {affinity: undefined, relations: undefined})
           };
         }
       });
@@ -1824,7 +1884,7 @@ export default function Home() {
                 newLiveSettings.playerInventory = newLiveSettings.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [];
                 newLiveSettings.playerGold = newLiveSettings.playerGold ?? (baseAdventureSettings.playerGold ?? 0);
                 newLiveSettings.equippedItemIds = { weapon: null, armor: null, jewelry: null };
-                newLiveSettings.playerSkills = []; // Reset skills if situation changes or RPG mode is newly enabled
+                newLiveSettings.playerSkills = []; 
 
             } else {
                 newLiveSettings.playerCurrentHp = Math.min(prevLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
@@ -1880,7 +1940,7 @@ export default function Home() {
     const formCharacters: FormCharacterDefinition[] = JSON.parse(stringifiedStagedCharsForFormMemo);
     const effectiveStats = calculateEffectiveStats(stagedAdventureSettings);
 
-    const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS;
+    const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
                         ? (stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN
                         : 0;

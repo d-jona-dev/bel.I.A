@@ -10,7 +10,7 @@ export const LootedItemSchema = z.object({
   description: z.string().optional().describe("A brief description of the item, suitable for a tooltip. MUST be in {{../currentLanguage}}."),
   effect: z.string().optional().describe("Description of the item's effect (e.g., 'Restaure 10 PV', '+1 aux dégâts'). MUST be in {{../currentLanguage}}."),
   itemType: z.enum(['consumable', 'weapon', 'armor', 'quest', 'misc', 'jewelry']).describe("Type of the item. This is CRUCIAL. 'consumable' items are used up. 'weapon', 'armor', 'jewelry' can be equipped. 'quest' items are for specific objectives. 'misc' for others."),
-  goldValue: z.number().int().optional().describe("Estimated gold piece value of the item, if applicable. Only for non-currency items."),
+  goldValue: z.number().int().optional().describe("Estimated gold piece value of the item, if applicable. Only for non-currency items. If an item has minimal or nuisance value, assign it a goldValue of 1. Do not omit goldValue for such items."),
   statBonuses: z.object({
     ac: z.number().optional().describe("Armor Class bonus."),
     attack: z.number().optional().describe("Attack roll bonus."),
@@ -108,6 +108,8 @@ export interface Character {
   passiveAbilities?: string[];
   isHostile?: boolean;
   isQuestGiver?: boolean;
+  isAlly?: boolean; // New field to mark NPC as an ally
+  initialAttributePoints?: number; // New field for NPC creation attribute points
   _lastSaved?: number; // Timestamp of last global save
 }
 
@@ -165,10 +167,10 @@ export interface AdventureSettings {
     playerIntelligence?: number;
     playerWisdom?: number;
     playerCharisma?: number;
-    playerArmorClass?: number; // This will become the base AC before equipment
-    playerAttackBonus?: number; // This will become the base attack bonus
-    playerDamageBonus?: string; // This will become the base/unarmed damage bonus
-    equippedItemIds?: { // IDs of equipped items
+    playerArmorClass?: number; 
+    playerAttackBonus?: number; 
+    playerDamageBonus?: string; 
+    equippedItemIds?: { 
         weapon: string | null;
         armor: string | null;
         jewelry: string | null;

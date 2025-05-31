@@ -4,7 +4,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card"; // Renamed CardDescription to avoid conflict
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch"; // Added Switch import
+
+const BASE_ATTRIBUTE_VALUE_FORM = 8;
+const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
+const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT = 5;
+
 
 // Define props for the CharacterSidebar
 interface CharacterSidebarProps {
@@ -54,7 +60,7 @@ const EditableField = ({ label, id, value, onChange, type = "text", placeholder,
       </div>
 );
 
-const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, valueType = "text", onUpdate, onRemove, onAdd }: { charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', title: string, icon: React.ElementType, data?: Record<string, string | number | boolean>, addLabel: string, valueType?: 'text' | 'number' | 'boolean', onUpdate: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string) => void, onAdd: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills') => void }) => (
+const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, valueType = "text", onUpdate, onRemove, onAdd, disabled = false }: { charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', title: string, icon: React.ElementType, data?: Record<string, string | number | boolean>, addLabel: string, valueType?: 'text' | 'number' | 'boolean', onUpdate: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string) => void, onAdd: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills') => void, disabled?: boolean }) => (
    <div className="space-y-2">
        <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
        <Card className="bg-muted/30 border">
@@ -70,8 +76,9 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
                                onChange={(e) => onUpdate(charId, field, key, e.target.value)}
                                className="h-8 text-sm flex-1 bg-background border"
                                min={valueType === 'number' ? "0" : undefined}
+                               disabled={disabled}
                            />
-                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, field, key)}>
+                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, field, key)} disabled={disabled}>
                                <Trash2 className="h-4 w-4" />
                            </Button>
                        </div>
@@ -79,7 +86,7 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
                ) : (
                    <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} défini(e).</p>
                )}
-               <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)}>
+               <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
                   <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
                </Button>
            </CardContent>
@@ -87,7 +94,7 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
    </div>
 );
 
-const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void }) => {
+const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
   const otherCharacters = characters.filter(c => c.id !== charId);
   const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
@@ -105,6 +112,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                           onChange={(e) => onUpdate(charId, 'relations', playerId, e.target.value)}
                           className="h-8 text-sm flex-1 bg-background border"
                           placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                          disabled={disabled}
                       />
                    </div>
 
@@ -118,8 +126,9 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                               onChange={(e) => onUpdate(charId, 'relations', otherChar.id, e.target.value)}
                               className="h-8 text-sm flex-1 bg-background border"
                               placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                              disabled={disabled}
                           />
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"} disabled={disabled}>
                               <Trash2 className="h-4 w-4" />
                           </Button>
                       </div>
@@ -134,7 +143,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => void, currentLanguage: string }) => (
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => void, currentLanguage: string, disabled?: boolean }) => (
    <div className="space-y-2">
        <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
        <Card className="bg-muted/30 border">
@@ -149,8 +158,9 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                                   className="text-sm flex-1 bg-background border"
                                   placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
                                   rows={1}
+                                  disabled={disabled}
                               />
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field, index)}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field, index)} disabled={disabled}>
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </div>
@@ -159,7 +169,7 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                ) : (
                    <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
                )}
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)}>
+                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
                    <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
                </Button>
            </CardContent>
@@ -185,6 +195,9 @@ export function CharacterSidebar({
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
+
+  // State for managing spent attribute points for each NPC
+  const [npcSpentPoints, setNpcSpentPoints] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
     setIsClient(true);
@@ -213,7 +226,7 @@ export function CharacterSidebar({
   }, [globalCharactersList, characters, isClient]);
 
   const handleAddGlobalCharToAdventure = (charId: string) => {
-    if (!charId) return; // Do nothing if no character is selected
+    if (!charId) return; 
     const charToAdd = globalCharactersList.find(gc => gc.id === charId);
     if (charToAdd) {
         onAddStagedCharacter(charToAdd);
@@ -256,23 +269,27 @@ export function CharacterSidebar({
         }
     };
     reader.readAsDataURL(file);
-    if(event.target) event.target.value = ''; // Reset file input
+    if(event.target) event.target.value = ''; 
   };
 
 
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity'];
+            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
                  if (field === 'affinity') {
                     numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
+                 } else if (field === 'initialAttributePoints') {
+                    numValue = Math.max(0, isNaN(numValue) ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : numValue);
                  }
                  processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : (field === 'manaPoints' || field === 'maxManaPoints' ? 0 :10 )) : numValue;
             } else if (field === 'affinity' && typeof processedValue === 'number') {
                 processedValue = Math.max(0, Math.min(100, processedValue));
+            } else if (field === 'initialAttributePoints' && typeof processedValue === 'number') {
+                processedValue = Math.max(0, processedValue);
             }
             onCharacterUpdate({ ...character, [field]: processedValue });
         }
@@ -392,6 +409,55 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
+    const calculateNpcSpentPoints = React.useCallback((char: Character) => {
+        if (!rpgMode || !char.isAlly) return 0;
+        let spent = 0;
+        const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+        attributes.forEach(attrKey => {
+            spent += (Number(char[attrKey]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM;
+        });
+        return spent;
+    }, [rpgMode]);
+
+    React.useEffect(() => {
+        const newSpentPoints: Record<string, number> = {};
+        characters.forEach(char => {
+            if (char.isAlly) {
+                newSpentPoints[char.id] = calculateNpcSpentPoints(char);
+            }
+        });
+        setNpcSpentPoints(newSpentPoints);
+    }, [characters, calculateNpcSpentPoints, rpgMode]);
+
+    const handleNpcAttributeChange = (charId: string, fieldName: keyof Character, value: string) => {
+        const char = characters.find(c => c.id === charId);
+        if (!char || !char.isAlly || !rpgMode) return;
+
+        const numericValue = parseInt(value, 10);
+        const currentAttributeValue = Number(char[fieldName]) || BASE_ATTRIBUTE_VALUE_FORM;
+        let newAttributeValue = isNaN(numericValue) ? BASE_ATTRIBUTE_VALUE_FORM : numericValue;
+
+        if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
+            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
+        }
+        
+        const creationPoints = char.initialAttributePoints || 0;
+        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+        const totalDistributable = creationPoints + levelPoints;
+
+        // Calculate points spent *before* this modification for this field
+        const spentBeforeThisChange = calculateNpcSpentPoints(char) - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
+        const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
+        const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
+
+        if (projectedTotalSpentPoints > totalDistributable) {
+            const pointsOver = projectedTotalSpentPoints - totalDistributable;
+            newAttributeValue -= pointsOver;
+            if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
+        }
+        onCharacterUpdate({ ...char, [fieldName]: newAttributeValue });
+    };
+
 
   return (
     <div className="w-full">
@@ -446,6 +512,13 @@ export function CharacterSidebar({
                         }
                     }
                     const currentAffinity = char.affinity ?? 50;
+                    const isAllyAndRpg = rpgMode && char.isAlly;
+                    const creationPointsNpc = char.initialAttributePoints ?? (rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : 0);
+                    const levelPointsNpc = rpgMode && char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+                    const totalDistributableNpc = creationPointsNpc + levelPointsNpc;
+                    const currentNpcSpentPoints = npcSpentPoints[char.id] || 0;
+                    const remainingNpcPoints = totalDistributableNpc - currentNpcSpentPoints;
+
 
                     return (
                     <AccordionItem value={char.id} key={char.id}>
@@ -460,7 +533,7 @@ export function CharacterSidebar({
                                         <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                      )}
                                 </Avatar>
-                                <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
+                                <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''} {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500"/> : ''}</span>
                                 {isClient && isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
@@ -535,39 +608,47 @@ export function CharacterSidebar({
                             <Separator />
 
                             {rpgMode && (
+                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
+                                        <UICardDescription className="text-xs">
+                                            Permet de modifier ses attributs et de l'intégrer à l'équipe (future).
+                                        </UICardDescription>
+                                    </div>
+                                    <Switch
+                                        id={`${char.id}-isAlly`}
+                                        checked={char.isAlly ?? false}
+                                        onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
+                                    />
+                                </div>
+                            )}
+
+                            {rpgMode && (
                                 <Card className="border-dashed bg-muted/20">
                                     <CardHeader className="pb-2 pt-4">
-                                        <UICardDescription className="text-xs uppercase tracking-wider">Fiche Technique</UICardDescription>
+                                        <UICardDescription className="text-xs uppercase tracking-wider flex items-center gap-1">
+                                            <FilePenLine className="h-3 w-3" />
+                                            Fiche Personnage {char.isAlly ? "(Modifiable si Allié)" : "(Lecture Seule)"}
+                                        </UICardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-2 text-sm">
-                                        <div className="flex justify-between"><span>Classe:</span> <span className="font-medium">{char.characterClass || 'N/A'}</span></div>
-                                        <div className="flex justify-between"><span>Niveau:</span> <span className="font-medium">{char.level || 'N/A'}</span></div>
+                                        <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
+                                        <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
                                         <Separator className="my-1"/>
-                                        <div>
-                                            <div className="flex justify-between items-center">
-                                                <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                                                <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
-                                            </div>
-                                            <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                                            <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
                                         </div>
+                                        <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
                                         {(char.maxManaPoints ?? 0) > 0 && (
-                                            <div>
-                                                <div className="flex justify-between items-center">
-                                                    <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                                                    <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
-                                                </div>
-                                                <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                                            <>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                                                <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
                                             </div>
+                                            <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                                            </>
                                         )}
-                                        <Separator className="my-1"/>
-                                        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
-                                            <span>FOR: {char.strength ?? 'N/A'}</span>
-                                            <span>DEX: {char.dexterity ?? 'N/A'}</span>
-                                            <span>CON: {char.constitution ?? 'N/A'}</span>
-                                            <span>INT: {char.intelligence ?? 'N/A'}</span>
-                                            <span>SAG: {char.wisdom ?? 'N/A'}</span>
-                                            <span>CHA: {char.charisma ?? 'N/A'}</span>
-                                        </div>
                                         <Separator className="my-1"/>
                                         <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
                                             <span>CA: {char.armorClass ?? 'N/A'}</span>
@@ -579,11 +660,27 @@ export function CharacterSidebar({
                                                 {char.isHostile ? (currentLanguage === 'fr' ? 'Hostile' : 'Hostile') : (currentLanguage === 'fr' ? 'Non-Hostile' : 'Non-Hostile')}
                                             </div>
                                         )}
+                                        {isAllyAndRpg && (
+                                            <>
+                                                <Separator className="my-2"/>
+                                                <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
+                                                <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg} />
+                                                <div className="text-xs text-muted-foreground">Total distribuables (Niv. {char.level || 1}): {totalDistributableNpc}</div>
+                                                 <div className="p-1 border rounded-md bg-background text-center text-xs">
+                                                    Points d'attributs restants : <span className={`font-bold ${remainingNpcPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingNpcPoints}</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {(["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const).map(attr => (
+                                                        <EditableField key={attr} label={attr.charAt(0).toUpperCase() + attr.slice(1)} id={`${char.id}-${attr}`} type="number" value={char[attr]} onChange={e => handleNpcAttributeChange(char.id, attr, e.target.value)} min={BASE_ATTRIBUTE_VALUE_FORM.toString()} disabled={!isAllyAndRpg}/>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </CardContent>
                                 </Card>
                             )}
                             <Separator />
-                            <Label className="block mb-2 mt-4 text-sm font-medium">Champs Éditables :</Label>
+                            <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
                             <EditableField
                                 label="Nom"
                                 id={`${char.id}-name`}
@@ -638,52 +735,12 @@ export function CharacterSidebar({
                             {rpgMode && (
                                 <>
                                     <Separator />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." />
-                                        <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} />
-                                    </div>
-                                     <EditableField label="Expérience (XP)" id={`${char.id}-exp`} type="number" value={char.experience} onChange={(e) => handleFieldChange(char.id, 'experience', e.target.value)} />
-                                     <div className="grid grid-cols-2 gap-4">
-                                        <EditableField label="PV Actuels" id={`${char.id}-hp`} type="number" value={char.hitPoints} onChange={(e) => handleFieldChange(char.id, 'hitPoints', e.target.value)} />
-                                        <EditableField label="PV Max" id={`${char.id}-maxHp`} type="number" value={char.maxHitPoints} onChange={(e) => handleFieldChange(char.id, 'maxHitPoints', e.target.value)} />
-                                     </div>
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <EditableField label="PM Actuels" id={`${char.id}-mp`} type="number" value={char.manaPoints ?? 0} onChange={(e) => handleFieldChange(char.id, 'manaPoints', e.target.value)} />
-                                        <EditableField label="PM Max" id={`${char.id}-maxMp`} type="number" value={char.maxManaPoints ?? 0} onChange={(e) => handleFieldChange(char.id, 'maxManaPoints', e.target.value)} />
-                                     </div>
-                                     <EditableField label="Classe d'Armure (CA)" id={`${char.id}-ac`} type="number" value={char.armorClass} onChange={(e) => handleFieldChange(char.id, 'armorClass', e.target.value)} />
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <EditableField label="Bonus Attaque" id={`${char.id}-atkBonus`} type="number" value={char.attackBonus} onChange={(e) => handleFieldChange(char.id, 'attackBonus', e.target.value)} />
-                                        <EditableField label="Bonus Dégâts" id={`${char.id}-dmgBonus`} value={char.damageBonus} onChange={(e) => handleFieldChange(char.id, 'damageBonus', e.target.value)} placeholder="ex: 1d6+2" />
-                                     </div>
-                                    <div className="flex items-center space-x-2 pt-2">
-                                        <input
-                                            type="checkbox"
-                                            id={`${char.id}-isHostile`}
-                                            checked={char.isHostile ?? false}
-                                            onChange={(e) => handleFieldChange(char.id, 'isHostile', e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        />
-                                        <Label htmlFor={`${char.id}-isHostile`} className="text-sm">
-                                            {currentLanguage === 'fr' ? 'Est Hostile ?' : 'Is Hostile?'}
-                                        </Label>
-                                    </div>
-                                    <Separator />
-                                     <Label className="flex items-center gap-1"><Dices className="h-4 w-4"/> Caractéristiques</Label>
-                                     <div className="grid grid-cols-3 gap-2">
-                                        <EditableField label="FOR" id={`${char.id}-str`} type="number" value={char.strength} onChange={(e) => handleFieldChange(char.id, 'strength', e.target.value)} />
-                                        <EditableField label="DEX" id={`${char.id}-dex`} type="number" value={char.dexterity} onChange={(e) => handleFieldChange(char.id, 'dexterity', e.target.value)} />
-                                        <EditableField label="CON" id={`${char.id}-con`} type="number" value={char.constitution} onChange={(e) => handleFieldChange(char.id, 'constitution', e.target.value)} />
-                                        <EditableField label="INT" id={`${char.id}-int`} type="number" value={char.intelligence} onChange={(e) => handleFieldChange(char.id, 'intelligence', e.target.value)} />
-                                        <EditableField label="SAG" id={`${char.id}-wis`} type="number" value={char.wisdom} onChange={(e) => handleFieldChange(char.id, 'wisdom', e.target.value)} />
-                                        <EditableField label="CHA" id={`${char.id}-cha`} type="number" value={char.charisma} onChange={(e) => handleFieldChange(char.id, 'charisma', e.target.value)} />
-                                    </div>
-                                    <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
-                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
-                                    <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
-                                    <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
-                                    <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
-                                    <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
+                                    <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
+                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
+                                    <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
+                                    <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
+                                    <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
+                                    <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
                                 </>
                             )}
                             <Separator />
