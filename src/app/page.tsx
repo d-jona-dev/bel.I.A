@@ -134,31 +134,26 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
 
     const strengthModifierValue = Math.floor(((settings.playerStrength || BASE_ATTRIBUTE_VALUE) - 10) / 2);
-    let weaponDamageDice = "1"; // Default to unarmed damage "1"
+    let weaponDamageDice = "1"; 
 
     if (equippedWeapon?.statBonuses?.damage) {
         weaponDamageDice = equippedWeapon.statBonuses.damage;
     }
-
+    
     let effectiveDamageBonus = weaponDamageDice;
-    // Add strength modifier to the weapon damage.
-    // E.g., weapon "1d6", strength mod +2  => "1d6+2"
-    // E.g., weapon "1" (unarmed), strength mod +3 => "1+3"
-    // E.g., weapon "1d8+1", strength mod +2 => "1d8+1+2" (could be simplified later if needed)
-
     if (strengthModifierValue !== 0) {
-        if (weaponDamageDice && weaponDamageDice !== "0" && weaponDamageDice !== "1" && !weaponDamageDice.includes("d")) { // Simple numerical damage
+        if (weaponDamageDice && weaponDamageDice !== "0" && !weaponDamageDice.includes("d")) { // unarmed "1" or simple numerical damage
             try {
-                const baseDmg = parseInt(weaponDamageDice, 10);
-                if (!isNaN(baseDmg)) {
-                    effectiveDamageBonus = (baseDmg + strengthModifierValue).toString();
-                } else {
-                     effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
+                const baseDmgNum = parseInt(weaponDamageDice, 10);
+                if (!isNaN(baseDmgNum)) {
+                     effectiveDamageBonus = `${baseDmgNum + strengthModifierValue}`;
+                } else { // Should not happen if weaponDamage is "1" or a number string
+                    effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
                 }
             } catch (e) {
                  effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
             }
-        } else { // Dice notation or "1" for unarmed
+        } else { // Dice notation e.g. "1d6"
             effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
         }
     }
@@ -233,7 +228,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 60,
         relations: { [PLAYER_ID]: "Espoir du village" },
-        level: 1, isHostile: false, characterClass: "Sage", isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC, currentExp: 0, expToNextLevel: 100,
+        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        level: 1, currentExp: 0, expToNextLevel: 100,
+        characterClass: "Sage", isHostile: false, 
         strength: 7, dexterity: 8, constitution: 9, intelligence: 14, wisdom: 15, charisma: 12,
         hitPoints: 10, maxHitPoints: 10, manaPoints: 20, maxManaPoints: 20, armorClass: 10, attackBonus: 0, damageBonus: "1",
         spells: ["Soin Léger", "Lumière"], skills: {"Herboristerie": true}
@@ -247,7 +244,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 5,
         relations: { [PLAYER_ID]: "Intrus à tuer" },
-        level: 2, characterClass: "Chef Gobelin", isHostile: true, isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC, currentExp: 0, expToNextLevel: 200,
+        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        level: 2, currentExp: 0, expToNextLevel: 150,
+        characterClass: "Chef Gobelin", isHostile: true, 
         strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
         hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
         inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12}
@@ -261,7 +260,9 @@ export default function Home() {
         portraitUrl: null,
         affinity: 10,
         relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
-        level: 1, characterClass: "Fureteur Gobelin", isHostile: true, isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC, currentExp: 0, expToNextLevel: 100,
+        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        level: 1, currentExp: 0, expToNextLevel: 100,
+        characterClass: "Fureteur Gobelin", isHostile: true, 
         strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
         hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
         inventory: {"Dague Courte": 1, "Cailloux pointus": 5}
@@ -418,10 +419,9 @@ export default function Home() {
              console.warn("handleCombatUpdates called when RPG mode is disabled.");
              return prevChars;
         }
-        let charactersCopy = [...prevChars]; // Make a mutable copy
+        let charactersCopy = JSON.parse(JSON.stringify(prevChars)); 
 
-        // Update existing characters based on combatant updates
-        charactersCopy = charactersCopy.map(char => {
+        charactersCopy = charactersCopy.map((char: Character) => {
             const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
             if (combatantUpdate) {
                 let updatedChar = {
@@ -431,37 +431,49 @@ export default function Home() {
                     isHostile: combatantUpdate.isDefeated ? char.isHostile : (char.isHostile ?? true),
                     statusEffects: combatantUpdate.newStatusEffects || char.statusEffects,
                 };
+                
+                console.log(`[DEBUG] Checking EXP for NPC: ${updatedChar.name}, isAlly: ${updatedChar.isAlly}, playerExpGained: ${combatUpdates.expGained}`);
+                if (updatedChar.isAlly && (combatUpdates.expGained ?? 0) > 0 && updatedChar.level !== undefined) {
+                    const expGainedForAlly = combatUpdates.expGained!;
+                    console.log(`[DEBUG] NPC EXP GAIN: Ally ${updatedChar.name} (Level ${updatedChar.level}) is eligible for ${expGainedForAlly} EXP.`);
+                    console.log(`[DEBUG] NPC EXP GAIN: Before: currentExp=${updatedChar.currentExp}, expToNextLevel=${updatedChar.expToNextLevel}`);
 
-                // Handle EXP gain and leveling for allied NPCs
-                if (char.isAlly && (combatUpdates.expGained ?? 0) > 0) {
-                    const expGainedForAlly = combatUpdates.expGained!; // Allies gain same EXP as player for now
                     updatedChar.currentExp = (updatedChar.currentExp ?? 0) + expGainedForAlly;
-                    updatedChar.expToNextLevel = updatedChar.expToNextLevel ?? 100 * (updatedChar.level ?? 1); // Ensure expToNextLevel is set
+                    
+                    if (updatedChar.expToNextLevel === undefined || updatedChar.expToNextLevel <= 0) {
+                        updatedChar.expToNextLevel = 100 * Math.pow(1.5, (updatedChar.level || 1) -1);
+                        console.log(`[DEBUG] NPC EXP GAIN: Initialized expToNextLevel for ${updatedChar.name} to ${updatedChar.expToNextLevel}`);
+                    }
+
+                    console.log(`[DEBUG] NPC EXP GAIN: After adding EXP: currentExp=${updatedChar.currentExp}, expToNextLevel=${updatedChar.expToNextLevel}`);
 
                     let leveledUp = false;
                     while (updatedChar.currentExp !== undefined && updatedChar.expToNextLevel !== undefined && updatedChar.currentExp >= updatedChar.expToNextLevel) {
                         leveledUp = true;
                         updatedChar.level = (updatedChar.level ?? 0) + 1;
-                        updatedChar.currentExp -= updatedChar.expToNextLevel;
-                        updatedChar.expToNextLevel = Math.floor(updatedChar.expToNextLevel * 1.5);
-                        updatedChar.initialAttributePoints = (updatedChar.initialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                        const prevExpToNext = updatedChar.expToNextLevel;
+                        updatedChar.expToNextLevel = Math.floor(prevExpToNext * 1.5);
+                        updatedChar.currentExp -= prevExpToNext;
 
-                        // Recalculate derived stats for NPC
+                        updatedChar.initialAttributePoints = (updatedChar.initialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                        console.log(`[DEBUG] NPC LEVEL UP: ${updatedChar.name} to Level ${updatedChar.level}. New attribute points: ${updatedChar.initialAttributePoints}`);
+
                         const npcDerivedStats = calculateBaseDerivedStats(updatedChar);
                         updatedChar.maxHitPoints = npcDerivedStats.maxHitPoints;
-                        updatedChar.hitPoints = updatedChar.maxHitPoints; // Full heal on level up
+                        updatedChar.hitPoints = updatedChar.maxHitPoints; 
                         if (updatedChar.maxManaPoints !== undefined && updatedChar.maxManaPoints > 0) {
                             updatedChar.maxManaPoints = npcDerivedStats.maxManaPoints;
-                            updatedChar.manaPoints = updatedChar.maxManaPoints; // Full mana on level up
+                            updatedChar.manaPoints = updatedChar.maxManaPoints; 
                         }
                         updatedChar.armorClass = npcDerivedStats.armorClass;
                         updatedChar.attackBonus = npcDerivedStats.attackBonus;
                         updatedChar.damageBonus = npcDerivedStats.damageBonus;
+                        console.log(`[DEBUG] NPC LEVEL UP: ${updatedChar.name} new stats: HP=${updatedChar.maxHitPoints}, MP=${updatedChar.maxManaPoints}, AC=${updatedChar.armorClass}`);
                     }
                     if (leveledUp) {
                         toastsToShow.push({
                             title: `Montée de Niveau: ${updatedChar.name}!`,
-                            description: `${updatedChar.name} a atteint le niveau ${updatedChar.level} et a gagné ${ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points d'attributs !`,
+                            description: `${updatedChar.name} a atteint le niveau ${updatedChar.level} et a gagné ${ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points d'attributs ! (Modifications en attente)`,
                             duration: 7000
                         });
                     }
@@ -537,7 +549,7 @@ export default function Home() {
     if (combatUpdates.nextActiveCombatState) {
         const uniqueCombatants = new Map<string, Combatant>();
         combatUpdates.nextActiveCombatState.combatants.forEach(c => {
-            if (!uniqueCombatants.has(c.characterId)) {
+            if (!uniqueCombatants.has(c.characterId) || (c.team === 'player' && uniqueCombatants.get(c.characterId)?.team !== 'player')) {
                 uniqueCombatants.set(c.characterId, c);
             }
         });
@@ -750,7 +762,7 @@ export default function Home() {
                         if (!charsCopy[targetCharIndex].relations) {
                            charsCopy[targetCharIndex].relations = {};
                         }
-                         charsCopy[targetCharIndex].relations![charsCopy[sourceCharIndex].id] = newRelationFromAI; // Assuming symmetric relation update for NPC-NPC for now
+                         charsCopy[targetCharIndex].relations![charsCopy[sourceCharIndex].id] = newRelationFromAI; 
                     }
                 }
             }
@@ -782,13 +794,12 @@ export default function Home() {
             maxMp: effectiveStatsThisTurn.playerMaxMp,
             team: 'player',
             isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0,
-            statusEffects: [], // TODO: Persist player status effects if any
+            statusEffects: [], 
         };
 
         let combatantsForAI: Combatant[] = [];
         if (currentActiveCombat?.isActive) {
              combatantsForAI = [...currentActiveCombat.combatants];
-             // Ensure player is in the list and up-to-date
              const playerIndex = combatantsForAI.findIndex(c => c.characterId === PLAYER_ID);
              if (playerIndex !== -1) {
                  combatantsForAI[playerIndex] = playerCombatant;
@@ -799,7 +810,6 @@ export default function Home() {
             combatantsForAI.push(playerCombatant);
         }
 
-        // Add/update active allies
         characters.forEach(char => {
             if (char.isAlly && char.hitPoints && char.hitPoints > 0 && char.level && char.characterClass) {
                 const existingAllyIndex = combatantsForAI.findIndex(c => c.characterId === char.id);
@@ -816,17 +826,11 @@ export default function Home() {
                 }
             }
         });
-
-        // Remove duplicate combatants (by characterId) to be safe
+        
         const uniqueCombatantsMap = new Map<string, Combatant>();
         combatantsForAI.forEach(c => {
-            if (!uniqueCombatantsMap.has(c.characterId)) {
+            if (!uniqueCombatantsMap.has(c.characterId) || (c.team === 'player' && uniqueCombatantsMap.get(c.characterId)?.team !== 'player')) {
                 uniqueCombatantsMap.set(c.characterId, c);
-            } else { // If duplicate, prefer player team version if one exists
-                const existing = uniqueCombatantsMap.get(c.characterId)!;
-                if (c.team === 'player' && existing.team !== 'player') {
-                    uniqueCombatantsMap.set(c.characterId, c);
-                }
             }
         });
 
@@ -1546,8 +1550,53 @@ export default function Home() {
      ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
-       setStagedCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
-   }, []);
+       setStagedCharacters(prev => {
+           return prev.map(c => {
+               if (c.id === updatedCharacter.id) {
+                   let charToUpdate = {...updatedCharacter};
+                   // If character is being made an ally AND RPG mode is on, ensure progression stats are initialized
+                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && stagedAdventureSettings.rpgMode) { // check !c.isAlly to run only once when toggled to true, or if level was undefined
+                       if (charToUpdate.level === undefined) {
+                           console.log(`[DEBUG] Initializing level for new ally ${charToUpdate.name}`);
+                           charToUpdate.level = 1;
+                       }
+                       if (charToUpdate.currentExp === undefined) {
+                           console.log(`[DEBUG] Initializing currentExp for new ally ${charToUpdate.name}`);
+                           charToUpdate.currentExp = 0;
+                       }
+                       if (charToUpdate.expToNextLevel === undefined || charToUpdate.expToNextLevel <= 0) {
+                           console.log(`[DEBUG] Initializing expToNextLevel for new ally ${charToUpdate.name}`);
+                           charToUpdate.expToNextLevel = 100 * Math.pow(1.5, (charToUpdate.level || 1) - 1);
+                       }
+                       if (charToUpdate.initialAttributePoints === undefined) {
+                           console.log(`[DEBUG] Initializing initialAttributePoints for new ally ${charToUpdate.name}`);
+                           charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
+                       }
+                       // Initialize base attributes if they are missing
+                       const attributesToInit: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+                       attributesToInit.forEach(attr => {
+                           if (charToUpdate[attr] === undefined) {
+                               console.log(`[DEBUG] Initializing ${attr} for new ally ${charToUpdate.name}`);
+                               (charToUpdate[attr] as any) = BASE_ATTRIBUTE_VALUE;
+                           }
+                       });
+                       // Recalculate derived stats if they were not set or might change due to new level/attributes
+                       const derived = calculateBaseDerivedStats(charToUpdate);
+                       charToUpdate.maxHitPoints = charToUpdate.maxHitPoints ?? derived.maxHitPoints;
+                       charToUpdate.hitPoints = charToUpdate.hitPoints ?? charToUpdate.maxHitPoints;
+                       charToUpdate.maxManaPoints = charToUpdate.maxManaPoints ?? derived.maxManaPoints;
+                       charToUpdate.manaPoints = charToUpdate.manaPoints ?? charToUpdate.maxManaPoints;
+                       charToUpdate.armorClass = charToUpdate.armorClass ?? derived.armorClass;
+                       charToUpdate.attackBonus = charToUpdate.attackBonus ?? derived.attackBonus;
+                       charToUpdate.damageBonus = charToUpdate.damageBonus ?? derived.damageBonus;
+
+                   }
+                   return charToUpdate;
+               }
+               return c;
+           });
+       });
+   }, [stagedAdventureSettings.rpgMode]);
 
 
   const handleSaveNewCharacter = React.useCallback((character: Character) => {
@@ -1592,14 +1641,18 @@ export default function Home() {
                 const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
                 const newCharRPGMode = stagedAdventureSettings.rpgMode;
                 const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
+                const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
+                const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
+                const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? 100 * Math.pow(1.5, (newCharLevel ?? 1) -1)) : undefined;
+
 
                 const newChar: Character = {
                     ...globalCharToAdd,
                     history: [`Ajouté à l'aventure depuis les personnages globaux le ${new Date().toLocaleString()}`],
                     isAlly: globalCharToAdd.isAlly ?? false,
-                    initialAttributePoints: newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
-                    currentExp: newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined,
-                    expToNextLevel: newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? 100 * Math.pow(1.5, (newCharLevel ?? 1) -1)) : undefined,
+                    initialAttributePoints: newCharInitialPoints,
+                    currentExp: newCharCurrentExp,
+                    expToNextLevel: newCharExpToNext,
                     ...(newCharRPGMode ? {
                         level: newCharLevel,
                         characterClass: globalCharToAdd.characterClass ?? '',
@@ -1666,7 +1719,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombat,
-            saveFormatVersion: 2.3, // Updated save format version
+            saveFormatVersion: 2.3, 
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1711,7 +1764,6 @@ export default function Home() {
                     }
                 }
 
-                 // Migration logic for older save versions
                  if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.4) {
                      loadedData.characters = loadedData.characters.map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [], affinity: c.affinity ?? 50, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
                      loadedData.adventureSettings.playerName = loadedData.adventureSettings.playerName || "Player";
@@ -1772,7 +1824,6 @@ export default function Home() {
                          ...c,
                          isAlly: c.isAlly ?? false,
                          initialAttributePoints: c.initialAttributePoints ?? (loadedData.adventureSettings?.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined),
-                         // Ensure RPG stats are present if RPG mode is on, otherwise undefined
                          level: loadedData.adventureSettings?.rpgMode ? (c.level ?? 1) : undefined,
                          characterClass: loadedData.adventureSettings?.rpgMode ? (c.characterClass ?? "PNJ") : undefined,
                          strength: loadedData.adventureSettings?.rpgMode ? (c.strength ?? BASE_ATTRIBUTE_VALUE) : undefined,
@@ -1792,11 +1843,11 @@ export default function Home() {
                          inventory: loadedData.adventureSettings?.rpgMode ? (c.inventory ?? {}) : undefined,
                      }));
                  }
-                  if (loadedData.saveFormatVersion < 2.3) { // Migration for new NPC progression fields
+                  if (loadedData.saveFormatVersion < 2.3) { 
                      loadedData.characters = loadedData.characters.map(c => ({
                          ...c,
                          currentExp: loadedData.adventureSettings?.rpgMode ? (c.currentExp ?? 0) : undefined,
-                         expToNextLevel: loadedData.adventureSettings?.rpgMode ? (c.expToNextLevel ?? 100 * Math.pow(1.5, (c.level ?? 1) -1)) : undefined,
+                         expToNextLevel: loadedData.adventureSettings?.rpgMode ? (c.expToNextLevel ?? 100 * Math.pow(1.5, ((c.level ?? 1) || 1) -1)) : undefined,
                      }));
                  }
 
@@ -1829,7 +1880,7 @@ export default function Home() {
                         isAlly: c.isAlly ?? false,
                         initialAttributePoints: rpgModeActive ? (c.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
                         currentExp: rpgModeActive ? (c.currentExp ?? 0) : undefined,
-                        expToNextLevel: rpgModeActive ? (c.expToNextLevel ?? 100 * Math.pow(1.5, (charLevel ?? 1) -1)) : undefined,
+                        expToNextLevel: rpgModeActive ? (c.expToNextLevel ?? 100 * Math.pow(1.5, ((charLevel ?? 1) || 1) -1)) : undefined,
                         ...(rpgModeActive ? {
                             level: charLevel, characterClass: c.characterClass ?? '', inventory: typeof c.inventory === 'object' && c.inventory !== null ? c.inventory : {},
                             hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10,
@@ -1912,20 +1963,19 @@ export default function Home() {
             playerInventory: initialSettingsFromBase.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [],
             playerGold: initialSettingsFromBase.playerGold ?? 0,
             equippedItemIds: { weapon: null, armor: null, jewelry: null },
-            playerSkills: [], // Reset skills on restart
+            playerSkills: [], 
         };
         setAdventureSettings(newLiveAdventureSettings);
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
-            currentExp: char.level === 1 ? 0 : undefined, // Reset EXP for NPCs on adventure restart
-            expToNextLevel: char.level === 1 ? 100 : undefined, // Reset EXP for NPCs
-            // Reset other dynamic NPC stats if needed
+            currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp, 
+            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? 100 * Math.pow(1.5, ((char.level ?? 1) || 1) -1) : char.expToNextLevel,
         })));
         setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
-            currentExp: char.level === 1 ? 0 : undefined,
-            expToNextLevel: char.level === 1 ? 100 : undefined,
+            currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
+            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? 100 * Math.pow(1.5, ((char.level ?? 1) || 1) -1) : char.expToNextLevel,
         })));
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSettingsFromBase.initialSituation, timestamp: Date.now() }]);
         setActiveCombat(undefined);
@@ -2018,6 +2068,8 @@ export default function Home() {
 
         const charLevel = newRPGMode ? ((existingChar?.level) ?? 1) : undefined;
         const charInitialAttributes = newRPGMode ? (existingChar?.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
+        const charCurrentExp = newRPGMode ? (existingChar?.currentExp ?? 0) : undefined;
+        const charExpToNext = newRPGMode ? (existingChar?.expToNextLevel ?? 100 * Math.pow(1.5, (charLevel ?? 1)-1)) : undefined;
 
 
         if (existingChar) {
@@ -2025,8 +2077,8 @@ export default function Home() {
             ...existingChar, name: formDef.name, details: formDef.details,
             isAlly: existingChar.isAlly ?? false,
             initialAttributePoints: charInitialAttributes,
-            currentExp: newRPGMode ? (existingChar.currentExp ?? 0) : undefined,
-            expToNextLevel: newRPGMode ? (existingChar.expToNextLevel ?? 100 * Math.pow(1.5, (charLevel ?? 1) -1) ) : undefined,
+            currentExp: charCurrentExp,
+            expToNextLevel: charExpToNext,
             ...(newRPGMode ? {
                 level: charLevel, characterClass: existingChar.characterClass || '', inventory: existingChar.inventory || {},
                 hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10,
@@ -2395,3 +2447,4 @@ export default function Home() {
       </>
   );
 }
+
