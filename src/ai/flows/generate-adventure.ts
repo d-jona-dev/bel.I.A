@@ -119,13 +119,13 @@ const PlayerSkillSchemaForAI = z.object({
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
-  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include `isAlly` status.'),
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include isAlly status.'),
   userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP, Gold) are active. If true, combat rules apply."),
-  activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing. If combat is active, ensure `combatants` includes the player, all their active allies (characters with `isAlly: true`), and all active enemies/neutrals."),
+  activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing. If combat is active, ensure combatants includes the player, all their active allies (characters with isAlly: true), and all active enemies/neutrals."),
   playerGold: z.number().int().optional().describe("Player's current amount of Gold Pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
@@ -458,7 +458,7 @@ Tasks:
             *   **Si le joueur utilise une compétence de combat:** Narrez l'action. L'effet de la compétence (basé sur son nom et sa description) DOIT être pris en compte. Par exemple, "Coup Puissant" devrait infliger plus de dégâts ou avoir une chance d'étourdir. Décrivez le succès ou l'échec et les conséquences dans combatUpdates.turnNarration et mettez à jour combatUpdates.updatedCombatants.
             *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
         *   **Étape 1.5: Tour des PNJ Alliés (si présents et actifs).**
-            *   Pour chaque PNJ allié (identifié par `team: 'player'` dans `activeCombat.combatants` et qui n'est PAS le joueur, et qui a `isAlly: true` dans ses détails de personnage connus) qui est actif et non vaincu :
+            *   Pour chaque PNJ allié (identifié par team: 'player' dans activeCombat.combatants et qui n'est PAS le joueur, et qui a isAlly: true dans ses détails de personnage connus) qui est actif et non vaincu :
                 *   Déterminez une action appropriée pour cet allié. Basez cette action sur ses détails de personnage fournis (characterClass, stats, inventory, level, skills, spells, damageBonus, attackBonus) et la situation tactique.
                 *   Les alliés devraient agir de manière à aider l'équipe du joueur (soigner, attaquer des ennemis dangereux, utiliser des buffs/debuffs, etc.). Si l'allié est un "Mage", il devrait préférer lancer des sorts. Si c'est un "Guerrier", il attaquera.
                 *   Narrez l'action de l'allié et déterminez son succès/effet (ex: "Ancienne Elara lance Boule de Feu sur le Gobelin Fureteur. Elle touche et inflige X dégâts de feu.").
@@ -466,10 +466,10 @@ Tasks:
                 *   Mettez à jour les PV/PM et les effets de statut de l'allié (et de sa cible, si applicable) dans combatUpdates.updatedCombatants.
             *   Les tours des alliés doivent être inclus dans combatUpdates.turnNarration avec la même attention qu'un ennemi.
         *   **Étape 2: Tour des PNJ Ennemis.**
-            *   Pour chaque ennemi actif et non vaincu (identifié par `team: 'enemy'`):
+            *   Pour chaque ennemi actif et non vaincu (identifié par team: 'enemy'):
                 *   Déterminez l'action de cet ennemi.
-                *   Narrez l'action de l'ennemi, les résultats (dégâts, effets), et intégrez-les dans `combatUpdates.turnNarration`.
-                *   Mettez à jour les PV/PM et les effets de statut de l'ennemi et de sa cible (si applicable) dans `combatUpdates.updatedCombatants`.
+                *   Narrez l'action de l'ennemi, les résultats (dégâts, effets), et intégrez-les dans combatUpdates.turnNarration.
+                *   Mettez à jour les PV/PM et les effets de statut de l'ennemi et de sa cible (si applicable) dans combatUpdates.updatedCombatants.
         *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
         *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ (alliés et ennemis), ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
         *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
@@ -496,7 +496,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set `isAlly` to `false` unless explicitly stated otherwise in the introduction context.{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set isAlly to false unless explicitly stated otherwise in the introduction context.{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -604,3 +604,8 @@ const generateAdventureFlow = ai.defineFlow<
     return output;
   }
 );
+
+
+    
+
+    
