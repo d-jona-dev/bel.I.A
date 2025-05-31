@@ -73,8 +73,12 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings>) => {
   const baseArmorClass = 10 + Math.floor((dexterity - 10) / 2);
   const proficiencyBonus = Math.floor((playerLevel - 1) / 4) + 2;
   const baseAttackBonus = Math.floor((strength - 10) / 2) + proficiencyBonus;
-  const baseDamageBonusValue = Math.floor((strength - 10) / 2);
-  const baseDamageBonus = baseDamageBonusValue >= 0 ? `+${baseDamageBonusValue}` : `${baseDamageBonusValue}`;
+  
+  const strengthModifier = Math.floor((strength - 10) / 2);
+  let baseDamageBonusString = "1"; // Base damage for unarmed
+  if (strengthModifier !== 0) {
+    baseDamageBonusString = `1${strengthModifier > 0 ? '+' : ''}${strengthModifier}`;
+  }
 
 
   return {
@@ -82,7 +86,7 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings>) => {
     playerMaxMp: Math.max(0, maxMp),
     playerArmorClass: baseArmorClass,
     playerAttackBonus: baseAttackBonus,
-    playerDamageBonus: baseDamageBonus === "+0" ? "1" : (baseDamageBonusValue > 0 ? baseDamageBonus : "1"),
+    playerDamageBonus: baseDamageBonusString,
   };
 };
 
@@ -91,7 +95,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const baseDerived = calculateBaseDerivedStats(settings);
     let effectiveAC = baseDerived.playerArmorClass;
     let effectiveAttackBonus = baseDerived.playerAttackBonus;
-    let effectiveDamageBonus = baseDerived.playerDamageBonus;
+    // let effectiveDamageBonus = baseDerived.playerDamageBonus; //This was the original line
 
     const inventory = settings.playerInventory || [];
     const weaponId = settings.equippedItemIds?.weapon;
@@ -115,18 +119,26 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     if (equippedJewelry?.statBonuses?.attack) {
         effectiveAttackBonus += equippedJewelry.statBonuses.attack;
     }
+    
+    // New damage calculation logic
+    const strengthModifierValue = Math.floor(((settings.playerStrength || BASE_ATTRIBUTE_VALUE) - 10) / 2);
+    let weaponDice = "1"; // Base unarmed damage dice
 
     if (equippedWeapon?.statBonuses?.damage) {
-        // If weapon has damage, it usually replaces base damage, not adds, unless specified otherwise
-        effectiveDamageBonus = equippedWeapon.statBonuses.damage;
+        weaponDice = equippedWeapon.statBonuses.damage; // e.g., "1d6"
     }
 
+    let effectiveDamageBonus = weaponDice;
+    if (strengthModifierValue !== 0) {
+        effectiveDamageBonus = `${weaponDice}${strengthModifierValue > 0 ? '+' : ''}${strengthModifierValue}`;
+    }
+    // If strengthModifierValue is 0, effectiveDamageBonus remains weaponDice (e.g., "1d6" or "1")
 
     return {
-        ...baseDerived,
+        ...baseDerived, // Includes playerMaxHp, playerMaxMp from base calculation
         playerArmorClass: effectiveAC,
         playerAttackBonus: effectiveAttackBonus,
-        playerDamageBonus: effectiveDamageBonus,
+        playerDamageBonus: effectiveDamageBonus, // This is the final string like "1d6+2" or "1+2" or "1d6"
     };
 };
 
@@ -266,11 +278,11 @@ export default function Home() {
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[]) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItemsFromAI?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-           name: item.itemName,
+           name: item.itemName, // Corrected mapping
            quantity: item.quantity,
            description: item.description,
            effect: item.effect,
-           type: item.itemType,
+           type: item.itemType, // Corrected mapping
            goldValue: item.goldValue,
            statBonuses: item.statBonuses,
            generatedImageUrl: null,
@@ -370,7 +382,7 @@ export default function Home() {
                         description: (
                             <div>
                                 <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
-                                <p className="mt-1 font-semibold">Vous avez gagné {ATTRIBUTE_POINTS_PER_LEVEL_GAIN} points d'attributs à distribuer !</p>
+                                <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN} nouveaux points d'attributs !</p>
                                 <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                             </div>
                         ),
@@ -644,7 +656,7 @@ export default function Home() {
 
             if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                 const amount = result.currencyGained;
-                if (amount < 0) {
+                if (amount < 0) { // Player paid or lost gold
                     const currentGold = adventureSettings.playerGold ?? 0;
                     if (currentGold + amount < 0) {
                          setTimeout(() => {
@@ -654,6 +666,7 @@ export default function Home() {
                                 variant: "destructive"
                             });
                         }, 0);
+                        // Do not change gold if cannot afford
                     } else {
                         addCurrencyToPlayer(amount);
                          setTimeout(() => {
@@ -663,7 +676,7 @@ export default function Home() {
                             });
                         }, 0);
                     }
-                } else {
+                } else { // Player gained gold
                     addCurrencyToPlayer(amount);
                     setTimeout(() => {
                         toast({
@@ -819,12 +832,12 @@ export default function Home() {
         let sellPricePerUnit = 0;
         if (itemToSell.goldValue && itemToSell.goldValue > 0) {
             sellPricePerUnit = Math.floor(itemToSell.goldValue / 2);
-            if (sellPricePerUnit === 0) {
+            if (sellPricePerUnit === 0) { // if goldValue is 1, sell for 1
                 sellPricePerUnit = 1;
             }
         }
-        if (itemToSell.goldValue === 1) { // If original value is 1, sell for 1
-            sellPricePerUnit = 1;
+        if (itemToSell.goldValue === 1) {
+             sellPricePerUnit = 1;
         }
 
 
@@ -1192,7 +1205,18 @@ export default function Home() {
                         content: result.narrative,
                         timestamp: Date.now(),
                         sceneDescription: result.sceneDescriptionForImage,
-                        loot: result.itemsObtained, // itemsObtained are LootedItem from AI
+                        loot: (result.itemsObtained || []).map(item => ({ // Ensure mapping here too
+                           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                           name: item.itemName,
+                           quantity: item.quantity,
+                           description: item.description,
+                           effect: item.effect,
+                           type: item.itemType,
+                           goldValue: item.goldValue,
+                           statBonuses: item.statBonuses,
+                           generatedImageUrl: null,
+                           isEquipped: false,
+                        })),
                         lootTaken: false,
                     };
                     if (lastAiIndex !== -1) {
