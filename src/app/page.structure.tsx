@@ -44,6 +44,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter } from '@/components/ui/card'; // CardHeader, CardTitle removed as they are not used here.
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
+import type { SellingItemDetails } from './page'; // Import SellingItemDetails
+import { Input } from '@/components/ui/input'; // Import Input
 
 
 interface PageStructureProps {
@@ -92,6 +94,11 @@ interface PageStructureProps {
   isGeneratingItemImage: boolean;
   handleEquipItem: (itemId: string) => void;
   handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
+  itemToSellDetails: SellingItemDetails | null;
+  sellQuantity: number;
+  setSellQuantity: (quantity: number) => void;
+  confirmSellMultipleItems: (quantity: number) => void;
+  onCloseSellDialog: () => void;
 }
 
 export function PageStructure({
@@ -140,6 +147,11 @@ export function PageStructure({
   isGeneratingItemImage,
   handleEquipItem,
   handleUnequipItem,
+  itemToSellDetails,
+  sellQuantity,
+  setSellQuantity,
+  confirmSellMultipleItems,
+  onCloseSellDialog,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -159,6 +171,14 @@ export function PageStructure({
     const itemId = adventureSettings.equippedItemIds?.[slot];
     if (!itemId) return null;
     return adventureSettings.playerInventory?.find(item => item.id === itemId);
+  };
+
+  const calculateSellPricePerUnit = (item: PlayerInventoryItem | undefined): number => {
+    if (!item || !item.goldValue || item.goldValue <= 0) return 0;
+    let price = Math.floor(item.goldValue / 2);
+    if (price === 0 && item.goldValue > 0) price = 1;
+    if (item.goldValue === 1) price = 1;
+    return price;
   };
 
 
@@ -316,9 +336,9 @@ export function PageStructure({
                 isSuggestingQuest={isSuggestingQuest}
                 handleTakeLoot={handleTakeLoot}
                 handleDiscardLoot={handleDiscardLoot}
-                handlePlayerItemAction={handlePlayerItemAction}
-                handleEquipItem={handleEquipItem} // Pass down new handlers
-                handleUnequipItem={handleUnequipItem} // Pass down new handlers
+                handlePlayerItemAction={handlePlayerItemAction} // Pass down new handlers
+                handleEquipItem={handleEquipItem} 
+                handleUnequipItem={handleUnequipItem} 
              />
         </main>
       </SidebarInset>
@@ -447,111 +467,119 @@ export function PageStructure({
                                                 ) : (
                                                   <ScrollArea className="h-auto max-h-48">
                                                     <div className="grid grid-cols-5 gap-2 p-1">
-                                                      {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => (
-                                                        <DropdownMenu key={`inventory-item-${item.id}`}>
-                                                          <TooltipProvider>
-                                                            <Tooltip>
-                                                              <TooltipTrigger asChild>
-                                                                <DropdownMenuTrigger asChild>
-                                                                  <div
-                                                                    className={cn(
-                                                                      "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
-                                                                      getItemTypeColor(item.type, item.isEquipped)
-                                                                    )}
-                                                                  >
-                                                                    {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
-                                                                        <Image
-                                                                            key={item.generatedImageUrl} 
-                                                                            src={item.generatedImageUrl}
-                                                                            alt={`${item.name} icon`}
-                                                                            fill
-                                                                            style={{ objectFit: 'contain' }}
-                                                                            sizes="40px"
-                                                                            data-ai-hint={`${item.name} icon`}
-                                                                        />
-                                                                    ) : (
-                                                                        <PackageOpen size={20} className="text-foreground/80" />
-                                                                    )}
-                                                                     <span className="absolute bottom-0 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
-                                                                        {item.name}
-                                                                      </span>
-                                                                    {item.quantity > 1 && (
-                                                                      <span
-                                                                        className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                      {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => {
+                                                          const sellPricePerUnit = calculateSellPricePerUnit(item);
+                                                          const sellLabel = sellPricePerUnit > 0
+                                                            ? `Vendre (pour ${sellPricePerUnit} PO ${item.quantity > 1 ? 'chacun' : ''})`
+                                                            : "Vendre (invendable)";
+
+                                                          return (
+                                                            <DropdownMenu key={`inventory-item-${item.id}`}>
+                                                              <TooltipProvider>
+                                                                <Tooltip>
+                                                                  <TooltipTrigger asChild>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                      <div
+                                                                        className={cn(
+                                                                          "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
+                                                                          getItemTypeColor(item.type, item.isEquipped)
+                                                                        )}
                                                                       >
-                                                                        {item.quantity}
-                                                                      </span>
+                                                                        {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
+                                                                            <Image
+                                                                                key={item.generatedImageUrl} 
+                                                                                src={item.generatedImageUrl}
+                                                                                alt={`${item.name} icon`}
+                                                                                fill
+                                                                                style={{ objectFit: 'contain' }}
+                                                                                sizes="40px"
+                                                                                data-ai-hint={`${item.name} icon`}
+                                                                            />
+                                                                        ) : (
+                                                                            <PackageOpen size={20} className="text-foreground/80" />
+                                                                        )}
+                                                                         <span className="absolute bottom-0 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
+                                                                            {item.name}
+                                                                          </span>
+                                                                        {item.quantity > 1 && (
+                                                                          <span
+                                                                            className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                                          >
+                                                                            {item.quantity}
+                                                                          </span>
+                                                                        )}
+                                                                         {item.isEquipped && <CheckCircle size={12} className="absolute top-0.5 left-0.5 text-green-500 bg-background rounded-full"/>}
+                                                                      </div>
+                                                                    </DropdownMenuTrigger>
+                                                                  </TooltipTrigger>
+                                                                  <TooltipContent side="top" align="center" className="w-auto max-w-xs">
+                                                                    {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') && (
+                                                                        <div className="relative w-24 h-24 mb-2 mx-auto border rounded-md overflow-hidden bg-muted">
+                                                                            <Image
+                                                                                src={item.generatedImageUrl}
+                                                                                alt={`${item.name} image`}
+                                                                                fill
+                                                                                style={{ objectFit: 'contain' }}
+                                                                                sizes="96px"
+                                                                                data-ai-hint={`${item.name} preview`}
+                                                                            />
+                                                                        </div>
                                                                     )}
-                                                                     {item.isEquipped && <CheckCircle size={12} className="absolute top-0.5 left-0.5 text-green-500 bg-background rounded-full"/>}
-                                                                  </div>
-                                                                </DropdownMenuTrigger>
-                                                              </TooltipTrigger>
-                                                              <TooltipContent side="top" align="center" className="w-auto max-w-xs">
-                                                                {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') && (
-                                                                    <div className="relative w-24 h-24 mb-2 mx-auto border rounded-md overflow-hidden bg-muted">
-                                                                        <Image
-                                                                            src={item.generatedImageUrl}
-                                                                            alt={`${item.name} image`}
-                                                                            fill
-                                                                            style={{ objectFit: 'contain' }}
-                                                                            sizes="96px"
-                                                                            data-ai-hint={`${item.name} preview`}
-                                                                        />
-                                                                    </div>
+                                                                    <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
+                                                                    {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                                    {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                                    {item.statBonuses && (
+                                                                        <div className="text-xs mt-1">
+                                                                            <p className="font-medium">Bonus:</p>
+                                                                            {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
+                                                                            {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
+                                                                            {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
+                                                                            {/* Add other stat bonuses if needed */}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
+                                                                    {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
+                                                                     {sellPricePerUnit > 0 && <p className="text-xs text-green-600">Vendable pour : {sellPricePerUnit} PO {item.quantity > 1 ? 'chacun' : ''}</p>}
+                                                                  </TooltipContent>
+                                                                </Tooltip>
+                                                              </TooltipProvider>
+                                                              <DropdownMenuContent>
+                                                                 {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
+                                                                    item.isEquipped ? (
+                                                                        <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
+                                                                            <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
+                                                                        </DropdownMenuItem>
+                                                                    ) : (
+                                                                        <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
+                                                                            <Shirt className="mr-2 h-4 w-4" /> Équiper
+                                                                        </DropdownMenuItem>
+                                                                    )
                                                                 )}
-                                                                <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
-                                                                {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                                                                {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                                {item.statBonuses && (
-                                                                    <div className="text-xs mt-1">
-                                                                        <p className="font-medium">Bonus:</p>
-                                                                        {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
-                                                                        {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
-                                                                        {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
-                                                                        {/* Add other stat bonuses if needed */}
-                                                                    </div>
-                                                                )}
-                                                                {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
-                                                                {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
-                                                              </TooltipContent>
-                                                            </Tooltip>
-                                                          </TooltipProvider>
-                                                          <DropdownMenuContent>
-                                                             {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
-                                                                item.isEquipped ? (
-                                                                    <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
-                                                                        <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
-                                                                    </DropdownMenuItem>
-                                                                ) : (
-                                                                    <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
-                                                                        <Shirt className="mr-2 h-4 w-4" /> Équiper
-                                                                    </DropdownMenuItem>
-                                                                )
-                                                            )}
-                                                            <DropdownMenuItem
-                                                              onSelect={() => handlePlayerItemAction(item.id, 'use')}
-                                                              disabled={item.type !== 'consumable'}
-                                                            >
-                                                              <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
-                                                              <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
-                                                            </DropdownMenuItem>
-                                                             <DropdownMenuItem 
-                                                              onSelect={() => handleSellItem(item.id)}
-                                                              disabled={!item.goldValue || item.goldValue <= 0}
-                                                            >
-                                                              <Coins className="mr-2 h-4 w-4" /> Vendre (pour {Math.floor((item.goldValue || 0) / 2)} PO)
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                              onSelect={() => handleGenerateItemImage(item)}
-                                                              disabled={isGeneratingItemImage}
-                                                            >
-                                                              <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
-                                                            </DropdownMenuItem>
-                                                          </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                      ))}
+                                                                <DropdownMenuItem
+                                                                  onSelect={() => handlePlayerItemAction(item.id, 'use')}
+                                                                  disabled={item.type !== 'consumable'}
+                                                                >
+                                                                  <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
+                                                                  <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
+                                                                </DropdownMenuItem>
+                                                                 <DropdownMenuItem 
+                                                                  onSelect={() => handleSellItem(item.id)}
+                                                                  disabled={sellPricePerUnit <= 0}
+                                                                >
+                                                                  <Coins className="mr-2 h-4 w-4" /> {sellLabel}
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                  onSelect={() => handleGenerateItemImage(item)}
+                                                                  disabled={isGeneratingItemImage}
+                                                                >
+                                                                  <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
+                                                                </DropdownMenuItem>
+                                                              </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                          );
+                                                      })}
                                                     </div>
                                                   </ScrollArea>
                                                 )}
@@ -625,7 +653,48 @@ export function PageStructure({
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        {itemToSellDetails && (
+             <AlertDialog open={!!itemToSellDetails} onOpenChange={(open) => !open && onCloseSellDialog()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Vendre {itemToSellDetails.item.name}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Combien d'exemplaires de "{itemToSellDetails.item.name}" souhaitez-vous vendre ?
+                            <br />
+                            Vous en possédez {itemToSellDetails.item.quantity}.
+                            Prix de vente unitaire : {itemToSellDetails.sellPricePerUnit} PO.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                        <Label htmlFor="sell-quantity-input">Quantité à vendre :</Label>
+                        <Input
+                            id="sell-quantity-input"
+                            type="number"
+                            value={sellQuantity}
+                            onChange={(e) => {
+                                let val = parseInt(e.target.value, 10);
+                                if (isNaN(val)) val = 1;
+                                if (val < 1) val = 1;
+                                if (val > itemToSellDetails.item.quantity) val = itemToSellDetails.item.quantity;
+                                setSellQuantity(val);
+                            }}
+                            min="1"
+                            max={itemToSellDetails.item.quantity}
+                            className="mt-1"
+                        />
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={onCloseSellDialog}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => confirmSellMultipleItems(sellQuantity)}>
+                            Vendre {sellQuantity} pour {sellQuantity * itemToSellDetails.sellPricePerUnit} PO
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        )}
     </>
   );
 }
+
 
