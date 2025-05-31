@@ -4,7 +4,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card"; // Renamed CardDescription to avoid conflict
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,7 +35,7 @@ interface CharacterSidebarProps {
     onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
-    relationsMode: boolean; 
+    relationsMode: boolean;
     playerId: string;
     playerName: string;
     currentLanguage: string;
@@ -176,7 +176,7 @@ export function CharacterSidebar({
     onRelationUpdate,
     generateImageAction,
     rpgMode,
-    relationsMode, 
+    relationsMode,
     playerId,
     playerName,
     currentLanguage,
@@ -208,7 +208,7 @@ export function CharacterSidebar({
   const availableGlobalChars = React.useMemo(() => {
     if (!isClient) return [];
     return globalCharactersList.filter(
-        gc => !characters.some(sc => sc.id === gc.id) 
+        gc => !characters.some(sc => sc.id === gc.id)
     );
   }, [globalCharactersList, characters, isClient]);
 
@@ -461,7 +461,7 @@ export function CharacterSidebar({
                                      )}
                                 </Avatar>
                                 <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''}</span>
-                                {isClient && isPotentiallyNew && ( 
+                                {isClient && isPotentiallyNew && (
                                     <TooltipProvider>
                                         <Tooltip>
                                              <TooltipTrigger asChild>
@@ -533,6 +533,57 @@ export function CharacterSidebar({
                            </div>
 
                             <Separator />
+
+                            {rpgMode && (
+                                <Card className="border-dashed bg-muted/20">
+                                    <CardHeader className="pb-2 pt-4">
+                                        <UICardDescription className="text-xs uppercase tracking-wider">Fiche Technique</UICardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2 text-sm">
+                                        <div className="flex justify-between"><span>Classe:</span> <span className="font-medium">{char.characterClass || 'N/A'}</span></div>
+                                        <div className="flex justify-between"><span>Niveau:</span> <span className="font-medium">{char.level || 'N/A'}</span></div>
+                                        <Separator className="my-1"/>
+                                        <div>
+                                            <div className="flex justify-between items-center">
+                                                <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                                                <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
+                                            </div>
+                                            <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
+                                        </div>
+                                        {(char.maxManaPoints ?? 0) > 0 && (
+                                            <div>
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                                                    <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
+                                                </div>
+                                                <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                                            </div>
+                                        )}
+                                        <Separator className="my-1"/>
+                                        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                                            <span>FOR: {char.strength ?? 'N/A'}</span>
+                                            <span>DEX: {char.dexterity ?? 'N/A'}</span>
+                                            <span>CON: {char.constitution ?? 'N/A'}</span>
+                                            <span>INT: {char.intelligence ?? 'N/A'}</span>
+                                            <span>SAG: {char.wisdom ?? 'N/A'}</span>
+                                            <span>CHA: {char.charisma ?? 'N/A'}</span>
+                                        </div>
+                                        <Separator className="my-1"/>
+                                        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                                            <span>CA: {char.armorClass ?? 'N/A'}</span>
+                                            <span className="truncate">Atk: +{char.attackBonus ?? 'N/A'}</span>
+                                            <span className="truncate">Dmg: {char.damageBonus || 'N/A'}</span>
+                                        </div>
+                                         {char.isHostile !== undefined && (
+                                            <div className={`text-xs ${char.isHostile ? 'text-destructive' : 'text-green-600'}`}>
+                                                {char.isHostile ? (currentLanguage === 'fr' ? 'Hostile' : 'Hostile') : (currentLanguage === 'fr' ? 'Non-Hostile' : 'Non-Hostile')}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                            <Separator />
+                            <Label className="block mb-2 mt-4 text-sm font-medium">Champs Éditables :</Label>
                             <EditableField
                                 label="Nom"
                                 id={`${char.id}-name`}
@@ -554,7 +605,7 @@ export function CharacterSidebar({
                                 rows={5}
                                 placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
                             />
-                            {relationsMode && ( 
+                            {relationsMode && (
                                 <>
                                     <div className="space-y-2">
                                         <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
@@ -605,6 +656,18 @@ export function CharacterSidebar({
                                         <EditableField label="Bonus Attaque" id={`${char.id}-atkBonus`} type="number" value={char.attackBonus} onChange={(e) => handleFieldChange(char.id, 'attackBonus', e.target.value)} />
                                         <EditableField label="Bonus Dégâts" id={`${char.id}-dmgBonus`} value={char.damageBonus} onChange={(e) => handleFieldChange(char.id, 'damageBonus', e.target.value)} placeholder="ex: 1d6+2" />
                                      </div>
+                                    <div className="flex items-center space-x-2 pt-2">
+                                        <input
+                                            type="checkbox"
+                                            id={`${char.id}-isHostile`}
+                                            checked={char.isHostile ?? false}
+                                            onChange={(e) => handleFieldChange(char.id, 'isHostile', e.target.checked)}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <Label htmlFor={`${char.id}-isHostile`} className="text-sm">
+                                            {currentLanguage === 'fr' ? 'Est Hostile ?' : 'Is Hostile?'}
+                                        </Label>
+                                    </div>
                                     <Separator />
                                      <Label className="flex items-center gap-1"><Dices className="h-4 w-4"/> Caractéristiques</Label>
                                      <div className="grid grid-cols-3 gap-2">
@@ -635,6 +698,5 @@ export function CharacterSidebar({
     </div>
   );
 }
-
 
     
