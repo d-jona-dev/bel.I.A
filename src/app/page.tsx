@@ -19,6 +19,7 @@ import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/s
 const PLAYER_ID = "player";
 const BASE_ATTRIBUTE_VALUE = 8;
 const INITIAL_ATTRIBUTE_POINTS_POOL = 10; // Points à distribuer en plus des valeurs de base
+const ATTRIBUTE_POINTS_PER_LEVEL = 5;
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
@@ -31,8 +32,8 @@ export type AdventureFormValues = {
   playerName?: string;
   playerClass?: string;
   playerLevel?: number;
-  playerMaxHp?: number; // Sera calculé
-  playerMaxMp?: number; // Sera calculé
+  playerMaxHp?: number; 
+  playerMaxMp?: number; 
   playerExpToNextLevel?: number;
   playerGold?: number;
   playerInitialAttributePoints?: number;
@@ -42,7 +43,7 @@ export type AdventureFormValues = {
   playerIntelligence?: number;
   playerWisdom?: number;
   playerCharisma?: number;
-  playerArmorClass?: number; // Sera calculé
+  playerArmorClass?: number; 
   playerAttackBonus?: number;
   playerDamageBonus?: string;
 };
@@ -52,22 +53,25 @@ const calculateDerivedStats = (settings: Partial<AdventureFormValues>) => {
   const intelligence = settings.playerIntelligence || BASE_ATTRIBUTE_VALUE;
   const dexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
   const playerClass = settings.playerClass || "";
+  const playerLevel = settings.playerLevel || 1;
 
-  let maxHp = 10 + Math.floor((constitution - 10) / 2) * (settings.playerLevel || 1) + constitution;
+  let maxHp = 10 + Math.floor((constitution - 10) / 2) * playerLevel + constitution;
   if (playerClass.toLowerCase().includes("guerrier") || playerClass.toLowerCase().includes("barbare")) {
-    maxHp += (settings.playerLevel || 1) * 2; // Bonus HP pour classes martiales
+    maxHp += playerLevel * 2; 
+  } else if (playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier")) {
+    maxHp -= playerLevel * 1; 
   }
 
 
   let maxMp = 0;
   if (playerClass.toLowerCase().includes("magicien") || playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
-    maxMp = 10 + Math.max(0, (intelligence - 10)) * 2;
+    maxMp = 10 + Math.max(0, (intelligence - 10)) * 2 + Math.floor(playerLevel / 2) * 5;
   }
 
-  const armorClass = 10 + Math.floor((dexterity - 10) / 2); // CA basée sur la Dextérité
+  const armorClass = 10 + Math.floor((dexterity - 10) / 2); 
 
   return {
-    playerMaxHp: Math.max(1, maxHp), // Assurer au moins 1 PV
+    playerMaxHp: Math.max(1, maxHp), 
     playerMaxMp: Math.max(0, maxMp),
     playerArmorClass: armorClass,
   };
@@ -88,8 +92,8 @@ export default function Home() {
     playerIntelligence: BASE_ATTRIBUTE_VALUE,
     playerWisdom: BASE_ATTRIBUTE_VALUE,
     playerCharisma: BASE_ATTRIBUTE_VALUE,
-    playerAttackBonus: 0, // Pourrait être calculé : Math.floor((BASE_ATTRIBUTE_VALUE - 10) / 2)
-    playerDamageBonus: "1", // Pourrait être calculé
+    playerAttackBonus: 0, 
+    playerDamageBonus: "1", 
     playerExpToNextLevel: 100,
     playerGold: 15,
   };
@@ -258,19 +262,37 @@ export default function Home() {
         if (typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && newSettings.playerCurrentExp !== undefined && newSettings.playerExpToNextLevel !== undefined && newSettings.playerLevel !== undefined) {
             newSettings.playerCurrentExp += combatUpdates.expGained;
             setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
+            
+            let gainedLevel = false;
             while (newSettings.playerCurrentExp >= newSettings.playerExpToNextLevel!) {
+                gainedLevel = true;
                 newSettings.playerLevel! += 1;
                 newSettings.playerCurrentExp -= newSettings.playerExpToNextLevel!;
                 newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5); 
+                newSettings.playerInitialAttributePoints = (newSettings.playerInitialAttributePoints || 0) + ATTRIBUTE_POINTS_PER_LEVEL;
                 
-                const newDerivedStats = calculateDerivedStats(newSettings); // Recalculate based on current attributes and new level
+                const newDerivedStats = calculateDerivedStats(newSettings); 
                 newSettings.playerMaxHp = newDerivedStats.playerMaxHp;
-                newSettings.playerCurrentHp = newSettings.playerMaxHp; // Full heal
+                newSettings.playerCurrentHp = newSettings.playerMaxHp; 
                 if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
                     newSettings.playerMaxMp = newDerivedStats.playerMaxMp;
-                    newSettings.playerCurrentMp = newSettings.playerMaxMp; // Full MP
+                    newSettings.playerCurrentMp = newSettings.playerMaxMp; 
                 }
-                 setTimeout(() => { toast({ title: "Niveau Supérieur!", description: `Vous avez atteint le niveau ${newSettings.playerLevel}! Vos PV et PM max ont augmenté.`, variant: "default" }); }, 0);
+            }
+            if (gainedLevel) {
+                 setTimeout(() => { 
+                    toast({ 
+                        title: "Niveau Supérieur!", 
+                        description: (
+                            <div>
+                                <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                                <p className="mt-1 font-semibold">Vous avez gagné {ATTRIBUTE_POINTS_PER_LEVEL} points d'attributs à distribuer !</p>
+                                <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
+                            </div>
+                        ),
+                        duration: 9000, 
+                    }); 
+                }, 0);
             }
         }
         return newSettings;
@@ -767,7 +789,7 @@ export default function Home() {
                 rpgModeActive: settingsForAICall.rpgMode,
                 relationsModeActive: settingsForAICall.relationsMode ?? true,
                 activeCombat: activeCombat,
-                playerGold: (adventureSettings.playerGold ?? 0) - sellPrice, 
+                playerGold: (adventureSettings.playerGold ?? 0), 
                 playerClass: settingsForAICall.playerClass,
                 playerLevel: settingsForAICall.playerLevel,
                 playerCurrentHp: settingsForAICall.playerCurrentHp,
@@ -1706,7 +1728,7 @@ export default function Home() {
     } finally {
       setIsGeneratingItemImage(false);
     }
-  }, [generateSceneImageAction, toast, isGeneratingItemImage, adventureSettings.playerInventory]); 
+  }, [generateSceneImageAction, toast, isGeneratingItemImage]); 
 
 
   return (
