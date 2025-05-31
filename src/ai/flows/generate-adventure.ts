@@ -16,8 +16,8 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character } from '@/types';
-import { LootedItemSchema } from '@/types'; // This should be PlayerInventoryItem equivalent
+import type { Character, PlayerSkill } from '@/types'; // Added PlayerSkill
+import { LootedItemSchema } from '@/types'; 
 
 
 // Define RPG context schema (optional)
@@ -47,7 +47,6 @@ const BaseCharacterSchema = z.object({
   biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character. Provides deep context for personality and motivations. MUST be in the specified language if provided from user input in that language."),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion. This score dictates the character's baseline behavior and responses toward the player. Small, gradual changes for typical interactions (+/- 1-2), larger changes (+/- 5+) for major events."),
   relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, attempt to define it based on new interactions."),
-  // RPG Stats for combat
   hitPoints: z.number().optional().describe("Current Hit Points. If undefined in RPG mode, assume a default like 10."),
   maxHitPoints: z.number().optional().describe("Maximum Hit Points. If undefined in RPG mode, assume a default like 10."),
   manaPoints: z.number().optional().describe("Current Mana Points. If undefined in RPG mode for a spellcaster, assume a default like 10 if applicable, or 0."),
@@ -74,7 +73,6 @@ const CharacterWithContextSummarySchema = z.intersection(
 
 type CharacterWithContextSummary = z.infer<typeof CharacterWithContextSummarySchema>;
 
-// Combat Schemas
 const StatusEffectSchema = z.object({
   name: z.string().describe("Name of the status effect (e.g., 'Poisoned', 'Stunned')."),
   description: z.string().describe("Brief description of the effect (e.g., 'Takes 1d4 damage per turn', 'Cannot act')."),
@@ -108,12 +106,18 @@ const InventoryItemForAISchema = z.object({
     quantity: z.number().int().min(1).describe("Quantity of the item.")
 });
 
+const PlayerSkillSchemaForAI = z.object({
+    name: z.string(),
+    description: z.string(),
+    category: z.enum(['class', 'social', 'utility', 'combat']).optional(),
+});
+
 
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
   characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language.'),
-  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée"). If not in combat, it is a general narrative action.'),
+  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
@@ -123,7 +127,6 @@ const GenerateAdventureInputSchema = z.object({
   promptConfig: z.object({
       rpgContext: RpgContextSchema.optional()
   }).optional(),
-  // Player's effective stats including equipment
   playerClass: z.string().optional().describe("Player's character class if RPG mode is active."),
   playerLevel: z.number().optional().describe("Player's current level if RPG mode is active."),
   playerCurrentHp: z.number().optional().describe("Player's current HP if RPG mode is active."),
@@ -141,15 +144,16 @@ const GenerateAdventureInputSchema = z.object({
   playerArmorClass: z.number().optional().describe("Player's effective Armor Class including equipment."),
   playerAttackBonus: z.number().optional().describe("Player's effective Attack Bonus including equipment."),
   playerDamageBonus: z.string().optional().describe("Player's effective Damage (e.g. '1d8+3') including equipment."),
-  // Equipped items (names for AI context)
   equippedWeaponName: z.string().optional().describe("Name of the player's equipped weapon, if any."),
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
+  playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
+    playerSkills?: PlayerSkill[];
 };
 
 
@@ -269,7 +273,6 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
             historySummary: historySummary,
             relationsSummary: relationsSummaryText,
-            // RPG Stats
             hitPoints: input.rpgModeActive ? (char.hitPoints ?? char.maxHitPoints ?? 10) : undefined,
             maxHitPoints: input.rpgModeActive ? (char.maxHitPoints ?? 10) : undefined,
             manaPoints: input.rpgModeActive ? (char.manaPoints ?? char.maxManaPoints ?? (char.characterClass?.toLowerCase().includes('mage') || char.characterClass?.toLowerCase().includes('sorcerer') ? 10 : 0)) : undefined,
@@ -284,6 +287,12 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         };
     });
 
+    const processedPlayerSkills = input.playerSkills?.map(skill => ({
+        name: skill.name,
+        description: skill.description,
+        category: skill.category,
+    }));
+
 
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
@@ -291,12 +300,13 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
         activeCombat: input.activeCombat,
+        playerSkills: processedPlayerSkills,
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
         playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
-        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined, // Pass through calculated from page.tsx
-        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined, // Pass through calculated from page.tsx
-        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined, // Pass through calculated from page.tsx
-        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined, // Pass through calculated from page.tsx
+        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined, 
+        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined, 
+        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined, 
+        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined, 
         playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
         playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
         playerGold: input.rpgModeActive ? (input.playerGold || 0) : undefined,
@@ -306,9 +316,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         playerIntelligence: input.rpgModeActive ? input.playerIntelligence : undefined,
         playerWisdom: input.rpgModeActive ? input.playerWisdom : undefined,
         playerCharisma: input.rpgModeActive ? input.playerCharisma : undefined,
-        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined, // Effective AC from page.tsx
-        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined, // Effective Attack Bonus from page.tsx
-        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined, // Effective Damage Bonus from page.tsx
+        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined, 
+        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined, 
+        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined, 
         equippedWeaponName: input.equippedWeaponName,
         equippedArmorName: input.equippedArmorName,
         equippedJewelryName: input.equippedJewelryName,
@@ -347,6 +357,12 @@ Gold Pieces: {{playerGold}}
 Attributes: FOR:{{playerStrength}}, DEX:{{playerDexterity}}, CON:{{playerConstitution}}, INT:{{playerIntelligence}}, SAG:{{playerWisdom}}, CHA:{{playerCharisma}}
 Combat Stats: AC:{{playerArmorClass}}, Attaque: +{{playerAttackBonus}}, Dégâts: {{playerDamageBonus}}
 Équipement: {{#if equippedWeaponName}}Arme: {{equippedWeaponName}}{{else}}Arme: Mains nues{{/if}}{{#if equippedArmorName}}, Armure: {{equippedArmorName}}{{/if}}{{#if equippedJewelryName}}, Bijou: {{equippedJewelryName}}{{/if}}
+{{#if playerSkills.length}}
+Compétences:
+{{#each playerSkills}}
+- {{this.name}}: {{this.description}} ({{this.category}})
+{{/each}}
+{{/if}}
 ---
 {{/if}}
 
@@ -402,6 +418,7 @@ User Action (from {{playerName}}): {{{userAction}}}
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
+    *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
@@ -420,8 +437,9 @@ Tasks:
         *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
         *   **Étape 1: Tour du Joueur ({{playerName}}).**
-            *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), ou une autre manœuvre.
+            *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), l'utilisation d'une compétence de combat, ou une autre manœuvre.
             *   **Si le joueur utilise ou jette un objet:** Narrez l'action. L'effet de l'objet (ex: restauration de PV pour une potion de soin, dégâts pour une bombe) DOIT être pris en compte dans le calcul des combatUpdates.updatedCombatants pour le joueur ou la cible. Un objet consommé est conceptuellement retiré de son inventaire (la gestion réelle de l'inventaire se fait côté client).
+            *   **Si le joueur utilise une compétence de combat:** Narrez l'action. L'effet de la compétence (basé sur son nom et sa description) DOIT être pris en compte. Par exemple, "Coup Puissant" devrait infliger plus de dégâts ou avoir une chance d'étourdir. Décrivez le succès ou l'échec et les conséquences dans combatUpdates.turnNarration et mettez à jour combatUpdates.updatedCombatants.
             *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
         *   **Étape 2: Tour des PNJ.** Déterminez les actions pour TOUS les autres PNJ actifs et non vaincus dans activeCombat.combatants (surtout l'équipe 'enemy'). Leurs actions doivent être basées sur leurs détails, characterClass, statut isHostile, PV/PM actuels, statusEffects, affinité envers le joueur/autres combattants, et leur sens tactique. Les lanceurs de sorts doivent utiliser des sorts appropriés à leurs PM et à la situation.
         *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
@@ -507,11 +525,11 @@ const generateAdventureFlow = ai.defineFlow<
     }
      if (output.itemsObtained === undefined) {
         console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-        output.itemsObtained = []; // Ensure it's an array if AI misses it
+        output.itemsObtained = []; 
      }
      if (output.currencyGained === undefined && input.rpgModeActive) {
         console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
-        output.currencyGained = 0; // Ensure it's a number if AI misses it
+        output.currencyGained = 0; 
      }
 
 

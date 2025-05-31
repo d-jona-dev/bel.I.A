@@ -9,11 +9,11 @@ import Image from 'next/image'; // Import next/image
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen } from 'lucide-react'; // Added BookOpen
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem } from "@/types";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill } from "@/types"; // Added PlayerSkill
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -38,14 +38,14 @@ import { ModelLoader } from '@/components/model-loader';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { LanguageSelector } from '@/components/language-selector';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
-import { Avatar, AvatarFallback, AvatarImage as UIAvatarImage } from '@/components/ui/avatar'; // Renamed AvatarImage to UIAvatarImage
+import { Avatar, AvatarFallback, AvatarImage as UIAvatarImage } from '@/components/ui/avatar'; 
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter } from '@/components/ui/card'; // CardHeader, CardTitle removed as they are not used here.
+import { Card, CardContent, CardDescription, CardFooter } from '@/components/ui/card'; 
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
-import type { SellingItemDetails } from './page'; // Import SellingItemDetails
-import { Input } from '@/components/ui/input'; // Import Input
+import type { SellingItemDetails } from './page'; 
+import { Input } from '@/components/ui/input'; 
 
 
 interface PageStructureProps {
@@ -155,7 +155,7 @@ export function PageStructure({
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
-    if (isEquipped) return 'border-green-500 ring-2 ring-green-500'; // Special border for equipped items
+    if (isEquipped) return 'border-green-500 ring-2 ring-green-500'; 
     switch (type) {
       case 'consumable': return 'border-blue-500';
       case 'weapon': return 'border-red-500';
@@ -197,7 +197,7 @@ export function PageStructure({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Link href="/">
-                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Aventure Actuelle"> {/* Active style */}
+                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Aventure Actuelle"> 
                             <HomeIcon className="h-5 w-5" />
                             <span className="ml-2 group-data-[collapsible=icon]:hidden">Aventure</span>
                           </Button>
@@ -249,7 +249,6 @@ export function PageStructure({
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-            {/* Load Button */}
             <TooltipProvider>
                  <Tooltip>
                     <TooltipTrigger asChild>
@@ -261,7 +260,6 @@ export function PageStructure({
                     <TooltipContent side="right" align="center">Charger une Aventure (JSON)</TooltipContent>
                  </Tooltip>
             </TooltipProvider>
-            {/* Hidden file input */}
             <input
                 type="file"
                 ref={fileInputRef}
@@ -269,7 +267,6 @@ export function PageStructure({
                 onChange={handleLoad}
                 className="hidden"
             />
-           {/* Settings Button (placeholder) */}
            <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -288,7 +285,7 @@ export function PageStructure({
       <SidebarInset className="flex flex-col h-screen">
         <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
            <div className="flex items-center space-x-2">
-             <SidebarTrigger /> {/* Trigger for Left Sidebar */}
+             <SidebarTrigger /> 
              <span className="font-semibold">Aventure</span>
            </div>
           <div className="flex items-center space-x-2">
@@ -336,7 +333,7 @@ export function PageStructure({
                 isSuggestingQuest={isSuggestingQuest}
                 handleTakeLoot={handleTakeLoot}
                 handleDiscardLoot={handleDiscardLoot}
-                handlePlayerItemAction={handlePlayerItemAction} // Pass down new handlers
+                handlePlayerItemAction={handlePlayerItemAction} 
                 handleEquipItem={handleEquipItem} 
                 handleUnequipItem={handleUnequipItem} 
              />
@@ -534,7 +531,6 @@ export function PageStructure({
                                                                             {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
                                                                             {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
                                                                             {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
-                                                                            {/* Add other stat bonuses if needed */}
                                                                         </div>
                                                                     )}
                                                                     {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
@@ -585,7 +581,38 @@ export function PageStructure({
                                                 )}
                                               </CardContent>
                                             </Card>
-                                            <CardDescription className="text-xs pt-2">Sorts & Compétences à venir.</CardDescription>
+                                            <Accordion type="single" collapsible className="w-full mt-3">
+                                                <AccordionItem value="player-skills-accordion">
+                                                    <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
+                                                        <div className="flex items-center gap-2">
+                                                            <BookOpen className="h-4 w-4" /> Compétences
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-2 space-y-1 text-xs">
+                                                        {(adventureSettings.playerSkills && adventureSettings.playerSkills.length > 0) ? (
+                                                            adventureSettings.playerSkills.map(skill => (
+                                                                <TooltipProvider key={skill.id}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <div className="p-2 border rounded-md bg-background shadow-sm cursor-default">
+                                                                                <p className="font-medium text-foreground">{skill.name}</p>
+                                                                            </div>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top" align="start" className="w-auto max-w-xs">
+                                                                            <p className="font-semibold">{skill.name}</p>
+                                                                            <p className="text-xs text-muted-foreground">{skill.description}</p>
+                                                                            {skill.category && <p className="text-xs capitalize text-primary">Catégorie: {skill.category}</p>}
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            ))
+                                                        ) : (
+                                                            <p className="text-muted-foreground italic px-2">Aucune compétence acquise.</p>
+                                                        )}
+                                                        {/* Future: Button to choose new skill on level up */}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
                                         </CardContent>
                                     </Card>
                                 </AccordionContent>
@@ -696,5 +723,6 @@ export function PageStructure({
     </>
   );
 }
+
 
 

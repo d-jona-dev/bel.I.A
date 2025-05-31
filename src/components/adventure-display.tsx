@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar"; // Avatar importée
-import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt } from "lucide-react";
+import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar"; 
+import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react"; // Added BookOpen
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill } from "@/types"; // Added PlayerSkill
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,15 +79,10 @@ export function AdventureDisplay({
     initialMessages,
     currentLanguage,
     onNarrativeChange,
-    // onNewCharacters, // Not used directly, but generateAdventureAction handles it
-    // onCharacterHistoryUpdate, // Not used directly
-    // onAffinityUpdates, // Not used directly
-    // onRelationUpdates, // Not used directly
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
-    // onCombatUpdates, // Not used directly
     onRestartAdventure,
     isSuggestingQuest,
     handleTakeLoot,
@@ -112,11 +107,13 @@ export function AdventureDisplay({
   const { toast } = useToast();
 
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
-      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"]
+      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] // Examples
       : [];
-    const playerSkills = adventureSettings.playerClass?.toLowerCase().includes("guerrier") || adventureSettings.playerClass?.toLowerCase().includes("sportif") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
-      ? ["Attaque Puissante", "Charge", "Provocation"]
-      : [];
+    // For player skills, we'll use adventureSettings.playerSkills
+    const playerNonCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category !== 'combat') || [];
+    const playerCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category === 'combat') || [];
+
+
     const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
 
 
@@ -385,7 +382,7 @@ export function AdventureDisplay({
                                                                   <div className="space-y-3 py-2 pr-2">
                                                                       {message.loot!.map((item, itemIdx) => (
                                                                           <Card key={item.id || itemIdx} className="p-3 bg-muted/50 shadow-sm">
-                                                                              <p className="font-semibold">{item.itemName} (x{item.quantity})</p>
+                                                                              <p className="font-semibold">{item.name} (x{item.quantity})</p>
                                                                               {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
                                                                               {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
                                                                               {item.itemType && <p className="text-xs text-muted-foreground">Type : {item.itemType}</p>}
@@ -450,12 +447,12 @@ export function AdventureDisplay({
                                         <Tooltip>
                                         <TooltipTrigger asChild>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="secondary" size="sm" disabled={isLoading || (playerSpells.length === 0 && playerSkills.length === 0 && genericSkills.length === 0)}>
+                                                <Button variant="secondary" size="sm" disabled={isLoading || (playerSpells.length === 0 && playerCombatSkills.length === 0 && genericSkills.length === 0)}>
                                                     <Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.
                                                 </Button>
                                             </DropdownMenuTrigger>
                                         </TooltipTrigger>
-                                        <TooltipContent>Utiliser un sort ou une compétence.</TooltipContent>
+                                        <TooltipContent>Utiliser un sort ou une compétence de combat.</TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
                                     <DropdownMenuContent>
@@ -469,11 +466,11 @@ export function AdventureDisplay({
                                                 <DropdownMenuSeparator />
                                             </>
                                         )}
-                                        {playerSkills.length > 0 && (
+                                        {playerCombatSkills.length > 0 && (
                                             <>
-                                                {playerSkills.map(skill => (
-                                                    <DropdownMenuItem key={skill} onSelect={() => handleSendSpecificAction(`Utiliser la compétence : ${skill}`)}>
-                                                        {skill}
+                                                {playerCombatSkills.map(skill => (
+                                                    <DropdownMenuItem key={skill.id} onSelect={() => handleSendSpecificAction(`Utiliser la compétence de combat : ${skill.name}`)}>
+                                                        {skill.name}
                                                     </DropdownMenuItem>
                                                 ))}
                                                 <DropdownMenuSeparator />
@@ -484,7 +481,7 @@ export function AdventureDisplay({
                                                 {skill}
                                             </DropdownMenuItem>
                                         ))}
-                                        {(playerSpells.length > 0 || playerSkills.length > 0 || genericSkills.length > 0) && <DropdownMenuSeparator />}
+                                        {(playerSpells.length > 0 || playerCombatSkills.length > 0 || genericSkills.length > 0) && <DropdownMenuSeparator />}
                                         <DropdownMenuItem onSelect={() => setUserAction("Utiliser compétence/sort : ")}>
                                             Autre... (Décrire)
                                         </DropdownMenuItem>
@@ -595,6 +592,41 @@ export function AdventureDisplay({
                                   <TooltipContent>Recommencer l'Aventure depuis le début</TooltipContent>
                               </Tooltip>
                           </TooltipProvider>
+                           <DropdownMenu>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    disabled={isLoading || (adventureSettings.rpgMode && (!adventureSettings.playerSkills || adventureSettings.playerSkills.length === 0))}
+                                                >
+                                                    <BookOpen className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Utiliser une compétence hors combat</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <DropdownMenuContent>
+                                    {(adventureSettings.playerSkills && adventureSettings.playerSkills.length > 0) ? (
+                                        playerNonCombatSkills.map(skill => (
+                                            <DropdownMenuItem key={skill.id} onSelect={() => setUserAction(`J'utilise ma compétence : ${skill.name}.`)}>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild><span>{skill.name}</span></TooltipTrigger>
+                                                        <TooltipContent side="right" align="start">{skill.description}</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        <DropdownMenuItem disabled>Aucune compétence disponible</DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                           <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -797,6 +829,7 @@ export function AdventureDisplay({
     </div>
   );
 }
+
 
 
 

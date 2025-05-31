@@ -32,7 +32,7 @@ export interface Message {
   content: string;
   timestamp: number;
   sceneDescription?: string;
-  loot?: LootedItem[];
+  loot?: PlayerInventoryItem[];
   lootTaken?: boolean;
 }
 
@@ -134,6 +134,14 @@ export interface PlayerInventoryItem {
   };
 }
 
+export interface PlayerSkill {
+  id: string;
+  name: string;
+  description: string;
+  category?: 'class' | 'social' | 'utility' | 'combat'; // 'combat' pour les compétences de combat de classe
+  // Ajout potentiel : type: 'passive' | 'active', cost: number, cooldown: number, etc.
+}
+
 export interface AdventureSettings {
     world: string;
     initialSituation: string;
@@ -165,6 +173,7 @@ export interface AdventureSettings {
         armor: string | null;
         jewelry: string | null;
     };
+    playerSkills?: PlayerSkill[];
 }
 
 export interface SaveData {
