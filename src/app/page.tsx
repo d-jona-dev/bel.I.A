@@ -18,8 +18,8 @@ import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/s
 
 const PLAYER_ID = "player";
 const BASE_ATTRIBUTE_VALUE = 8;
-const INITIAL_ATTRIBUTE_POINTS_POOL = 10; // Points à distribuer en plus des valeurs de base
-const ATTRIBUTE_POINTS_PER_LEVEL = 5;
+const INITIAL_CREATION_ATTRIBUTE_POINTS = 10; // Points à distribuer à la création en plus des valeurs de base
+const ATTRIBUTE_POINTS_PER_LEVEL_GAIN = 5; // Points gagnés à chaque niveau après le premier
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
@@ -36,7 +36,7 @@ export type AdventureFormValues = {
   playerMaxMp?: number; 
   playerExpToNextLevel?: number;
   playerGold?: number;
-  playerInitialAttributePoints?: number;
+  playerInitialAttributePoints?: number; // Ce sera le *total* de points distribuables pour le niveau actuel, calculé
   playerStrength?: number;
   playerDexterity?: number;
   playerConstitution?: number;
@@ -55,10 +55,12 @@ const calculateDerivedStats = (settings: Partial<AdventureFormValues>) => {
   const playerClass = settings.playerClass || "";
   const playerLevel = settings.playerLevel || 1;
 
-  let maxHp = 10 + Math.floor((constitution - 10) / 2) * playerLevel + constitution;
+  // PV: Base + CON bonus par niveau + Modificateur de classe par niveau
+  let maxHp = 10 + (Math.floor((constitution - 10) / 2) + constitution) * playerLevel;
+
   if (playerClass.toLowerCase().includes("guerrier") || playerClass.toLowerCase().includes("barbare")) {
     maxHp += playerLevel * 2; 
-  } else if (playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier")) {
+  } else if (playerClass.toLowerCase().includes("mage") || playerClass.toLowerCase().includes("sorcier") || playerClass.toLowerCase().includes("étudiant")) {
     maxHp -= playerLevel * 1; 
   }
 
@@ -71,7 +73,7 @@ const calculateDerivedStats = (settings: Partial<AdventureFormValues>) => {
   const armorClass = 10 + Math.floor((dexterity - 10) / 2); 
 
   return {
-    playerMaxHp: Math.max(1, maxHp), 
+    playerMaxHp: Math.max(5, maxHp), // Ensure a minimum HP
     playerMaxMp: Math.max(0, maxMp),
     playerArmorClass: armorClass,
   };
@@ -85,7 +87,7 @@ export default function Home() {
     playerName: "Héros",
     playerClass: "Guerrier",
     playerLevel: 1,
-    playerInitialAttributePoints: INITIAL_ATTRIBUTE_POINTS_POOL,
+    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS, // Points de création
     playerStrength: BASE_ATTRIBUTE_VALUE,
     playerDexterity: BASE_ATTRIBUTE_VALUE,
     playerConstitution: BASE_ATTRIBUTE_VALUE,
@@ -269,7 +271,8 @@ export default function Home() {
                 newSettings.playerLevel! += 1;
                 newSettings.playerCurrentExp -= newSettings.playerExpToNextLevel!;
                 newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5); 
-                newSettings.playerInitialAttributePoints = (newSettings.playerInitialAttributePoints || 0) + ATTRIBUTE_POINTS_PER_LEVEL;
+                // playerInitialAttributePoints n'est plus directement incrémenté ici.
+                // Les points supplémentaires seront calculés par le formulaire basé sur le nouveau niveau.
                 
                 const newDerivedStats = calculateDerivedStats(newSettings); 
                 newSettings.playerMaxHp = newDerivedStats.playerMaxHp;
@@ -286,7 +289,7 @@ export default function Home() {
                         description: (
                             <div>
                                 <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
-                                <p className="mt-1 font-semibold">Vous avez gagné {ATTRIBUTE_POINTS_PER_LEVEL} points d'attributs à distribuer !</p>
+                                <p className="mt-1 font-semibold">Vous avez gagné {ATTRIBUTE_POINTS_PER_LEVEL_GAIN} points d'attributs à distribuer !</p>
                                 <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                             </div>
                         ),
@@ -1258,7 +1261,7 @@ export default function Home() {
                     }));
                  }
                  if (loadedData.saveFormatVersion < 1.9) {
-                    loadedData.adventureSettings.playerInitialAttributePoints = loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_ATTRIBUTE_POINTS_POOL;
+                    loadedData.adventureSettings.playerInitialAttributePoints = loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS;
                     loadedData.adventureSettings.playerStrength = loadedData.adventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE;
                     loadedData.adventureSettings.playerDexterity = loadedData.adventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE;
                     loadedData.adventureSettings.playerConstitution = loadedData.adventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE;
@@ -1311,6 +1314,7 @@ export default function Home() {
                 });
                 const loadedPlayerSettings = {
                     ...loadedData.adventureSettings,
+                    playerInitialAttributePoints: loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS,
                     playerStrength: loadedData.adventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE,
                     playerDexterity: loadedData.adventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE,
                     playerConstitution: loadedData.adventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE,
@@ -1331,7 +1335,6 @@ export default function Home() {
                     playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
                     playerInventory: (loadedData.adventureSettings.playerInventory || []).map(item => ({...item, generatedImageUrl: item.generatedImageUrl ?? null})),
                     playerGold: loadedData.adventureSettings.playerGold ?? 0,
-                    playerInitialAttributePoints: loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_ATTRIBUTE_POINTS_POOL,
                     playerAttackBonus: loadedData.adventureSettings.playerAttackBonus ?? 0,
                     playerDamageBonus: loadedData.adventureSettings.playerDamageBonus ?? "1",
                 };
@@ -1411,7 +1414,8 @@ export default function Home() {
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
             playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerExpToNextLevel : undefined,
             playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
-            playerInitialAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerInitialAttributePoints ?? INITIAL_ATTRIBUTE_POINTS_POOL : undefined,
+            // playerInitialAttributePoints is NOT directly taken from form; it's fixed in state, form calculates based on level
+            playerInitialAttributePoints: prevStagedSettings.playerInitialAttributePoints, // Conserve les points de création
             playerStrength: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerDexterity: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerConstitution: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
@@ -1557,7 +1561,7 @@ export default function Home() {
             newLiveSettings.playerMaxMp = undefined; newLiveSettings.playerCurrentMp = undefined;
             newLiveSettings.playerExpToNextLevel = undefined; newLiveSettings.playerCurrentExp = undefined;
             newLiveSettings.playerInventory = undefined; newLiveSettings.playerGold = undefined;
-            newLiveSettings.playerInitialAttributePoints = undefined;
+            // playerInitialAttributePoints est conservé car il s'agit des points de création.
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
             newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined; newLiveSettings.playerCharisma = undefined;
             newLiveSettings.playerArmorClass = undefined; newLiveSettings.playerAttackBonus = undefined; newLiveSettings.playerDamageBonus = undefined;
@@ -1587,6 +1591,14 @@ export default function Home() {
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
     const formCharacters: FormCharacterDefinition[] = JSON.parse(stringifiedStagedCharsForFormMemo);
     const derivedStats = calculateDerivedStats(stagedAdventureSettings);
+    
+    // Calcule le total des points distribuables pour le niveau actuel
+    const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS;
+    const levelPoints = stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1 
+                        ? (stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN 
+                        : 0;
+    const totalDistributablePoints = creationPoints + levelPoints;
+
     return {
       world: stagedAdventureSettings.world,
       initialSituation: stagedAdventureSettings.initialSituation,
@@ -1598,7 +1610,7 @@ export default function Home() {
       playerLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerLevel : undefined,
       playerExpToNextLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerExpToNextLevel : undefined,
       playerGold: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerGold : undefined,
-      playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerInitialAttributePoints ?? INITIAL_ATTRIBUTE_POINTS_POOL : undefined,
+      playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? totalDistributablePoints : undefined, // Ce sera le total affiché dans le form
       playerStrength: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerDexterity: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerConstitution: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
@@ -1699,7 +1711,7 @@ export default function Home() {
           }
           return invItem;
         });
-        return { ...prevSettings, playerInventory: newInventory };
+        return { ...prev, playerInventory: newInventory };
       });
 
       setTimeout(() => {

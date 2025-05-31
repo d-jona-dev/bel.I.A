@@ -33,7 +33,8 @@ const characterSchema = z.object({
   details: z.string().min(1, "Les détails sont requis"),
 });
 
-const BASE_ATTRIBUTE_VALUE_FORM = 8; // Doit correspondre à celle dans page.tsx
+const BASE_ATTRIBUTE_VALUE_FORM = 8; 
+const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
@@ -44,7 +45,8 @@ const adventureFormSchema = z.object({
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
-  playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs à distribuer."),
+  // playerInitialAttributePoints est le *total* de points distribuables pour le niveau actuel, il sera calculé et passé au formulaire
+  playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs totaux à distribuer pour le niveau actuel."),
   playerStrength: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerDexterity: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerConstitution: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
@@ -64,26 +66,21 @@ const adventureFormSchema = z.object({
             data.playerStrength, data.playerDexterity, data.playerConstitution,
             data.playerIntelligence, data.playerWisdom, data.playerCharisma
         ];
-        let spentPoints = 0;
+        let spentPointsFromBase = 0;
         attributes.forEach(attr => {
-            spentPoints += (attr || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM;
+            spentPointsFromBase += (attr || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM;
         });
+        
+        const totalDistributablePointsForLevel = data.playerInitialAttributePoints || 0;
 
-        if (spentPoints > (data.playerInitialAttributePoints || 0)) {
+
+        if (spentPointsFromBase > totalDistributablePointsForLevel) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: `Vous avez dépassé le nombre de points d'attributs disponibles. (Dépensés: ${spentPoints}, Disponibles: ${data.playerInitialAttributePoints || 0})`,
-                path: ["playerInitialAttributePoints"],
+                message: `Vous avez dépassé le nombre de points d'attributs disponibles. (Dépensés au-delà de la base: ${spentPointsFromBase}, Disponibles: ${totalDistributablePointsForLevel})`,
+                path: ["playerInitialAttributePoints"], // Le message d'erreur s'affiche sous ce champ
             });
         }
-        // Optionnel: Forcer la dépense de tous les points
-        // if (spentPoints !== (data.playerInitialAttributePoints || 0)) {
-        //     ctx.addIssue({
-        //         code: z.ZodIssueCode.custom,
-        //         message: `Vous devez distribuer exactement ${data.playerInitialAttributePoints || 0} points. (Actuellement: ${spentPoints})`,
-        //         path: ["playerInitialAttributePoints"],
-        //     });
-        // }
     }
 });
 
@@ -99,7 +96,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     defaultValues: initialValues,
-    mode: "onChange", // Important pour que watch et les erreurs se mettent à jour dynamiquement
+    mode: "onChange", 
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -115,7 +112,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   }, [form, onSettingsChange]);
 
   React.useEffect(() => {
-    // Compare current form values with new initialValues to avoid unnecessary resets
     const currentFormValues = form.getValues();
     if (JSON.stringify(currentFormValues) !== JSON.stringify(initialValues)) {
         form.reset(initialValues);
@@ -136,7 +132,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerName: "Héros",
         playerClass: "Étudiant Combattant",
         playerLevel: 1,
-        playerInitialAttributePoints: 10,
+        playerInitialAttributePoints: 10, // Points de création pour niveau 1
         playerStrength: 8,
         playerDexterity: 8,
         playerConstitution: 8,
@@ -145,9 +141,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerCharisma: 8,
         playerAttackBonus: 0,
         playerDamageBonus: "1d4",
-        playerMaxHp: 25, // Sera recalculé basé sur CON
-        playerMaxMp: 10, // Sera recalculé basé sur INT
-        playerArmorClass: 10, // Sera recalculé basé sur DEX
+        playerMaxHp: 25, 
+        playerMaxMp: 10, 
+        playerArmorClass: 10, 
         playerExpToNextLevel: 100,
         playerGold: 50,
     };
@@ -158,12 +154,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   };
 
   const isRpgModeEnabled = form.watch('enableRpgMode');
-
-  const watchedAttributes = form.watch([
-    "playerStrength", "playerDexterity", "playerConstitution",
-    "playerIntelligence", "playerWisdom", "playerCharisma"
-  ]);
-  const watchedInitialPoints = form.watch("playerInitialAttributePoints");
+  const watchedPlayerLevel = form.watch('playerLevel');
 
   const calculateSpentPoints = React.useCallback(() => {
     let spent = 0;
@@ -182,9 +173,14 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
   React.useEffect(() => {
     setSpentPoints(calculateSpentPoints());
-  }, [watchedAttributes, calculateSpentPoints]);
+  }, [form.watch("playerStrength"), form.watch("playerDexterity"), form.watch("playerConstitution"), form.watch("playerIntelligence"), form.watch("playerWisdom"), form.watch("playerCharisma"), calculateSpentPoints]);
 
-  const remainingPoints = (watchedInitialPoints || 0) - spentPoints;
+
+  const totalDistributablePointsForCurrentLevel = React.useMemo(() => {
+    return form.getValues("playerInitialAttributePoints") || 0;
+  }, [form.watch("playerInitialAttributePoints")]);
+
+  const remainingPoints = totalDistributablePointsForCurrentLevel - spentPoints;
 
   const handleAttributeChange = (
     fieldName: keyof AdventureFormValues,
@@ -192,21 +188,23 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   ) => {
     const numericValue = parseInt(value, 10);
     const currentAttributeValue = Number(form.getValues(fieldName)) || BASE_ATTRIBUTE_VALUE_FORM;
-    const newAttributeValue = isNaN(numericValue) ? BASE_ATTRIBUTE_VALUE_FORM : numericValue;
-
-    const diff = newAttributeValue - currentAttributeValue;
-    const newSpentPoints = spentPoints + diff;
+    let newAttributeValue = isNaN(numericValue) ? BASE_ATTRIBUTE_VALUE_FORM : numericValue;
 
     if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
-        form.setValue(fieldName, BASE_ATTRIBUTE_VALUE_FORM as any);
-    } else if (diff > 0 && newSpentPoints > (watchedInitialPoints || 0)) {
-        // Ne pas permettre de dépasser les points disponibles
-        const maxPossibleIncrease = (watchedInitialPoints || 0) - (spentPoints - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
-        const cappedValue = currentAttributeValue + Math.max(0, (watchedInitialPoints||0) - spentPoints);
-         form.setValue(fieldName, Math.min(newAttributeValue, cappedValue) as any);
-    } else {
-        form.setValue(fieldName, newAttributeValue as any);
+        newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
+    
+    const currentSpentPoints = calculateSpentPoints();
+    const diffFromCurrentValue = newAttributeValue - currentAttributeValue;
+    const projectedSpentPoints = currentSpentPoints + diffFromCurrentValue;
+
+    if (projectedSpentPoints > totalDistributablePointsForCurrentLevel) {
+        // Si on dépasse, on ajuste la nouvelle valeur pour utiliser seulement les points restants
+        const pointsOver = projectedSpentPoints - totalDistributablePointsForCurrentLevel;
+        newAttributeValue -= pointsOver;
+    }
+    
+    form.setValue(fieldName, newAttributeValue as any, { shouldValidate: true });
     setSpentPoints(calculateSpentPoints()); // Recalculer après la mise à jour
   };
 
@@ -305,7 +303,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   name="playerLevel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Niveau Initial</FormLabel>
+                      <FormLabel>Niveau Joueur</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
                       </FormControl>
@@ -323,11 +321,19 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   name="playerInitialAttributePoints"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Points d'Attributs de Départ</FormLabel>
+                      <FormLabel>Points d'Attributs Totaux (pour ce niveau)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="10" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
+                        <Input 
+                            type="number" 
+                            {...field} 
+                            value={totalDistributablePointsForCurrentLevel} 
+                            readOnly 
+                            className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"
+                        />
                       </FormControl>
-                       <FormDescription>Points à répartir en plus des valeurs de base (8).</FormDescription>
+                       <FormDescription>
+                         Total de points bonus à distribuer (niveau {watchedPlayerLevel || 1}). Base de {initialValues.playerInitialAttributePoints - ( (watchedPlayerLevel||1) > 1 ? ((watchedPlayerLevel||1)-1)*ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0 )} points de création + {(ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)} points par niveau après le Niv. 1.
+                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -406,7 +412,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       <FormControl>
                         <Input type="number" placeholder="20" {...field} value={field.value || 20} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
                       </FormControl>
-                      <FormDescription>Calculé : {initialValues.playerMaxHp} (basé sur CON et Niv.)</FormDescription>
+                      <FormDescription>Auto-calculé : {initialValues.playerMaxHp} (basé sur CON, Niv. et Classe). Peut être surchargé.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -420,7 +426,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       <FormControl>
                         <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
                       </FormControl>
-                       <FormDescription>Calculé : {initialValues.playerMaxMp} (basé sur INT et Classe). Mettre 0 si pas de magie.</FormDescription>
+                       <FormDescription>Auto-calculé : {initialValues.playerMaxMp} (basé sur INT, Niv. et Classe). Peut être surchargé. Mettre 0 si pas de magie.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -434,7 +440,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                         <FormControl>
                             <Input type="number" placeholder="10" {...field} value={field.value || 10} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
                         </FormControl>
-                         <FormDescription>Calculé : {initialValues.playerArmorClass} (basé sur DEX).</FormDescription>
+                         <FormDescription>Auto-calculé : {initialValues.playerArmorClass} (basé sur DEX). Peut être surchargé.</FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
