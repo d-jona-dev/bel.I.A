@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Suggests a player skill. For now, it suggests an initial class-based skill.
@@ -11,41 +10,23 @@
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
 
-export const SuggestPlayerSkillInputSchema = z.object({
+// Schema definitions (not exported)
+const SuggestPlayerSkillInputSchema = z.object({
   playerClass: z.string().describe("The player's character class (e.g., 'Guerrier', 'Mage', 'Voleur')."),
   playerLevel: z.number().int().min(1).describe("The player's current level."),
   currentLanguage: z.string().describe('The target language for the skill name and description (e.g., "fr", "en").'),
-  // existingSkills: z.array(z.string()).optional().describe("List of skills the player already possesses."),
-  // suggestionType: z.enum(['initial', 'level_up']).default('initial').describe("Type of suggestion: 'initial' for the first skill, 'level_up' for subsequent skills."),
 });
 export type SuggestPlayerSkillInput = z.infer<typeof SuggestPlayerSkillInputSchema>;
 
-export const SuggestedSkillSchema = z.object({
+const SuggestPlayerSkillOutputSchema = z.object({
     name: z.string().describe('The name of the suggested skill. MUST be in {{currentLanguage}}.'),
     description: z.string().describe('A brief description of what the skill does. MUST be in {{currentLanguage}}.'),
-    // category: z.enum(['class', 'social', 'utility']).optional().describe("The category of the skill. For an initial skill, it should usually be 'class'."),
 });
-export type SuggestedSkill = z.infer<typeof SuggestedSkillSchema>;
-
-
-export const SuggestPlayerSkillOutputSchema = SuggestedSkillSchema; // For now, only one skill is suggested
 export type SuggestPlayerSkillOutput = z.infer<typeof SuggestPlayerSkillOutputSchema>;
 
-
-export async function suggestPlayerSkill(input: SuggestPlayerSkillInput): Promise<SuggestPlayerSkillOutput> {
-  // For now, we only support initial skill suggestion which should be level 1.
-  // The logic for level_up suggestions and multiple categories will be more complex.
-  if (input.playerLevel !== 1) {
-    // This part of the flow will be expanded later to handle level-up skill choices.
-    // For now, we'll just return a placeholder or throw an error if used incorrectly.
-    console.warn("SuggestPlayerSkill called for level > 1, but only initial skill (level 1) is currently supported for suggestion.");
-    // Fallback to suggesting a generic skill if level > 1 for now.
-  }
-  return suggestPlayerSkillFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'suggestPlayerSkillPrompt',
+// Define the prompt locally; it will be used by the exported flow.
+const suggestPlayerSkillPrompt = ai.definePrompt({
+  name: 'suggestPlayerSkillPromptInternal', // Renamed to avoid conflict if used as flow name
   input: {schema: SuggestPlayerSkillInputSchema},
   output: {schema: SuggestPlayerSkillOutputSchema},
   prompt: `You are a game designer creating skills for a text-based RPG.
@@ -65,16 +46,26 @@ Provide only the skill name and its description.
 `,
 });
 
-const suggestPlayerSkillFlow = ai.defineFlow(
+// Export the flow function directly.
+// The name of the exported const ('suggestPlayerSkill') is now also the flow's registered name.
+export const suggestPlayerSkill = ai.defineFlow(
   {
-    name: 'suggestPlayerSkillFlow',
+    name: 'suggestPlayerSkill', // This is the name Genkit will register for this flow.
     inputSchema: SuggestPlayerSkillInputSchema,
     outputSchema: SuggestPlayerSkillOutputSchema,
   },
-  async (input) => {
-    const {output} = await prompt(input);
+  async (input: SuggestPlayerSkillInput): Promise<SuggestPlayerSkillOutput> => {
+    // Logic for handling playerLevel, if necessary, can go here.
+    // For this specific flow, the prompt is geared towards level 1.
+    if (input.playerLevel !== 1) {
+        // This console.warn is fine for server-side logs.
+        console.warn("Flow 'suggestPlayerSkill' (intended for level 1) called for level > 1. The prompt is geared for level 1 skills.");
+    }
+
+    const {output} = await suggestPlayerSkillPrompt(input); // Use the locally defined prompt
+
     if (!output?.name || !output?.description) {
-      throw new Error("AI failed to generate a skill name or description.");
+      throw new Error("AI failed to generate a skill name or description for suggestPlayerSkill flow.");
     }
     return output;
   }
