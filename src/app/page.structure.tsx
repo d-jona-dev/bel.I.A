@@ -312,6 +312,7 @@ export function PageStructure({
         </header>
         <main className="flex-1 overflow-hidden p-4">
              <AdventureDisplay
+                playerId={playerId}
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageAction}
                 suggestQuestHookAction={suggestQuestHookAction as any}
@@ -723,6 +724,7 @@ export function PageStructure({
     </>
   );
 }
+
 
 
 

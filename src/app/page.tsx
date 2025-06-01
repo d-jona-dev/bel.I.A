@@ -421,68 +421,74 @@ export default function Home() {
         }
         let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
 
-        charactersCopy = charactersCopy.map((char) => { // char is from prevChars (state before this update)
+        charactersCopy = charactersCopy.map((char) => { 
+            let currentCharacterState = { ...char }; 
             const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
 
             if (combatantUpdate) {
-                // Create a mutable copy for this character for this update cycle
-                let currentCharacterState = { ...char };
-
-                // Apply HP/MP/Status changes from combatantUpdate
                 currentCharacterState.hitPoints = combatantUpdate.newHp;
                 currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
                 currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
                 currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
-
-                console.log(`[XP PRE-CHECK for ${char.name}] From prevChars - isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
-
-                if (char.isAlly && (combatUpdates.expGained ?? 0) > 0 && char.level !== undefined) {
-                    console.log(`[XP GAIN CONDITIONS MET for ${char.name}] Gaining ${combatUpdates.expGained} EXP.`);
-
-                    currentCharacterState.currentExp = (char.currentExp ?? 0) + combatUpdates.expGained;
-
-                    if (currentCharacterState.expToNextLevel === undefined || currentCharacterState.expToNextLevel <= 0) {
-                        currentCharacterState.expToNextLevel = Math.floor(100 * Math.pow(1.5, (char.level || 1) -1));
-                        console.log(`[DEBUG] NPC EXP GAIN: Initialized expToNextLevel for ${char.name} to ${currentCharacterState.expToNextLevel}`);
-                    }
-                    console.log(`[DEBUG] NPC EXP GAIN (${char.name}): currentExp=${currentCharacterState.currentExp}, expToNextLevel=${currentCharacterState.expToNextLevel}`);
-
-                    let leveledUpThisTurn = false;
-                    while (currentCharacterState.currentExp >= currentCharacterState.expToNextLevel!) {
-                        leveledUpThisTurn = true;
-                        const prevExpToNextLvl = currentCharacterState.expToNextLevel!;
-                        currentCharacterState.level! += 1;
-                        currentCharacterState.expToNextLevel = Math.floor(prevExpToNextLvl * 1.5);
-                        currentCharacterState.currentExp -= prevExpToNextLvl;
-                        currentCharacterState.initialAttributePoints = (char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-
-                        const npcDerivedStats = calculateBaseDerivedStats(currentCharacterState);
-                        currentCharacterState.maxHitPoints = npcDerivedStats.maxHitPoints;
-                        currentCharacterState.hitPoints = currentCharacterState.maxHitPoints;
-                        if (currentCharacterState.maxManaPoints !== undefined && currentCharacterState.maxManaPoints > 0) {
-                            currentCharacterState.maxManaPoints = npcDerivedStats.maxManaPoints;
-                            currentCharacterState.manaPoints = currentCharacterState.maxManaPoints;
-                        }
-                        currentCharacterState.armorClass = npcDerivedStats.armorClass;
-                        currentCharacterState.attackBonus = npcDerivedStats.attackBonus;
-                        currentCharacterState.damageBonus = npcDerivedStats.damageBonus;
-
-                        console.log(`[NPC LEVEL UP: ${currentCharacterState.name}] New Level: ${currentCharacterState.level}. New attr points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
-                    }
-
-                    if (leveledUpThisTurn) {
-                        toastsToShow.push({
-                            title: `Montée de Niveau: ${currentCharacterState.name}!`,
-                            description: `${currentCharacterState.name} a atteint le niveau ${currentCharacterState.level} et a gagné ${ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points d'attributs ! (Modifications en attente)`,
-                            duration: 7000
-                        });
-                    }
-                } else {
-                     console.log(`[XP GAIN CONDITIONS NOT MET for ${char.name}] Details - isAlly (from prevChars): ${char.isAlly}, expGained: ${combatUpdates.expGained}, level (from prevChars): ${char.level}`);
-                }
-                return currentCharacterState;
             }
-            return char;
+            
+            console.log(`[XP PRE-CHECK for ${char.name}] From prevChars - isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
+            
+            if (char.isAlly && (combatUpdates.expGained ?? 0) > 0) {
+                if (currentCharacterState.level === undefined) {
+                    currentCharacterState.level = 1;
+                    console.log(`[XP GAIN INIT for ${char.name}] Initialized level to 1.`);
+                }
+                if (currentCharacterState.currentExp === undefined) {
+                    currentCharacterState.currentExp = 0;
+                    console.log(`[XP GAIN INIT for ${char.name}] Initialized currentExp to 0.`);
+                }
+                if (currentCharacterState.expToNextLevel === undefined || currentCharacterState.expToNextLevel <= 0) {
+                    currentCharacterState.expToNextLevel = Math.floor(100 * Math.pow(1.5, (currentCharacterState.level || 1) - 1));
+                    console.log(`[XP GAIN INIT for ${char.name}] Initialized expToNextLevel to ${currentCharacterState.expToNextLevel}.`);
+                }
+                 if (currentCharacterState.initialAttributePoints === undefined && currentRpgMode) {
+                    currentCharacterState.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
+                    console.log(`[XP GAIN INIT for ${char.name}] Initialized initialAttributePoints.`);
+                }
+
+                console.log(`[XP GAIN LOGIC for ${char.name}] Player EXP Gained: ${combatUpdates.expGained}. Ally Level: ${currentCharacterState.level}, Current Ally EXP: ${currentCharacterState.currentExp}, Ally EXP to Next: ${currentCharacterState.expToNextLevel}`);
+                currentCharacterState.currentExp += combatUpdates.expGained;
+
+                let leveledUpThisTurn = false;
+                while (currentCharacterState.currentExp >= currentCharacterState.expToNextLevel!) {
+                    leveledUpThisTurn = true;
+                    const prevExpToNextLvl = currentCharacterState.expToNextLevel!;
+                    currentCharacterState.level! += 1;
+                    currentCharacterState.expToNextLevel = Math.floor(prevExpToNextLvl * 1.5);
+                    currentCharacterState.currentExp -= prevExpToNextLvl;
+                    currentCharacterState.initialAttributePoints = (currentCharacterState.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+
+                    const npcDerivedStats = calculateBaseDerivedStats(currentCharacterState);
+                    currentCharacterState.maxHitPoints = npcDerivedStats.maxHitPoints;
+                    currentCharacterState.hitPoints = currentCharacterState.maxHitPoints;
+                    if (currentCharacterState.maxManaPoints !== undefined && currentCharacterState.maxManaPoints > 0) {
+                        currentCharacterState.maxManaPoints = npcDerivedStats.maxManaPoints;
+                        currentCharacterState.manaPoints = currentCharacterState.maxManaPoints;
+                    }
+                    currentCharacterState.armorClass = npcDerivedStats.armorClass;
+                    currentCharacterState.attackBonus = npcDerivedStats.attackBonus;
+                    currentCharacterState.damageBonus = npcDerivedStats.damageBonus;
+
+                    console.log(`[NPC LEVEL UP: ${currentCharacterState.name}] New Level: ${currentCharacterState.level}. New attr points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
+                }
+
+                if (leveledUpThisTurn) {
+                    toastsToShow.push({
+                        title: `Montée de Niveau: ${currentCharacterState.name}!`,
+                        description: `${currentCharacterState.name} a atteint le niveau ${currentCharacterState.level} et a gagné ${ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points d'attributs ! (Modifications en attente)`,
+                        duration: 7000
+                    });
+                }
+            } else {
+                 console.log(`[XP GAIN CONDITIONS NOT MET for ${char.name}] Details - isAlly (from prevChars): ${char.isAlly}, playerExpGained: ${combatUpdates.expGained}`);
+            }
+            return currentCharacterState;
         });
         return charactersCopy;
     });
@@ -562,7 +568,7 @@ export default function Home() {
          setTimeout(() => { toast({ title: "Combat Terminé!"}); }, 0);
     }
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings.rpgMode, characters]); // characters dependency might be important if we want to ensure it has the latest isAlly status for the console logs
+  }, [toast, adventureSettings.rpgMode]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -1557,8 +1563,7 @@ export default function Home() {
            return prev.map(c => {
                if (c.id === updatedCharacter.id) {
                    let charToUpdate = {...updatedCharacter};
-                   // If character is being made an ally AND RPG mode is on, ensure progression stats are initialized
-                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && stagedAdventureSettings.rpgMode) { // check !c.isAlly to run only once when toggled to true, or if level was undefined
+                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && stagedAdventureSettings.rpgMode) { 
                        if (charToUpdate.level === undefined) {
                            console.log(`[DEBUG] Initializing level for new ally ${charToUpdate.name}`);
                            charToUpdate.level = 1;
@@ -1575,7 +1580,6 @@ export default function Home() {
                            console.log(`[DEBUG] Initializing initialAttributePoints for new ally ${charToUpdate.name}`);
                            charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
                        }
-                       // Initialize base attributes if they are missing
                        const attributesToInit: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
                        attributesToInit.forEach(attr => {
                            if (charToUpdate[attr] === undefined) {
@@ -1583,7 +1587,6 @@ export default function Home() {
                                (charToUpdate[attr] as any) = BASE_ATTRIBUTE_VALUE;
                            }
                        });
-                       // Recalculate derived stats if they were not set or might change due to new level/attributes
                        const derived = calculateBaseDerivedStats(charToUpdate);
                        charToUpdate.maxHitPoints = charToUpdate.maxHitPoints ?? derived.maxHitPoints;
                        charToUpdate.hitPoints = charToUpdate.hitPoints ?? charToUpdate.maxHitPoints;

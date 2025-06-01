@@ -43,6 +43,7 @@ import { Separator } from "@/components/ui/separator";
 
 
 interface AdventureDisplayProps {
+    playerId: string; // Added playerId
     generateAdventureAction: (userActionText: string) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
@@ -71,6 +72,7 @@ interface AdventureDisplayProps {
 
 
 export function AdventureDisplay({
+    playerId, // Destructure playerId
     generateAdventureAction,
     generateSceneImageAction,
     suggestQuestHookAction,
@@ -261,13 +263,13 @@ export function AdventureDisplay({
 
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
-  const playerCombatant = activeCombat?.combatants.find(c => c.characterId === 'player');
+  const playerCombatant = activeCombat?.combatants.find(c => c.characterId === playerId);
 
-  const renderCombatantCard = (combatant: typeof activeCombat.combatants[0], isPlayer: boolean = false) => {
-    const charDetails = isPlayer ? null : characters.find(c => c.id === combatant.characterId);
-    const name = isPlayer ? (adventureSettings.playerName || "Joueur") : combatant.name;
-    const charClass = isPlayer ? adventureSettings.playerClass : charDetails?.characterClass;
-    const level = isPlayer ? adventureSettings.playerLevel : charDetails?.level;
+  const renderCombatantCard = (combatant: typeof activeCombat.combatants[0], isPlayerCard: boolean = false) => {
+    const charDetails = isPlayerCard ? null : characters.find(c => c.id === combatant.characterId);
+    const name = isPlayerCard ? (adventureSettings.playerName || "Joueur") : combatant.name;
+    const charClass = isPlayerCard ? adventureSettings.playerClass : charDetails?.characterClass;
+    const level = isPlayerCard ? adventureSettings.playerLevel : charDetails?.level;
 
     return (
         <Card key={combatant.characterId} className="bg-muted/50 shadow-sm">
@@ -818,14 +820,14 @@ export function AdventureDisplay({
 
                  {adventureSettings.rpgMode && activeCombat?.isActive && (
                     <div className="space-y-2">
-                        {activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== 'player' && !c.isDefeated).length > 0 && (
+                        {activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated).length > 0 && (
                             <Card className="shadow-md rounded-lg">
                                 <CardHeader className="p-3 pb-1">
                                     <CardTitle className="text-md">Alliés</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-3 pt-1 space-y-2 max-h-40 overflow-y-auto">
                                     {activeCombat.combatants
-                                        .filter(c => c.team === 'player' && c.characterId !== 'player' && !c.isDefeated)
+                                        .filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated)
                                         .map(ally => renderCombatantCard(ally))}
                                 </CardContent>
                             </Card>
@@ -850,3 +852,4 @@ export function AdventureDisplay({
     </div>
   );
 }
+
