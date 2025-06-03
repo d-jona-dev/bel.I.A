@@ -22,7 +22,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
 import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant } from "@/types";
@@ -45,7 +45,7 @@ import { Separator } from "@/components/ui/separator";
 interface AdventureDisplayProps {
     playerId: string;
     generateAdventureAction: (userActionText: string) => Promise<void>;
-    generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+    generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>; // Updated prop type
     suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
     adventureSettings: AdventureSettings;
     characters: Character[];
@@ -163,9 +163,9 @@ export function AdventureDisplay({
 
     try {
         await generateAdventureAction(action);
-    } catch (error) {
+    } catch (error) { // This catch is for truly unexpected errors if generateAdventureAction itself throws
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
-         toast({ title: "Erreur de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -209,6 +209,10 @@ export function AdventureDisplay({
 
     try {
         const result = await generateSceneImageAction({ sceneDescription: descriptionForImage });
+        if (result.error) { // Error already toasted by generateSceneImageAction in page.tsx
+            setImageUrl(null);
+            return;
+        }
         setImageUrl(result.imageUrl);
         React.startTransition(() => {
             toast({
@@ -216,11 +220,11 @@ export function AdventureDisplay({
                 description: "L'image de la scène a été générée avec succès.",
             });
         });
-    } catch (error) {
-        console.error("Error generating scene image:", error);
+    } catch (error) { // Catch truly unexpected errors if generateSceneImageAction itself throws
+        console.error("Critical error generating scene image:", error);
         React.startTransition(() => {
             toast({
-                title: "Erreur de Génération d'Image",
+                title: "Erreur Critique de Génération d'Image",
                 description: `Impossible de générer l'image de la scène: ${error instanceof Error ? error.message : String(error)}.`,
                 variant: "destructive",
             });
@@ -823,16 +827,17 @@ export function AdventureDisplay({
                 </Card>
 
                 {/* Combat Status Display */}
-                {adventureSettings.rpgMode && activeCombat?.isActive && (
-                    <div className="space-y-0"> {/* Remove outer card and direct loop */}
+                 {adventureSettings.rpgMode && activeCombat?.isActive && (
+                    <div className="space-y-0">
                         <PlayerStatusCard />
                         {activeCombat.combatants
-                            .filter(c => c.characterId !== playerId && !c.isDefeated && c.team === 'player')
+                            .filter(c => c.characterId !== playerId && c.team === 'player' && !c.isDefeated)
                             .map(ally => <NpcCombatantCard key={`ally-${ally.characterId}`} combatant={ally} />)}
+                        
                         {activeCombat.combatants
                             .filter(c => c.team === 'enemy' && !c.isDefeated)
                             .map(enemy => <NpcCombatantCard key={`enemy-${enemy.characterId}`} combatant={enemy} />)}
-                         {/* Display defeated combatants with less emphasis */}
+                        
                          {activeCombat.combatants.filter(c => c.isDefeated).length > 0 && (
                             <>
                                 <Separator className="my-2" />

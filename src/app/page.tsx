@@ -7,9 +7,9 @@ import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, Pla
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
@@ -436,10 +436,10 @@ export default function Home() {
                 currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
                 currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
             }
-             console.log(`[XP PRE-CHECK for ${char.name}] isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
+             console.log(`[LOG_PAGE_TSX] [XP PRE-CHECK for ${char.name}] isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
 
             if (char.isAlly && (combatUpdates.expGained ?? 0) > 0 && char.level !== undefined) {
-                 console.log(`[XP GAIN EVAL for ${char.name}] Conditions met. Current EXP: ${char.currentExp}, To Next: ${char.expToNextLevel}`);
+                 console.log(`[LOG_PAGE_TSX] [XP GAIN EVAL for ${char.name}] Conditions met. Current EXP: ${char.currentExp}, To Next: ${char.expToNextLevel}`);
                 if (currentCharacterState.level === undefined) currentCharacterState.level = 1;
                 if (currentCharacterState.currentExp === undefined) currentCharacterState.currentExp = 0;
                 if (currentCharacterState.expToNextLevel === undefined || currentCharacterState.expToNextLevel <= 0) {
@@ -450,7 +450,7 @@ export default function Home() {
                 }
 
                 currentCharacterState.currentExp += combatUpdates.expGained;
-                console.log(`[XP GAIN for ${char.name}] Gained ${combatUpdates.expGained}. New EXP: ${currentCharacterState.currentExp}/${currentCharacterState.expToNextLevel}`);
+                console.log(`[LOG_PAGE_TSX] [XP GAIN for ${char.name}] Gained ${combatUpdates.expGained}. New EXP: ${currentCharacterState.currentExp}/${currentCharacterState.expToNextLevel}`);
 
                 let leveledUpThisTurn = false;
                 while (currentCharacterState.currentExp >= currentCharacterState.expToNextLevel!) {
@@ -475,7 +475,7 @@ export default function Home() {
                     currentCharacterState.armorClass = npcDerivedStats.armorClass;
                     currentCharacterState.attackBonus = npcDerivedStats.attackBonus;
                     currentCharacterState.damageBonus = npcDerivedStats.damageBonus;
-                    console.log(`[NPC LEVEL UP: ${currentCharacterState.name}] New Lvl: ${currentCharacterState.level}. New Attr Points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
+                    console.log(`[LOG_PAGE_TSX] [NPC LEVEL UP: ${currentCharacterState.name}] New Lvl: ${currentCharacterState.level}. New Attr Points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
                 }
                 if (leveledUpThisTurn) {
                     toastsToShow.push({
@@ -552,43 +552,40 @@ export default function Home() {
     
     if (currentRpgMode) {
         if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
-            const newCombatantsList: Combatant[] = [];
-            const latestPlayerState = adventureSettingsRef.current; // Get latest player settings
-
-            const playerCombatantDataForNextTurn = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID) || 
-                                       activeCombat?.combatants.find(c => c.characterId === PLAYER_ID); // Fallback
-
+            const combatantsForNextTurnMap = new Map<string, Combatant>();
+            const latestPlayerState = adventureSettingsRef.current; // État le plus récent du joueur
+            const playerCombatDataFromAI = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
+    
             const playerForNextTurn: Combatant = {
                 characterId: PLAYER_ID,
                 name: latestPlayerState.playerName || "Player",
-                currentHp: playerCombatantDataForNextTurn?.newHp ?? latestPlayerState.playerCurrentHp!,
+                currentHp: playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!,
                 maxHp: latestPlayerState.playerMaxHp!,
-                currentMp: playerCombatantDataForNextTurn?.newMp ?? latestPlayerState.playerCurrentMp!,
+                currentMp: playerCombatDataFromAI?.newMp ?? latestPlayerState.playerCurrentMp!,
                 maxMp: latestPlayerState.playerMaxMp!,
                 team: 'player',
-                isDefeated: (playerCombatantDataForNextTurn?.newHp ?? latestPlayerState.playerCurrentHp!) <= 0,
-                statusEffects: playerCombatantDataForNextTurn?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
+                isDefeated: (playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!) <= 0,
+                statusEffects: playerCombatDataFromAI?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
             };
-            newCombatantsList.push(playerForNextTurn);
-
+            combatantsForNextTurnMap.set(PLAYER_ID, playerForNextTurn);
+    
             combatUpdates.nextActiveCombatState.combatants.forEach(aiCombatant => {
-                if (aiCombatant.characterId !== PLAYER_ID) {
-                    if (!newCombatantsList.find(c => c.characterId === aiCombatant.characterId)) {
-                        newCombatantsList.push(aiCombatant);
-                    }
+                if (aiCombatant.characterId !== PLAYER_ID) { 
+                    combatantsForNextTurnMap.set(aiCombatant.characterId, aiCombatant);
                 }
             });
-
+            
+            const newCombatantsList = Array.from(combatantsForNextTurnMap.values());
+            console.log('[LOG_PAGE_TSX] Combatants from AI for next turn (handleCombatUpdates):', JSON.stringify(combatUpdates.nextActiveCombatState.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+            console.log('[LOG_PAGE_TSX] Constructed combatants list for setActiveCombat (handleCombatUpdates):', JSON.stringify(newCombatantsList.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+    
             setActiveCombat({
                 ...combatUpdates.nextActiveCombatState,
-                combatants: newCombatantsList
+                combatants: newCombatantsList,
             });
-
+    
         } else if (combatUpdates.combatEnded) {
             setActiveCombat(undefined);
-             // Ensure toast is shown only once per combat end.
-             // This requires a bit more state if handleCombatUpdates could be called multiple times for one end event.
-             // For now, a simple timeout.
             setTimeout(() => { toast({ title: "Combat Terminé!"}); }, 0);
         }
     }
@@ -817,9 +814,11 @@ export default function Home() {
     const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettingsRef.current)) as AdventureSettings;
     const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
 
-    let currentActiveCombatState = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) as ActiveCombat : undefined;
+    let currentActiveCombatState: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
     if (currentTurnSettings.rpgMode) {
+        const combatantsForAIMap = new Map<string, Combatant>();
+
         const playerCombatant: Combatant = {
             characterId: PLAYER_ID,
             name: currentTurnSettings.playerName || "Player",
@@ -831,23 +830,19 @@ export default function Home() {
             isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0,
             statusEffects: currentActiveCombatState?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
         };
-
-        const combatantsForAIMap = new Map<string, Combatant>();
-        combatantsForAIMap.set(PLAYER_ID, playerCombatant); // Player is always first
+        combatantsForAIMap.set(PLAYER_ID, playerCombatant);
 
         if (currentActiveCombatState?.isActive) {
             currentActiveCombatState.combatants.forEach(c => {
-                if (c.characterId === PLAYER_ID) { // Update player if already in list
-                    combatantsForAIMap.set(PLAYER_ID, playerCombatant);
-                } else if (!combatantsForAIMap.has(c.characterId)){ // Add others if not player
+                if (c.characterId !== PLAYER_ID) { // Only add/update non-player characters from existing combat state
                     combatantsForAIMap.set(c.characterId, c);
                 }
             });
         }
         
-        characters.forEach(char => { // Use live characters state
+        characters.forEach(char => { 
             if (char.isAlly && char.hitPoints && char.hitPoints > 0 && char.level && char.characterClass) {
-                if (!combatantsForAIMap.has(char.id)) { // Add ally if not already in map (e.g. new combat)
+                if (!combatantsForAIMap.has(char.id)) { 
                      const allyCombatant: Combatant = {
                         characterId: char.id, name: char.name,
                         currentHp: char.hitPoints, maxHp: char.maxHitPoints!,
@@ -859,9 +854,12 @@ export default function Home() {
             }
         });
         
+        const finalCombatantsForAI = Array.from(combatantsForAIMap.values());
+        console.log('[LOG_PAGE_TSX] Combatants sent to AI (callGenerateAdventure):', JSON.stringify(finalCombatantsForAI.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+
         currentActiveCombatState = {
             isActive: currentActiveCombatState?.isActive ?? false,
-            combatants: Array.from(combatantsForAIMap.values()),
+            combatants: finalCombatantsForAI,
             environmentDescription: currentActiveCombatState?.environmentDescription || "Champ de bataille indéfini",
             turnLog: currentActiveCombatState?.turnLog || [],
             playerAttemptedDeescalation: currentActiveCombatState?.playerAttemptedDeescalation || false,
@@ -872,7 +870,7 @@ export default function Home() {
     const input: GenerateAdventureInput = {
         world: currentTurnSettings.world,
         initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
-        characters: characters, // Use live characters state
+        characters: characters, 
         userAction: userActionText,
         currentLanguage: currentLanguage,
         playerName: currentTurnSettings.playerName || "Player",
@@ -904,7 +902,14 @@ export default function Home() {
     };
 
     try {
-        const result = await generateAdventure(input);
+        const result: GenerateAdventureFlowOutput = await generateAdventure(input);
+        if (result.error) {
+            setTimeout(() => {
+                toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
+            },0);
+            return;
+        }
+
         React.startTransition(() => {
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
@@ -947,17 +952,11 @@ export default function Home() {
                 }
             }
         });
-    } catch (error) {
+    } catch (error) { // Catch truly unexpected errors not handled by the flow's return type
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Error in callGenerateAdventure: ", error);
-        let toastDescription = `L'IA n'a pas pu générer de réponse: ${errorMessage}`;
-        if (errorMessage.includes("503 Service Unavailable") || errorMessage.toLowerCase().includes("model is overloaded")) {
-            toastDescription = "Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.";
-        } else if (errorMessage.toLowerCase().includes("api key not valid")) {
-            toastDescription = "La clé API configurée pour Google AI n'est pas valide. Veuillez vérifier vos paramètres.";
-        }
+        console.error("Critical Error in callGenerateAdventure: ", error);
         setTimeout(() => {
-           toast({ title: "Erreur de l'IA", description: toastDescription, variant: "destructive" });
+           toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
         },0);
     } finally {
          React.startTransition(() => {
@@ -1014,8 +1013,9 @@ export default function Home() {
                         if (match && match[1]) mpChange = parseInt(match[1], 10);
                     }
 
-                    if (!activeCombat?.isActive) {
-                        if (hpChange > 0 && newSettings.playerCurrentHp !== undefined && newSettings.playerMaxHp !== undefined) {
+                    // Apply HP/MP changes directly if in combat, for immediate feedback before AI call
+                    if (activeCombat?.isActive) {
+                         if (hpChange > 0 && newSettings.playerCurrentHp !== undefined && newSettings.playerMaxHp !== undefined) {
                             newSettings.playerCurrentHp = Math.min(newSettings.playerMaxHp, (newSettings.playerCurrentHp || 0) + hpChange);
                         }
                         if (mpChange > 0 && newSettings.playerCurrentMp !== undefined && newSettings.playerMaxMp !== undefined && newSettings.playerMaxMp > 0) {
@@ -1060,17 +1060,6 @@ export default function Home() {
                  setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
              }
             handleNarrativeUpdate(narrativeAction, 'user');
-
-            const settingsForAICall = JSON.parse(JSON.stringify(adventureSettingsRef.current));
-
-            if (action === 'use' && !activeCombat?.isActive) {
-                if (hpChange > 0 && settingsForAICall.playerCurrentHp !== undefined) {
-                    settingsForAICall.playerCurrentHp = Math.min(settingsForAICall.playerMaxHp || 0, (settingsForAICall.playerCurrentHp || 0) + hpChange);
-                }
-                if (mpChange > 0 && settingsForAICall.playerCurrentMp !== undefined && (settingsForAICall.playerMaxMp || 0) > 0) {
-                    settingsForAICall.playerCurrentMp = Math.min(settingsForAICall.playerMaxMp || 0, (settingsForAICall.playerCurrentMp || 0) + mpChange);
-                }
-            }
             callGenerateAdventure(narrativeAction);
         }
     });
@@ -1418,9 +1407,11 @@ export default function Home() {
 
         const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettingsRef.current)) as AdventureSettings;
         const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
-        let currentActiveCombatRegen = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) as ActiveCombat : undefined;
+        
+        let currentActiveCombatRegen: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
         if (currentTurnSettings.rpgMode && currentActiveCombatRegen?.isActive) {
+            const combatantsForAIRegenMap = new Map<string, Combatant>();
             const playerCombatantRegen: Combatant = {
                 characterId: PLAYER_ID, name: currentTurnSettings.playerName || "Player",
                 currentHp: currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp,
@@ -1430,19 +1421,15 @@ export default function Home() {
                 team: 'player', isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0, 
                 statusEffects: currentActiveCombatRegen?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
             };
-            
-            const combatantsForAIRegenMap = new Map<string, Combatant>();
             combatantsForAIRegenMap.set(PLAYER_ID, playerCombatantRegen);
-
+            
             currentActiveCombatRegen.combatants.forEach(c => {
-                if (c.characterId === PLAYER_ID) {
-                     combatantsForAIRegenMap.set(PLAYER_ID, playerCombatantRegen);
-                } else if (!combatantsForAIRegenMap.has(c.characterId)) {
+                if (c.characterId !== PLAYER_ID) {
                     combatantsForAIRegenMap.set(c.characterId, c);
                 }
             });
             
-            characters.forEach(char => { // Use live characters
+            characters.forEach(char => { 
                 if (char.isAlly && char.hitPoints && char.hitPoints > 0 && char.level && char.characterClass) {
                     if (!combatantsForAIRegenMap.has(char.id)) {
                         const allyCombatantRegen: Combatant = {
@@ -1456,6 +1443,7 @@ export default function Home() {
                 }
             });
             currentActiveCombatRegen.combatants = Array.from(combatantsForAIRegenMap.values());
+            console.log('[LOG_PAGE_TSX] Combatants sent to AI (handleRegenerateLastResponse):', JSON.stringify(currentActiveCombatRegen.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
         }
 
 
@@ -1463,7 +1451,7 @@ export default function Home() {
              const input: GenerateAdventureInput = {
                  world: currentTurnSettings.world,
                  initialSituation: contextMessages.map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'),
-                 characters: characters, // Use live characters
+                 characters: characters, 
                  userAction: lastUserAction,
                  currentLanguage: currentLanguage,
                  playerName: currentTurnSettings.playerName || "Player",
@@ -1494,7 +1482,14 @@ export default function Home() {
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
              };
 
-             const result = await generateAdventure(input);
+             const result: GenerateAdventureFlowOutput = await generateAdventure(input);
+
+             if (result.error) {
+                setTimeout(() => {
+                    toast({ title: "Erreur de Régénération IA", description: result.error, variant: "destructive"});
+                },0);
+                return;
+             }
 
             React.startTransition(() => {
                 setNarrativeMessages(prev => {
@@ -1554,14 +1549,11 @@ export default function Home() {
                 }
                 setTimeout(() => {toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });},0);
             });
-         } catch (error) {
-             console.error("Error regenerating adventure:", error);
+         } catch (error) { // Catch truly unexpected errors
+             console.error("Critical Error regenerating adventure:", error);
              let toastDescription = `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`;
-             if (error instanceof Error && (error.message.includes("503") || error.message.toLowerCase().includes("overloaded"))) {
-                 toastDescription = "Le modèle d'IA est surchargé. Veuillez réessayer plus tard.";
-             }
               setTimeout(() => {
-                toast({ title: "Erreur de Régénération", description: toastDescription, variant: "destructive"});
+                toast({ title: "Erreur Critique de Régénération", description: toastDescription, variant: "destructive"});
               },0);
          } finally {
              React.startTransition(() => {
@@ -2317,9 +2309,17 @@ export default function Home() {
   }, [narrativeMessages, characterNamesForQuestHook, worldForQuestHook, currentLanguage, toast, setIsSuggestingQuest]);
 
   const generateSceneImageAction = React.useCallback(
-    async (input: GenerateSceneImageInput): Promise<GenerateSceneImageOutput> => {
-        return generateSceneImage(input);
-    }, []);
+    async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
+        const result = await generateSceneImage(input);
+        if (result.error) {
+            setTimeout(() => {
+                toast({ title: "Erreur de Génération d'Image IA", description: result.error, variant: "destructive" });
+            }, 0);
+            // Return a structure that matches GenerateSceneImageFlowOutput but indicates error
+            return { imageUrl: "", error: result.error };
+        }
+        return result;
+    }, [toast]);
 
   const handleGenerateItemImage = React.useCallback(async (item: PlayerInventoryItem) => {
     if (isGeneratingItemImage) return;
@@ -2348,6 +2348,9 @@ export default function Home() {
 
     try {
       const result = await generateSceneImageAction({ sceneDescription: promptDescription });
+      if (result.error) { // Error already toasted by generateSceneImageAction
+        return;
+      }
       console.log(`Image générée pour ${item.name}:`, result.imageUrl);
 
       setAdventureSettings(prevSettings => {
@@ -2374,11 +2377,11 @@ export default function Home() {
           });
       },0);
 
-    } catch (error) {
-      console.error(`Error generating image for ${item.name}:`, error);
+    } catch (error) { // Catch unexpected errors from the call itself, if any
+      console.error(`Critical error generating image for ${item.name}:`, error);
       setTimeout(() => {
           toast({
-            title: "Erreur de Génération d'Image",
+            title: "Erreur Critique de Génération d'Image",
             description: `Impossible de générer une image pour ${item.name}. ${error instanceof Error ? error.message : ''}`,
             variant: "destructive",
           });

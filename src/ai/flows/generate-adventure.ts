@@ -249,8 +249,24 @@ const GenerateAdventureOutputSchema = z.object({
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
+// Modified return type for the flow and its wrapper
+export type GenerateAdventureFlowOutput = GenerateAdventureOutput & { error?: string };
 
-export async function generateAdventure(input: GenerateAdventureInput): Promise<GenerateAdventureOutput> {
+const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
+    narrative: errorMsg ? "" : "An error occurred, narrative could not be generated.",
+    sceneDescriptionForImage: undefined,
+    newCharacters: [],
+    characterUpdates: [],
+    affinityUpdates: [],
+    relationUpdates: [],
+    combatUpdates: undefined,
+    itemsObtained: [],
+    currencyGained: 0,
+    error: errorMsg,
+});
+
+
+export async function generateAdventure(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
     const processedCharacters: CharacterWithContextSummary[] = input.characters.map(char => {
         const history = char.history || [];
         const lastThreeEntries = history.slice(-3);
@@ -530,14 +546,14 @@ Narrative Continuation (in {{currentLanguage}}):
 
 const generateAdventureFlow = ai.defineFlow<
   typeof GenerateAdventureInputSchema,
-  typeof GenerateAdventureOutputSchema
+  typeof GenerateAdventureOutputSchema // This is the schema for the AI, not the final return type of the function
 >(
   {
     name: 'generateAdventureFlow',
     inputSchema: GenerateAdventureInputSchema,
     outputSchema: GenerateAdventureOutputSchema,
   },
-  async input => {
+  async (input): Promise<GenerateAdventureFlowOutput> => { // Explicitly type the Promise return
     console.log("[LOG_PAGE_TSX] Generating adventure with input:", JSON.stringify(input, null, 2));
 
     if (input.activeCombat && input.activeCombat.combatants) {
@@ -554,40 +570,42 @@ const generateAdventureFlow = ai.defineFlow<
       };
     }
 
-    let output: GenerateAdventureOutput | null = null;
+    let aiModelOutput: GenerateAdventureOutput | null = null;
     try {
         const result = await prompt(input);
-        output = result.output;
+        aiModelOutput = result.output;
+
+        if (!aiModelOutput?.narrative) {
+            console.warn("[LOG_PAGE_TSX] AI Output was null or lacked narrative for generateAdventureFlow. Full AI response:", JSON.stringify(result, null, 2));
+            return getDefaultOutput("L'IA n'a pas réussi à générer une structure de réponse valide.");
+        }
     } catch (e: any) {
         console.error("Error during AI prompt call in generateAdventureFlow:", e);
         const errorMessage = e.message || String(e);
         if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
-            throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
+            return getDefaultOutput("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
         }
-        throw new Error(`Une erreur est survenue lors de la génération de l'aventure par l'IA: ${errorMessage}`);
+        return getDefaultOutput(`Une erreur est survenue lors de la génération de l'aventure par l'IA: ${errorMessage}`);
     }
 
 
-    if (!output?.narrative) {
-        throw new Error("AI failed to generate a narrative.");
+    console.log("[LOG_PAGE_TSX] AI Output (from model):", JSON.stringify(aiModelOutput, null, 2));
+    if (aiModelOutput.combatUpdates) {
+        console.log("[LOG_PAGE_TSX] Combat Updates from AI:", JSON.stringify(aiModelOutput.combatUpdates, null, 2));
+        if (aiModelOutput.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
     }
-    console.log("[LOG_PAGE_TSX] AI Output:", JSON.stringify(output, null, 2));
-    if (output.combatUpdates) {
-        console.log("[LOG_PAGE_TSX] Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
-        if (output.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
-    }
-     if (output.itemsObtained === undefined) {
+     if (aiModelOutput.itemsObtained === undefined) {
         console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-        output.itemsObtained = [];
+        aiModelOutput.itemsObtained = [];
      }
-     if (output.currencyGained === undefined && input.rpgModeActive) {
+     if (aiModelOutput.currencyGained === undefined && input.rpgModeActive) {
         console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
-        output.currencyGained = 0;
+        aiModelOutput.currencyGained = 0;
      }
 
 
-    if (output.newCharacters) {
-        output.newCharacters.forEach(nc => {
+    if (aiModelOutput.newCharacters) {
+        aiModelOutput.newCharacters.forEach(nc => {
             if (nc.details) console.log(`[LOG_PAGE_TSX] New char ${nc.name} details language check (should be ${input.currentLanguage}): ${nc.details.substring(0,20)}`);
             if (nc.initialHistoryEntry) console.log(`[LOG_PAGE_TSX] New char ${nc.name} history language check (should be ${input.currentLanguage}): ${nc.initialHistoryEntry.substring(0,20)}`);
             if (input.relationsModeActive && nc.initialRelations) {
@@ -597,27 +615,27 @@ const generateAdventureFlow = ai.defineFlow<
             }
         });
     }
-    if (output.characterUpdates) {
-        output.characterUpdates.forEach(upd => {
+    if (aiModelOutput.characterUpdates) {
+        aiModelOutput.characterUpdates.forEach(upd => {
             console.log(`[LOG_PAGE_TSX] History update for ${upd.characterName} language check (should be ${input.currentLanguage}): ${upd.historyEntry.substring(0,20)}`);
         });
     }
-    if (input.relationsModeActive && output.relationUpdates) {
-        output.relationUpdates.forEach(upd => {
+    if (input.relationsModeActive && aiModelOutput.relationUpdates) {
+        aiModelOutput.relationUpdates.forEach(upd => {
              console.log(`[LOG_PAGE_TSX] Relation update for ${upd.characterName} towards ${upd.targetName} language check (should be ${input.currentLanguage}): ${upd.newRelation.substring(0,20)}`);
         });
     }
-    if (input.rpgModeActive && output.combatUpdates) {
-        console.log("[LOG_PAGE_TSX] Combat Turn Narration (from output.combatUpdates.turnNarration):", output.combatUpdates.turnNarration.substring(0, 100));
-        if(output.combatUpdates.nextActiveCombatState) {
-            console.log("[LOG_PAGE_TSX] Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
-            output.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
+    if (input.rpgModeActive && aiModelOutput.combatUpdates) {
+        console.log("[LOG_PAGE_TSX] Combat Turn Narration (from output.combatUpdates.turnNarration):", aiModelOutput.combatUpdates.turnNarration.substring(0, 100));
+        if(aiModelOutput.combatUpdates.nextActiveCombatState) {
+            console.log("[LOG_PAGE_TSX] Next combat state active:", aiModelOutput.combatUpdates.nextActiveCombatState.isActive);
+            aiModelOutput.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
                  console.log(`[LOG_PAGE_TSX] Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
             });
         }
     }
-    if (output.itemsObtained) {
-        output.itemsObtained.forEach(item => {
+    if (aiModelOutput.itemsObtained) {
+        aiModelOutput.itemsObtained.forEach(item => {
             if (item.description) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
             if (item.effect) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
             if (item.itemType) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
@@ -626,6 +644,7 @@ const generateAdventureFlow = ai.defineFlow<
         });
     }
 
-    return output;
+    return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
+

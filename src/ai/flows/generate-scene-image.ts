@@ -27,7 +27,16 @@ const GenerateSceneImageOutputSchema = z.object({
 });
 export type GenerateSceneImageOutput = z.infer<typeof GenerateSceneImageOutputSchema>;
 
-export async function generateSceneImage(input: GenerateSceneImageInput): Promise<GenerateSceneImageOutput>
+// Modified return type for the flow and its wrapper
+export type GenerateSceneImageFlowOutput = GenerateSceneImageOutput & { error?: string };
+
+const getDefaultOutput = (errorMsg?: string): GenerateSceneImageFlowOutput => ({
+    imageUrl: "", // Default empty or null image URL
+    error: errorMsg,
+});
+
+
+export async function generateSceneImage(input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput>
 {
   return generateSceneImageFlow(input);
 }
@@ -37,14 +46,14 @@ export async function generateSceneImage(input: GenerateSceneImageInput): Promis
 
 const generateSceneImageFlow = ai.defineFlow<
   typeof GenerateSceneImageInputSchema,
-  typeof GenerateSceneImageOutputSchema
+  typeof GenerateSceneImageOutputSchema // Schema for AI output
 >(
   {
     name: 'generateSceneImageFlow',
     inputSchema: GenerateSceneImageInputSchema,
     outputSchema: GenerateSceneImageOutputSchema,
   },
-  async input => {
+  async (input): Promise<GenerateSceneImageFlowOutput> => { // Explicitly type the Promise return
     let fullResponse;
     try {
       fullResponse = await ai.generate({
@@ -58,25 +67,25 @@ const generateSceneImageFlow = ai.defineFlow<
       console.error("Error during ai.generate call for image:", e);
       const errorMessage = e.message || String(e);
       if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
-          throw new Error("Le modèle d'IA pour la génération d'images est actuellement surchargé. Veuillez réessayer.");
+          return getDefaultOutput("Le modèle d'IA pour la génération d'images est actuellement surchargé. Veuillez réessayer.");
       }
-      throw new Error(`Échec de la génération d'image par l'IA: ${errorMessage}`);
+      return getDefaultOutput(`Échec de la génération d'image par l'IA: ${errorMessage}`);
     }
     
 
     const media = fullResponse?.media;
 
     if (!media?.url) {
-        // Log the full response if media or media.url is missing to help diagnose
         console.error(
           "Image generation failed: media or media.url is missing from the response. Full response from ai.generate:",
           JSON.stringify(fullResponse, null, 2)
         );
-        throw new Error("Image generation failed or returned no URL. Check server console for details.");
+        return getDefaultOutput("La génération d'images a échoué ou n'a pas retourné d'URL. Vérifiez la console du serveur pour les détails.");
     }
 
     console.log(`Image generated for prompt: "${input.sceneDescription.substring(0, 100)}..."`);
 
-    return {imageUrl: media.url};
+    return {imageUrl: media.url, error: undefined }; // Add error: undefined for successful case
   }
 );
+
