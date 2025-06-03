@@ -56,8 +56,11 @@ const generateSceneImageFlow = ai.defineFlow<
       });
     } catch (e: any) {
       console.error("Error during ai.generate call for image:", e);
-      // Re-throw the original error or a new one with more context
-      throw new Error(`AI image generation call failed: ${e.message || String(e)}`);
+      const errorMessage = e.message || String(e);
+      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
+          throw new Error("Le modèle d'IA pour la génération d'images est actuellement surchargé. Veuillez réessayer.");
+      }
+      throw new Error(`Échec de la génération d'image par l'IA: ${errorMessage}`);
     }
     
 
@@ -77,4 +80,3 @@ const generateSceneImageFlow = ai.defineFlow<
     return {imageUrl: media.url};
   }
 );
-

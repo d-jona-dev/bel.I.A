@@ -538,35 +538,42 @@ const generateAdventureFlow = ai.defineFlow<
     outputSchema: GenerateAdventureOutputSchema,
   },
   async input => {
+    console.log("[LOG_PAGE_TSX] Generating adventure with input:", JSON.stringify(input, null, 2));
 
-    console.log("Generating adventure with input:", JSON.stringify(input, null, 2));
-
-    // Pre-process input.activeCombat.combatants to add boolean flags for Handlebars
     if (input.activeCombat && input.activeCombat.combatants) {
-      // Make a mutable copy if input is read-only, or ensure it's mutable
       const mutableCombatants = input.activeCombat.combatants.map(combatant => {
-        const augmentedCombatant = { ...combatant } as any; // Use 'as any' to add dynamic properties
+        const augmentedCombatant = { ...combatant } as any;
         augmentedCombatant.isPlayerTeam = combatant.team === 'player';
         augmentedCombatant.isEnemyTeam = combatant.team === 'enemy';
         augmentedCombatant.isNeutralTeam = combatant.team === 'neutral';
         return augmentedCombatant;
       });
-      // Create a new activeCombat object with the modified combatants
       input.activeCombat = {
         ...input.activeCombat,
         combatants: mutableCombatants
       };
     }
 
+    let output: GenerateAdventureOutput | null = null;
+    try {
+        const result = await prompt(input);
+        output = result.output;
+    } catch (e: any) {
+        console.error("Error during AI prompt call in generateAdventureFlow:", e);
+        const errorMessage = e.message || String(e);
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
+            throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
+        }
+        throw new Error(`Une erreur est survenue lors de la génération de l'aventure par l'IA: ${errorMessage}`);
+    }
 
-    const {output} = await prompt(input);
 
     if (!output?.narrative) {
         throw new Error("AI failed to generate a narrative.");
     }
-    console.log("AI Output:", JSON.stringify(output, null, 2));
+    console.log("[LOG_PAGE_TSX] AI Output:", JSON.stringify(output, null, 2));
     if (output.combatUpdates) {
-        console.log("Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
+        console.log("[LOG_PAGE_TSX] Combat Updates from AI:", JSON.stringify(output.combatUpdates, null, 2));
         if (output.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
     }
      if (output.itemsObtained === undefined) {
@@ -581,51 +588,44 @@ const generateAdventureFlow = ai.defineFlow<
 
     if (output.newCharacters) {
         output.newCharacters.forEach(nc => {
-            if (nc.details) console.log(`New char ${nc.name} details language check (should be ${input.currentLanguage}): ${nc.details.substring(0,20)}`);
-            if (nc.initialHistoryEntry) console.log(`New char ${nc.name} history language check (should be ${input.currentLanguage}): ${nc.initialHistoryEntry.substring(0,20)}`);
+            if (nc.details) console.log(`[LOG_PAGE_TSX] New char ${nc.name} details language check (should be ${input.currentLanguage}): ${nc.details.substring(0,20)}`);
+            if (nc.initialHistoryEntry) console.log(`[LOG_PAGE_TSX] New char ${nc.name} history language check (should be ${input.currentLanguage}): ${nc.initialHistoryEntry.substring(0,20)}`);
             if (input.relationsModeActive && nc.initialRelations) {
                 nc.initialRelations.forEach(rel => {
-                     console.log(`New char ${nc.name} relation to ${rel.targetName} language check (should be ${input.currentLanguage}): ${String(rel.description).substring(0,20)}`);
+                     console.log(`[LOG_PAGE_TSX] New char ${nc.name} relation to ${rel.targetName} language check (should be ${input.currentLanguage}): ${String(rel.description).substring(0,20)}`);
                 });
             }
         });
     }
     if (output.characterUpdates) {
         output.characterUpdates.forEach(upd => {
-            console.log(`History update for ${upd.characterName} language check (should be ${input.currentLanguage}): ${upd.historyEntry.substring(0,20)}`);
+            console.log(`[LOG_PAGE_TSX] History update for ${upd.characterName} language check (should be ${input.currentLanguage}): ${upd.historyEntry.substring(0,20)}`);
         });
     }
     if (input.relationsModeActive && output.relationUpdates) {
         output.relationUpdates.forEach(upd => {
-             console.log(`Relation update for ${upd.characterName} towards ${upd.targetName} language check (should be ${input.currentLanguage}): ${upd.newRelation.substring(0,20)}`);
+             console.log(`[LOG_PAGE_TSX] Relation update for ${upd.characterName} towards ${upd.targetName} language check (should be ${input.currentLanguage}): ${upd.newRelation.substring(0,20)}`);
         });
     }
     if (input.rpgModeActive && output.combatUpdates) {
-        console.log("Combat Turn Narration (from output.combatUpdates.turnNarration):", output.combatUpdates.turnNarration.substring(0, 100));
+        console.log("[LOG_PAGE_TSX] Combat Turn Narration (from output.combatUpdates.turnNarration):", output.combatUpdates.turnNarration.substring(0, 100));
         if(output.combatUpdates.nextActiveCombatState) {
-            console.log("Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
+            console.log("[LOG_PAGE_TSX] Next combat state active:", output.combatUpdates.nextActiveCombatState.isActive);
             output.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
-                 console.log(`Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
+                 console.log(`[LOG_PAGE_TSX] Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
             });
         }
     }
     if (output.itemsObtained) {
         output.itemsObtained.forEach(item => {
-            if (item.description) console.log(`Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
-            if (item.effect) console.log(`Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
-            if (item.itemType) console.log(`Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
+            if (item.description) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
+            if (item.effect) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
+            if (item.itemType) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
             if (item.goldValue === undefined && item.itemType !== 'quest') console.warn(`Item ${item.itemName} MISSING goldValue!`);
-            if (item.statBonuses) console.log(`Item ${item.itemName} stat bonuses: ${JSON.stringify(item.statBonuses)}`);
+            if (item.statBonuses) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} stat bonuses: ${JSON.stringify(item.statBonuses)}`);
         });
     }
 
     return output;
   }
 );
-
-
-    
-
-    
-
-    
