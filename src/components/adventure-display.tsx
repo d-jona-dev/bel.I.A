@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +43,7 @@ import { Separator } from "@/components/ui/separator";
 
 
 interface AdventureDisplayProps {
-    playerId: string; // Added playerId
+    playerId: string;
     generateAdventureAction: (userActionText: string) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
@@ -72,7 +72,7 @@ interface AdventureDisplayProps {
 
 
 export function AdventureDisplay({
-    playerId, // Destructure playerId
+    playerId,
     generateAdventureAction,
     generateSceneImageAction,
     suggestQuestHookAction,
@@ -111,11 +111,8 @@ export function AdventureDisplay({
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
       ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] // Examples
       : [];
-    // For player skills, we'll use adventureSettings.playerSkills
     const playerNonCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category !== 'combat') || [];
     const playerCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category === 'combat') || [];
-
-
     const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
 
 
@@ -263,16 +260,81 @@ export function AdventureDisplay({
 
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
-  const playerCombatant = activeCombat?.combatants.find(c => c.characterId === playerId);
+  const playerCombatantFromActiveCombat = activeCombat?.combatants.find(c => c.characterId === playerId);
 
-  const renderCombatantCard = (combatant: typeof activeCombat.combatants[0], isPlayerCard: boolean = false) => {
-    const charDetails = isPlayerCard ? null : characters.find(c => c.id === combatant.characterId);
-    const name = isPlayerCard ? (adventureSettings.playerName || "Joueur") : combatant.name;
-    const charClass = isPlayerCard ? adventureSettings.playerClass : charDetails?.characterClass;
-    const level = isPlayerCard ? adventureSettings.playerLevel : charDetails?.level;
+  const PlayerStatusCard = () => {
+    if (!adventureSettings.rpgMode) return null;
+    return (
+        <Card className="shadow-md rounded-lg mb-3">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center justify-between">
+                   <span>{adventureSettings.playerName || "Joueur"}</span>
+                   <span className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</span>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs font-medium">CA</Label>
+                        <span className="text-xs font-semibold">{adventureSettings.playerArmorClass ?? 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs font-medium">Attaque</Label>
+                        <span className="text-xs font-semibold">+{adventureSettings.playerAttackBonus ?? 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs font-medium">Dégâts</Label>
+                        <span className="text-xs font-semibold">{adventureSettings.playerDamageBonus || 'N/A'}</span>
+                    </div>
+                </div>
+                <Separator/>
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
+                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
+                    </div>
+                    <Progress id="player-hp" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                </div>
+
+                {(adventureSettings.playerMaxMp ?? 0) > 0 && (
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <Label htmlFor="player-mp" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
+                            <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
+                        </div>
+                        <Progress id="player-mp" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                    </div>
+                )}
+
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label htmlFor="player-exp" className="text-sm font-medium flex items-center"><BarChart2 className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
+                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
+                    </div>
+                    <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
+                </div>
+                {playerCombatantFromActiveCombat?.statusEffects && playerCombatantFromActiveCombat.statusEffects.length > 0 && (
+                    <div className="mt-2">
+                        <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts Actifs</Label>
+                        <div className="text-xs text-muted-foreground">
+                            {playerCombatantFromActiveCombat.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'permanent' : se.duration + 't'})`).join(', ')}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+  };
+
+  const NpcCombatantCard = ({ combatant }: { combatant: Combatant }) => {
+    const charDetails = characters.find(c => c.id === combatant.characterId);
+    const name = combatant.name;
+    const charClass = charDetails?.characterClass;
+    const level = charDetails?.level;
+    const cardBorderColor = combatant.team === 'player' ? 'border-green-500' : (combatant.team === 'enemy' ? 'border-red-500' : 'border-muted-foreground');
 
     return (
-        <Card key={combatant.characterId} className="bg-muted/50 shadow-sm">
+        <Card key={combatant.characterId} className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
             <CardHeader className="p-3 pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
                     <span className="truncate">{name}</span>
@@ -312,7 +374,8 @@ export function AdventureDisplay({
             </CardContent>
         </Card>
     );
-};
+  };
+
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -759,92 +822,26 @@ export function AdventureDisplay({
                     </CardFooter>
                 </Card>
 
-                {adventureSettings.rpgMode && (
-                    <Card className="shadow-md rounded-lg">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{adventureSettings.playerName || "Joueur"}</CardTitle>
-                            <CardDescription>{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3 pt-2">
-                             <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label className="text-xs font-medium">CA</Label>
-                                    <span className="text-xs font-semibold">{adventureSettings.playerArmorClass ?? 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label className="text-xs font-medium">Attaque</Label>
-                                    <span className="text-xs font-semibold">+{adventureSettings.playerAttackBonus ?? 'N/A'}</span>
-                                </div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label className="text-xs font-medium">Dégâts</Label>
-                                    <span className="text-xs font-semibold">{adventureSettings.playerDamageBonus || 'N/A'}</span>
-                                </div>
-                            </div>
-                            <Separator/>
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
-                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
-                                </div>
-                                <Progress id="player-hp" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
-                            </div>
-
-                            {(adventureSettings.playerMaxMp ?? 0) > 0 && (
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <Label htmlFor="player-mp" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
-                                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
-                                    </div>
-                                    <Progress id="player-mp" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
-                                </div>
-                            )}
-
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <Label htmlFor="player-exp" className="text-sm font-medium flex items-center"><BarChart2 className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
-                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
-                                </div>
-                                <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
-                            </div>
-                            {playerCombatant?.statusEffects && playerCombatant.statusEffects.length > 0 && (
-                                <div className="mt-2">
-                                    <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts Actifs</Label>
-                                    <div className="text-xs text-muted-foreground">
-                                        {playerCombatant.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'permanent' : se.duration + 't'})`).join(', ')}
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                 {adventureSettings.rpgMode && activeCombat?.isActive && (
-                    <div className="space-y-2">
-                        {activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated).length > 0 && (
-                            <Card className="shadow-md rounded-lg">
-                                <CardHeader className="p-3 pb-1">
-                                    <CardTitle className="text-md">Alliés</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-3 pt-1 space-y-2 max-h-40 overflow-y-auto">
-                                    {activeCombat.combatants
-                                        .filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated)
-                                        .map(ally => renderCombatantCard(ally))}
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
-                            <Card className="shadow-md rounded-lg">
-                                <CardHeader className="p-3 pb-1">
-                                    <CardTitle className="text-md">Ennemis</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-3 pt-1 space-y-2 max-h-40 overflow-y-auto">
-                                    {activeCombat.combatants
-                                        .filter(c => c.team === 'enemy' && !c.isDefeated)
-                                        .map(enemy => renderCombatantCard(enemy))}
-                                </CardContent>
-                            </Card>
-                        )}
+                {/* Combat Status Display */}
+                {adventureSettings.rpgMode && activeCombat?.isActive && (
+                    <div className="space-y-0"> {/* Remove outer card and direct loop */}
+                        <PlayerStatusCard />
+                        {activeCombat.combatants
+                            .filter(c => c.characterId !== playerId && !c.isDefeated && c.team === 'player')
+                            .map(ally => <NpcCombatantCard key={`ally-${ally.characterId}`} combatant={ally} />)}
+                        {activeCombat.combatants
+                            .filter(c => c.team === 'enemy' && !c.isDefeated)
+                            .map(enemy => <NpcCombatantCard key={`enemy-${enemy.characterId}`} combatant={enemy} />)}
+                         {/* Display defeated combatants with less emphasis */}
+                         {activeCombat.combatants.filter(c => c.isDefeated).length > 0 && (
+                            <>
+                                <Separator className="my-2" />
+                                <CardDescription className="text-xs text-center py-1">Combattants Vaincus</CardDescription>
+                                {activeCombat.combatants.filter(c => c.isDefeated).map(defeated => (
+                                     <NpcCombatantCard key={`defeated-${defeated.characterId}`} combatant={defeated}/>
+                                ))}
+                            </>
+                         )}
                     </div>
                 )}
             </div>
