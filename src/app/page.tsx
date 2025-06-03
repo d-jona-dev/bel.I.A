@@ -421,7 +421,7 @@ export default function Home() {
 
     setCharacters(prevChars => {
         if (!currentRpgMode) {
-             console.warn("handleCombatUpdates called when RPG mode is disabled for characters.");
+             console.warn("[LOG_PAGE_TSX][handleCombatUpdates] RPG mode is disabled for characters.");
              return prevChars;
         }
         let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
@@ -436,10 +436,10 @@ export default function Home() {
                 currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
                 currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
             }
-             console.log(`[LOG_PAGE_TSX] [XP PRE-CHECK for ${char.name}] isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
+            console.log(`[LOG_PAGE_TSX][XP PRE-CHECK for ${char.name}] isAlly: ${char.isAlly}, Level: ${char.level}, Player EXP Gained: ${combatUpdates.expGained}`);
 
             if (char.isAlly && (combatUpdates.expGained ?? 0) > 0 && char.level !== undefined) {
-                 console.log(`[LOG_PAGE_TSX] [XP GAIN EVAL for ${char.name}] Conditions met. Current EXP: ${char.currentExp}, To Next: ${char.expToNextLevel}`);
+                console.log(`[LOG_PAGE_TSX][XP GAIN EVAL for ${char.name}] Conditions met. Current EXP: ${char.currentExp}, To Next: ${char.expToNextLevel}`);
                 if (currentCharacterState.level === undefined) currentCharacterState.level = 1;
                 if (currentCharacterState.currentExp === undefined) currentCharacterState.currentExp = 0;
                 if (currentCharacterState.expToNextLevel === undefined || currentCharacterState.expToNextLevel <= 0) {
@@ -449,8 +449,8 @@ export default function Home() {
                     currentCharacterState.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
                 }
 
-                currentCharacterState.currentExp += combatUpdates.expGained;
-                console.log(`[LOG_PAGE_TSX] [XP GAIN for ${char.name}] Gained ${combatUpdates.expGained}. New EXP: ${currentCharacterState.currentExp}/${currentCharacterState.expToNextLevel}`);
+                currentCharacterState.currentExp += combatUpdates.expGained!;
+                console.log(`[LOG_PAGE_TSX][XP GAIN for ${char.name}] Gained ${combatUpdates.expGained}. New EXP: ${currentCharacterState.currentExp}/${currentCharacterState.expToNextLevel}`);
 
                 let leveledUpThisTurn = false;
                 while (currentCharacterState.currentExp >= currentCharacterState.expToNextLevel!) {
@@ -475,7 +475,7 @@ export default function Home() {
                     currentCharacterState.armorClass = npcDerivedStats.armorClass;
                     currentCharacterState.attackBonus = npcDerivedStats.attackBonus;
                     currentCharacterState.damageBonus = npcDerivedStats.damageBonus;
-                    console.log(`[LOG_PAGE_TSX] [NPC LEVEL UP: ${currentCharacterState.name}] New Lvl: ${currentCharacterState.level}. New Attr Points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
+                    console.log(`[LOG_PAGE_TSX][NPC LEVEL UP: ${currentCharacterState.name}] New Lvl: ${currentCharacterState.level}. New Attr Points: ${currentCharacterState.initialAttributePoints}. New HP: ${currentCharacterState.maxHitPoints}`);
                 }
                 if (leveledUpThisTurn) {
                     toastsToShow.push({
@@ -556,9 +556,10 @@ export default function Home() {
             const latestPlayerState = adventureSettingsRef.current; // État le plus récent du joueur
             const playerCombatDataFromAI = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
     
+            // 1. Assurer l'entrée unique et à jour du joueur
             const playerForNextTurn: Combatant = {
                 characterId: PLAYER_ID,
-                name: latestPlayerState.playerName || "Player",
+                name: latestPlayerState.playerName || "Player", // Utiliser le nom le plus récent
                 currentHp: playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!,
                 maxHp: latestPlayerState.playerMaxHp!,
                 currentMp: playerCombatDataFromAI?.newMp ?? latestPlayerState.playerCurrentMp!,
@@ -569,15 +570,16 @@ export default function Home() {
             };
             combatantsForNextTurnMap.set(PLAYER_ID, playerForNextTurn);
     
+            // 2. Ajouter les PNJ (alliés et ennemis) de l'IA, en s'assurant de ne pas dupliquer le joueur
             combatUpdates.nextActiveCombatState.combatants.forEach(aiCombatant => {
-                if (aiCombatant.characterId !== PLAYER_ID) { 
+                if (aiCombatant.characterId !== PLAYER_ID) { // Crucial : ne pas retraiter le joueur ici
                     combatantsForNextTurnMap.set(aiCombatant.characterId, aiCombatant);
                 }
             });
             
             const newCombatantsList = Array.from(combatantsForNextTurnMap.values());
-            console.log('[LOG_PAGE_TSX] Combatants from AI for next turn (handleCombatUpdates):', JSON.stringify(combatUpdates.nextActiveCombatState.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
-            console.log('[LOG_PAGE_TSX] Constructed combatants list for setActiveCombat (handleCombatUpdates):', JSON.stringify(newCombatantsList.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+            console.log('[LOG_PAGE_TSX][handleCombatUpdates] Combatants from AI for next turn:', JSON.stringify(combatUpdates.nextActiveCombatState.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+            console.log('[LOG_PAGE_TSX][handleCombatUpdates] Constructed combatants list for setActiveCombat:', JSON.stringify(newCombatantsList.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
     
             setActiveCombat({
                 ...combatUpdates.nextActiveCombatState,
@@ -813,15 +815,16 @@ export default function Home() {
 
     const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettingsRef.current)) as AdventureSettings;
     const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
-
+    
     let currentActiveCombatState: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
     if (currentTurnSettings.rpgMode) {
         const combatantsForAIMap = new Map<string, Combatant>();
 
+        // 1. Créer et ajouter/mettre à jour le joueur en premier
         const playerCombatant: Combatant = {
             characterId: PLAYER_ID,
-            name: currentTurnSettings.playerName || "Player",
+            name: currentTurnSettings.playerName || "Player", // Nom à jour
             currentHp: currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp,
             maxHp: effectiveStatsThisTurn.playerMaxHp,
             currentMp: currentTurnSettings.playerCurrentMp ?? effectiveStatsThisTurn.playerMaxMp,
@@ -832,17 +835,19 @@ export default function Home() {
         };
         combatantsForAIMap.set(PLAYER_ID, playerCombatant);
 
+        // 2. Ajouter les PNJ depuis l'état de combat précédent (s'il existe), en s'assurant qu'ils ne sont pas le joueur
         if (currentActiveCombatState?.isActive) {
             currentActiveCombatState.combatants.forEach(c => {
-                if (c.characterId !== PLAYER_ID) { // Only add/update non-player characters from existing combat state
+                if (c.characterId !== PLAYER_ID) { // Crucial: ne pas ajouter le joueur s'il vient de activeCombat
                     combatantsForAIMap.set(c.characterId, c);
                 }
             });
         }
         
+        // 3. Ajouter les PNJ alliés de la liste globale des personnages, s'ils ne sont pas déjà dans la map et sont aptes
         characters.forEach(char => { 
             if (char.isAlly && char.hitPoints && char.hitPoints > 0 && char.level && char.characterClass) {
-                if (!combatantsForAIMap.has(char.id)) { 
+                if (!combatantsForAIMap.has(char.id)) { // S'assurer que l'allié n'est pas déjà là
                      const allyCombatant: Combatant = {
                         characterId: char.id, name: char.name,
                         currentHp: char.hitPoints, maxHp: char.maxHitPoints!,
@@ -855,11 +860,12 @@ export default function Home() {
         });
         
         const finalCombatantsForAI = Array.from(combatantsForAIMap.values());
-        console.log('[LOG_PAGE_TSX] Combatants sent to AI (callGenerateAdventure):', JSON.stringify(finalCombatantsForAI.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+        console.log('[LOG_PAGE_TSX][callGenerateAdventure] Combatants sent to AI:', JSON.stringify(finalCombatantsForAI.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
 
+        // Mettre à jour currentActiveCombatState pour refléter la liste propre des combattants
         currentActiveCombatState = {
-            isActive: currentActiveCombatState?.isActive ?? false,
-            combatants: finalCombatantsForAI,
+            isActive: currentActiveCombatState?.isActive ?? false, // Conserver l'état actif
+            combatants: finalCombatantsForAI, // Utiliser la liste propre
             environmentDescription: currentActiveCombatState?.environmentDescription || "Champ de bataille indéfini",
             turnLog: currentActiveCombatState?.turnLog || [],
             playerAttemptedDeescalation: currentActiveCombatState?.playerAttemptedDeescalation || false,
@@ -907,6 +913,7 @@ export default function Home() {
             setTimeout(() => {
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             },0);
+            setIsLoading(false); // Assurez-vous de réinitialiser isLoading
             return;
         }
 
@@ -952,9 +959,9 @@ export default function Home() {
                 }
             }
         });
-    } catch (error) { // Catch truly unexpected errors not handled by the flow's return type
+    } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Critical Error in callGenerateAdventure: ", error);
+        console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
         setTimeout(() => {
            toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
         },0);
@@ -1013,15 +1020,13 @@ export default function Home() {
                         if (match && match[1]) mpChange = parseInt(match[1], 10);
                     }
 
-                    // Apply HP/MP changes directly if in combat, for immediate feedback before AI call
-                    if (activeCombat?.isActive) {
-                         if (hpChange > 0 && newSettings.playerCurrentHp !== undefined && newSettings.playerMaxHp !== undefined) {
-                            newSettings.playerCurrentHp = Math.min(newSettings.playerMaxHp, (newSettings.playerCurrentHp || 0) + hpChange);
-                        }
-                        if (mpChange > 0 && newSettings.playerCurrentMp !== undefined && newSettings.playerMaxMp !== undefined && newSettings.playerMaxMp > 0) {
-                            newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + mpChange);
-                        }
+                    if (hpChange > 0 && newSettings.playerCurrentHp !== undefined && newSettings.playerMaxHp !== undefined) {
+                        newSettings.playerCurrentHp = Math.min(newSettings.playerMaxHp, (newSettings.playerCurrentHp || 0) + hpChange);
                     }
+                    if (mpChange > 0 && newSettings.playerCurrentMp !== undefined && newSettings.playerMaxMp !== undefined && newSettings.playerMaxMp > 0) {
+                        newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + mpChange);
+                    }
+                    
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                 } else {
@@ -1412,23 +1417,28 @@ export default function Home() {
 
         if (currentTurnSettings.rpgMode && currentActiveCombatRegen?.isActive) {
             const combatantsForAIRegenMap = new Map<string, Combatant>();
+            // 1. Joueur
             const playerCombatantRegen: Combatant = {
-                characterId: PLAYER_ID, name: currentTurnSettings.playerName || "Player",
+                characterId: PLAYER_ID, 
+                name: currentTurnSettings.playerName || "Player", // Nom à jour
                 currentHp: currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp,
                 maxHp: effectiveStatsThisTurn.playerMaxHp,
                 currentMp: currentTurnSettings.playerCurrentMp ?? effectiveStatsThisTurn.playerMaxMp,
                 maxMp: effectiveStatsThisTurn.playerMaxMp,
-                team: 'player', isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0, 
+                team: 'player', 
+                isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0, 
                 statusEffects: currentActiveCombatRegen?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
             };
             combatantsForAIRegenMap.set(PLAYER_ID, playerCombatantRegen);
             
+            // 2. PNJ de l'état de combat précédent
             currentActiveCombatRegen.combatants.forEach(c => {
-                if (c.characterId !== PLAYER_ID) {
+                if (c.characterId !== PLAYER_ID) { // Ne pas ajouter le joueur de l'ancien état
                     combatantsForAIRegenMap.set(c.characterId, c);
                 }
             });
             
+            // 3. Alliés globaux
             characters.forEach(char => { 
                 if (char.isAlly && char.hitPoints && char.hitPoints > 0 && char.level && char.characterClass) {
                     if (!combatantsForAIRegenMap.has(char.id)) {
@@ -1443,7 +1453,7 @@ export default function Home() {
                 }
             });
             currentActiveCombatRegen.combatants = Array.from(combatantsForAIRegenMap.values());
-            console.log('[LOG_PAGE_TSX] Combatants sent to AI (handleRegenerateLastResponse):', JSON.stringify(currentActiveCombatRegen.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
+            console.log('[LOG_PAGE_TSX][handleRegenerateLastResponse] Combatants sent to AI:', JSON.stringify(currentActiveCombatRegen.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
         }
 
 
@@ -1488,6 +1498,7 @@ export default function Home() {
                 setTimeout(() => {
                     toast({ title: "Erreur de Régénération IA", description: result.error, variant: "destructive"});
                 },0);
+                setIsRegenerating(false);
                 return;
              }
 
@@ -1549,8 +1560,8 @@ export default function Home() {
                 }
                 setTimeout(() => {toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });},0);
             });
-         } catch (error) { // Catch truly unexpected errors
-             console.error("Critical Error regenerating adventure:", error);
+         } catch (error) { 
+             console.error("[LOG_PAGE_TSX][handleRegenerateLastResponse] Critical error:", error);
              let toastDescription = `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`;
               setTimeout(() => {
                 toast({ title: "Erreur Critique de Régénération", description: toastDescription, variant: "destructive"});
@@ -2146,8 +2157,12 @@ export default function Home() {
 
   const handleApplyStagedChanges = React.useCallback(() => {
     let initialSituationChanged = false;
+    let playerNameChanged = false;
+    const prevLivePlayerName = adventureSettingsRef.current.playerName;
+
     setAdventureSettings(prevLiveSettings => {
         initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
+        playerNameChanged = stagedAdventureSettings.playerName !== prevLivePlayerName;
         let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
 
         const effectiveStats = calculateEffectiveStats(newLiveSettings);
@@ -2196,22 +2211,37 @@ export default function Home() {
             newLiveSettings.equippedItemIds = undefined;
             newLiveSettings.playerSkills = undefined;
         }
-        setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
+        setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); // Update base for restart
         return newLiveSettings;
     });
 
+    if (playerNameChanged && activeCombat) {
+        setActiveCombat(prevCombat => {
+            if (!prevCombat) return undefined;
+            const newCombatants = prevCombat.combatants.map(c => {
+                if (c.characterId === PLAYER_ID) {
+                    return { ...c, name: stagedAdventureSettings.playerName || "Player" };
+                }
+                return c;
+            });
+            return { ...prevCombat, combatants: newCombatants };
+        });
+    }
+
     if (initialSituationChanged) {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
-        setActiveCombat(undefined);
+        if (activeCombat) { // If situation changed, combat should probably end
+            setActiveCombat(undefined);
+        }
     }
     const newLiveCharacters = JSON.parse(JSON.stringify(stagedCharacters));
     setCharacters(newLiveCharacters);
-    setBaseCharacters(newLiveCharacters);
+    setBaseCharacters(newLiveCharacters); // Update base for restart
 
     setTimeout(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
     }, 0);
-  }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings.playerGold]);
+  }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings.playerGold, activeCombat]);
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })));
@@ -2348,7 +2378,8 @@ export default function Home() {
 
     try {
       const result = await generateSceneImageAction({ sceneDescription: promptDescription });
-      if (result.error) { // Error already toasted by generateSceneImageAction
+      if (result.error) { // Error already toasted by generateSceneImageAction in page.tsx
+        setIsGeneratingItemImage(false); // Reset loading state on error
         return;
       }
       console.log(`Image générée pour ${item.name}:`, result.imageUrl);
@@ -2377,7 +2408,7 @@ export default function Home() {
           });
       },0);
 
-    } catch (error) { // Catch unexpected errors from the call itself, if any
+    } catch (error) { 
       console.error(`Critical error generating image for ${item.name}:`, error);
       setTimeout(() => {
           toast({
