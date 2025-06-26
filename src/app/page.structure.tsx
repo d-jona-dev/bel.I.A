@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen } from 'lucide-react'; // Added BookOpen
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill } from "@/types"; // Added PlayerSkill
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest } from "@/types"; // Added PlayerSkill
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -99,6 +99,7 @@ interface PageStructureProps {
   setSellQuantity: (quantity: number) => void;
   confirmSellMultipleItems: (quantity: number) => void;
   onCloseSellDialog: () => void;
+  handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
 }
 
 export function PageStructure({
@@ -152,6 +153,7 @@ export function PageStructure({
   setSellQuantity,
   confirmSellMultipleItems,
   onCloseSellDialog,
+  handleMapAction,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -336,7 +338,8 @@ export function PageStructure({
                 handleDiscardLoot={handleDiscardLoot}
                 handlePlayerItemAction={handlePlayerItemAction} 
                 handleEquipItem={handleEquipItem} 
-                handleUnequipItem={handleUnequipItem} 
+                handleUnequipItem={handleUnequipItem}
+                handleMapAction={handleMapAction}
              />
         </main>
       </SidebarInset>
@@ -724,7 +727,3 @@ export function PageStructure({
     </>
   );
 }
-
-
-
-

@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -72,6 +71,14 @@ export interface ActiveCombat {
   playerAttemptedDeescalation?: boolean;
 }
 
+export interface MapPointOfInterest {
+  id: string;
+  name: string;
+  description: string;
+  icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Cave' | 'Landmark';
+  position: { x: number; y: number }; // Pourcentage
+  actions: ('travel' | 'examine')[];
+}
 
 export interface Character {
   id: string;
@@ -178,6 +185,7 @@ export interface AdventureSettings {
         jewelry: string | null;
     };
     playerSkills?: PlayerSkill[];
+    mapPointsOfInterest?: MapPointOfInterest[];
 }
 
 export interface SaveData {

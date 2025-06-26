@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -40,6 +40,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { MapDisplay } from "./map-display";
 
 
 interface AdventureDisplayProps {
@@ -68,6 +69,7 @@ interface AdventureDisplayProps {
     handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
     handleEquipItem: (itemId: string) => void;
     handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
+    handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
 }
 
 
@@ -92,13 +94,14 @@ export function AdventureDisplay({
     handlePlayerItemAction,
     handleEquipItem,
     handleUnequipItem,
+    handleMapAction,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
-  const [currentMode, setCurrentMode] = React.useState<"exploration" | "dialogue" | "combat">("exploration");
+  const [currentMode, setCurrentMode] = React.useState<"narrative" | "map" | "combat">("narrative");
   const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
@@ -150,10 +153,10 @@ export function AdventureDisplay({
     React.useEffect(() => {
         if (adventureSettings.rpgMode && activeCombat?.isActive) {
             setCurrentMode("combat");
-        } else {
-            setCurrentMode("exploration");
+        } else if (currentMode === "combat") {
+            setCurrentMode("narrative"); // Default back to narrative when combat ends
         }
-    }, [activeCombat, adventureSettings.rpgMode]);
+    }, [activeCombat, adventureSettings.rpgMode, currentMode]);
 
   const handleSendSpecificAction = async (action: string) => {
     if (!action || isLoading) return;
@@ -402,164 +405,176 @@ export function AdventureDisplay({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-       <Tabs defaultValue="exploration" value={currentMode} onValueChange={(value) => setCurrentMode(value as any)} className="mb-2">
-        <TabsList className={`grid w-full ${adventureSettings.rpgMode ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="exploration"><Map className="mr-2 h-4 w-4" />Exploration</TabsTrigger>
-          <TabsTrigger value="dialogue" disabled><Users2 className="mr-2 h-4 w-4" />Dialogue (Future)</TabsTrigger>
-          {adventureSettings.rpgMode && <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>}
+       <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as any)} className="mb-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="narrative"><ScrollText className="mr-2 h-4 w-4" />Narrative</TabsTrigger>
+          <TabsTrigger value="map"><MapIcon className="mr-2 h-4 w-4" />Carte</TabsTrigger>
+          <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>
         </TabsList>
       </Tabs>
 
       <div className="flex-1 flex gap-4 overflow-hidden">
             <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardContent className="flex-1 overflow-hidden p-0">
-                    <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
-                        <div className="space-y-4">
-                            {messages.map((message, index) => {
-                                const isLastMessage = index === messages.length - 1;
-                                const isLastAiMessage = isLastMessage && message.type === 'ai';
-                                const isFirstMessage = index === 0;
-                                const showLootInteraction = message.type === 'ai' && message.loot && message.loot.length > 0 && !message.lootTaken;
+                  <Tabs defaultValue="narrative" value={currentMode} className="h-full flex flex-col">
+                    <TabsContent value="narrative" className="flex-1 overflow-hidden p-0 m-0">
+                      <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
+                          <div className="space-y-4">
+                              {messages.map((message, index) => {
+                                  const isLastMessage = index === messages.length - 1;
+                                  const isLastAiMessage = isLastMessage && message.type === 'ai';
+                                  const isFirstMessage = index === 0;
+                                  const showLootInteraction = message.type === 'ai' && message.loot && message.loot.length > 0 && !message.lootTaken;
 
-                                return (
-                                    <div key={message.id} className="group relative flex flex-col">
-                                        <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
-                                        {message.type === 'ai' && (
-                                            <Avatar className="h-8 w-8 border">
-                                                <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                        <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
-                                                message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
-                                            }`}>
-                                                {message.content}
+                                  return (
+                                      <div key={message.id} className="group relative flex flex-col">
+                                          <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
+                                          {message.type === 'ai' && (
+                                              <Avatar className="h-8 w-8 border">
+                                                  <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                              </Avatar>
+                                          )}
+                                          <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
+                                                  message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
+                                              }`}>
+                                                  {message.content}
 
-                                                {message.type !== 'system' && !isFirstMessage && (
-                                                    <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                        <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
-                                                          <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                  <AlertDialogTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
-                                                                        <Edit className="h-4 w-4" />
-                                                                    </Button>
-                                                                  </AlertDialogTrigger>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top">Modifier</TooltipContent>
-                                                            </Tooltip>
-                                                          </TooltipProvider>
-                                                            <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                Modifiez le contenu du message ci-dessous.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <Textarea
-                                                                    value={editContent}
-                                                                    onChange={(e) => setEditContent(e.target.value)}
-                                                                    rows={10}
-                                                                    className="my-4"
-                                                                />
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
-                                                                        <Copy className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top">Copier</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-
-                                                        {isLastAiMessage && (
+                                                  {message.type !== 'system' && !isFirstMessage && (
+                                                      <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                          <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading}>
-                                                                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent side="top">Régénérer</TooltipContent>
-                                                                </Tooltip>
+                                                              <Tooltip>
+                                                                  <TooltipTrigger asChild>
+                                                                    <AlertDialogTrigger asChild>
+                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
+                                                                          <Edit className="h-4 w-4" />
+                                                                      </Button>
+                                                                    </AlertDialogTrigger>
+                                                                  </TooltipTrigger>
+                                                                  <TooltipContent side="top">Modifier</TooltipContent>
+                                                              </Tooltip>
                                                             </TooltipProvider>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                 {showLootInteraction && message.loot && (
-                                                    <div className="absolute bottom-1 right-1 z-20">
-                                                      <AlertDialog>
+                                                              <AlertDialogContent>
+                                                              <AlertDialogHeader>
+                                                                  <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
+                                                                  <AlertDialogDescription>
+                                                                  Modifiez le contenu du message ci-dessous.
+                                                                  </AlertDialogDescription>
+                                                              </AlertDialogHeader>
+                                                              <Textarea
+                                                                      value={editContent}
+                                                                      onChange={(e) => setEditContent(e.target.value)}
+                                                                      rows={10}
+                                                                      className="my-4"
+                                                                  />
+                                                              <AlertDialogFooter>
+                                                                  <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
+                                                                  <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
+                                                              </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                          </AlertDialog>
                                                           <TooltipProvider>
                                                               <Tooltip>
                                                                   <TooltipTrigger asChild>
-                                                                      <AlertDialogTrigger asChild>
-                                                                          <Button variant="outline" size="icon" className="h-7 w-7 text-amber-600 hover:text-amber-500 border-amber-600 hover:border-amber-500">
-                                                                              <Gift className="h-4 w-4" />
-                                                                          </Button>
-                                                                      </AlertDialogTrigger>
+                                                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopyMessage(message.content)}>
+                                                                          <Copy className="h-4 w-4" />
+                                                                      </Button>
                                                                   </TooltipTrigger>
-                                                                  <TooltipContent side="top">Voir le butin</TooltipContent>
+                                                                  <TooltipContent side="top">Copier</TooltipContent>
                                                               </Tooltip>
                                                           </TooltipProvider>
-                                                          <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>Butin Trouvé !</AlertDialogTitle>
-                                                                  <AlertDialogDescription>
-                                                                      Vous avez trouvé les objets suivants :
-                                                                  </AlertDialogDescription>
-                                                              </AlertDialogHeader>
-                                                              <ScrollArea className="max-h-60 my-4">
-                                                                  <div className="space-y-3 py-2 pr-2">
-                                                                      {message.loot!.map((item, itemIdx) => (
-                                                                          <Card key={item.id || itemIdx} className="p-3 bg-muted/50 shadow-sm">
-                                                                              <p className="font-semibold">{item.name} (x{item.quantity})</p>
-                                                                              {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
-                                                                              {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
-                                                                              {item.itemType && <p className="text-xs text-muted-foreground">Type : {item.itemType}</p>}
-                                                                          </Card>
-                                                                      ))}
-                                                                  </div>
-                                                              </ScrollArea>
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel onClick={() => handleDiscardLoot(message.id!)}>Laisser</AlertDialogCancel>
-                                                                  <AlertDialogAction onClick={() => handleTakeLoot(message.id!, message.loot!)}>Ramasser</AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                          </AlertDialogContent>
-                                                      </AlertDialog>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {message.type === 'user' && (
-                                                <Avatar className="h-8 w-8 border">
-                                                    <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {isLoading && (
-                                <div className="flex items-center justify-start gap-3">
-                                     <Avatar className="h-8 w-8 border">
-                                         <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                     </Avatar>
-                                     <span className="flex items-center text-muted-foreground italic p-3">
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </ScrollArea>
+
+                                                          {isLastAiMessage && (
+                                                              <TooltipProvider>
+                                                                  <Tooltip>
+                                                                      <TooltipTrigger asChild>
+                                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading}>
+                                                                              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                                          </Button>
+                                                                      </TooltipTrigger>
+                                                                      <TooltipContent side="top">Régénérer</TooltipContent>
+                                                                  </Tooltip>
+                                                              </TooltipProvider>
+                                                          )}
+                                                      </div>
+                                                  )}
+                                                   {showLootInteraction && message.loot && (
+                                                      <div className="absolute bottom-1 right-1 z-20">
+                                                        <AlertDialog>
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <AlertDialogTrigger asChild>
+                                                                            <Button variant="outline" size="icon" className="h-7 w-7 text-amber-600 hover:text-amber-500 border-amber-600 hover:border-amber-500">
+                                                                                <Gift className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </AlertDialogTrigger>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top">Voir le butin</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Butin Trouvé !</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Vous avez trouvé les objets suivants :
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <ScrollArea className="max-h-60 my-4">
+                                                                    <div className="space-y-3 py-2 pr-2">
+                                                                        {message.loot!.map((item, itemIdx) => (
+                                                                            <Card key={item.id || itemIdx} className="p-3 bg-muted/50 shadow-sm">
+                                                                                <p className="font-semibold">{item.name} (x{item.quantity})</p>
+                                                                                {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
+                                                                                {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
+                                                                                {item.itemType && <p className="text-xs text-muted-foreground">Type : {item.itemType}</p>}
+                                                                            </Card>
+                                                                        ))}
+                                                                    </div>
+                                                                </ScrollArea>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel onClick={() => handleDiscardLoot(message.id!)}>Laisser</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleTakeLoot(message.id!, message.loot!)}>Ramasser</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                      </div>
+                                                  )}
+                                              </div>
+                                              {message.type === 'user' && (
+                                                  <Avatar className="h-8 w-8 border">
+                                                      <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                  </Avatar>
+                                              )}
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                              {isLoading && (
+                                  <div className="flex items-center justify-start gap-3">
+                                       <Avatar className="h-8 w-8 border">
+                                           <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                       </Avatar>
+                                       <span className="flex items-center text-muted-foreground italic p-3">
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
+                                      </span>
+                                  </div>
+                              )}
+                          </div>
+                      </ScrollArea>
+                    </TabsContent>
+                    <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0">
+                       <MapDisplay pointsOfInterest={adventureSettings.mapPointsOfInterest || []} onMapAction={handleMapAction} />
+                    </TabsContent>
+                    <TabsContent value="combat" className="flex-1 overflow-hidden p-0 m-0">
+                      <ScrollArea className="h-full p-4">
+                        <p className="text-center text-muted-foreground">L'interface de combat est active. Utilisez les boutons d'action ci-dessous.</p>
+                      </ScrollArea>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
-                    {adventureSettings.rpgMode && activeCombat?.isActive && (
+                    {currentMode === 'combat' && adventureSettings.rpgMode && activeCombat?.isActive && (
                         <div className="flex flex-wrap gap-2 mb-2">
                              <TooltipProvider>
                                 <Tooltip>
@@ -782,18 +797,18 @@ export function AdventureDisplay({
                         </TooltipProvider>
 
                         <Textarea
-                            placeholder={currentMode === 'exploration' ? "Que faites-vous ? Décrivez votre action..." : (currentMode === 'combat' ? "Décrivez votre action de combat ou complétez l'action pré-remplie..." : "Votre message...")}
+                            placeholder={currentMode === 'combat' ? "Décrivez votre action de combat ou complétez l'action pré-remplie..." : "Que faites-vous ? Décrivez votre action..."}
                             value={userAction}
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
                             rows={1}
                             className="min-h-[40px] max-h-[150px] resize-y flex-1"
-                            disabled={isLoading}
+                            disabled={isLoading || currentMode === 'map'}
                         />
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim()}>
+                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim() || currentMode === 'map'}>
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
@@ -882,4 +897,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -217,6 +217,11 @@ export default function Home() {
     ],
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
+    mapPointsOfInterest: [
+        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine'] },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine'] },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine'] },
+    ],
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -1772,7 +1777,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombatRef.current,
-            saveFormatVersion: 2.3,
+            saveFormatVersion: 2.4,
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1902,6 +1907,9 @@ export default function Home() {
                          currentExp: loadedData.adventureSettings?.rpgMode ? (c.currentExp ?? 0) : undefined,
                          expToNextLevel: loadedData.adventureSettings?.rpgMode ? (c.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, ((c.level ?? 1) || 1) -1))) : undefined,
                      }));
+                 }
+                 if (loadedData.saveFormatVersion < 2.4) {
+                    loadedData.adventureSettings.mapPointsOfInterest = loadedData.adventureSettings.mapPointsOfInterest || [];
                  }
 
 
@@ -2294,6 +2302,32 @@ export default function Home() {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings.playerGold]);
 
+  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine') => {
+    const poi = adventureSettingsRef.current.mapPointsOfInterest?.find(p => p.id === poiId);
+    if (!poi) return;
+
+    let userActionText = '';
+    if (action === 'travel') {
+        userActionText = `Je me déplace vers ${poi.name}.`;
+    } else if (action === 'examine') {
+        userActionText = `J'examine les environs de ${poi.name}.`;
+    } else {
+        return;
+    }
+
+    setIsLoading(true);
+    handleNarrativeUpdate(userActionText, 'user');
+
+    try {
+        await callGenerateAdventure(userActionText);
+    } catch (error) {
+        console.error("Error in handleMapAction trying to generate adventure:", error);
+        toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
+
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })));
   }, [stagedCharacters]);
@@ -2546,8 +2580,8 @@ export default function Home() {
         setSellQuantity={setSellQuantity}
         confirmSellMultipleItems={confirmSellMultipleItems}
         onCloseSellDialog={() => setItemToSellDetails(null)}
+        handleMapAction={handleMapAction}
       />
       </>
   );
 }
-
