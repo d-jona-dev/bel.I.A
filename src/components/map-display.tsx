@@ -57,7 +57,7 @@ export function MapDisplay({ pointsOfInterest, onMapAction }: MapDisplayProps) {
                                         </button>
                                     </DropdownMenuTrigger>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" align="center">
+                                <TooltipContent side="top" align="center" className="font-medieval text-base">
                                     <p className="font-semibold">{poi.name}</p>
                                     <p className="text-sm text-muted-foreground">{poi.description}</p>
                                 </TooltipContent>
