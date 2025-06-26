@@ -12,6 +12,7 @@ import type { MapPointOfInterest } from "@/types";
 interface MapDisplayProps {
     pointsOfInterest: MapPointOfInterest[];
     onMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+    useAestheticFont: boolean;
 }
 
 const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
@@ -23,7 +24,7 @@ const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
     Landmark: Landmark,
 };
 
-export function MapDisplay({ pointsOfInterest, onMapAction }: MapDisplayProps) {
+export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont }: MapDisplayProps) {
 
     return (
         <div className="relative w-full h-full bg-amber-50 rounded-md overflow-hidden border">
@@ -57,7 +58,7 @@ export function MapDisplay({ pointsOfInterest, onMapAction }: MapDisplayProps) {
                                         </button>
                                     </DropdownMenuTrigger>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" align="center" className="font-medieval text-base">
+                                <TooltipContent side="top" align="center" className={cn("text-base", useAestheticFont && "font-medieval")}>
                                     <p className="font-semibold">{poi.name}</p>
                                     <p className="text-sm text-muted-foreground">{poi.description}</p>
                                 </TooltipContent>

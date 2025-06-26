@@ -296,6 +296,7 @@ export default function Home() {
   const [itemToSellDetails, setItemToSellDetails] = React.useState<SellingItemDetails | null>(null);
   const [sellQuantity, setSellQuantity] = React.useState(1);
   const [isLoadingInitialSkill, setIsLoadingInitialSkill] = React.useState<boolean>(false);
+  const [useAestheticFont, setUseAestheticFont] = React.useState(true);
 
   const adventureSettingsRef = React.useRef(adventureSettings);
   React.useEffect(() => {
@@ -314,6 +315,15 @@ export default function Home() {
 
 
   const { toast } = useToast();
+
+  const handleToggleAestheticFont = React.useCallback(() => {
+    const newFontState = !useAestheticFont;
+    setUseAestheticFont(newFontState);
+    toast({
+        title: "Police de la carte changée",
+        description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
+    });
+  }, [useAestheticFont, toast]);
 
   React.useEffect(() => {
     setStagedAdventureSettings(prevStaged => {
@@ -2581,6 +2591,8 @@ export default function Home() {
         confirmSellMultipleItems={confirmSellMultipleItems}
         onCloseSellDialog={() => setItemToSellDetails(null)}
         handleMapAction={handleMapAction}
+        useAestheticFont={useAestheticFont}
+        onToggleAestheticFont={handleToggleAestheticFont}
       />
       </>
   );

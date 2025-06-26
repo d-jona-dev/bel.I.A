@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -70,6 +70,8 @@ interface AdventureDisplayProps {
     handleEquipItem: (itemId: string) => void;
     handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
     handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+    useAestheticFont: boolean;
+    onToggleAestheticFont: () => void;
 }
 
 
@@ -95,6 +97,8 @@ export function AdventureDisplay({
     handleEquipItem,
     handleUnequipItem,
     handleMapAction,
+    useAestheticFont,
+    onToggleAestheticFont,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -563,8 +567,30 @@ export function AdventureDisplay({
                           </div>
                       </ScrollArea>
                     </TabsContent>
-                    <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0">
-                       <MapDisplay pointsOfInterest={adventureSettings.mapPointsOfInterest || []} onMapAction={handleMapAction} />
+                    <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0 relative">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={onToggleAestheticFont}
+                                        className="absolute top-2 right-2 z-10 bg-background/70 backdrop-blur-sm"
+                                        aria-label="Changer la police de la carte"
+                                    >
+                                        <FontIcon className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" align="center">
+                                    {useAestheticFont ? "Utiliser la police standard" : "Utiliser la police médiévale"}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                       <MapDisplay 
+                            pointsOfInterest={adventureSettings.mapPointsOfInterest || []} 
+                            onMapAction={handleMapAction} 
+                            useAestheticFont={useAestheticFont}
+                        />
                     </TabsContent>
                     <TabsContent value="combat" className="flex-1 overflow-hidden p-0 m-0">
                       <ScrollArea className="h-full p-4">

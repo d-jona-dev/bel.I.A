@@ -100,6 +100,8 @@ interface PageStructureProps {
   confirmSellMultipleItems: (quantity: number) => void;
   onCloseSellDialog: () => void;
   handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+  useAestheticFont: boolean;
+  onToggleAestheticFont: () => void;
 }
 
 export function PageStructure({
@@ -154,6 +156,8 @@ export function PageStructure({
   confirmSellMultipleItems,
   onCloseSellDialog,
   handleMapAction,
+  useAestheticFont,
+  onToggleAestheticFont,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -340,6 +344,8 @@ export function PageStructure({
                 handleEquipItem={handleEquipItem} 
                 handleUnequipItem={handleUnequipItem}
                 handleMapAction={handleMapAction}
+                useAestheticFont={useAestheticFont}
+                onToggleAestheticFont={onToggleAestheticFont}
              />
         </main>
       </SidebarInset>
