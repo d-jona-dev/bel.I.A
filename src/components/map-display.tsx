@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Cave, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Cave, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,8 +11,9 @@ import { cn } from "@/lib/utils";
 import type { MapPointOfInterest } from "@/types";
 
 interface MapDisplayProps {
+    playerId: string;
     pointsOfInterest: MapPointOfInterest[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     mapImageUrl: string | null | undefined;
@@ -30,7 +31,7 @@ const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
     Landmark: Landmark,
 };
 
-export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange }: MapDisplayProps) {
+export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange }: MapDisplayProps) {
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
 
@@ -130,6 +131,7 @@ export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, on
             
             {pointsOfInterest.map((poi) => {
                 const IconComponent = iconMap[poi.icon] || Landmark;
+                const canCollect = poi.ownerId === playerId && (poi.resources?.length ?? 0) > 0;
                 return (
                     <div
                         key={poi.id}
@@ -177,6 +179,12 @@ export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, on
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
                                         <Search className="mr-2 h-4 w-4" />
                                         <span>Examiner les environs</span>
+                                    </DropdownMenuItem>
+                                )}
+                                {poi.actions.includes('collect') && (
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollect}>
+                                        <Briefcase className="mr-2 h-4 w-4" />
+                                        <span>Collecter les ressources</span>
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>

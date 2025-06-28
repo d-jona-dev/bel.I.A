@@ -69,7 +69,7 @@ interface AdventureDisplayProps {
     handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
     handleEquipItem: (itemId: string) => void;
     handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
-    handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+    handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     onGenerateMap: () => Promise<void>;
@@ -575,6 +575,7 @@ export function AdventureDisplay({
                     </TabsContent>
                     <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0 relative">
                        <MapDisplay 
+                            playerId={playerId}
                             pointsOfInterest={adventureSettings.mapPointsOfInterest || []} 
                             onMapAction={handleMapAction} 
                             useAestheticFont={useAestheticFont}
