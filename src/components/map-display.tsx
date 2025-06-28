@@ -132,6 +132,9 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             {pointsOfInterest.map((poi) => {
                 const IconComponent = iconMap[poi.icon] || Landmark;
                 const canCollect = poi.ownerId === playerId && (poi.resources?.length ?? 0) > 0;
+                const isPlayerOwned = poi.ownerId === playerId;
+                const haloColor = isPlayerOwned ? '#FFD700' : poi.factionColor; // Gold for player, otherwise faction color
+
                 return (
                     <div
                         key={poi.id}
@@ -154,7 +157,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                                     draggingPoi === poi.id && "ring-2 ring-primary scale-110"
                                                 )}
                                                 style={{
-                                                    boxShadow: poi.factionColor ? `0 0 12px 4px ${poi.factionColor}` : undefined,
+                                                    boxShadow: haloColor ? `0 0 12px 4px ${haloColor}` : undefined,
                                                 }}
                                                 onMouseDown={(e) => handleMouseDown(e, poi.id)}
                                             >

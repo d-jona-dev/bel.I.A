@@ -1789,7 +1789,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombatRef.current,
-            saveFormatVersion: 2.4,
+            saveFormatVersion: 2.5,
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -1923,6 +1923,15 @@ export default function Home() {
                  if (loadedData.saveFormatVersion < 2.4) {
                     loadedData.adventureSettings.mapPointsOfInterest = loadedData.adventureSettings.mapPointsOfInterest || [];
                  }
+                 if (loadedData.saveFormatVersion < 2.5) {
+                    if (loadedData.adventureSettings.mapPointsOfInterest) {
+                        loadedData.adventureSettings.mapPointsOfInterest.forEach(poi => {
+                            if (!('lastCollectedTurn' in poi)) {
+                                (poi as any).lastCollectedTurn = undefined;
+                            }
+                        });
+                    }
+                }
 
 
                 const rpgModeActive = loadedData.adventureSettings.rpgMode;
@@ -2327,6 +2336,20 @@ export default function Home() {
             toast({ title: "Aucune Ressource", description: `${poi.name} ne produit aucune ressource à collecter.`, variant: "default" });
             return;
         }
+
+        const currentTurn = narrativeMessages.length;
+        const cooldownDuration = 10;
+        const lastCollected = poi.lastCollectedTurn;
+
+        if (lastCollected !== undefined && currentTurn < lastCollected + cooldownDuration) {
+            const turnsRemaining = (lastCollected + cooldownDuration) - currentTurn;
+            toast({
+                title: "Ressources non prêtes",
+                description: `Vous devez attendre encore ${turnsRemaining} tour(s) avant de pouvoir collecter à nouveau ici.`,
+                variant: "default",
+            });
+            return;
+        }
         
         const collectedItemsSummary: { name: string, quantity: number }[] = [];
         let collectedCurrencyAmount = 0;
@@ -2365,10 +2388,15 @@ export default function Home() {
                 }
             });
 
+            const newPois = (prev.mapPointsOfInterest || []).map(p =>
+                p.id === poiId ? { ...p, lastCollectedTurn: currentTurn } : p
+            );
+
             return {
                 ...prev,
                 playerGold: (prev.playerGold || 0) + collectedCurrencyAmount,
                 playerInventory: newInventory,
+                mapPointsOfInterest: newPois,
             };
         });
 
@@ -2401,7 +2429,7 @@ export default function Home() {
     } finally {
         setIsLoading(false);
     }
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, narrativeMessages.length]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
