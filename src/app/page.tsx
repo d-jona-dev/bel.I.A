@@ -222,6 +222,7 @@ export default function Home() {
         { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine'] },
         { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine'] },
     ],
+    mapImageUrl: null,
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -297,6 +298,7 @@ export default function Home() {
   const [sellQuantity, setSellQuantity] = React.useState(1);
   const [isLoadingInitialSkill, setIsLoadingInitialSkill] = React.useState<boolean>(false);
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
+  const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
   const adventureSettingsRef = React.useRef(adventureSettings);
   React.useEffect(() => {
@@ -2445,6 +2447,29 @@ export default function Home() {
         return result;
     }, [toast]);
 
+    const handleGenerateMapImage = React.useCallback(async () => {
+        setIsGeneratingMap(true);
+        toast({ title: "Génération de la carte...", description: "L'IA dessine votre monde." });
+
+        const { world, mapPointsOfInterest } = adventureSettingsRef.current;
+        const poiNames = mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues';
+
+        const prompt = `A fantasy map of a world. The style should be that of a hand-drawn map from a classic fantasy novel like "The Lord of the Rings". The map is on aged, weathered parchment. Include artistic details like a compass rose, sea monsters in any oceans, and rolling hills or mountains. Key locations to feature with calligraphic labels are: ${poiNames}. The overall atmosphere is one of ancient adventure. World description for context: ${world}`;
+
+        try {
+            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
+            if (result.imageUrl) {
+                setAdventureSettings(prev => ({ ...prev, mapImageUrl: result.imageUrl }));
+                toast({ title: "Carte Générée !", description: "Le fond de la carte a été mis à jour." });
+            }
+        } catch (error) {
+            console.error("Error generating map image:", error);
+            toast({ title: "Erreur", description: "Impossible de générer le fond de la carte.", variant: "destructive" });
+        } finally {
+            setIsGeneratingMap(false);
+        }
+    }, [generateSceneImageActionWrapper, toast]);
+
   const handleGenerateItemImage = React.useCallback(async (item: PlayerInventoryItem) => {
     if (isGeneratingItemImage) return;
     setIsGeneratingItemImage(true);
@@ -2593,6 +2618,8 @@ export default function Home() {
         handleMapAction={handleMapAction}
         useAestheticFont={useAestheticFont}
         onToggleAestheticFont={handleToggleAestheticFont}
+        onGenerateMap={handleGenerateMapImage}
+        isGeneratingMap={isGeneratingMap}
       />
       </>
   );

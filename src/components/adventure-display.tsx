@@ -72,6 +72,8 @@ interface AdventureDisplayProps {
     handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
+    onGenerateMap: () => Promise<void>;
+    isGeneratingMap: boolean;
 }
 
 
@@ -99,6 +101,8 @@ export function AdventureDisplay({
     handleMapAction,
     useAestheticFont,
     onToggleAestheticFont,
+    onGenerateMap,
+    isGeneratingMap,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -568,28 +572,14 @@ export function AdventureDisplay({
                       </ScrollArea>
                     </TabsContent>
                     <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0 relative">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={onToggleAestheticFont}
-                                        className="absolute top-2 right-2 z-10 bg-background/70 backdrop-blur-sm"
-                                        aria-label="Changer la police de la carte"
-                                    >
-                                        <FontIcon className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left" align="center">
-                                    {useAestheticFont ? "Utiliser la police standard" : "Utiliser la police médiévale"}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
                        <MapDisplay 
                             pointsOfInterest={adventureSettings.mapPointsOfInterest || []} 
                             onMapAction={handleMapAction} 
                             useAestheticFont={useAestheticFont}
+                            onToggleAestheticFont={onToggleAestheticFont}
+                            mapImageUrl={adventureSettings.mapImageUrl}
+                            onGenerateMap={onGenerateMap}
+                            isGeneratingMap={isGeneratingMap}
                         />
                     </TabsContent>
                     <TabsContent value="combat" className="flex-1 overflow-hidden p-0 m-0">

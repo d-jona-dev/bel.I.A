@@ -102,6 +102,8 @@ interface PageStructureProps {
   handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
+  onGenerateMap: () => Promise<void>;
+  isGeneratingMap: boolean;
 }
 
 export function PageStructure({
@@ -158,6 +160,8 @@ export function PageStructure({
   handleMapAction,
   useAestheticFont,
   onToggleAestheticFont,
+  onGenerateMap,
+  isGeneratingMap,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -346,6 +350,8 @@ export function PageStructure({
                 handleMapAction={handleMapAction}
                 useAestheticFont={useAestheticFont}
                 onToggleAestheticFont={onToggleAestheticFont}
+                onGenerateMap={onGenerateMap}
+                isGeneratingMap={isGeneratingMap}
              />
         </main>
       </SidebarInset>
