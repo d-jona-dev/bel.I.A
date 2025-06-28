@@ -104,6 +104,7 @@ interface PageStructureProps {
   onToggleAestheticFont: () => void;
   onGenerateMap: () => Promise<void>;
   isGeneratingMap: boolean;
+  onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
 }
 
 export function PageStructure({
@@ -162,6 +163,7 @@ export function PageStructure({
   onToggleAestheticFont,
   onGenerateMap,
   isGeneratingMap,
+  onPoiPositionChange,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -352,6 +354,7 @@ export function PageStructure({
                 onToggleAestheticFont={onToggleAestheticFont}
                 onGenerateMap={onGenerateMap}
                 isGeneratingMap={isGeneratingMap}
+                onPoiPositionChange={onPoiPositionChange}
              />
         </main>
       </SidebarInset>

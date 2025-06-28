@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +74,7 @@ interface AdventureDisplayProps {
     onToggleAestheticFont: () => void;
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
+    onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
 }
 
 
@@ -103,6 +104,7 @@ export function AdventureDisplay({
     onToggleAestheticFont,
     onGenerateMap,
     isGeneratingMap,
+    onPoiPositionChange,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -580,6 +582,7 @@ export function AdventureDisplay({
                             mapImageUrl={adventureSettings.mapImageUrl}
                             onGenerateMap={onGenerateMap}
                             isGeneratingMap={isGeneratingMap}
+                            onPoiPositionChange={onPoiPositionChange}
                         />
                     </TabsContent>
                     <TabsContent value="combat" className="flex-1 overflow-hidden p-0 m-0">

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Cave, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2 } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Cave, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,6 +18,7 @@ interface MapDisplayProps {
     mapImageUrl: string | null | undefined;
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
+    onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
 }
 
 const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
@@ -29,17 +30,50 @@ const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
     Landmark: Landmark,
 };
 
-export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap }: MapDisplayProps) {
+export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange }: MapDisplayProps) {
+    const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
+    const mapRef = React.useRef<HTMLDivElement>(null);
+
+    const handleMouseDown = (e: React.MouseEvent, poiId: string) => {
+        e.preventDefault();
+        setDraggingPoi(poiId);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!draggingPoi || !mapRef.current) return;
+
+        const mapRect = mapRef.current.getBoundingClientRect();
+        const x = e.clientX - mapRect.left;
+        const y = e.clientY - mapRect.top;
+
+        const newX = Math.max(0, Math.min(100, (x / mapRect.width) * 100));
+        const newY = Math.max(0, Math.min(100, (y / mapRect.height) * 100));
+
+        onPoiPositionChange(draggingPoi, { x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+        setDraggingPoi(null);
+    };
 
     return (
-        <div className="relative w-full h-full bg-amber-50 rounded-md overflow-hidden border flex items-center justify-center">
+        <div 
+            ref={mapRef}
+            className={cn(
+                "relative w-full h-full bg-amber-50 rounded-md overflow-hidden border flex items-center justify-center",
+                draggingPoi ? "cursor-grabbing" : ""
+            )}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+        >
             {mapImageUrl && (
                 <Image
                     src={mapImageUrl}
                     alt="Fantasy Map Background"
                     layout="fill"
                     objectFit="cover"
-                    className="z-0"
+                    className="z-0 pointer-events-none"
                     data-ai-hint="fantasy map background"
                 />
             )}
@@ -97,44 +131,57 @@ export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, on
             {pointsOfInterest.map((poi) => {
                 const IconComponent = iconMap[poi.icon] || Landmark;
                 return (
-                    <DropdownMenu key={poi.id}>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <DropdownMenuTrigger asChild>
-                                        <button
-                                            className="absolute -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110 z-20"
-                                            style={{
-                                                left: `${poi.position.x}%`,
-                                                top: `${poi.position.y}%`,
-                                                boxShadow: poi.factionColor ? `0 0 12px 4px ${poi.factionColor}` : undefined,
-                                            }}
-                                        >
-                                            <IconComponent className="h-6 w-6 text-foreground/80" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" align="center" className={cn("text-base z-30", useAestheticFont && "font-medieval")}>
-                                    <p className="font-semibold">{poi.name}</p>
-                                    <p className="text-sm text-muted-foreground">{poi.description}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <DropdownMenuContent className="z-30">
-                            {poi.actions.includes('travel') && (
-                                <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')}>
-                                    <MoveRight className="mr-2 h-4 w-4" />
-                                    <span>Se déplacer vers {poi.name}</span>
-                                </DropdownMenuItem>
-                            )}
-                            {poi.actions.includes('examine') && (
-                                <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    <span>Examiner les environs</span>
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div
+                        key={poi.id}
+                        className="absolute z-20"
+                        style={{
+                            left: `${poi.position.x}%`,
+                            top: `${poi.position.y}%`,
+                            transform: 'translate(-50%, -50%)',
+                        }}
+                    >
+                        <DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <button
+                                                className={cn(
+                                                    "p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110",
+                                                    "cursor-grab active:cursor-grabbing",
+                                                    draggingPoi === poi.id && "ring-2 ring-primary scale-110"
+                                                )}
+                                                style={{
+                                                    boxShadow: poi.factionColor ? `0 0 12px 4px ${poi.factionColor}` : undefined,
+                                                }}
+                                                onMouseDown={(e) => handleMouseDown(e, poi.id)}
+                                            >
+                                                <IconComponent className="h-6 w-6 text-foreground/80 pointer-events-none" />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center" className={cn("text-base z-30", useAestheticFont && "font-medieval")}>
+                                        <p className="font-semibold flex items-center gap-1"><Move className="h-3 w-3"/>{poi.name}</p>
+                                        <p className="text-sm text-muted-foreground">{poi.description}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent className="z-30">
+                                {poi.actions.includes('travel') && (
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')}>
+                                        <MoveRight className="mr-2 h-4 w-4" />
+                                        <span>Se déplacer vers {poi.name}</span>
+                                    </DropdownMenuItem>
+                                )}
+                                {poi.actions.includes('examine') && (
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
+                                        <Search className="mr-2 h-4 w-4" />
+                                        <span>Examiner les environs</span>
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 );
             })}
         </div>

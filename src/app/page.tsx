@@ -2340,6 +2340,16 @@ export default function Home() {
     }
   }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
 
+  const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
+    setAdventureSettings(prev => {
+        if (!prev.mapPointsOfInterest) return prev;
+        const newPois = prev.mapPointsOfInterest.map(poi => 
+            poi.id === poiId ? { ...poi, position: newPosition } : poi
+        );
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+  }, []);
+
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })));
   }, [stagedCharacters]);
@@ -2620,6 +2630,7 @@ export default function Home() {
         onToggleAestheticFont={handleToggleAestheticFont}
         onGenerateMap={handleGenerateMapImage}
         isGeneratingMap={isGeneratingMap}
+        onPoiPositionChange={handlePoiPositionChange}
       />
       </>
   );
