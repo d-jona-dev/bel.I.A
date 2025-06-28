@@ -218,9 +218,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }] },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Elara.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: 'elara-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }] },
+        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'gold', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Elara.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: 'elara-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
@@ -240,6 +240,22 @@ export default function Home() {
         strength: 7, dexterity: 8, constitution: 9, intelligence: 14, wisdom: 15, charisma: 12,
         hitPoints: 10, maxHitPoints: 10, manaPoints: 20, maxManaPoints: 20, armorClass: 10, attackBonus: 0, damageBonus: "1",
         spells: ["Soin Léger", "Lumière"], skills: {"Herboristerie": true}
+      },
+      {
+        id: 'duc-asdrubael',
+        name: "Duc Asdrubael",
+        details: "Un noble énigmatique et puissant qui contrôle la Forêt Murmurante. Ses intentions sont obscures.",
+        biographyNotes: "Le Duc Asdrubael est un reclus qui communique rarement avec le monde extérieur. Il est très protecteur de ses terres.",
+        history: ["Possède la Forêt Murmurante."],
+        portraitUrl: null,
+        affinity: 40,
+        relations: { [PLAYER_ID]: "Inconnu" },
+        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        level: 5, currentExp: 0, expToNextLevel: 800,
+        characterClass: "Noble Reclus", isHostile: false,
+        strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
+        hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
+        inventory: {"Sceptre Orné": 1, "Carte de la région": 1}
       },
       {
         id: 'frak-1',
