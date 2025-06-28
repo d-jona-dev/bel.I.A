@@ -103,10 +103,11 @@ export function MapDisplay({ pointsOfInterest, onMapAction, useAestheticFont, on
                                 <TooltipTrigger asChild>
                                     <DropdownMenuTrigger asChild>
                                         <button
-                                            className="absolute -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-transform hover:scale-110 z-20"
+                                            className="absolute -translate-x-1/2 -translate-y-1/2 p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110 z-20"
                                             style={{
                                                 left: `${poi.position.x}%`,
                                                 top: `${poi.position.y}%`,
+                                                boxShadow: poi.factionColor ? `0 0 12px 4px ${poi.factionColor}` : undefined,
                                             }}
                                         >
                                             <IconComponent className="h-6 w-6 text-foreground/80" />

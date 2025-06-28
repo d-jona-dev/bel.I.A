@@ -78,6 +78,7 @@ export interface MapPointOfInterest {
   icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Cave' | 'Landmark';
   position: { x: number; y: number }; // Pourcentage
   actions: ('travel' | 'examine')[];
+  factionColor?: string; // e.g., 'red', '#FFC107'
 }
 
 export interface Character {

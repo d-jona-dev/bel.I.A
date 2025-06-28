@@ -218,9 +218,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine'] },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine'] },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine'] },
+        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine'], factionColor: 'red' },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine'], factionColor: 'blue' },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Elara.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine'], factionColor: 'red' },
     ],
     mapImageUrl: null,
   });
