@@ -198,7 +198,7 @@ export default function Home() {
 
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
-    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi (Anciennement Elara), la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
+    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true,
     relationsMode: true,
     playerName: "Héros",
@@ -227,19 +227,41 @@ export default function Home() {
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
         id: 'yumi-1',
-        name: "Impératrice Yumi (Anciennement Elara)",
+        name: "Impératrice Yumi",
         details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
         biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
         history: ["A demandé de l'aide au joueur pour les gobelins."],
         portraitUrl: null,
         affinity: 60,
-        relations: { [PLAYER_ID]: "Espoir du village" },
-        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
+        isAlly: false, 
+        initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
         level: 5, currentExp: 0, expToNextLevel: 800,
         characterClass: "Impératrice", isHostile: false,
         strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
         hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
         spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true}
+      },
+      {
+        id: 'elara-1',
+        name: "Elara",
+        details: "Une jeune aventurière talentueuse et énergique, spécialisée dans la magie de protection. Elle vous a rejoint pour vous aider dans votre quête à la demande de l'Impératrice.",
+        biographyNotes: "Elara cherche à prouver sa valeur et à protéger les innocents. Elle est loyale mais peut être un peu impulsive.",
+        history: ["S'est jointe à l'équipe du joueur."],
+        portraitUrl: null,
+        affinity: 70,
+        relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
+        isAlly: true,
+        initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        level: 1, currentExp: 0, expToNextLevel: 100,
+        characterClass: "Mage de Bataille", isHostile: false,
+        strength: 10, dexterity: 12, constitution: 12, intelligence: 15, wisdom: 13, charisma: 11,
+        hitPoints: 12, maxHitPoints: 12,
+        manaPoints: 15, maxManaPoints: 15,
+        armorClass: 11,
+        attackBonus: 2,
+        damageBonus: "1d6",
+        spells: ["Projectile Magique", "Armure de Mage"], skills: {"Arcanes": true}
       },
       {
         id: 'duc-asdrubael',
