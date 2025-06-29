@@ -523,6 +523,19 @@ export function CharacterSidebar({
                     const currentNpcSpentPoints = npcSpentPoints[char.id] || 0;
                     const remainingNpcPoints = totalDistributableNpc - currentNpcSpentPoints;
 
+                    const RULER_CLASSES = ["impératrice", "empereur", "duc", "duchesse", "roi", "reine", "noble"];
+                    const AFFINITY_THRESHOLD = 80;
+
+                    const isRuler = RULER_CLASSES.some(rulerClass =>
+                        char.characterClass?.toLowerCase().includes(rulerClass)
+                    );
+
+                    const canRecruit = !isRuler || (char.affinity ?? 0) >= AFFINITY_THRESHOLD;
+                    const isAllySwitchDisabled = !canRecruit;
+
+                    const tooltipContent = isAllySwitchDisabled
+                        ? `L'affinité doit être d'au moins ${AFFINITY_THRESHOLD} pour recruter ce dirigeant. (Actuelle: ${char.affinity ?? 50})`
+                        : null;
 
                     return (
                     <AccordionItem value={char.id} key={char.id}>
@@ -612,19 +625,34 @@ export function CharacterSidebar({
                             <Separator />
 
                             {rpgMode && (
-                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
-                                        <UICardDescription className="text-xs">
-                                            Permet de modifier ses attributs et de l'intégrer à l'équipe.
-                                        </UICardDescription>
-                                    </div>
-                                    <Switch
-                                        id={`${char.id}-isAlly`}
-                                        checked={char.isAlly ?? false}
-                                        onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
-                                    />
-                                </div>
+                                <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                        <TooltipTrigger asChild>
+                                            <div className={`flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30 ${isAllySwitchDisabled ? 'cursor-not-allowed' : ''}`}>
+                                                <div className="space-y-0.5">
+                                                    <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
+                                                    <UICardDescription className="text-xs">
+                                                        Permet de modifier ses attributs et de l'intégrer à l'équipe.
+                                                    </UICardDescription>
+                                                </div>
+                                                {/* The span wrapper is a trick to make tooltips work on disabled elements */}
+                                                <span tabIndex={isAllySwitchDisabled ? 0 : -1}>
+                                                    <Switch
+                                                        id={`${char.id}-isAlly`}
+                                                        checked={char.isAlly ?? false}
+                                                        onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
+                                                        disabled={isAllySwitchDisabled}
+                                                    />
+                                                </span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        {tooltipContent && (
+                                            <TooltipContent>
+                                                <p>{tooltipContent}</p>
+                                            </TooltipContent>
+                                        )}
+                                    </Tooltip>
+                                </TooltipProvider>
                             )}
 
                             {rpgMode && (
