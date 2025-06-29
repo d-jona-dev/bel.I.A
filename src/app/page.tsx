@@ -234,7 +234,7 @@ export default function Home() {
         portraitUrl: null,
         affinity: 60,
         relations: { [PLAYER_ID]: "Espoir du village" },
-        isAlly: true, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
         level: 5, currentExp: 0, expToNextLevel: 800,
         characterClass: "Impératrice", isHostile: false,
         strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
