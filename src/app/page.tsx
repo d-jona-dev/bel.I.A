@@ -198,7 +198,7 @@ export default function Home() {
 
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
-    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
+    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi (Anciennement Elara), la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true,
     relationsMode: true,
     playerName: "Héros",
@@ -227,7 +227,7 @@ export default function Home() {
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
         id: 'yumi-1',
-        name: "Impératrice Yumi",
+        name: "Impératrice Yumi (Anciennement Elara)",
         details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
         biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
         history: ["A demandé de l'aide au joueur pour les gobelins."],
