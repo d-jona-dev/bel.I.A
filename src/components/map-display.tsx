@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,7 +13,7 @@ import type { MapPointOfInterest } from "@/types";
 interface MapDisplayProps {
     playerId: string;
     pointsOfInterest: MapPointOfInterest[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     mapImageUrl: string | null | undefined;
@@ -133,6 +133,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 const IconComponent = iconMap[poi.icon] || Landmark;
                 const canCollect = poi.ownerId === playerId && (poi.resources?.length ?? 0) > 0;
                 const isPlayerOwned = poi.ownerId === playerId;
+                const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
                 const haloColor = isPlayerOwned ? '#FFD700' : poi.factionColor; // Gold for player, otherwise faction color
 
                 return (
@@ -188,6 +189,12 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollect}>
                                         <Briefcase className="mr-2 h-4 w-4" />
                                         <span>Collecter les ressources</span>
+                                    </DropdownMenuItem>
+                                )}
+                                {isAttackable && (
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'attack')} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                        <Swords className="mr-2 h-4 w-4" />
+                                        <span>Attaquer</span>
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>

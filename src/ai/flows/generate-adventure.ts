@@ -220,6 +220,10 @@ const CombatUpdatesSchema = z.object({
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false. Ensure this state includes all active combatants: player, allies, and enemies."),
 });
 
+const PoiOwnershipChangeSchema = z.object({
+    poiId: z.string().describe("The ID of the Point of Interest whose ownership is changing (e.g., 'poi-grotte')."),
+    newOwnerId: z.string().describe("The ID of the new owner (e.g., 'player', 'frak-1')."),
+});
 
 const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here.**'),
@@ -246,6 +250,7 @@ const GenerateAdventureOutputSchema = z.object({
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
   itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'jewelry', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). **Crucially, for ALL non-currency items intended as loot (even common or 'junk' items like 'Cailloux pointus'), YOU MUST provide a goldValue. If an item has minimal or nuisance value, assign it a goldValue of 1. Do not omit goldValue for such items.** Include statBonuses if applicable. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). If the player buys an item, this should be the negative price of the item. IF NO CURRENCY CHANGE, PROVIDE 0."),
+  poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -262,6 +267,7 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     combatUpdates: undefined,
     itemsObtained: [],
     currencyGained: 0,
+    poiOwnershipChanges: [],
     error: errorMsg,
 });
 
@@ -452,7 +458,9 @@ Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   Analyze the userAction and initialSituation. Could this lead to combat? (e.g., player attacks, an NPC becomes aggressive).
+        *   **Territory Attack:** If the userAction indicates an attack on a location (e.g., "J'attaque la Grotte Grinçante"), you MUST initiate combat. The narrative should describe the player approaching the location to attack, and the defenders appearing.
+            *   **Combat Initiation:** Announce the combat. Identify the defenders. The primary defender is the character who owns the territory. Add 3-4 other appropriate defenders (e.g., for a goblin chief, add other goblins like "Gobelin Fureteur"). Create a challenging encounter.
+            *   Populate 'activeCombat.environmentDescription', and set 'combatUpdates.nextActiveCombatState' with 'isActive: true' and the list of combatants (player, allies, and all defenders as 'enemy' team). The player's current allies ('isAlly: true' characters) MUST be included in the player's team.
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
             *   Present a list of 3-5 items for sale using the format: 'NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or'. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
@@ -466,7 +474,6 @@ Tasks:
             2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
             3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system based on player's action.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
-        *   If combat is initiated THIS turn: Clearly announce it. Identify combatants, their team ('player', 'enemy', 'neutral'), and their initial state (HP, MP if applicable, statusEffects, using their character sheet stats or estimated for new enemies). **Ensure player's active allies (characters with isAlly: true) are included in the 'player' team.** Describe the environment for activeCombat.environmentDescription. Populate combatUpdates.nextActiveCombatState with isActive: true and the list of combatants.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
         *   **Étape 1: Tour du Joueur ({{playerName}}).**
             *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), l'utilisation d'une compétence de combat, ou une autre manœuvre.
@@ -537,6 +544,11 @@ Tasks:
 {{else}}
 (Affinity and Relation updates are disabled.)
 {{/if}}
+
+7.  **Territory Conquest/Loss (poiOwnershipChanges):**
+    *   **Conquest:** If a combat for a territory was won by the player's team (all enemies defeated), you MUST change the ownership of that territory to the player. The territory's ID can be inferred from the user action (e.g., if userAction was "J'attaque la Grotte Grinçante", the POI ID is 'poi-grotte').
+    *   **Loss:** If the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
+    *   To do this, populate the 'poiOwnershipChanges' array with an object: '{ "poiId": "ID_OF_THE_POI", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
@@ -647,4 +659,3 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
-

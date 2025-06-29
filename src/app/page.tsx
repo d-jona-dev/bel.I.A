@@ -219,8 +219,8 @@ export default function Home() {
     playerSkills: [],
     mapPointsOfInterest: [
         { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'gold', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Yumi.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: 'yumi-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack'], factionColor: 'red', ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
@@ -887,6 +887,31 @@ export default function Home() {
      toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
+  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+      if (!changes || changes.length === 0) return;
+  
+      setAdventureSettings(prev => {
+          if (!prev.mapPointsOfInterest) return prev;
+  
+          const newPois = prev.mapPointsOfInterest.map(poi => {
+              const change = changes.find(c => c.poiId.includes(poi.name.toLowerCase().replace(/\s/g, '')));
+              if (change) {
+                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : charactersRef.current.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                  setTimeout(() => {
+                      toast({
+                          title: "Changement de Territoire !",
+                          description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                      });
+                  }, 0);
+                  return { ...poi, ownerId: change.newOwnerId };
+              }
+              return poi;
+          });
+  
+          return { ...prev, mapPointsOfInterest: newPois };
+      });
+  }, [toast]);
+
   const callGenerateAdventure = React.useCallback(async (userActionText: string) => {
     React.startTransition(() => {
       setIsLoading(true);
@@ -1005,6 +1030,9 @@ export default function Home() {
             if (adventureSettingsRef.current.rpgMode && result.combatUpdates) {
                 handleCombatUpdates(result.combatUpdates);
             }
+             if (result.poiOwnershipChanges) {
+                handlePoiOwnershipChange(result.poiOwnershipChanges);
+            }
 
             if (adventureSettingsRef.current.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettingsRef.current.playerGold !== undefined) {
                 const amount = result.currencyGained;
@@ -1052,7 +1080,7 @@ export default function Home() {
   }, [
       currentLanguage, narrativeMessages, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer
+      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange
   ]);
 
 
@@ -1627,6 +1655,9 @@ export default function Home() {
                 if(adventureSettingsRef.current.rpgMode && result.combatUpdates) {
                     handleCombatUpdates(result.combatUpdates);
                 }
+                 if (result.poiOwnershipChanges) {
+                    handlePoiOwnershipChange(result.poiOwnershipChanges);
+                }
                  if (adventureSettingsRef.current.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettingsRef.current.playerGold !== undefined) {
                     const amount = result.currencyGained;
                     if (amount < 0) {
@@ -1662,7 +1693,7 @@ export default function Home() {
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNarrativeUpdate,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-         handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer
+         handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange
      ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -2361,9 +2392,10 @@ export default function Home() {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings.playerGold]);
 
-  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect') => {
+  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => {
     const poi = adventureSettingsRef.current.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
+    let userActionText = '';
 
     if (action === 'collect') {
         if (poi.ownerId !== PLAYER_ID) {
@@ -2441,17 +2473,14 @@ export default function Home() {
         const summary = collectedItemsSummary.map(r => `${r.quantity}x ${r.name}`).join(', ');
         toast({ title: "Collecte Réussie", description: "Ressources ajoutées : " + summary });
 
-        handleNarrativeUpdate(`Je collecte les ressources de ${poi.name}.`, 'user');
-        await callGenerateAdventure(`Je collecte les ressources de ${poi.name}.`);
-        return;
-    }
+        userActionText = `Je collecte les ressources de ${poi.name}.`;
 
-
-    let userActionText = '';
-    if (action === 'travel') {
+    } else if (action === 'travel') {
         userActionText = `Je me déplace vers ${poi.name}.`;
     } else if (action === 'examine') {
         userActionText = `J'examine les environs de ${poi.name}.`;
+    } else if (action === 'attack') {
+        userActionText = `J'attaque le territoire de ${poi.name}.`;
     } else {
         return;
     }

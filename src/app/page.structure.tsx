@@ -99,7 +99,7 @@ interface PageStructureProps {
   setSellQuantity: (quantity: number) => void;
   confirmSellMultipleItems: (quantity: number) => void;
   onCloseSellDialog: () => void;
-  handleMapAction: (poiId: string, action: 'travel' | 'examine') => void;
+  handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
   onGenerateMap: () => Promise<void>;
@@ -333,10 +333,6 @@ export function PageStructure({
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 onNarrativeChange={handleNarrativeUpdate}
-                onNewCharacters={handleNewCharacters}
-                onCharacterHistoryUpdate={handleCharacterHistoryUpdate}
-                onAffinityUpdates={handleAffinityUpdates}
-                onRelationUpdates={handleRelationUpdatesFromAI}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}

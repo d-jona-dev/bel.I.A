@@ -69,7 +69,7 @@ interface AdventureDisplayProps {
     handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
     handleEquipItem: (itemId: string) => void;
     handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
-    handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect') => void;
+    handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     onGenerateMap: () => Promise<void>;
