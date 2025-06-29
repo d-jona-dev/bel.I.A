@@ -111,7 +111,7 @@ export function AdventureDisplay({
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
-  const [currentMode, setCurrentMode] = React.useState<"narrative" | "map" | "combat">("narrative");
+  const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
   const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
@@ -160,13 +160,6 @@ export function AdventureDisplay({
         }
     }, [messages]);
 
-    React.useEffect(() => {
-        if (adventureSettings.rpgMode && activeCombat?.isActive) {
-            setCurrentMode("combat");
-        } else if (currentMode === "combat") {
-            setCurrentMode("narrative"); // Default back to narrative when combat ends
-        }
-    }, [activeCombat, adventureSettings.rpgMode, currentMode]);
 
   const handleSendSpecificAction = async (action: string) => {
     if (!action || isLoading) return;
@@ -415,11 +408,10 @@ export function AdventureDisplay({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-       <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as any)} className="mb-2">
-        <TabsList className="grid w-full grid-cols-3">
+       <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as "narrative" | "map")} className="mb-2">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="narrative"><ScrollText className="mr-2 h-4 w-4" />Narrative</TabsTrigger>
           <TabsTrigger value="map"><MapIcon className="mr-2 h-4 w-4" />Carte</TabsTrigger>
-          <TabsTrigger value="combat" disabled={!activeCombat?.isActive}><Swords className="mr-2 h-4 w-4" />Combat</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -586,15 +578,10 @@ export function AdventureDisplay({
                             onPoiPositionChange={onPoiPositionChange}
                         />
                     </TabsContent>
-                    <TabsContent value="combat" className="flex-1 overflow-hidden p-0 m-0">
-                      <ScrollArea className="h-full p-4">
-                        <p className="text-center text-muted-foreground">L'interface de combat est active. Utilisez les boutons d'action ci-dessous.</p>
-                      </ScrollArea>
-                    </TabsContent>
                   </Tabs>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
-                    {currentMode === 'combat' && adventureSettings.rpgMode && activeCombat?.isActive && (
+                    {adventureSettings.rpgMode && activeCombat?.isActive && (
                         <div className="flex flex-wrap gap-2 mb-2">
                              <TooltipProvider>
                                 <Tooltip>
@@ -817,7 +804,7 @@ export function AdventureDisplay({
                         </TooltipProvider>
 
                         <Textarea
-                            placeholder={currentMode === 'combat' ? "Décrivez votre action de combat ou complétez l'action pré-remplie..." : "Que faites-vous ? Décrivez votre action..."}
+                            placeholder={adventureSettings.rpgMode && activeCombat?.isActive ? "Décrivez votre action de combat ou complétez l'action pré-remplie..." : "Que faites-vous ? Décrivez votre action..."}
                             value={userAction}
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
