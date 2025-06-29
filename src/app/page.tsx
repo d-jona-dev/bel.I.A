@@ -894,7 +894,7 @@ export default function Home() {
           if (!prev.mapPointsOfInterest) return prev;
   
           const newPois = prev.mapPointsOfInterest.map(poi => {
-              const change = changes.find(c => c.poiId.includes(poi.name.toLowerCase().replace(/\s/g, '')));
+              const change = changes.find(c => c.poiId === poi.id);
               if (change) {
                   const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : charactersRef.current.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
                   setTimeout(() => {
@@ -1009,6 +1009,7 @@ export default function Home() {
         equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
         equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
         equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
+        mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
     };
 
     try {
@@ -1605,6 +1606,7 @@ export default function Home() {
                  equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
                  equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
+                 mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);

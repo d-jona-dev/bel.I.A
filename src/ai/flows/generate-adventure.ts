@@ -16,7 +16,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill } from '@/types';
+import type { Character, PlayerSkill, MapPointOfInterest } from '@/types';
 import { LootedItemSchema } from '@/types';
 
 
@@ -115,6 +115,13 @@ const PlayerSkillSchemaForAI = z.object({
     category: z.enum(['class', 'social', 'utility', 'combat']).optional(),
 });
 
+const PointOfInterestSchemaForAI = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    ownerId: z.string().optional().describe("The ID of the character who owns this POI, or 'player'."),
+});
+
 
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
@@ -151,12 +158,14 @@ const GenerateAdventureInputSchema = z.object({
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
   playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
+  mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID and current owner. Use these IDs for any territory changes."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
     playerSkills?: PlayerSkill[];
+    mapPointsOfInterest?: MapPointOfInterest[];
 };
 
 
@@ -351,6 +360,12 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         equippedWeaponName: input.equippedWeaponName,
         equippedArmorName: input.equippedArmorName,
         equippedJewelryName: input.equippedJewelryName,
+        mapPointsOfInterest: input.mapPointsOfInterest?.map(poi => ({
+            id: poi.id,
+            name: poi.name,
+            description: poi.description,
+            ownerId: poi.ownerId
+        })),
     };
 
   return generateAdventureFlow(flowInput);
@@ -450,6 +465,17 @@ Known Characters (excluding player unless explicitly listed for context):
   **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Biographie/Notes, Affinity towards {{../playerName}}, their Relationship Statuses with others, and their recent History. Their style of speech (vocabulary, tone, formality) must also align. They should react logically to the User Action and the Current Situation.**
 {{/each}}
 
+{{#if mapPointsOfInterest.length}}
+--- Points of Interest ---
+A list of known locations on the map. When an attack on a territory is mentioned, you MUST use the ID from this list for poiOwnershipChanges.
+{{#each mapPointsOfInterest}}
+- Name: {{this.name}} (ID: {{this.id}})
+  Description: {{this.description}}
+  Owner ID: {{this.ownerId}}
+{{/each}}
+---
+{{/if}}
+
 User Action (from {{playerName}}): {{{userAction}}}
 
 **RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les étapes de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
@@ -546,9 +572,9 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If a combat for a territory was won by the player's team (all enemies defeated), you MUST change the ownership of that territory to the player. The territory's ID can be inferred from the user action (e.g., if userAction was "J'attaque la Grotte Grinçante", the POI ID is 'poi-grotte').
+    *   **Conquest:** If a combat for a territory was won by the player's team (all enemies defeated), you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above based on the territory name in the user action.**
     *   **Loss:** If the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
-    *   To do this, populate the 'poiOwnershipChanges' array with an object: '{ "poiId": "ID_OF_THE_POI", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
+    *   To do this, populate the 'poiOwnershipChanges' array with an object: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
