@@ -131,8 +131,9 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             
             {pointsOfInterest.map((poi) => {
                 const IconComponent = iconMap[poi.icon] || Landmark;
-                const canCollect = poi.ownerId === playerId && (poi.resources?.length ?? 0) > 0;
                 const isPlayerOwned = poi.ownerId === playerId;
+                const hasResources = (poi.resources?.length ?? 0) > 0;
+                const canCollect = isPlayerOwned && hasResources;
                 const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
                 const haloColor = isPlayerOwned ? '#FFD700' : poi.factionColor; // Gold for player, otherwise faction color
 
