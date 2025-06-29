@@ -198,7 +198,7 @@ export default function Home() {
 
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
     world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
-    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Ancienne Elara, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
+    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true,
     relationsMode: true,
     playerName: "Héros",
@@ -220,26 +220,26 @@ export default function Home() {
     mapPointsOfInterest: [
         { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'gold', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
         { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Elara.', icon: 'Cave', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: 'elara-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire présumé des gobelins. Sous l\'influence de l\'Impératrice Yumi.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'collect'], factionColor: 'red', ownerId: 'yumi-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
-        id: 'elara-1',
-        name: "Ancienne Elara",
-        details: "Vieille femme sage et respectée de Bourgenval. Elle porte le fardeau des espoirs de son village. Environ 70 ans, cheveux gris tressés, yeux perçants et bienveillants.",
-        biographyNotes: "Elara a vu des générations grandir et tomber. Elle est déterminée à protéger Bourgenval, quitte à faire confiance à des étrangers.",
+        id: 'yumi-1',
+        name: "Impératrice Yumi",
+        details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
+        biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
         history: ["A demandé de l'aide au joueur pour les gobelins."],
         portraitUrl: null,
         affinity: 60,
         relations: { [PLAYER_ID]: "Espoir du village" },
         isAlly: true, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 1, currentExp: 0, expToNextLevel: 100,
-        characterClass: "Sage", isHostile: false,
-        strength: 7, dexterity: 8, constitution: 9, intelligence: 14, wisdom: 15, charisma: 12,
-        hitPoints: 10, maxHitPoints: 10, manaPoints: 20, maxManaPoints: 20, armorClass: 10, attackBonus: 0, damageBonus: "1",
-        spells: ["Soin Léger", "Lumière"], skills: {"Herboristerie": true}
+        level: 5, currentExp: 0, expToNextLevel: 800,
+        characterClass: "Impératrice", isHostile: false,
+        strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
+        hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
+        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true}
       },
       {
         id: 'duc-asdrubael',

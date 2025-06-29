@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Cave, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,7 +27,7 @@ const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
     Mountain: Mountain,
     Trees: Trees,
     Village: VillageIcon,
-    Cave: Cave,
+    Shield: ShieldIcon,
     Landmark: Landmark,
 };
 
