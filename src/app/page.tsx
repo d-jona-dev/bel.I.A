@@ -338,22 +338,6 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
-  const adventureSettingsRef = React.useRef(adventureSettings);
-  React.useEffect(() => {
-    adventureSettingsRef.current = adventureSettings;
-  }, [adventureSettings]);
-
-  const charactersRef = React.useRef(characters);
-    React.useEffect(() => {
-        charactersRef.current = characters;
-    }, [characters]);
-
-  const activeCombatRef = React.useRef(activeCombat);
-    React.useEffect(() => {
-        activeCombatRef.current = activeCombat;
-    }, [activeCombat]);
-
-
   const { toast } = useToast();
 
   const handleToggleAestheticFont = React.useCallback(() => {
@@ -480,8 +464,8 @@ export default function Home() {
 
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-    const currentRpgMode = adventureSettingsRef.current.rpgMode;
-    const currentGlobalChars = charactersRef.current;
+    const currentRpgMode = adventureSettings.rpgMode;
+    const currentGlobalChars = characters;
 
     setCharacters(prevChars => {
         if (!currentRpgMode) {
@@ -613,7 +597,7 @@ export default function Home() {
     if (currentRpgMode) {
         if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
             const combatantsForNextTurnMap = new Map<string, Combatant>();
-            const latestPlayerState = adventureSettingsRef.current;
+            const latestPlayerState = adventureSettings;
             const playerCombatDataFromAI = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
     
             const playerForNextTurn: Combatant = {
@@ -625,7 +609,7 @@ export default function Home() {
                 maxMp: latestPlayerState.playerMaxMp!,
                 team: 'player',
                 isDefeated: (playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!) <= 0,
-                statusEffects: playerCombatDataFromAI?.newStatusEffects || activeCombatRef.current?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
+                statusEffects: playerCombatDataFromAI?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
             };
             combatantsForNextTurnMap.set(PLAYER_ID, playerForNextTurn);
     
@@ -672,7 +656,7 @@ export default function Home() {
     }
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast]);
+  }, [toast, adventureSettings, characters, activeCombat]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -691,7 +675,7 @@ export default function Home() {
         initialRelations[PLAYER_ID] = defaultRelationDesc;
         if (nc.initialRelations) {
           nc.initialRelations.forEach(rel => {
-            const targetChar = charactersRef.current.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
+            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
             if (targetChar) {
               initialRelations[targetChar.id] = rel.description;
             } else if (rel.targetName.toLowerCase() === currentStagedPlayerName.toLowerCase()) {
@@ -771,7 +755,7 @@ export default function Home() {
       return updatedChars;
     });
 
-  }, [currentLanguage, stagedAdventureSettings.playerName, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, toast]);
+  }, [currentLanguage, stagedAdventureSettings.playerName, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, toast, characters]);
 
   const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
     if (!updates || updates.length === 0) return;
@@ -896,7 +880,7 @@ export default function Home() {
           const newPois = prev.mapPointsOfInterest.map(poi => {
               const change = changes.find(c => c.poiId === poi.id);
               if (change) {
-                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : charactersRef.current.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
                   setTimeout(() => {
                       toast({
                           title: "Changement de Territoire !",
@@ -910,17 +894,17 @@ export default function Home() {
   
           return { ...prev, mapPointsOfInterest: newPois };
       });
-  }, [toast]);
+  }, [toast, characters]);
 
   const callGenerateAdventure = React.useCallback(async (userActionText: string) => {
     React.startTransition(() => {
       setIsLoading(true);
     });
 
-    const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettingsRef.current)) as AdventureSettings;
+    const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
     const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
-    const currentGlobalCharacters = charactersRef.current;
-    let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombatRef.current ? JSON.parse(JSON.stringify(activeCombatRef.current)) : undefined;
+    const currentGlobalCharacters = characters;
+    let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
     if (currentTurnSettings.rpgMode) {
         const combatantsForAIMap = new Map<string, Combatant>();
@@ -1026,19 +1010,19 @@ export default function Home() {
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-            if (adventureSettingsRef.current.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
-            if (adventureSettingsRef.current.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-            if (adventureSettingsRef.current.rpgMode && result.combatUpdates) {
+            if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
+            if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
+            if (adventureSettings.rpgMode && result.combatUpdates) {
                 handleCombatUpdates(result.combatUpdates);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
 
-            if (adventureSettingsRef.current.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettingsRef.current.playerGold !== undefined) {
+            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                 const amount = result.currencyGained;
                 if (amount < 0) {
-                    const currentGold = adventureSettingsRef.current.playerGold ?? 0;
+                    const currentGold = adventureSettings.playerGold ?? 0;
                     if (currentGold + amount < 0) {
                          setTimeout(() => {
                             toast({
@@ -1081,7 +1065,8 @@ export default function Home() {
   }, [
       currentLanguage, narrativeMessages, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange
+      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
+      adventureSettings, characters, activeCombat
   ]);
 
 
@@ -1175,9 +1160,8 @@ export default function Home() {
                  setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
              }
             handleNarrativeUpdate(narrativeAction, 'user');
-            // Ensure adventureSettingsRef is updated before calling generateAdventure
              if (updatedSettingsForToast) {
-                adventureSettingsRef.current = updatedSettingsForToast;
+                // No need to update ref, callGenerateAdventure will get the new state
              }
             callGenerateAdventure(narrativeAction);
         }
@@ -1187,7 +1171,7 @@ export default function Home() {
   ]);
 
   const handleSellItem = React.useCallback((itemId: string) => {
-        const currentSettings = adventureSettingsRef.current;
+        const currentSettings = adventureSettings;
         const itemToSell = currentSettings.playerInventory?.find(invItem => invItem.id === itemId);
 
         if (!currentSettings.rpgMode || !itemToSell || itemToSell.quantity <= 0) {
@@ -1222,7 +1206,7 @@ export default function Home() {
         } else {
             confirmSellMultipleItems(1, itemToSell, sellPricePerUnit);
         }
-  }, [toast]);
+  }, [toast, adventureSettings]);
 
 
   const confirmSellMultipleItems = React.useCallback((quantityToSell: number, itemBeingSold?: PlayerInventoryItem, pricePerUnit?: number) => {
@@ -1450,7 +1434,7 @@ export default function Home() {
 
     const handleUndoLastMessage = React.useCallback(() => {
         let messageForToast: Parameters<typeof toast>[0] | null = null;
-        let newActiveCombatState = activeCombatRef.current ? JSON.parse(JSON.stringify(activeCombatRef.current)) : undefined;
+        let newActiveCombatState = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
         React.startTransition(() => {
             setNarrativeMessages(prevNarrative => {
@@ -1489,7 +1473,7 @@ export default function Home() {
         if (messageForToast) {
              setTimeout(() => { toast(messageForToast as Parameters<typeof toast>[0]); }, 0);
         }
-    }, [toast]);
+    }, [toast, activeCombat]);
 
 
     const handleRegenerateLastResponse = React.useCallback(async () => {
@@ -1523,10 +1507,10 @@ export default function Home() {
         });
          setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); },0);
 
-        const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettingsRef.current)) as AdventureSettings;
+        const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
         const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
-        const currentGlobalCharactersRegen = charactersRef.current;
-        let currentActiveCombatRegen: ActiveCombat | undefined = activeCombatRef.current ? JSON.parse(JSON.stringify(activeCombatRef.current)) : undefined;
+        const currentGlobalCharactersRegen = characters;
+        let currentActiveCombatRegen: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
         if (currentTurnSettings.rpgMode && currentActiveCombatRegen?.isActive) {
             const combatantsForAIRegenMap = new Map<string, Combatant>();
@@ -1652,18 +1636,18 @@ export default function Home() {
 
                 if (result.newCharacters) handleNewCharacters(result.newCharacters);
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-                if (adventureSettingsRef.current.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
-                if (adventureSettingsRef.current.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                if(adventureSettingsRef.current.rpgMode && result.combatUpdates) {
+                if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
+                if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
+                if(adventureSettings.rpgMode && result.combatUpdates) {
                     handleCombatUpdates(result.combatUpdates);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
                 }
-                 if (adventureSettingsRef.current.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettingsRef.current.playerGold !== undefined) {
+                 if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
                     if (amount < 0) {
-                        const currentGold = adventureSettingsRef.current.playerGold ?? 0;
+                        const currentGold = adventureSettings.playerGold ?? 0;
                         if (currentGold + amount < 0) {
                         } else {
                             addCurrencyToPlayer(amount);
@@ -1695,7 +1679,8 @@ export default function Home() {
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNarrativeUpdate,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-         handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange
+         handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
+         adventureSettings, characters, activeCombat
      ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -1855,11 +1840,11 @@ export default function Home() {
 
   const handleSave = React.useCallback(() => {
         const saveData: SaveData = {
-            adventureSettings: adventureSettingsRef.current,
-            characters: charactersRef.current,
+            adventureSettings: adventureSettings,
+            characters: characters,
             narrative: narrativeMessages,
             currentLanguage,
-            activeCombat: activeCombatRef.current,
+            activeCombat: activeCombat,
             saveFormatVersion: 2.5,
             timestamp: new Date().toISOString(),
         };
@@ -1868,7 +1853,7 @@ export default function Home() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `aventurier_textuel_${adventureSettingsRef.current.playerName || 'aventure'}_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `aventurier_textuel_${adventureSettings.playerName || 'aventure'}_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1876,7 +1861,7 @@ export default function Home() {
         setTimeout(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
         }, 0);
-    }, [narrativeMessages, currentLanguage, toast]);
+    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -2295,8 +2280,8 @@ export default function Home() {
   const handleApplyStagedChanges = React.useCallback(() => {
     let initialSituationChanged = false;
     let playerNameChanged = false;
-    const prevLivePlayerName = adventureSettingsRef.current.playerName;
-    const prevLiveRpgMode = adventureSettingsRef.current.rpgMode;
+    const prevLivePlayerName = adventureSettings.playerName;
+    const prevLiveRpgMode = adventureSettings.rpgMode;
 
     setAdventureSettings(prevLiveSettings => {
         initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
@@ -2369,7 +2354,7 @@ export default function Home() {
 
     setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters))); 
 
-    if (playerNameChanged && activeCombatRef.current) {
+    if (playerNameChanged && activeCombat) {
         setActiveCombat(prevCombat => {
             if (!prevCombat) return undefined;
             const newCombatants = prevCombat.combatants.map(c => {
@@ -2384,7 +2369,7 @@ export default function Home() {
 
     if (initialSituationChanged) {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
-        if (activeCombatRef.current) { 
+        if (activeCombat) { 
             setActiveCombat(undefined);
         }
     }
@@ -2392,10 +2377,10 @@ export default function Home() {
     setTimeout(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
     }, 0);
-  }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings.playerGold]);
+  }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings, baseCharacters, adventureSettings, activeCombat]);
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => {
-    const poi = adventureSettingsRef.current.mapPointsOfInterest?.find(p => p.id === poiId);
+    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
     let userActionText = '';
 
@@ -2452,7 +2437,7 @@ export default function Home() {
                 } else {
                     newInventory.push({
                         ...newItem,
-                        id: `${newItem.name!.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                        id: `${newItem.name!.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                         isEquipped: false,
                         generatedImageUrl: null,
                         statBonuses: {},
@@ -2498,7 +2483,7 @@ export default function Home() {
     } finally {
         setIsLoading(false);
     }
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, narrativeMessages.length]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, narrativeMessages.length, adventureSettings]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -2567,7 +2552,7 @@ export default function Home() {
       toast({ title: "Suggestion de Quête", description: "L'IA réfléchit à une nouvelle accroche..." });
     }, 0);
 
-    const recentMessages = narrativeMessages.slice(-5).map(m => m.type === 'user' ? `${adventureSettingsRef.current.playerName}: ${m.content}` : m.content).join('\n');
+    const recentMessages = narrativeMessages.slice(-5).map(m => m.type === 'user' ? `${adventureSettings.playerName}: ${m.content}` : m.content).join('\n');
 
     try {
       const input: SuggestQuestHookInput = {
@@ -2603,7 +2588,7 @@ export default function Home() {
         setIsSuggestingQuest(false);
       });
     }
-  }, [narrativeMessages, characterNamesForQuestHook, worldForQuestHook, currentLanguage, toast, setIsSuggestingQuest]);
+  }, [narrativeMessages, characterNamesForQuestHook, worldForQuestHook, currentLanguage, toast, setIsSuggestingQuest, adventureSettings.playerName]);
 
   const generateSceneImageActionWrapper = React.useCallback(
     async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
@@ -2621,7 +2606,7 @@ export default function Home() {
         setIsGeneratingMap(true);
         toast({ title: "Génération de la carte...", description: "L'IA dessine votre monde." });
 
-        const { world, mapPointsOfInterest } = adventureSettingsRef.current;
+        const { world, mapPointsOfInterest } = adventureSettings;
         const poiNames = mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues';
 
         const prompt = `A fantasy map of a world. The style should be that of a hand-drawn map from a classic fantasy novel like "The Lord of the Rings". The map is on aged, weathered parchment. Include artistic details like a compass rose, sea monsters in any oceans, and rolling hills or mountains. Key locations to feature with calligraphic labels are: ${poiNames}. The overall atmosphere is one of ancient adventure. World description for context: ${world}`;
@@ -2638,7 +2623,7 @@ export default function Home() {
         } finally {
             setIsGeneratingMap(false);
         }
-    }, [generateSceneImageActionWrapper, toast]);
+    }, [generateSceneImageActionWrapper, toast, adventureSettings]);
 
   const handleGenerateItemImage = React.useCallback(async (item: PlayerInventoryItem) => {
     if (isGeneratingItemImage) return;
