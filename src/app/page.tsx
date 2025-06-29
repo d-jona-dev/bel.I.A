@@ -219,8 +219,8 @@ export default function Home() {
     playerSkills: [],
     mapPointsOfInterest: [
         { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'gold', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack'], factionColor: 'red', ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], factionColor: 'red', ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
