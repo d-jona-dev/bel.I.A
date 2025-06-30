@@ -615,6 +615,10 @@ export default function Home() {
     
             combatUpdates.nextActiveCombatState.combatants.forEach(aiCombatant => {
                 if (aiCombatant.characterId !== PLAYER_ID) { 
+                    const charData = currentGlobalChars.find(c => c.id === aiCombatant.characterId);
+                    if (charData?.isAlly) {
+                        aiCombatant.team = 'player'; // Force correct team for known allies
+                    }
                     combatantsForNextTurnMap.set(aiCombatant.characterId, aiCombatant);
                 }
             });
@@ -2099,7 +2103,7 @@ export default function Home() {
             playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxMp : undefined,
             playerCurrentExp: initialSettingsFromBase.rpgMode ? 0 : undefined,
             playerInventory: initialSettingsFromBase.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [],
-            playerGold: initialSettingsFromBase.playerGold ?? 0,
+            playerGold: initialSettingsFromBase.playerGold ?? (baseAdventureSettings.playerGold ?? 0),
             equippedItemIds: { weapon: null, armor: null, jewelry: null },
             playerSkills: [],
         };

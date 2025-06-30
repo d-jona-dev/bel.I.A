@@ -872,31 +872,48 @@ export function AdventureDisplay({
                     <div className="space-y-0">
                         <PlayerStatusCard />
                         
-                        {/* NEW: Contested POI Display */}
-                        {activeCombat?.isActive && activeCombat.contestedPoiId && (
-                            <Card className="my-3 border-orange-500 border-2 bg-orange-500/10 text-center shadow-md">
-                                <CardHeader className="p-2">
-                                    <UICardDescription className="text-xs font-semibold text-orange-600">Défense de :</UICardDescription>
-                                    <CardTitle className="text-base text-foreground">
-                                        {adventureSettings.mapPointsOfInterest?.find(p => p.id === activeCombat.contestedPoiId)?.name || 'Territoire Inconnu'}
-                                    </CardTitle>
+                        {/* Allies in Combat */}
+                        {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated).length > 0 && (
+                            <Card className="my-3 border-green-500 border-2 bg-green-500/10 shadow-md">
+                                <CardHeader className="p-2 text-center">
+                                    <UICardDescription className="text-xs font-semibold text-green-600">Alliés</UICardDescription>
                                 </CardHeader>
+                                <CardContent className="p-2 pt-0">
+                                {activeCombat.combatants
+                                    .filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated)
+                                    .map(ally => {
+                                        const allyCharData = characters.find(cd => cd.id === ally.characterId) || { name: ally.name, id: ally.characterId } as Character;
+                                        return <NpcCombatantCard key={`ally-${ally.characterId}`} character={allyCharData} combatData={ally} />;
+                                })}
+                                </CardContent>
                             </Card>
                         )}
                         
-                        {/* Fixed Allies Display */}
-                        {characters.filter(char => char.id !== playerId && char.isAlly && (char.hitPoints ?? 0) > 0).map(allyChar => {
-                            const combatDataForAlly = activeCombat?.isActive ? activeCombat.combatants.find(c => c.characterId === allyChar.id) : undefined;
-                            return <NpcCombatantCard key={`ally-display-${allyChar.id}`} character={allyChar} combatData={combatDataForAlly} />;
-                        })}
-
                         {/* Enemies in Combat */}
-                        {activeCombat?.isActive && activeCombat.combatants
-                            .filter(c => c.team === 'enemy' && !c.isDefeated)
-                            .map(enemy => {
-                                const enemyCharData = characters.find(cd => cd.id === enemy.characterId) || { name: enemy.name, id: enemy.characterId } as Character;
-                                return <NpcCombatantCard key={`enemy-${enemy.characterId}`} character={enemyCharData} combatData={enemy} />;
-                            })}
+                        {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
+                            <Card className={`my-3 border-2 shadow-md ${activeCombat.contestedPoiId ? 'border-orange-500 bg-orange-500/10' : 'border-red-500 bg-red-500/10'}`}>
+                                <CardHeader className="p-2 text-center">
+                                    {activeCombat.contestedPoiId ? (
+                                        <>
+                                            <UICardDescription className="text-xs font-semibold text-orange-600">Défenseurs de :</UICardDescription>
+                                            <CardTitle className="text-base text-foreground">
+                                                {adventureSettings.mapPointsOfInterest?.find(p => p.id === activeCombat.contestedPoiId)?.name || 'Territoire Inconnu'}
+                                            </CardTitle>
+                                        </>
+                                    ) : (
+                                        <UICardDescription className="text-xs font-semibold text-red-600">Ennemis</UICardDescription>
+                                    )}
+                                </CardHeader>
+                                <CardContent className="p-2 pt-0">
+                                    {activeCombat.combatants
+                                        .filter(c => c.team === 'enemy' && !c.isDefeated)
+                                        .map(enemy => {
+                                            const enemyCharData = characters.find(cd => cd.id === enemy.characterId) || { name: enemy.name, id: enemy.characterId } as Character;
+                                            return <NpcCombatantCard key={`enemy-${enemy.characterId}`} character={enemyCharData} combatData={enemy} />;
+                                        })}
+                                </CardContent>
+                            </Card>
+                        )}
                         
                         {/* Defeated Combatants */}
                          {activeCombat?.isActive && activeCombat.combatants.filter(c => c.isDefeated).length > 0 && (
