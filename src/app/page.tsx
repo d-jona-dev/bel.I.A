@@ -2697,6 +2697,7 @@ export default function Home() {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
+  const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
     <>
@@ -2776,6 +2777,7 @@ export default function Home() {
         onGenerateMap={handleGenerateMapImage}
         isGeneratingMap={isGeneratingMap}
         onPoiPositionChange={handlePoiPositionChange}
+        isLoading={isUiLocked}
       />
       </>
   );

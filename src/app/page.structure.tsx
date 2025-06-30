@@ -105,6 +105,7 @@ interface PageStructureProps {
   onGenerateMap: () => Promise<void>;
   isGeneratingMap: boolean;
   onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
+  isLoading: boolean;
 }
 
 export function PageStructure({
@@ -164,6 +165,7 @@ export function PageStructure({
   onGenerateMap,
   isGeneratingMap,
   onPoiPositionChange,
+  isLoading,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -457,7 +459,7 @@ export function PageStructure({
                                                                         <span className="text-muted-foreground truncate max-w-[100px]">{item ? item.name : "Vide"}</span>
                                                                     </div>
                                                                     {item && (
-                                                                        <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)}>
+                                                                        <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
                                                                             Déséquiper
                                                                         </Button>
                                                                     )}
@@ -494,7 +496,8 @@ export function PageStructure({
                                                                       <div
                                                                         className={cn(
                                                                           "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
-                                                                          getItemTypeColor(item.type, item.isEquipped)
+                                                                          getItemTypeColor(item.type, item.isEquipped),
+                                                                          isLoading && "cursor-not-allowed opacity-50"
                                                                         )}
                                                                       >
                                                                         {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
@@ -557,33 +560,33 @@ export function PageStructure({
                                                               <DropdownMenuContent>
                                                                  {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
                                                                     item.isEquipped ? (
-                                                                        <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
+                                                                        <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')} disabled={isLoading}>
                                                                             <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
                                                                         </DropdownMenuItem>
                                                                     ) : (
-                                                                        <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
+                                                                        <DropdownMenuItem onSelect={() => handleEquipItem(item.id)} disabled={isLoading}>
                                                                             <Shirt className="mr-2 h-4 w-4" /> Équiper
                                                                         </DropdownMenuItem>
                                                                     )
                                                                 )}
                                                                 <DropdownMenuItem
                                                                   onSelect={() => handlePlayerItemAction(item.id, 'use')}
-                                                                  disabled={item.type !== 'consumable'}
+                                                                  disabled={item.type !== 'consumable' || isLoading}
                                                                 >
                                                                   <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
+                                                                <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')} disabled={isLoading}>
                                                                   <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
                                                                 </DropdownMenuItem>
                                                                  <DropdownMenuItem 
                                                                   onSelect={() => handleSellItem(item.id)}
-                                                                  disabled={sellPricePerUnit <= 0}
+                                                                  disabled={sellPricePerUnit <= 0 || isLoading}
                                                                 >
                                                                   <Coins className="mr-2 h-4 w-4" /> {sellLabel}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem
                                                                   onSelect={() => handleGenerateItemImage(item)}
-                                                                  disabled={isGeneratingItemImage}
+                                                                  disabled={isLoading}
                                                                 >
                                                                   <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
                                                                 </DropdownMenuItem>
@@ -593,6 +596,11 @@ export function PageStructure({
                                                       })}
                                                     </div>
                                                   </ScrollArea>
+                                                )}
+                                                {isLoading && (
+                                                  <p className="text-xs text-muted-foreground italic text-center p-1 mt-2">
+                                                    Veuillez attendre la fin de l'action en cours avant d'en utiliser un autre.
+                                                  </p>
                                                 )}
                                               </CardContent>
                                             </Card>
