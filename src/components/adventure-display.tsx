@@ -872,6 +872,18 @@ export function AdventureDisplay({
                     <div className="space-y-0">
                         <PlayerStatusCard />
                         
+                        {/* NEW: Contested POI Display */}
+                        {activeCombat?.isActive && activeCombat.contestedPoiId && (
+                            <Card className="my-3 border-orange-500 border-2 bg-orange-500/10 text-center shadow-md">
+                                <CardHeader className="p-2">
+                                    <UICardDescription className="text-xs font-semibold text-orange-600">Défense de :</UICardDescription>
+                                    <CardTitle className="text-base text-foreground">
+                                        {adventureSettings.mapPointsOfInterest?.find(p => p.id === activeCombat.contestedPoiId)?.name || 'Territoire Inconnu'}
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                        )}
+                        
                         {/* Fixed Allies Display */}
                         {characters.filter(char => char.id !== playerId && char.isAlly && (char.hitPoints ?? 0) > 0).map(allyChar => {
                             const combatDataForAlly = activeCombat?.isActive ? activeCombat.combatants.find(c => c.characterId === allyChar.id) : undefined;

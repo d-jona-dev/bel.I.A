@@ -102,6 +102,7 @@ const ActiveCombatSchema = z.object({
     environmentDescription: z.string().optional().describe("Brief description of the combat environment (e.g., 'a narrow corridor', 'an open field')."),
     turnLog: z.array(z.string()).optional().describe("Summary of major events from previous combat turns."),
     playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
+    contestedPoiId: z.string().optional().describe("The ID of the Point of Interest being fought over, if this is a territory combat. This is CRUCIAL for determining conquest rewards.")
 });
 
 const InventoryItemForAISchema = z.object({
@@ -412,6 +413,9 @@ Compétences:
 
 {{#if activeCombat.isActive}}
 --- COMBAT ACTIVE ---
+{{#if activeCombat.contestedPoiId}}
+**Territory Under Attack:** {{activeCombat.contestedPoiId}}
+{{/if}}
 Environment: {{activeCombat.environmentDescription}}
 Combatants (Player team listed first, then Enemies):
 {{#each activeCombat.combatants}}
@@ -486,7 +490,7 @@ Tasks:
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Territory Attack:** If the userAction indicates an attack on a location (e.g., "J'attaque la Grotte Grinçante"), you MUST initiate combat. The narrative should describe the player approaching the location to attack, and the defenders appearing.
             *   **Combat Initiation:** Announce the combat. Identify the defenders. The primary defender is the character who owns the territory. Add 3-4 other appropriate defenders (e.g., for a goblin chief, add other goblins like "Gobelin Fureteur"). Create a challenging encounter.
-            *   Populate 'activeCombat.environmentDescription', and set 'combatUpdates.nextActiveCombatState' with 'isActive: true' and the list of combatants (player, allies, and all defenders as 'enemy' team). The player's current allies ('isAlly: true' characters) MUST be included in the player's team.
+            *   Populate 'activeCombat.environmentDescription'. You MUST set 'combatUpdates.nextActiveCombatState' with 'isActive: true', the list of combatants (player, allies, and all defenders as 'enemy' team), and, most importantly, set 'contestedPoiId' to the ID of the territory being attacked (taken from the 'Points of Interest' list). The player's current allies ('isAlly: true' characters) MUST be included in the player's team.
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
             *   Present a list of 3-5 items for sale using the format: 'NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or'. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
@@ -526,8 +530,8 @@ Tasks:
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
             *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
-        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true.
-        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory AND 'activeCombat.contestedPoiId' was set for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
+        *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut, et le 'contestedPoiId' s'il était présent) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
     *   **Item Acquisition (Exploration/Gift/Combat Loot):** If the player finds items, is given items, or gets them from combat loot, list these in the top-level itemsObtained field.
@@ -572,9 +576,10 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like "J'attaque la Grotte Grinçante" started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above**.
+    *   **Context is Key:** During combat, the 'activeCombat.contestedPoiId' field tells you if a territory is being fought over.
+    *   **Conquest on Victory:** If a combat for which 'activeCombat.contestedPoiId' was set concludes with a victory for the player's team ('combatUpdates.combatEnded: true' and enemies are defeated), you MUST populate the 'poiOwnershipChanges' array. Use the 'contestedPoiId' to identify the territory and set 'player' as the 'newOwnerId'. Example: '{ "poiId": "poi-grotte", "newOwnerId": "player" }'. This is not optional.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
-    *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
+    *   The territory's ID **MUST be taken from the 'Points of Interest' list above**.
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]

@@ -69,6 +69,7 @@ export interface ActiveCombat {
   environmentDescription?: string;
   turnLog?: string[];
   playerAttemptedDeescalation?: boolean;
+  contestedPoiId?: string; // ID of the POI being fought over
 }
 
 export interface GeneratedResource {
