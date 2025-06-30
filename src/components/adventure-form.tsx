@@ -94,9 +94,6 @@ interface AdventureFormProps {
 export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   
-  // By using the `values` prop, the form becomes a "controlled component".
-  // This means its state is driven by the `initialValues` prop from the parent.
-  // This avoids the infinite loop caused by using `useEffect` with `form.reset`.
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     values: initialValues,
@@ -108,7 +105,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     name: "characters",
   });
 
-  // This useEffect still watches for changes and notifies the parent component.
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
         onSettingsChange(value as AdventureFormValues);
@@ -146,8 +142,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerGold: 50,
     };
     onSettingsChange(loadedData);
-    // No need to call form.reset() here, the parent will update `initialValues` prop,
-    // and because the form is controlled, it will update automatically.
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
 
@@ -181,7 +175,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   }, [
       form.watch("playerStrength"), form.watch("playerDexterity"), form.watch("playerConstitution"),
       form.watch("playerIntelligence"), form.watch("playerWisdom"), form.watch("playerCharisma"),
-      calculateSpentPoints, totalDistributablePointsForCurrentLevel // Ajout de totalDistributablePointsForCurrentLevel
+      calculateSpentPoints, totalDistributablePointsForCurrentLevel
   ]);
 
   const remainingPoints = totalDistributablePointsForCurrentLevel - spentPoints;
@@ -198,22 +192,18 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
 
-    // Calculer les points dépensés *avant* cette modification pour ce champ
     const spentBeforeThisChange = calculateSpentPoints() - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
-    // Calculer combien de points cette nouvelle valeur va "coûter"
     const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
     const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
 
 
     if (projectedTotalSpentPoints > totalDistributablePointsForCurrentLevel) {
-        // Si on dépasse, ajuster la nouvelle valeur pour utiliser seulement les points restants
         const pointsOver = projectedTotalSpentPoints - totalDistributablePointsForCurrentLevel;
         newAttributeValue -= pointsOver;
         if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
 
     form.setValue(fieldName, newAttributeValue as any, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    // setSpentPoints est appelé par le useEffect qui observe les changements d'attributs.
   };
 
 
@@ -326,7 +316,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                 </div>
                  <FormField
                   control={form.control}
-                  name="playerInitialAttributePoints" // Points de création
+                  name="playerInitialAttributePoints"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Points d'Attributs de Création (Niv. 1)</FormLabel>
@@ -394,80 +384,41 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                  <Separator className="my-3"/>
                  <div className="flex items-center gap-2">
                     <BarChart2 className="h-5 w-5 text-primary"/>
-                    <h4 className="font-semibold">Statistiques de Combat et Autres (Indicatif)</h4>
+                    <h4 className="font-semibold">Statistiques de Combat et Autres (Calculées)</h4>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    <FormField
-                      control={form.control}
-                      name="playerAttackBonus"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bonus d'Attaque</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
-                          </FormControl>
-                           <FormDescription>Calculé : {initialValues.playerAttackBonus}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="playerDamageBonus"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bonus de Dégâts</FormLabel>
-                          <FormControl>
-                            <Input placeholder="ex: 1d4, +2" {...field} value={field.value || ""} className="bg-background border"/>
-                          </FormControl>
-                           <FormDescription>Calculé : {initialValues.playerDamageBonus}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                 </div>
-                 <FormField
-                  control={form.control}
-                  name="playerMaxHp"
-                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel>PV Max Initiaux</FormLabel>
+                      <FormLabel>Bonus d'Attaque</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="20" {...field} value={field.value || 20} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                        <Input type="text" value={initialValues.playerAttackBonus ? `+${initialValues.playerAttackBonus}` : '0'} readOnly className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"/>
                       </FormControl>
-                      <FormDescription>Calculé : {initialValues.playerMaxHp} (basé sur CON, Niv. et Classe).</FormDescription>
-                      <FormMessage />
                     </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="playerMaxMp"
-                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel>PM Max Initiaux</FormLabel>
+                      <FormLabel>Bonus de Dégâts</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
+                        <Input value={initialValues.playerDamageBonus || "1"} readOnly className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"/>
                       </FormControl>
-                       <FormDescription>Calculé : {initialValues.playerMaxMp} (basé sur INT, Niv. et Classe).</FormDescription>
-                      <FormMessage />
                     </FormItem>
-                  )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="playerArmorClass"
-                    render={({ field }) => (
-                        <FormItem>
+                    <FormItem>
+                      <FormLabel>PV Max</FormLabel>
+                      <FormControl>
+                        <Input type="number" value={initialValues.playerMaxHp || 0} readOnly className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"/>
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>PM Max</FormLabel>
+                      <FormControl>
+                        <Input type="number" value={initialValues.playerMaxMp || 0} readOnly className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"/>
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
                         <FormLabel>Classe d'Armure (CA)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="10" {...field} value={field.value || 10} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
+                            <Input type="number" value={initialValues.playerArmorClass || 0} readOnly className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"/>
                         </FormControl>
-                         <FormDescription>Calculé : {initialValues.playerArmorClass} (basé sur DEX et équipement).</FormDescription>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                 />
+                    </FormItem>
+                 </div>
+                 <Separator className="my-3"/>
                 <FormField
                   control={form.control}
                   name="playerExpToNextLevel"
@@ -611,4 +562,5 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   );
 }
 
+    
     
