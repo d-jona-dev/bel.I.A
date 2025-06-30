@@ -93,9 +93,13 @@ interface AdventureFormProps {
 
 export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
+  
+  // By using the `values` prop, the form becomes a "controlled component".
+  // This means its state is driven by the `initialValues` prop from the parent.
+  // This avoids the infinite loop caused by using `useEffect` with `form.reset`.
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    defaultValues: initialValues,
+    values: initialValues,
     mode: "onChange",
   });
 
@@ -104,27 +108,13 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     name: "characters",
   });
 
+  // This useEffect still watches for changes and notifies the parent component.
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
         onSettingsChange(value as AdventureFormValues);
     });
     return () => subscription.unsubscribe();
   }, [form, onSettingsChange]);
-
-  React.useEffect(() => {
-    const currentFormValues = form.getValues();
-    // Check if any key in initialValues is different from currentFormValues
-    const formStateIsDifferent = Object.keys(initialValues).some(key => {
-        const formValue = currentFormValues[key as keyof AdventureFormValues];
-        const initialValue = initialValues[key as keyof AdventureFormValues];
-        return JSON.stringify(formValue) !== JSON.stringify(initialValue);
-    });
-
-    if (formStateIsDifferent) {
-        form.reset(initialValues);
-    }
-  }, [formPropKey, initialValues, form]);
-
 
   const handleLoadPrompt = () => {
     const loadedData: AdventureFormValues = {
@@ -156,8 +146,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerGold: 50,
     };
     onSettingsChange(loadedData);
-    form.reset(loadedData);
-
+    // No need to call form.reset() here, the parent will update `initialValues` prop,
+    // and because the form is controlled, it will update automatically.
     toast({ title: "Prompt Exemple Chargé", description: "La configuration de l'aventure a été chargée. Cliquez sur 'Enregistrer les modifications' pour appliquer." });
   };
 
@@ -621,3 +611,4 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   );
 }
 
+    
