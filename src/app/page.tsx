@@ -2701,6 +2701,40 @@ export default function Home() {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => {
+    const newPoi: MapPointOfInterest = {
+        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        name: data.name,
+        description: data.description,
+        icon: data.type,
+        position: { x: 50, y: 50 },
+        actions: ['travel', 'examine', 'attack', 'collect'],
+        ownerId: data.ownerId,
+        lastCollectedTurn: undefined,
+    };
+
+    let resources: GeneratedResource[] = [];
+    if (data.type === 'Trees') {
+        resources = [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }];
+    } else if (data.type === 'Village') {
+        resources = [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }];
+    } else if (data.type === 'Shield') { // Mine
+        resources = [{ type: 'item', name: "Minerai de Fer", quantity: 3 }];
+    }
+    newPoi.resources = resources;
+
+    setAdventureSettings(prev => ({
+        ...prev,
+        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+    }));
+
+    toast({
+        title: "Point d'Intérêt Créé",
+        description: `Le lieu "${data.name}" a été ajouté à la carte.`,
+    });
+  }, [toast]);
+
+
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -2782,6 +2816,7 @@ export default function Home() {
         isGeneratingMap={isGeneratingMap}
         onPoiPositionChange={handlePoiPositionChange}
         isLoading={isUiLocked}
+        onCreatePoi={handleCreatePoi}
       />
       </>
   );

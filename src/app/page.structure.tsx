@@ -106,6 +106,7 @@ interface PageStructureProps {
   isGeneratingMap: boolean;
   onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
   isLoading: boolean;
+  onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
 }
 
 export function PageStructure({
@@ -166,6 +167,7 @@ export function PageStructure({
   isGeneratingMap,
   onPoiPositionChange,
   isLoading,
+  onCreatePoi,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -353,6 +355,7 @@ export function PageStructure({
                 onGenerateMap={onGenerateMap}
                 isGeneratingMap={isGeneratingMap}
                 onPoiPositionChange={onPoiPositionChange}
+                onCreatePoi={onCreatePoi}
              />
         </main>
       </SidebarInset>

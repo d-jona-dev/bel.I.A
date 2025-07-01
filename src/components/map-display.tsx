@@ -3,12 +3,27 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { MapPointOfInterest } from "@/types";
+import type { Character, MapPointOfInterest } from "@/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface MapDisplayProps {
     playerId: string;
@@ -20,6 +35,9 @@ interface MapDisplayProps {
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
     onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
+    characters: Character[];
+    playerName: string;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => void;
 }
 
 const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
@@ -31,9 +49,16 @@ const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
     Landmark: Landmark,
 };
 
-export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange }: MapDisplayProps) {
+export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi }: MapDisplayProps) {
+    const { toast } = useToast();
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+    const [newPoiName, setNewPoiName] = React.useState("");
+    const [newPoiDescription, setNewPoiDescription] = React.useState("");
+    const [newPoiType, setNewPoiType] = React.useState<MapPointOfInterest['icon']>("Village");
+    const [newPoiOwnerId, setNewPoiOwnerId] = React.useState(playerId);
+
 
     const handleMouseDown = (e: React.MouseEvent, poiId: string) => {
         e.preventDefault();
@@ -55,6 +80,25 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
     const handleMouseUp = () => {
         setDraggingPoi(null);
+    };
+
+    const handleCreateClick = () => {
+        if (!newPoiName.trim()) {
+            toast({ title: "Erreur", description: "Le nom du point d'intérêt est requis.", variant: "destructive" });
+            return;
+        }
+        onCreatePoi({
+            name: newPoiName,
+            description: newPoiDescription,
+            type: newPoiType,
+            ownerId: newPoiOwnerId,
+        });
+        setIsCreateDialogOpen(false);
+        // Reset form
+        setNewPoiName("");
+        setNewPoiDescription("");
+        setNewPoiType("Village");
+        setNewPoiOwnerId(playerId);
     };
 
     return (
@@ -90,6 +134,75 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             />
             
             <div className="absolute top-2 right-2 z-20 flex gap-2">
+                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="bg-background/70 backdrop-blur-sm"
+                                        aria-label="Créer un point d'intérêt"
+                                    >
+                                        <PlusSquare className="h-4 w-4" />
+                                    </Button>
+                                </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" align="center">
+                                Créer un Point d'Intérêt
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Créer un nouveau Point d'Intérêt</DialogTitle>
+                            <DialogDescription>
+                                Définissez les détails de votre nouveau lieu. Il apparaîtra au centre de la carte et vous pourrez le déplacer.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-name" className="text-right">Nom</Label>
+                                <Input id="poi-name" value={newPoiName} onChange={e => setNewPoiName(e.target.value)} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-description" className="text-right">Description</Label>
+                                <Textarea id="poi-description" value={newPoiDescription} onChange={e => setNewPoiDescription(e.target.value)} className="col-span-3" />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-type" className="text-right">Type</Label>
+                                <Select value={newPoiType} onValueChange={(value) => setNewPoiType(value as MapPointOfInterest['icon'])}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Choisir un type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Village">Ville (Produit de l'or)</SelectItem>
+                                        <SelectItem value="Trees">Forêt (Produit bois/viande)</SelectItem>
+                                        <SelectItem value="Shield">Mine (Produit du minerai)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-owner" className="text-right">Propriétaire</Label>
+                                <Select value={newPoiOwnerId} onValueChange={setNewPoiOwnerId}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Choisir un propriétaire" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={playerId}>{playerName} (Joueur)</SelectItem>
+                                        {characters.map(char => (
+                                            <SelectItem key={char.id} value={char.id}>{char.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" onClick={handleCreateClick}>Créer</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                  <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>

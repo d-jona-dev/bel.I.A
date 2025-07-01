@@ -75,6 +75,7 @@ interface AdventureDisplayProps {
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
 }
 
 
@@ -105,6 +106,7 @@ export function AdventureDisplay({
     onGenerateMap,
     isGeneratingMap,
     onPoiPositionChange,
+    onCreatePoi,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -576,6 +578,9 @@ export function AdventureDisplay({
                             onGenerateMap={onGenerateMap}
                             isGeneratingMap={isGeneratingMap}
                             onPoiPositionChange={onPoiPositionChange}
+                            characters={characters}
+                            playerName={adventureSettings.playerName || "Joueur"}
+                            onCreatePoi={onCreatePoi}
                         />
                     </TabsContent>
                   </Tabs>
