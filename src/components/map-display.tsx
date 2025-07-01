@@ -245,10 +245,18 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             {pointsOfInterest.map((poi) => {
                 const IconComponent = iconMap[poi.icon] || Landmark;
                 const isPlayerOwned = poi.ownerId === playerId;
+                
+                const owner = characters.find(c => c.id === poi.ownerId);
+                let haloColor: string | undefined = '#808080'; // Default grey
+                if (isPlayerOwned) {
+                    haloColor = '#FFD700'; // Gold for player
+                } else if (owner?.factionColor) {
+                    haloColor = owner.factionColor;
+                }
+
                 const hasResources = (poi.resources?.length ?? 0) > 0;
                 const canCollect = isPlayerOwned && hasResources;
                 const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
-                const haloColor = isPlayerOwned ? '#FFD700' : poi.factionColor; // Gold for player, otherwise faction color
 
                 return (
                     <div

@@ -218,9 +218,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], factionColor: 'gold', ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], factionColor: 'blue', ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], factionColor: 'red', ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
+        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
@@ -240,7 +240,8 @@ export default function Home() {
         characterClass: "Impératrice", isHostile: false,
         strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
         hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true}
+        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true},
+        factionColor: '#8A2BE2' // BlueViolet
       },
       {
         id: 'elara-1',
@@ -261,7 +262,8 @@ export default function Home() {
         armorClass: 11,
         attackBonus: 2,
         damageBonus: "1d6",
-        spells: ["Projectile Magique", "Armure de Mage"], skills: {"Arcanes": true}
+        spells: ["Projectile Magique", "Armure de Mage"], skills: {"Arcanes": true},
+        factionColor: '#00FFFF' // Cyan
       },
       {
         id: 'duc-asdrubael',
@@ -277,7 +279,8 @@ export default function Home() {
         characterClass: "Noble Reclus", isHostile: false,
         strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
         hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
-        inventory: {"Sceptre Orné": 1, "Carte de la région": 1}
+        inventory: {"Sceptre Orné": 1, "Carte de la région": 1},
+        factionColor: '#0000FF' // Blue
       },
       {
         id: 'frak-1',
@@ -293,7 +296,8 @@ export default function Home() {
         characterClass: "Chef Gobelin", isHostile: true,
         strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
         hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
-        inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12}
+        inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12},
+        factionColor: '#FF0000' // Red
       },
       {
         id: 'snirf-1',
@@ -309,7 +313,8 @@ export default function Home() {
         characterClass: "Fureteur Gobelin", isHostile: true,
         strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
         hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        inventory: {"Dague Courte": 1, "Cailloux pointus": 5}
+        inventory: {"Dague Courte": 1, "Cailloux pointus": 5},
+        factionColor: '#DC143C' // Crimson
       }
   ]);
 
