@@ -2417,13 +2417,13 @@ export default function Home() {
             toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} Pièces d'Or pour améliorer ce lieu.`, variant: "destructive" });
             return;
         }
+        
+        const nextLevel = (poiToUpgrade.level || 1) + 1;
+        const nextLevelConfig = poiLevelConfig.Village[nextLevel as keyof typeof poiLevelConfig.Village];
 
         setAdventureSettings(prev => {
             const newPois = prev.mapPointsOfInterest!.map(p => {
                 if (p.id === poiId) {
-                    const nextLevel = (p.level || 1) + 1;
-                    const nextLevelConfig = poiLevelConfig.Village[nextLevel as keyof typeof poiLevelConfig.Village];
-                    toast({ title: "Lieu Amélioré !", description: `${p.name} est maintenant un(e) ${nextLevelConfig.name} !` });
                     return {
                         ...p,
                         level: nextLevel,
@@ -2439,6 +2439,8 @@ export default function Home() {
                 mapPointsOfInterest: newPois,
             };
         });
+
+        toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
         return; 
     }
 
