@@ -488,9 +488,9 @@ Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **COMBAT INITIATION (Only if not already in combat):**
         *   **Is it a Territory Attack?** (e.g., userAction is "J'attaque le lieu X").
-            *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState' and you MUST set 'contestedPoiId' to the ID of the location being attacked (from the 'Points of Interest' list). Include the player, allies, and defenders as combatants.
+            *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the location's defenders as enemies. You MUST also set 'contestedPoiId' to the ID of the location being attacked.
         *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
-            *   **YES:** There is a 30% chance of a random encounter. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState', but you MUST NOT set 'contestedPoiId'. This field should be absent for random encounters. Create new hostile NPCs for this encounter.
+            *   **YES:** There is a 30% chance of a random encounter. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
@@ -578,7 +578,7 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like "J'attaque la Grotte Grinçante" started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above**.
+    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like 'J'attaque la Grotte Grinçante' started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above**.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 

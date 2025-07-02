@@ -470,10 +470,10 @@ export default function Home() {
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
+    const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
 
     setCharacters(prevChars => {
         if (!currentRpgMode) {
-             console.warn("[LOG_PAGE_TSX][handleCombatUpdates] RPG mode is disabled for characters.");
              return prevChars;
         }
         let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
@@ -599,51 +599,72 @@ export default function Home() {
     });
     
     if (currentRpgMode) {
-        if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
-            // Simplified logic: Trust the AI's combatant list, but enforce team assignments and player data.
-            const combatantsFromAI = combatUpdates.nextActiveCombatState.combatants;
-            const allKnownCharacters = characters;
+      if (isNewCombatStarting) {
+        const newCombatStateFromAI = combatUpdates.nextActiveCombatState!;
+        const playerTeam: Combatant[] = [];
 
-            const newCombatantsList = combatantsFromAI.map(aiCombatant => {
-                const knownChar = allKnownCharacters.find(c => c.id === aiCombatant.characterId);
-                if (knownChar?.isAlly) {
-                    aiCombatant.team = 'player'; // Force correct team for known allies
-                }
-                return aiCombatant;
+        playerTeam.push({
+            characterId: PLAYER_ID,
+            name: adventureSettings.playerName || "Player",
+            currentHp: adventureSettings.playerCurrentHp!,
+            maxHp: adventureSettings.playerMaxHp!,
+            currentMp: adventureSettings.playerCurrentMp,
+            maxMp: adventureSettings.playerMaxMp,
+            team: 'player',
+            isDefeated: (adventureSettings.playerCurrentHp ?? 0) <= 0,
+            statusEffects: [],
+        });
+
+        characters
+            .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0)
+            .forEach(allyChar => {
+                playerTeam.push({
+                    characterId: allyChar.id,
+                    name: allyChar.name,
+                    currentHp: allyChar.hitPoints!,
+                    maxHp: allyChar.maxHitPoints!,
+                    currentMp: allyChar.manaPoints,
+                    maxMp: allyChar.maxManaPoints,
+                    team: 'player',
+                    isDefeated: false,
+                    statusEffects: allyChar.statusEffects || [],
+                });
             });
 
-            // Ensure the player is in the combat list, using the most up-to-date stats from the front-end state.
-            const playerInListIndex = newCombatantsList.findIndex(c => c.characterId === PLAYER_ID);
-            const playerUpdateFromAI = combatUpdates.updatedCombatants.find(cu => cu.characterId === PLAYER_ID);
-            
-            const playerCombatantData: Combatant = {
-                characterId: PLAYER_ID,
-                name: adventureSettings.playerName || "Player",
-                currentHp: playerUpdateFromAI?.newHp ?? adventureSettings.playerCurrentHp!,
-                maxHp: adventureSettings.playerMaxHp!,
-                currentMp: playerUpdateFromAI?.newMp ?? adventureSettings.playerCurrentMp,
-                maxMp: adventureSettings.playerMaxMp,
-                team: 'player',
-                isDefeated: (playerUpdateFromAI?.newHp ?? adventureSettings.playerCurrentHp!) <= 0,
-                statusEffects: playerUpdateFromAI?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
-            };
-            
-            if (playerInListIndex !== -1) {
-                newCombatantsList[playerInListIndex] = playerCombatantData;
-            } else {
-                newCombatantsList.unshift(playerCombatantData);
+        const enemyTeam = newCombatStateFromAI.combatants.filter(c => c.team === 'enemy');
+        let allCombatants = [...playerTeam, ...enemyTeam];
+        const updatedCombatantsForFirstTurn = allCombatants.map(c => {
+            const update = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
+            if (update) {
+                return { ...c, currentHp: update.newHp, currentMp: update.newMp ?? c.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || c.statusEffects };
             }
+            return c;
+        });
 
-            setActiveCombat({
-                ...combatUpdates.nextActiveCombatState,
-                combatants: newCombatantsList,
-            });
+        setActiveCombat({
+            ...newCombatStateFromAI,
+            combatants: updatedCombatantsForFirstTurn,
+        });
 
-        } else if (combatUpdates.combatEnded) {
-            setActiveCombat(undefined);
-            setTimeout(() => { toast({ title: "Combat Terminé!"}); }, 0);
-        }
+      } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
+        const updatedCombatants = activeCombat!.combatants.map(existingCombatant => {
+            const update = combatUpdates.updatedCombatants.find(u => u.combatantId === existingCombatant.characterId);
+            if (update) {
+                return { ...existingCombatant, currentHp: update.newHp, currentMp: update.newMp ?? existingCombatant.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || existingCombatant.statusEffects };
+            }
+            return existingCombatant;
+        });
+        setActiveCombat({
+            ...combatUpdates.nextActiveCombatState,
+            combatants: updatedCombatants,
+        });
+
+      } else if (combatUpdates.combatEnded) {
+          setActiveCombat(undefined);
+          setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
+      }
     }
+
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [toast, adventureSettings, characters, activeCombat]);
