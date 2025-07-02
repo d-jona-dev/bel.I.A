@@ -878,21 +878,29 @@ export function AdventureDisplay({
                         <PlayerStatusCard />
                         
                         {/* Allies in Combat */}
-                        {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated).length > 0 && (
-                            <Card className="my-3 border-green-500 border-2 bg-green-500/10 shadow-md">
-                                <CardHeader className="p-2 text-center">
-                                    <UICardDescription className="text-xs font-semibold text-green-600">Alliés</UICardDescription>
-                                </CardHeader>
-                                <CardContent className="p-2 pt-0">
-                                {activeCombat.combatants
-                                    .filter(c => c.team === 'player' && c.characterId !== playerId && !c.isDefeated)
-                                    .map(ally => {
-                                        const allyCharData = characters.find(cd => cd.id === ally.characterId) || { name: ally.name, id: ally.characterId } as Character;
-                                        return <NpcCombatantCard key={`ally-${ally.characterId}`} character={allyCharData} combatData={ally} />;
-                                })}
-                                </CardContent>
-                            </Card>
-                        )}
+                        {activeCombat?.isActive &&
+                          activeCombat.combatants
+                            .filter(
+                              (c) =>
+                                c.team === 'player' &&
+                                c.characterId !== playerId &&
+                                !c.isDefeated
+                            )
+                            .map((ally) => {
+                              const allyCharData = characters.find(
+                                (cd) => cd.id === ally.characterId
+                              ) || ({
+                                name: ally.name,
+                                id: ally.characterId,
+                              } as Character);
+                              return (
+                                <NpcCombatantCard
+                                  key={`ally-${ally.characterId}`}
+                                  character={allyCharData}
+                                  combatData={ally}
+                                />
+                              );
+                            })}
                         
                         {/* Enemies in Combat */}
                         {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
