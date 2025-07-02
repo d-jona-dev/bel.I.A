@@ -218,7 +218,7 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined },
+        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined, factionColor: '#FFD700' },
         { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
         { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
@@ -470,7 +470,6 @@ export default function Home() {
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
-    const currentGlobalChars = characters;
 
     setCharacters(prevChars => {
         if (!currentRpgMode) {
@@ -601,63 +600,45 @@ export default function Home() {
     
     if (currentRpgMode) {
         if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
-            const combatantsForNextTurnMap = new Map<string, Combatant>();
-            const latestPlayerState = adventureSettings;
-            const playerCombatDataFromAI = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-    
-            const playerForNextTurn: Combatant = {
-                characterId: PLAYER_ID,
-                name: latestPlayerState.playerName || "Player",
-                currentHp: playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!,
-                maxHp: latestPlayerState.playerMaxHp!,
-                currentMp: playerCombatDataFromAI?.newMp ?? latestPlayerState.playerCurrentMp!,
-                maxMp: latestPlayerState.playerMaxMp!,
-                team: 'player',
-                isDefeated: (playerCombatDataFromAI?.newHp ?? latestPlayerState.playerCurrentHp!) <= 0,
-                statusEffects: playerCombatDataFromAI?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
-            };
-            combatantsForNextTurnMap.set(PLAYER_ID, playerForNextTurn);
-    
-            combatUpdates.nextActiveCombatState.combatants.forEach(aiCombatant => {
-                if (aiCombatant.characterId !== PLAYER_ID) { 
-                    const charData = currentGlobalChars.find(c => c.id === aiCombatant.characterId);
-                    if (charData?.isAlly) {
-                        aiCombatant.team = 'player'; // Force correct team for known allies
-                    }
-                    combatantsForNextTurnMap.set(aiCombatant.characterId, aiCombatant);
+            // Simplified logic: Trust the AI's combatant list, but enforce team assignments and player data.
+            const combatantsFromAI = combatUpdates.nextActiveCombatState.combatants;
+            const allKnownCharacters = characters;
+
+            const newCombatantsList = combatantsFromAI.map(aiCombatant => {
+                const knownChar = allKnownCharacters.find(c => c.id === aiCombatant.characterId);
+                if (knownChar?.isAlly) {
+                    aiCombatant.team = 'player'; // Force correct team for known allies
                 }
+                return aiCombatant;
             });
 
-            // Ensure "fixed" allies are present in the next turn state
-            currentGlobalChars.forEach(globalChar => {
-                if (globalChar.isAlly && (globalChar.hitPoints ?? 0) > 0) {
-                    if (!combatantsForNextTurnMap.has(globalChar.id)) {
-                        // Ally was not returned by AI, but should be present
-                        const globalCharCombatant: Combatant = {
-                            characterId: globalChar.id,
-                            name: globalChar.name,
-                            currentHp: globalChar.hitPoints!,
-                            maxHp: globalChar.maxHitPoints!,
-                            currentMp: globalChar.manaPoints,
-                            maxMp: globalChar.maxManaPoints,
-                            team: 'player',
-                            isDefeated: false, 
-                            statusEffects: globalChar.statusEffects || [],
-                        };
-                        combatantsForNextTurnMap.set(globalChar.id, globalCharCombatant);
-                    }
-                }
-            });
+            // Ensure the player is in the combat list, using the most up-to-date stats from the front-end state.
+            const playerInListIndex = newCombatantsList.findIndex(c => c.characterId === PLAYER_ID);
+            const playerUpdateFromAI = combatUpdates.updatedCombatants.find(cu => cu.characterId === PLAYER_ID);
             
-            const newCombatantsList = Array.from(combatantsForNextTurnMap.values());
-            console.log('[LOG_PAGE_TSX] Combatants from AI for next turn (handleCombatUpdates):', JSON.stringify(combatUpdates.nextActiveCombatState.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
-            console.log('[LOG_PAGE_TSX] Constructed combatants list for setActiveCombat (handleCombatUpdates):', JSON.stringify(newCombatantsList.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
-    
+            const playerCombatantData: Combatant = {
+                characterId: PLAYER_ID,
+                name: adventureSettings.playerName || "Player",
+                currentHp: playerUpdateFromAI?.newHp ?? adventureSettings.playerCurrentHp!,
+                maxHp: adventureSettings.playerMaxHp!,
+                currentMp: playerUpdateFromAI?.newMp ?? adventureSettings.playerCurrentMp,
+                maxMp: adventureSettings.playerMaxMp,
+                team: 'player',
+                isDefeated: (playerUpdateFromAI?.newHp ?? adventureSettings.playerCurrentHp!) <= 0,
+                statusEffects: playerUpdateFromAI?.newStatusEffects || activeCombat?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
+            };
+            
+            if (playerInListIndex !== -1) {
+                newCombatantsList[playerInListIndex] = playerCombatantData;
+            } else {
+                newCombatantsList.unshift(playerCombatantData);
+            }
+
             setActiveCombat({
                 ...combatUpdates.nextActiveCombatState,
                 combatants: newCombatantsList,
             });
-    
+
         } else if (combatUpdates.combatEnded) {
             setActiveCombat(undefined);
             setTimeout(() => { toast({ title: "Combat Terminé!"}); }, 0);

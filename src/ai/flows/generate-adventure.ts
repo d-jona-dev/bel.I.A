@@ -486,17 +486,13 @@ User Action (from {{playerName}}): {{{userAction}}}
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
+    *   **COMBAT INITIATION (Only if not already in combat):**
+        *   **Is it a Territory Attack?** (e.g., userAction is "J'attaque le lieu X").
+            *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState' and you MUST set 'contestedPoiId' to the ID of the location being attacked (from the 'Points of Interest' list). Include the player, allies, and defenders as combatants.
+        *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
+            *   **YES:** There is a 30% chance of a random encounter. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState', but you MUST NOT set 'contestedPoiId'. This field should be absent for random encounters. Create new hostile NPCs for this encounter.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
-    *   **Travel Action (Random Encounter):** If the userAction clearly indicates travel to a destination (e.g., "Je me déplace vers [lieu]", "Je voyage jusqu'à [lieu]"), and you are not already in combat, there is a 30% chance of a random encounter. This is separate from a direct territory attack.
-        *   **If an encounter occurs:**
-            1.  Narrate the encounter (e.g., "En chemin vers votre destination, des bandits vous barrent la route !").
-            2.  Create 1-3 new, appropriate hostile NPCs using the 'newCharacters' output. Examples: 'Bandit', 'Loup enragé', 'Spectre errant'. Give them suitable stats for a random encounter.
-            3.  You MUST initiate combat. Populate 'combatUpdates.nextActiveCombatState' with 'isActive: true' and include the player, allies, and these new enemies. Crucially, DO NOT set 'contestedPoiId' for these random encounters, as they do not involve territory conquest.
-        *   **If no encounter occurs:** Narrate a safe arrival at the destination (e.g., "Vous arrivez à [lieu] sans incident."). Proceed with any other relevant narrative descriptions for arriving at the location.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Territory Attack:** If the userAction indicates an attack on a location (e.g., "J'attaque la Grotte Grinçante"), you MUST initiate combat. The narrative should describe the player approaching the location to attack, and the defenders appearing.
-            *   **Combat Initiation:** Announce the combat. Identify the defenders. The primary defender is the character who owns the territory. Add 3-4 other appropriate defenders (e.g., for a goblin chief, add other goblins like "Gobelin Fureteur"). Create a challenging encounter.
-            *   Populate 'activeCombat.environmentDescription'. You MUST set 'combatUpdates.nextActiveCombatState' with 'isActive: true', the list of combatants (player, allies, and all defenders as 'enemy' team), and, most importantly, set 'contestedPoiId' to the ID of the territory being attacked (taken from the 'Points of Interest' list). The player's current allies ('isAlly: true' characters) MUST be included in the player's team.
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
             *   Present a list of 3-5 items for sale using the format: 'NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or'. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
@@ -536,7 +532,7 @@ Tasks:
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
             *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
-        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory AND 'activeCombat.contestedPoiId' was set for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory, you MUST check the 'initialSituation' to see if a territory attack initiated the combat. If 'contestedPoiId' was present for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut, et le 'contestedPoiId' s'il était présent) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
@@ -582,9 +578,9 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest on Victory:** If a combat for which 'activeCombat.contestedPoiId' was set concludes with a victory for the player's team ('combatUpdates.combatEnded: true' and enemies are defeated), you MUST populate the 'poiOwnershipChanges' array. Use the 'contestedPoiId' to identify the territory and set 'player' as the 'newOwnerId'. Example: '{ "poiId": "poi-grotte", "newOwnerId": "player" }'. This is not optional.
+    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like "J'attaque la Grotte Grinçante" started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above**.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
-    *   The territory's ID **MUST be taken from the 'Points of Interest' list above**.
+    *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
