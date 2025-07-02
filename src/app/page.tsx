@@ -915,58 +915,33 @@ export default function Home() {
     const currentGlobalCharacters = characters;
     let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
-    if (currentTurnSettings.rpgMode) {
-        const combatantsForAIMap = new Map<string, Combatant>();
-
-        const playerCombatant: Combatant = {
-            characterId: PLAYER_ID,
-            name: currentTurnSettings.playerName || "Player",
-            currentHp: currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp,
-            maxHp: effectiveStatsThisTurn.playerMaxHp,
-            currentMp: currentTurnSettings.playerCurrentMp ?? effectiveStatsThisTurn.playerMaxMp,
-            maxMp: effectiveStatsThisTurn.playerMaxMp,
-            team: 'player',
-            isDefeated: (currentTurnSettings.playerCurrentHp ?? effectiveStatsThisTurn.playerMaxHp) <=0,
-            statusEffects: currentActiveCombatStateForAI?.combatants.find(c => c.characterId === PLAYER_ID)?.statusEffects || [],
-        };
-        combatantsForAIMap.set(PLAYER_ID, playerCombatant);
-
-        currentGlobalCharacters.forEach(char => {
-            if (char.isAlly && (char.hitPoints ?? 0) > 0) {
-                const existingCombatantData = currentActiveCombatStateForAI?.combatants.find(c => c.characterId === char.id);
-                const allyCombatant: Combatant = {
-                    characterId: char.id,
-                    name: char.name,
-                    currentHp: existingCombatantData?.currentHp ?? char.hitPoints!,
-                    maxHp: existingCombatantData?.maxHp ?? char.maxHitPoints!,
-                    currentMp: existingCombatantData?.currentMp ?? char.manaPoints,
-                    maxMp: existingCombatantData?.maxMp ?? char.maxManaPoints,
-                    team: 'player',
-                    isDefeated: existingCombatantData ? existingCombatantData.isDefeated : (char.hitPoints! <= 0),
-                    statusEffects: existingCombatantData?.statusEffects || char.statusEffects || [],
+    // This logic ensures the combat state sent to the AI is synced with the canonical character/player state
+    // without rebuilding the combatant list, which prevents duplication bugs.
+    if (currentTurnSettings.rpgMode && currentActiveCombatStateForAI?.isActive) {
+        const updatedCombatants = currentActiveCombatStateForAI.combatants.map(combatant => {
+            if (combatant.characterId === PLAYER_ID) {
+                return {
+                    ...combatant,
+                    currentHp: currentTurnSettings.playerCurrentHp ?? combatant.maxHp,
+                    maxHp: effectiveStatsThisTurn.playerMaxHp,
+                    currentMp: currentTurnSettings.playerCurrentMp ?? combatant.maxMp,
+                    maxMp: effectiveStatsThisTurn.playerMaxMp,
                 };
-                combatantsForAIMap.set(char.id, allyCombatant);
             }
-        });
-        
-        currentActiveCombatStateForAI?.combatants.forEach(c => {
-            if (c.team === 'enemy' && !combatantsForAIMap.has(c.characterId)) { 
-                combatantsForAIMap.set(c.characterId, c);
-            } else if (c.team === 'enemy' && combatantsForAIMap.has(c.characterId)) {
-                 combatantsForAIMap.set(c.characterId, c); // Update enemy if already present
+            const charData = currentGlobalCharacters.find(gc => gc.id === combatant.characterId);
+            if (charData) {
+                // Syncs stats from the canonical character state into the combat state for the AI
+                return {
+                    ...combatant,
+                    currentHp: charData.hitPoints ?? combatant.maxHp,
+                    maxHp: charData.maxHitPoints ?? combatant.maxHp,
+                    currentMp: charData.manaPoints ?? combatant.maxMp,
+                    maxMp: charData.maxManaPoints ?? combatant.maxMp,
+                };
             }
+            return combatant; // For enemies not in the global list
         });
-        
-        const finalCombatantsForAI = Array.from(combatantsForAIMap.values());
-        console.log('[LOG_PAGE_TSX] Combatants sent to AI (callGenerateAdventure):', JSON.stringify(finalCombatantsForAI.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
-
-        currentActiveCombatStateForAI = {
-            isActive: currentActiveCombatStateForAI?.isActive ?? false,
-            combatants: finalCombatantsForAI,
-            environmentDescription: currentActiveCombatStateForAI?.environmentDescription || "Champ de bataille indéfini",
-            turnLog: currentActiveCombatStateForAI?.turnLog || [],
-            playerAttemptedDeescalation: currentActiveCombatStateForAI?.playerAttemptedDeescalation || false,
-        };
+        currentActiveCombatStateForAI.combatants = updatedCombatants;
     }
 
 
