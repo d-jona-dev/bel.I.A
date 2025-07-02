@@ -136,13 +136,9 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  // Schedule the listener notifications to run after the current execution task.
-  // This helps prevent "cannot update during an existing state transition" errors.
-  setTimeout(() => {
-    listeners.forEach((listener) => {
-      listener(memoryState)
-    })
-  }, 0);
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
 }
 
 type Toast = Omit<ToasterToast, "id">
