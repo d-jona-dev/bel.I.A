@@ -63,6 +63,17 @@ const getIconForPoi = (poi: MapPointOfInterest) => {
     return iconMap[poi.icon] || Landmark;
 };
 
+const poiLevelNameMap = {
+    Village: {
+        1: 'Village',
+        2: 'Bourg',
+        3: 'Petite Ville',
+        4: 'Ville Moyenne',
+        5: 'Grande Ville',
+        6: 'Métropole',
+    }
+};
+
 
 export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi }: MapDisplayProps) {
     const { toast } = useToast();
@@ -272,6 +283,11 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 const hasResources = (poi.resources?.length ?? 0) > 0;
                 const canCollect = isPlayerOwned && hasResources;
                 const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
+                
+                const level = poi.level || 1;
+                const levelName = (poi.icon === 'Village' && poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village])
+                    ? poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village]
+                    : null;
 
                 return (
                     <div
@@ -305,6 +321,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     </TooltipTrigger>
                                     <TooltipContent side="top" align="center" className={cn("text-base z-30", useAestheticFont && "font-medieval")}>
                                         <p className="font-semibold flex items-center gap-1"><Move className="h-3 w-3"/>{poi.name}</p>
+                                        {levelName && <p className="text-sm font-medium text-foreground/90">{levelName} (Niveau {level})</p>}
                                         <p className="text-sm text-muted-foreground">{poi.description}</p>
                                     </TooltipContent>
                                 </Tooltip>

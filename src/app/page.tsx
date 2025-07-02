@@ -222,9 +222,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700' },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700' },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined, factionColor: '#0000FF' },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined, factionColor: '#FF0000' },
     ],
     mapImageUrl: null,
   });
@@ -2395,13 +2395,17 @@ export default function Home() {
     if (action === 'upgrade') {
         const poiToUpgrade = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
         if (!poiToUpgrade || poiToUpgrade.ownerId !== PLAYER_ID || poiToUpgrade.icon !== 'Village') {
-            toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les villages que vous possédez.", variant: "destructive" });
+             setTimeout(() => {
+                toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les villages que vous possédez.", variant: "destructive" });
+             }, 0);
             return;
         }
 
         const currentLevel = poiToUpgrade.level || 1;
         if (currentLevel >= Object.keys(poiLevelConfig.Village).length) {
-            toast({ title: "Niveau Maximum Atteint", description: `${poiToUpgrade.name} a atteint son plus haut niveau.`, variant: "default" });
+             setTimeout(() => {
+                toast({ title: "Niveau Maximum Atteint", description: `${poiToUpgrade.name} a atteint son plus haut niveau.`, variant: "default" });
+             }, 0);
             return;
         }
 
@@ -2409,12 +2413,16 @@ export default function Home() {
         const cost = config.upgradeCost;
 
         if (cost === null) {
-            toast({ title: "Niveau Maximum Atteint", variant: "default" });
+            setTimeout(() => {
+                toast({ title: "Niveau Maximum Atteint", variant: "default" });
+            }, 0);
             return;
         }
 
         if ((adventureSettings.playerGold || 0) < cost) {
-            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} Pièces d'Or pour améliorer ce lieu.`, variant: "destructive" });
+             setTimeout(() => {
+                toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} Pièces d'Or pour améliorer ce lieu.`, variant: "destructive" });
+             }, 0);
             return;
         }
         
@@ -2427,7 +2435,6 @@ export default function Home() {
                     return {
                         ...p,
                         level: nextLevel,
-                        name: nextLevelConfig.name,
                         resources: nextLevelConfig.resources,
                     };
                 }
@@ -2440,13 +2447,17 @@ export default function Home() {
             };
         });
 
-        toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
+         setTimeout(() => {
+            toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
+         }, 0);
         return; 
     }
 
     if (action === 'collect') {
         if (poi.ownerId !== PLAYER_ID) {
-            toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
+            setTimeout(() => {
+                toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
+            }, 0);
             return;
         }
         
@@ -2456,11 +2467,13 @@ export default function Home() {
 
         if (lastCollected !== undefined && currentTurn < lastCollected + cooldownDuration) {
             const turnsRemaining = (lastCollected + cooldownDuration) - currentTurn;
-            toast({
-                title: "Ressources non prêtes",
-                description: `Vous devez attendre encore ${turnsRemaining} tour(s) avant de pouvoir collecter à nouveau ici.`,
-                variant: "default",
-            });
+            setTimeout(() => {
+                toast({
+                    title: "Ressources non prêtes",
+                    description: `Vous devez attendre encore ${turnsRemaining} tour(s) avant de pouvoir collecter à nouveau ici.`,
+                    variant: "default",
+                });
+            }, 0);
             return;
         }
         
@@ -2475,7 +2488,9 @@ export default function Home() {
         }
 
         if (resourcesToCollect.length === 0) {
-            toast({ title: "Aucune Ressource", description: `${poi.name} ne produit aucune ressource à collecter.`, variant: "default" });
+            setTimeout(() => {
+                toast({ title: "Aucune Ressource", description: `${poi.name} ne produit aucune ressource à collecter.`, variant: "default" });
+            }, 0);
             return;
         }
         
@@ -2529,7 +2544,9 @@ export default function Home() {
         });
 
         const summary = collectedItemsSummary.map(r => `${r.quantity}x ${r.name}`).join(', ');
-        toast({ title: "Collecte Réussie", description: "Ressources ajoutées : " + summary });
+        setTimeout(() => {
+            toast({ title: "Collecte Réussie", description: "Ressources ajoutées : " + summary });
+        }, 0);
 
         userActionText = `Je collecte les ressources de ${poi.name}.`;
 
@@ -2759,11 +2776,9 @@ export default function Home() {
 
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => {
     let resources: GeneratedResource[] = [];
-    let name = data.name;
     let description = data.description;
     
     if (data.type === 'Village') {
-        name = poiLevelConfig.Village[1].name;
         resources = poiLevelConfig.Village[1].resources;
         if (!description) {
             description = "Un nouvel hameau plein de potentiel."
@@ -2782,12 +2797,12 @@ export default function Home() {
 
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-        name: name,
+        name: data.name,
         description: description,
         icon: data.type,
         level: 1,
         position: { x: 50, y: 50 },
-        actions: ['travel', 'examine', 'attack', 'collect'],
+        actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,

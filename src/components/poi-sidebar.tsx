@@ -43,6 +43,17 @@ const poiLevelConfig: Record<string, Record<number, { upgradeCost: number | null
     }
 };
 
+const poiLevelNameMap = {
+    Village: {
+        1: 'Village',
+        2: 'Bourg',
+        3: 'Petite Ville',
+        4: 'Ville Moyenne',
+        5: 'Grande Ville',
+        6: 'Métropole',
+    }
+};
+
 interface PoiSidebarProps {
     playerId: string;
     playerName: string;
@@ -83,6 +94,10 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                     const upgradeCost = upgradeConfig?.upgradeCost ?? null;
                     const canAffordUpgrade = upgradeCost !== null && (playerGold || 0) >= upgradeCost;
 
+                    const levelName = (poi.icon === 'Village' && poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village])
+                        ? poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village]
+                        : null;
+
                     return (
                         <Card key={poi.id} className="bg-muted/30 border">
                             <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between">
@@ -95,7 +110,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                 <CardDescription className="text-xs mb-2">{poi.description}</CardDescription>
                                 <div className="space-y-1 text-xs">
                                     <p><strong>Propriétaire:</strong> <span style={{ color: owner?.factionColor || '#808080' }}>{owner?.name || 'Inconnu'}</span></p>
-                                    <p><strong>Type:</strong> {poi.icon} (Niveau: {level})</p>
+                                    <p><strong>Type:</strong> {poi.icon}{levelName ? ` (${levelName})` : ''} (Niveau: {level})</p>
                                     {isPlayerOwned && poi.resources && poi.resources.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <Hourglass className="h-3 w-3" />
