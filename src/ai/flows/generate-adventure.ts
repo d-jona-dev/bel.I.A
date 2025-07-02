@@ -121,6 +121,7 @@ const PointOfInterestSchemaForAI = z.object({
     name: z.string(),
     description: z.string(),
     ownerId: z.string().optional().describe("The ID of the character who owns this POI, or 'player'."),
+    buildings: z.array(z.string()).optional().describe("A list of building IDs that exist at this location, e.g., ['forgeron', 'auberge']."),
 });
 
 
@@ -159,7 +160,7 @@ const GenerateAdventureInputSchema = z.object({
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
   playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
-  mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID and current owner. Use these IDs for any territory changes."),
+  mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest'> & {
@@ -365,7 +366,8 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             id: poi.id,
             name: poi.name,
             description: poi.description,
-            ownerId: poi.ownerId
+            ownerId: poi.ownerId,
+            buildings: poi.buildings,
         })),
     };
 
@@ -471,11 +473,14 @@ Known Characters (excluding player unless explicitly listed for context):
 
 {{#if mapPointsOfInterest.length}}
 --- Points of Interest ---
-A list of known locations on the map. When an attack on a territory is mentioned, you MUST use the ID from this list for poiOwnershipChanges.
+A list of known locations on the map. This provides crucial context about available services based on built buildings.
 {{#each mapPointsOfInterest}}
 - Name: {{this.name}} (ID: {{this.id}})
   Description: {{this.description}}
   Owner ID: {{this.ownerId}}
+  {{#if this.buildings}}
+  Buildings: {{#each this.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}. (e.g., 'forgeron' allows weapon/armor purchase, 'auberge' allows resting and rumors, 'poste-gardes' reduces hostile encounters when traveling *to* this location).
+  {{/if}}
 {{/each}}
 ---
 {{/if}}
@@ -490,12 +495,14 @@ Tasks:
         *   **Is it a Territory Attack?** (e.g., userAction is "J'attaque le lieu X").
             *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the location's defenders as enemies. You MUST also set 'contestedPoiId' to the ID of the location being attacked.
         *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
-            *   **YES:** There is a 30% chance of a random encounter. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
+            *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Merchant Interaction:** If the current NPC is a merchant (check characterClass or details) and userAction suggests trading (e.g., "Que vendez-vous?", "Je regarde vos articles"):
-            *   Present a list of 3-5 items for sale using the format: 'NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or'. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
+            *   **CHECK FOR BUILDINGS:** First, check if the player is at a POI with relevant merchant buildings ('forgeron', 'bijoutier', 'magicien'). If the player tries to buy a weapon but there is no 'forgeron', the NPC should say they cannot sell that here.
+            *   If the correct building is present, present a list of 3-5 items for sale using the format: 'NOM_ARTICLE (EFFET_SI_CONNU) : PRIX Pièces d'Or'. Example: 'Potion de Soin Mineure (Restaure 10 PV) : 10 Pièces d'Or'. Do NOT include quantity available.
             *   Include the line: "N'achetez qu'un objet à la fois, Aventurier."
+        *   **Resting at an Inn:** If the player is at a POI with an 'auberge' and the userAction is to rest (e.g., "Je prends une chambre pour la nuit"), narrate them resting. This should fully restore the player's HP and MP. The cost is conceptually handled (e.g., 10 Gold), so you should set currencyGained to -10.
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).

@@ -16,6 +16,7 @@ import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput } from "@/ai/flows/suggest-player-skill";
+import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION } from "@/lib/buildings";
 
 
 const PLAYER_ID = "player";
@@ -232,9 +233,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700' },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF' },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000' },
+        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700', buildings: [] },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF', buildings: [] },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000', buildings: [] },
     ],
     mapImageUrl: null,
   });
@@ -1860,7 +1861,7 @@ export default function Home() {
             narrative: narrativeMessages,
             currentLanguage,
             activeCombat: activeCombat,
-            saveFormatVersion: 2.5,
+            saveFormatVersion: 2.6,
             timestamp: new Date().toISOString(),
         };
         const jsonString = JSON.stringify(saveData, null, 2);
@@ -2004,6 +2005,15 @@ export default function Home() {
                                 poi.level = 1;
                             }
                         });
+                    }
+                }
+                if (loadedData.saveFormatVersion < 2.6) {
+                    if(loadedData.adventureSettings.mapPointsOfInterest) {
+                        loadedData.adventureSettings.mapPointsOfInterest.forEach(poi => {
+                            if (!('buildings' in poi)) {
+                                poi.buildings = [];
+                            }
+                        })
                     }
                 }
 
@@ -2347,7 +2357,8 @@ export default function Home() {
             newLiveSettings.playerInventory = undefined; newLiveSettings.playerGold = undefined;
             newLiveSettings.playerInitialAttributePoints = undefined;
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
-            newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined; newLiveSettings.playerCharisma = undefined;
+            newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined;
+            newLiveSettings.playerCharisma = undefined;
             newLiveSettings.playerArmorClass = undefined; newLiveSettings.playerAttackBonus = undefined; newLiveSettings.playerDamageBonus = undefined;
             newLiveSettings.equippedItemIds = undefined;
             newLiveSettings.playerSkills = undefined;
@@ -2523,11 +2534,14 @@ export default function Home() {
         const collectedItemsSummary: { name: string, quantity: number }[] = [];
         let collectedCurrencyAmount = 0;
         const inventoryUpdates: Partial<PlayerInventoryItem>[] = [];
+        const taxBonus = (poi.buildings || []).includes('bureau-comptes') ? 1.25 : 1.0;
+
 
         resourcesToCollect.forEach(resource => {
             if (resource.type === 'currency') {
-                collectedCurrencyAmount += resource.quantity;
-                collectedItemsSummary.push({ name: resource.name, quantity: resource.quantity });
+                const finalAmount = Math.floor(resource.quantity * taxBonus);
+                collectedCurrencyAmount += finalAmount;
+                collectedItemsSummary.push({ name: resource.name, quantity: finalAmount });
             } else if (resource.type === 'item') {
                 inventoryUpdates.push({
                     name: resource.name,
@@ -2824,6 +2838,7 @@ export default function Home() {
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
+        buildings: [],
     };
 
     setAdventureSettings(prev => ({
@@ -2836,6 +2851,57 @@ export default function Home() {
         description: `Le lieu "${data.name}" a été ajouté à la carte.`,
     });
   }, [toast]);
+
+  const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
+    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+    if (!poi || poi.ownerId !== PLAYER_ID) {
+        toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
+        return;
+    }
+
+    const buildingDef = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
+    if (!buildingDef) {
+        toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
+        return;
+    }
+
+    const currentBuildings = poi.buildings || [];
+    if (currentBuildings.includes(buildingId)) {
+        toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
+        return;
+    }
+
+    const maxSlots = BUILDING_SLOTS[poi.icon]?.[poi.level || 1] ?? 0;
+    if (currentBuildings.length >= maxSlots) {
+        toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
+        return;
+    }
+
+    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length];
+    if ((adventureSettings.playerGold || 0) < cost) {
+        toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
+        return;
+    }
+
+    setAdventureSettings(prev => {
+        const newPois = prev.mapPointsOfInterest!.map(p => {
+            if (p.id === poiId) {
+                return {
+                    ...p,
+                    buildings: [...(p.buildings || []), buildingId],
+                };
+            }
+            return p;
+        });
+        return {
+            ...prev,
+            playerGold: (prev.playerGold || 0) - cost,
+            mapPointsOfInterest: newPois,
+        };
+    });
+
+    toast({ title: "Bâtiment Construit !", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
+  }, [adventureSettings, toast]);
 
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
@@ -2920,6 +2986,7 @@ export default function Home() {
         onPoiPositionChange={handlePoiPositionChange}
         isLoading={isUiLocked}
         onCreatePoi={handleCreatePoi}
+        onBuildInPoi={handleBuildInPoi}
         currentTurn={narrativeMessages.length}
       />
       </>

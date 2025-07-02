@@ -15,7 +15,6 @@ import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest } from "@/types"; // Added PlayerSkill
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +107,7 @@ interface PageStructureProps {
   onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
   isLoading: boolean;
   onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
+  onBuildInPoi: (poiId: string, buildingId: string) => void;
   currentTurn: number;
 }
 
@@ -170,6 +170,7 @@ export function PageStructure({
   onPoiPositionChange,
   isLoading,
   onCreatePoi,
+  onBuildInPoi,
   currentTurn,
 }: PageStructureProps) {
 
@@ -666,6 +667,7 @@ export function PageStructure({
                                     currentTurn={currentTurn}
                                     isLoading={isLoading}
                                     playerGold={adventureSettings.playerGold}
+                                    onBuildInPoi={onBuildInPoi}
                                  />
                              </AccordionContent>
                          </AccordionItem>
