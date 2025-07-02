@@ -487,6 +487,12 @@ User Action (from {{playerName}}): {{{userAction}}}
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
+    *   **Travel Action (Random Encounter):** If the userAction clearly indicates travel to a destination (e.g., "Je me déplace vers [lieu]", "Je voyage jusqu'à [lieu]"), and you are not already in combat, there is a 30% chance of a random encounter. This is separate from a direct territory attack.
+        *   **If an encounter occurs:**
+            1.  Narrate the encounter (e.g., "En chemin vers votre destination, des bandits vous barrent la route !").
+            2.  Create 1-3 new, appropriate hostile NPCs using the 'newCharacters' output. Examples: 'Bandit', 'Loup enragé', 'Spectre errant'. Give them suitable stats for a random encounter.
+            3.  You MUST initiate combat. Populate 'combatUpdates.nextActiveCombatState' with 'isActive: true' and include the player, allies, and these new enemies. Crucially, DO NOT set 'contestedPoiId' for these random encounters, as they do not involve territory conquest.
+        *   **If no encounter occurs:** Narrate a safe arrival at the destination (e.g., "Vous arrivez à [lieu] sans incident."). Proceed with any other relevant narrative descriptions for arriving at the location.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Territory Attack:** If the userAction indicates an attack on a location (e.g., "J'attaque la Grotte Grinçante"), you MUST initiate combat. The narrative should describe the player approaching the location to attack, and the defenders appearing.
             *   **Combat Initiation:** Announce the combat. Identify the defenders. The primary defender is the character who owns the territory. Add 3-4 other appropriate defenders (e.g., for a goblin chief, add other goblins like "Gobelin Fureteur"). Create a challenging encounter.
@@ -576,7 +582,6 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Context is Key:** During combat, the 'activeCombat.contestedPoiId' field tells you if a territory is being fought over.
     *   **Conquest on Victory:** If a combat for which 'activeCombat.contestedPoiId' was set concludes with a victory for the player's team ('combatUpdates.combatEnded: true' and enemies are defeated), you MUST populate the 'poiOwnershipChanges' array. Use the 'contestedPoiId' to identify the territory and set 'player' as the 'newOwnerId'. Example: '{ "poiId": "poi-grotte", "newOwnerId": "player" }'. This is not optional.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   The territory's ID **MUST be taken from the 'Points of Interest' list above**.
