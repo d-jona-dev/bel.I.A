@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2 } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -40,7 +40,7 @@ interface MapDisplayProps {
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => void;
 }
 
-const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', React.ElementType> = {
+const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
     Castle: Castle,
     Mountain: Mountain,
     Trees: Trees,
@@ -49,21 +49,35 @@ const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', Rea
     Landmark: Landmark,
     Building: Building,
     Building2: Building2,
+    TreeDeciduous: TreeDeciduous,
+    TreePine: TreePine,
+    Hammer: Hammer,
+    Gem: Gem,
 };
 
 const getIconForPoi = (poi: MapPointOfInterest) => {
+    const level = poi.level || 1;
     if (poi.icon === 'Village') {
-        const level = poi.level || 1;
         if (level <= 2) return iconMap.Village;
         if (level === 3) return iconMap.Building;
         if (level === 4) return iconMap.Building2;
         if (level === 5) return iconMap.Landmark;
         if (level >= 6) return iconMap.Castle;
     }
+    if (poi.icon === 'Trees') { // Forêt
+        if (level === 1) return iconMap.TreeDeciduous;
+        if (level === 2) return iconMap.Trees;
+        if (level >= 3) return iconMap.TreePine;
+    }
+    if (poi.icon === 'Shield') { // Mine
+        if (level === 1) return iconMap.Shield;
+        if (level === 2) return iconMap.Hammer;
+        if (level >= 3) return iconMap.Gem;
+    }
     return iconMap[poi.icon] || Landmark;
 };
 
-const poiLevelNameMap = {
+const poiLevelNameMap: Record<string, Record<number, string>> = {
     Village: {
         1: 'Village',
         2: 'Bourg',
@@ -71,6 +85,16 @@ const poiLevelNameMap = {
         4: 'Ville Moyenne',
         5: 'Grande Ville',
         6: 'Métropole',
+    },
+    Trees: {
+        1: 'Petite Forêt',
+        2: 'Forêt Moyenne',
+        3: 'Grande Forêt',
+    },
+    Shield: {
+        1: 'Petite Mine',
+        2: 'Mine Moyenne',
+        3: 'Grande Mine',
     }
 };
 
@@ -285,8 +309,8 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
                 
                 const level = poi.level || 1;
-                const levelName = (poi.icon === 'Village' && poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village])
-                    ? poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village]
+                const levelName = (poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap] && poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]])
+                    ? poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]
                     : null;
 
                 return (

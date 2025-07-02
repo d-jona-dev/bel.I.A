@@ -4,12 +4,12 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2 } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem } from 'lucide-react';
 import type { Character, MapPointOfInterest } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "./ui/scroll-area";
 
-const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', React.ElementType> = {
+const iconMap: Record<string, React.ElementType> = {
     Castle: Castle,
     Mountain: Mountain,
     Trees: Trees,
@@ -18,16 +18,30 @@ const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', Rea
     Landmark: Landmark,
     Building: Building,
     Building2: Building2,
+    TreeDeciduous: TreeDeciduous,
+    TreePine: TreePine,
+    Hammer: Hammer,
+    Gem: Gem,
 };
 
 const getIconForPoi = (poi: MapPointOfInterest) => {
+    const level = poi.level || 1;
     if (poi.icon === 'Village') {
-        const level = poi.level || 1;
         if (level <= 2) return iconMap.Village;
         if (level === 3) return iconMap.Building;
         if (level === 4) return iconMap.Building2;
         if (level === 5) return iconMap.Landmark;
         if (level >= 6) return iconMap.Castle;
+    }
+    if (poi.icon === 'Trees') {
+        if (level === 1) return iconMap.TreeDeciduous;
+        if (level === 2) return iconMap.Trees;
+        if (level >= 3) return iconMap.TreePine;
+    }
+    if (poi.icon === 'Shield') {
+        if (level === 1) return iconMap.Shield;
+        if (level === 2) return iconMap.Hammer;
+        if (level >= 3) return iconMap.Gem;
     }
     return iconMap[poi.icon] || Landmark;
 };
@@ -40,10 +54,20 @@ const poiLevelConfig: Record<string, Record<number, { upgradeCost: number | null
         4: { upgradeCost: 1000 },
         5: { upgradeCost: 2500 },
         6: { upgradeCost: null },
-    }
+    },
+    Trees: {
+        1: { upgradeCost: 100 },
+        2: { upgradeCost: 500 },
+        3: { upgradeCost: null },
+    },
+    Shield: {
+        1: { upgradeCost: 100 },
+        2: { upgradeCost: 500 },
+        3: { upgradeCost: null },
+    },
 };
 
-const poiLevelNameMap = {
+const poiLevelNameMap: Record<string, Record<number, string>> = {
     Village: {
         1: 'Village',
         2: 'Bourg',
@@ -51,6 +75,16 @@ const poiLevelNameMap = {
         4: 'Ville Moyenne',
         5: 'Grande Ville',
         6: 'Métropole',
+    },
+    Trees: {
+        1: 'Petite Forêt',
+        2: 'Forêt Moyenne',
+        3: 'Grande Forêt',
+    },
+    Shield: {
+        1: 'Petite Mine',
+        2: 'Mine Moyenne',
+        3: 'Grande Mine',
     }
 };
 
@@ -81,6 +115,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                     const isPlayerOwned = poi.ownerId === playerId;
                     const owner = isPlayerOwned ? { name: playerName, factionColor: '#FFD700' } : characters.find(c => c.id === poi.ownerId);
                     const level = poi.level || 1;
+                    const poiType = poi.icon;
 
                     const lastCollected = poi.lastCollectedTurn;
                     let turnsRemaining = 0;
@@ -89,13 +124,14 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                     }
                     const canCollectNow = isPlayerOwned && turnsRemaining === 0 && poi.resources && poi.resources.length > 0;
                     
-                    const isUpgradable = isPlayerOwned && poi.icon === 'Village' && level < 6;
-                    const upgradeConfig = isUpgradable ? poiLevelConfig.Village[level] : null;
+                    const typeConfig = poiLevelConfig[poiType as keyof typeof poiLevelConfig];
+                    const isUpgradable = isPlayerOwned && typeConfig && level < Object.keys(typeConfig).length;
+                    const upgradeConfig = isUpgradable ? typeConfig[level as keyof typeof typeConfig] : null;
                     const upgradeCost = upgradeConfig?.upgradeCost ?? null;
                     const canAffordUpgrade = upgradeCost !== null && (playerGold || 0) >= upgradeCost;
-
-                    const levelName = (poi.icon === 'Village' && poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village])
-                        ? poiLevelNameMap.Village[level as keyof typeof poiLevelNameMap.Village]
+                    
+                    const levelName = (poiLevelNameMap[poiType as keyof typeof poiLevelNameMap] && poiLevelNameMap[poiType as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]])
+                        ? poiLevelNameMap[poiType as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]
                         : null;
 
                     return (
@@ -110,7 +146,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                 <CardDescription className="text-xs mb-2">{poi.description}</CardDescription>
                                 <div className="space-y-1 text-xs">
                                     <p><strong>Propriétaire:</strong> <span style={{ color: owner?.factionColor || '#808080' }}>{owner?.name || 'Inconnu'}</span></p>
-                                    <p><strong>Type:</strong> {poi.icon}{levelName ? ` (${levelName})` : ''} (Niveau: {level})</p>
+                                    <p><strong>Type:</strong> {levelName || poi.icon} (Niveau: {level})</p>
                                     {isPlayerOwned && poi.resources && poi.resources.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <Hourglass className="h-3 w-3" />

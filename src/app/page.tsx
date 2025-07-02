@@ -166,14 +166,24 @@ export interface SellingItemDetails {
   sellPricePerUnit: number;
 }
 
-const poiLevelConfig = {
+const poiLevelConfig: Record<string, Record<number, { name: string; upgradeCost: number | null; resources: GeneratedResource[] }>> = {
     Village: {
-        1: { name: 'Village', upgradeCost: 50, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] as GeneratedResource[] },
-        2: { name: 'Bourg', upgradeCost: 200, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 25 }] as GeneratedResource[] },
-        3: { name: 'Petite Ville', upgradeCost: 500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 50 }] as GeneratedResource[] },
-        4: { name: 'Ville Moyenne', upgradeCost: 1000, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 100 }] as GeneratedResource[] },
-        5: { name: 'Grande Ville', upgradeCost: 2500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 200 }] as GeneratedResource[] },
-        6: { name: 'Métropole', upgradeCost: null, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 350 }] as GeneratedResource[] },
+        1: { name: 'Village', upgradeCost: 50, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] },
+        2: { name: 'Bourg', upgradeCost: 200, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 25 }] },
+        3: { name: 'Petite Ville', upgradeCost: 500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 50 }] },
+        4: { name: 'Ville Moyenne', upgradeCost: 1000, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 100 }] },
+        5: { name: 'Grande Ville', upgradeCost: 2500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 200 }] },
+        6: { name: 'Métropole', upgradeCost: null, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 350 }] },
+    },
+    Trees: { // Forêt
+        1: { name: 'Petite Forêt', upgradeCost: 100, resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }] },
+        2: { name: 'Forêt Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Bois", quantity: 12 }, { type: 'item', name: "Viande", quantity: 5 }] },
+        3: { name: 'Grande Forêt', upgradeCost: null, resources: [{ type: 'item', name: "Bois", quantity: 25 }, { type: 'item', name: "Viande", quantity: 10 }] },
+    },
+    Shield: { // Mine
+        1: { name: 'Petite Mine', upgradeCost: 100, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }] },
+        2: { name: 'Mine Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 8 }, { type: 'item', name: "Charbon", quantity: 5 }] },
+        3: { name: 'Grande Mine', upgradeCost: null, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 15 }, { type: 'item', name: "Charbon", quantity: 10 }, { type: 'item', name: "Gemmes", quantity: 1 }] },
     }
 };
 
@@ -223,8 +233,8 @@ export default function Home() {
     playerSkills: [],
     mapPointsOfInterest: [
         { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700' },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined, factionColor: '#0000FF' },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined, factionColor: '#FF0000' },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF' },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000' },
     ],
     mapImageUrl: null,
   });
@@ -2394,22 +2404,32 @@ export default function Home() {
 
     if (action === 'upgrade') {
         const poiToUpgrade = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poiToUpgrade || poiToUpgrade.ownerId !== PLAYER_ID || poiToUpgrade.icon !== 'Village') {
+        if (!poiToUpgrade || poiToUpgrade.ownerId !== PLAYER_ID) {
              setTimeout(() => {
-                toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les villages que vous possédez.", variant: "destructive" });
+                toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les lieux que vous possédez.", variant: "destructive" });
+             }, 0);
+            return;
+        }
+        
+        const poiType = poiToUpgrade.icon;
+        if (!Object.keys(poiLevelConfig).includes(poiType)) {
+             setTimeout(() => {
+                toast({ title: "Amélioration Impossible", description: "Ce type de lieu n'est pas améliorable.", variant: "destructive" });
              }, 0);
             return;
         }
 
+        const typeConfig = poiLevelConfig[poiType as keyof typeof poiLevelConfig];
         const currentLevel = poiToUpgrade.level || 1;
-        if (currentLevel >= Object.keys(poiLevelConfig.Village).length) {
+
+        if (currentLevel >= Object.keys(typeConfig).length) {
              setTimeout(() => {
                 toast({ title: "Niveau Maximum Atteint", description: `${poiToUpgrade.name} a atteint son plus haut niveau.`, variant: "default" });
              }, 0);
             return;
         }
 
-        const config = poiLevelConfig.Village[currentLevel as keyof typeof poiLevelConfig.Village];
+        const config = typeConfig[currentLevel as keyof typeof typeConfig];
         const cost = config.upgradeCost;
 
         if (cost === null) {
@@ -2427,8 +2447,12 @@ export default function Home() {
         }
         
         const nextLevel = (poiToUpgrade.level || 1) + 1;
-        const nextLevelConfig = poiLevelConfig.Village[nextLevel as keyof typeof poiLevelConfig.Village];
+        const nextLevelConfig = typeConfig[nextLevel as keyof typeof typeConfig];
 
+        const postUpgradeToast = () => {
+             toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
+        };
+        
         setAdventureSettings(prev => {
             const newPois = prev.mapPointsOfInterest!.map(p => {
                 if (p.id === poiId) {
@@ -2446,10 +2470,10 @@ export default function Home() {
                 mapPointsOfInterest: newPois,
             };
         });
+        
+        // Schedule toast to run after state update
+        setTimeout(postUpgradeToast, 0);
 
-         setTimeout(() => {
-            toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
-         }, 0);
         return; 
     }
 
@@ -2481,11 +2505,13 @@ export default function Home() {
         const poiType = poi.icon;
         let resourcesToCollect: GeneratedResource[] = [];
 
-        if (poiType === 'Village' && poiLevelConfig.Village[poiLevel as keyof typeof poiLevelConfig.Village]) {
-            resourcesToCollect = poiLevelConfig.Village[poiLevel as keyof typeof poiLevelConfig.Village].resources;
+        const typeConfig = poiLevelConfig[poiType as keyof typeof poiLevelConfig];
+        if (typeConfig && typeConfig[poiLevel as keyof typeof typeConfig]) {
+            resourcesToCollect = typeConfig[poiLevel as keyof typeof typeConfig].resources;
         } else {
             resourcesToCollect = poi.resources || [];
         }
+
 
         if (resourcesToCollect.length === 0) {
             setTimeout(() => {
@@ -2778,22 +2804,14 @@ export default function Home() {
     let resources: GeneratedResource[] = [];
     let description = data.description;
     
-    if (data.type === 'Village') {
-        resources = poiLevelConfig.Village[1].resources;
+    const poiTypeConfig = poiLevelConfig[data.type as keyof typeof poiLevelConfig];
+    if (poiTypeConfig) {
+        resources = poiTypeConfig[1].resources;
         if (!description) {
-            description = "Un nouvel hameau plein de potentiel."
-        }
-    } else if (data.type === 'Trees') {
-        resources = [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }];
-        if (!description) {
-            description = "Une forêt dense."
-        }
-    } else if (data.type === 'Shield') { // Mine
-        resources = [{ type: 'item', name: "Minerai de Fer", quantity: 3 }];
-        if (!description) {
-            description = "Une mine riche en minerais."
+            description = `Un(e) nouveau/nouvelle ${poiTypeConfig[1].name.toLowerCase()} plein(e) de potentiel.`
         }
     }
+
 
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
@@ -2802,7 +2820,7 @@ export default function Home() {
         icon: data.type,
         level: 1,
         position: { x: 50, y: 50 },
-        actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'],
+        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
