@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen } from 'lucide-react'; // Added BookOpen
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide } from 'lucide-react'; // Added BookOpen
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest } from "@/types"; // Added PlayerSkill
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
 import type { SellingItemDetails } from './page'; 
 import { Input } from '@/components/ui/input'; 
+import { PoiSidebar } from '@/components/poi-sidebar';
 
 
 interface PageStructureProps {
@@ -107,6 +108,7 @@ interface PageStructureProps {
   onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
   isLoading: boolean;
   onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
+  currentTurn: number;
 }
 
 export function PageStructure({
@@ -168,6 +170,7 @@ export function PageStructure({
   onPoiPositionChange,
   isLoading,
   onCreatePoi,
+  currentTurn,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -646,7 +649,28 @@ export function PageStructure({
                         </Accordion>
                     )}
 
-                     <Accordion type="single" collapsible className="w-full" defaultValue="characters-accordion">
+                     <Accordion type="single" collapsible className="w-full" defaultValue="poi-accordion">
+                         <AccordionItem value="poi-accordion">
+                             <AccordionTrigger>
+                                 <div className="flex items-center gap-2">
+                                     <MapIconLucide className="h-5 w-5" /> Points d'Intérêt
+                                 </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="pt-2">
+                                <PoiSidebar
+                                    playerId={playerId}
+                                    playerName={playerName}
+                                    pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                    characters={characters}
+                                    onMapAction={handleMapAction}
+                                    currentTurn={currentTurn}
+                                    isLoading={isLoading}
+                                 />
+                             </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+
+                     <Accordion type="single" collapsible className="w-full">
                          <AccordionItem value="characters-accordion">
                              <AccordionTrigger>
                                  <div className="flex items-center gap-2">

@@ -2799,6 +2799,7 @@ export default function Home() {
         onPoiPositionChange={handlePoiPositionChange}
         isLoading={isUiLocked}
         onCreatePoi={handleCreatePoi}
+        currentTurn={narrativeMessages.length}
       />
       </>
   );
