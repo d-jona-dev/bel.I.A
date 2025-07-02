@@ -81,6 +81,7 @@ export interface GeneratedResource {
 export interface MapPointOfInterest {
   id: string;
   name: string;
+  level?: number;
   description: string;
   icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Shield' | 'Landmark';
   position: { x: number; y: number }; // Pourcentage

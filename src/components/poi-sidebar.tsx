@@ -4,18 +4,43 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2 } from 'lucide-react';
 import type { Character, MapPointOfInterest } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "./ui/scroll-area";
 
-const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
+const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', React.ElementType> = {
     Castle: Castle,
     Mountain: Mountain,
     Trees: Trees,
     Village: VillageIcon,
     Shield: ShieldIcon,
     Landmark: Landmark,
+    Building: Building,
+    Building2: Building2,
+};
+
+const getIconForPoi = (poi: MapPointOfInterest) => {
+    if (poi.icon === 'Village') {
+        const level = poi.level || 1;
+        if (level <= 2) return iconMap.Village;
+        if (level === 3) return iconMap.Building;
+        if (level === 4) return iconMap.Building2;
+        if (level === 5) return iconMap.Landmark;
+        if (level >= 6) return iconMap.Castle;
+    }
+    return iconMap[poi.icon] || Landmark;
+};
+
+const poiLevelConfig: Record<string, Record<number, { upgradeCost: number | null }>> = {
+    Village: {
+        1: { upgradeCost: 50 },
+        2: { upgradeCost: 200 },
+        3: { upgradeCost: 500 },
+        4: { upgradeCost: 1000 },
+        5: { upgradeCost: 2500 },
+        6: { upgradeCost: null },
+    }
 };
 
 interface PoiSidebarProps {
@@ -23,14 +48,15 @@ interface PoiSidebarProps {
     playerName: string;
     pointsOfInterest: MapPointOfInterest[];
     characters: Character[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
     currentTurn: number;
     isLoading: boolean;
+    playerGold?: number;
 }
 
-const COLLECTION_COOLDOWN = 10; // This should match the logic in page.tsx
+const COLLECTION_COOLDOWN = 10;
 
-export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters, onMapAction, currentTurn, isLoading }: PoiSidebarProps) {
+export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters, onMapAction, currentTurn, isLoading, playerGold }: PoiSidebarProps) {
 
     if (!pointsOfInterest || pointsOfInterest.length === 0) {
         return <p className="text-sm text-muted-foreground p-2">Aucun point d'intérêt connu.</p>
@@ -40,9 +66,10 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
         <ScrollArea className="h-72">
             <div className="space-y-3 pr-3">
                 {pointsOfInterest.map(poi => {
-                    const IconComponent = iconMap[poi.icon] || Landmark;
+                    const IconComponent = getIconForPoi(poi);
                     const isPlayerOwned = poi.ownerId === playerId;
                     const owner = isPlayerOwned ? { name: playerName, factionColor: '#FFD700' } : characters.find(c => c.id === poi.ownerId);
+                    const level = poi.level || 1;
 
                     const lastCollected = poi.lastCollectedTurn;
                     let turnsRemaining = 0;
@@ -50,6 +77,11 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                         turnsRemaining = Math.max(0, (lastCollected + COLLECTION_COOLDOWN) - currentTurn);
                     }
                     const canCollectNow = isPlayerOwned && turnsRemaining === 0 && poi.resources && poi.resources.length > 0;
+                    
+                    const isUpgradable = isPlayerOwned && poi.icon === 'Village' && level < 6;
+                    const upgradeConfig = isUpgradable ? poiLevelConfig.Village[level] : null;
+                    const upgradeCost = upgradeConfig?.upgradeCost ?? null;
+                    const canAffordUpgrade = upgradeCost !== null && (playerGold || 0) >= upgradeCost;
 
                     return (
                         <Card key={poi.id} className="bg-muted/30 border">
@@ -63,7 +95,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                 <CardDescription className="text-xs mb-2">{poi.description}</CardDescription>
                                 <div className="space-y-1 text-xs">
                                     <p><strong>Propriétaire:</strong> <span style={{ color: owner?.factionColor || '#808080' }}>{owner?.name || 'Inconnu'}</span></p>
-                                    <p><strong>Type:</strong> {poi.icon}</p>
+                                    <p><strong>Type:</strong> {poi.icon} (Niveau: {level})</p>
                                     {isPlayerOwned && poi.resources && poi.resources.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             <Hourglass className="h-3 w-3" />
@@ -119,6 +151,23 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>Attaquer</p></TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                    {isUpgradable && (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span tabIndex={!canAffordUpgrade || isLoading ? 0 : -1}>
+                                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'upgrade')} disabled={!canAffordUpgrade || isLoading}>
+                                                            <ArrowUpCircle className="h-4 w-4"/>
+                                                        </Button>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>{canAffordUpgrade ? `Améliorer pour ${upgradeCost} PO` : `Coût: ${upgradeCost} PO`}</p>
+                                                    {!canAffordUpgrade && <p className="text-destructive">Fonds insuffisants</p>}
+                                                </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
                                     )}

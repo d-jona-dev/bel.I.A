@@ -43,13 +43,6 @@ export type AdventureFormValues = {
   playerIntelligence?: number;
   playerWisdom?: number;
   playerCharisma?: number;
-  playerAttackBonus?: number;
-  playerDamageBonus?: string;
-  playerMaxHp?: number;
-  playerMaxMp?: number;
-  playerArmorClass?: number;
-  playerExpToNextLevel?: number;
-  playerGold?: number;
 };
 
 // Calculates base stats derived from attributes, before equipment
@@ -173,6 +166,17 @@ export interface SellingItemDetails {
   sellPricePerUnit: number;
 }
 
+const poiLevelConfig = {
+    Village: {
+        1: { name: 'Village', upgradeCost: 50, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] as GeneratedResource[] },
+        2: { name: 'Bourg', upgradeCost: 200, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 25 }] as GeneratedResource[] },
+        3: { name: 'Petite Ville', upgradeCost: 500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 50 }] as GeneratedResource[] },
+        4: { name: 'Ville Moyenne', upgradeCost: 1000, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 100 }] as GeneratedResource[] },
+        5: { name: 'Grande Ville', upgradeCost: 2500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 200 }] as GeneratedResource[] },
+        6: { name: 'Métropole', upgradeCost: null, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 350 }] as GeneratedResource[] },
+    }
+};
+
 export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -218,9 +222,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }], lastCollectedTurn: undefined, factionColor: '#FFD700' },
-        { id: 'poi-foret', name: 'Forêt Murmurante', description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
+        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700' },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'duc-asdrubael', resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }], lastCollectedTurn: undefined },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect'], ownerId: 'frak-1', resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }], lastCollectedTurn: undefined },
     ],
     mapImageUrl: null,
   });
@@ -601,9 +605,11 @@ export default function Home() {
     if (currentRpgMode) {
       if (isNewCombatStarting) {
         const newCombatStateFromAI = combatUpdates.nextActiveCombatState!;
-        const playerTeam: Combatant[] = [];
+        const allCombatantsFromAI = newCombatStateFromAI.combatants;
+        const finalCombatants = new Map<string, Combatant>();
 
-        playerTeam.push({
+        // 1. Add player
+        finalCombatants.set(PLAYER_ID, {
             characterId: PLAYER_ID,
             name: adventureSettings.playerName || "Player",
             currentHp: adventureSettings.playerCurrentHp!,
@@ -615,24 +621,37 @@ export default function Home() {
             statusEffects: [],
         });
 
+        // 2. Add all current allies from global state who are able to fight
         characters
             .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0)
             .forEach(allyChar => {
-                playerTeam.push({
-                    characterId: allyChar.id,
-                    name: allyChar.name,
-                    currentHp: allyChar.hitPoints!,
-                    maxHp: allyChar.maxHitPoints!,
-                    currentMp: allyChar.manaPoints,
-                    maxMp: allyChar.maxManaPoints,
-                    team: 'player',
-                    isDefeated: false,
-                    statusEffects: allyChar.statusEffects || [],
-                });
+                if (!finalCombatants.has(allyChar.id)) {
+                    finalCombatants.set(allyChar.id, {
+                        characterId: allyChar.id,
+                        name: allyChar.name,
+                        currentHp: allyChar.hitPoints!,
+                        maxHp: allyChar.maxHitPoints!,
+                        currentMp: allyChar.manaPoints,
+                        maxMp: allyChar.maxManaPoints,
+                        team: 'player',
+                        isDefeated: false,
+                        statusEffects: allyChar.statusEffects || [],
+                    });
+                }
             });
 
-        const enemyTeam = newCombatStateFromAI.combatants.filter(c => c.team === 'enemy');
-        let allCombatants = [...playerTeam, ...enemyTeam];
+        // 3. Add enemies from AI output
+        allCombatantsFromAI
+            .filter(c => c.team === 'enemy')
+            .forEach(enemy => {
+                 if (!finalCombatants.has(enemy.characterId)) {
+                    finalCombatants.set(enemy.characterId, enemy);
+                 }
+            });
+
+        let allCombatants = Array.from(finalCombatants.values());
+
+        // Apply HP/MP updates from this turn's result
         const updatedCombatantsForFirstTurn = allCombatants.map(c => {
             const update = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
             if (update) {
@@ -647,6 +666,7 @@ export default function Home() {
         });
 
       } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
+        // For subsequent turns, trust the combatant list from the previous turn and just update it.
         const updatedCombatants = activeCombat!.combatants.map(existingCombatant => {
             const update = combatUpdates.updatedCombatants.find(u => u.combatantId === existingCombatant.characterId);
             if (update) {
@@ -664,7 +684,6 @@ export default function Home() {
           setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
       }
     }
-
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [toast, adventureSettings, characters, activeCombat]);
@@ -1971,6 +1990,9 @@ export default function Home() {
                             if (!('lastCollectedTurn' in poi)) {
                                 (poi as any).lastCollectedTurn = undefined;
                             }
+                            if (!('level' in poi)) {
+                                poi.level = 1;
+                            }
                         });
                     }
                 }
@@ -2133,7 +2155,7 @@ export default function Home() {
             playerName: newSettingsFromForm.playerName || "Player",
             playerClass: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerClass : undefined,
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
-            playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerExpToNextLevel : undefined,
+            playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerExpToNextLevel : undefined,
             playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
             playerInitialAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
             totalDistributableAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.totalDistributableAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
@@ -2365,21 +2387,67 @@ export default function Home() {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings, baseCharacters, adventureSettings, activeCombat]);
 
-  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => {
+  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
     let userActionText = '';
+
+    if (action === 'upgrade') {
+        const poiToUpgrade = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+        if (!poiToUpgrade || poiToUpgrade.ownerId !== PLAYER_ID || poiToUpgrade.icon !== 'Village') {
+            toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les villages que vous possédez.", variant: "destructive" });
+            return;
+        }
+
+        const currentLevel = poiToUpgrade.level || 1;
+        if (currentLevel >= Object.keys(poiLevelConfig.Village).length) {
+            toast({ title: "Niveau Maximum Atteint", description: `${poiToUpgrade.name} a atteint son plus haut niveau.`, variant: "default" });
+            return;
+        }
+
+        const config = poiLevelConfig.Village[currentLevel as keyof typeof poiLevelConfig.Village];
+        const cost = config.upgradeCost;
+
+        if (cost === null) {
+            toast({ title: "Niveau Maximum Atteint", variant: "default" });
+            return;
+        }
+
+        if ((adventureSettings.playerGold || 0) < cost) {
+            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} Pièces d'Or pour améliorer ce lieu.`, variant: "destructive" });
+            return;
+        }
+
+        setAdventureSettings(prev => {
+            const newPois = prev.mapPointsOfInterest!.map(p => {
+                if (p.id === poiId) {
+                    const nextLevel = (p.level || 1) + 1;
+                    const nextLevelConfig = poiLevelConfig.Village[nextLevel as keyof typeof poiLevelConfig.Village];
+                    toast({ title: "Lieu Amélioré !", description: `${p.name} est maintenant un(e) ${nextLevelConfig.name} !` });
+                    return {
+                        ...p,
+                        level: nextLevel,
+                        name: nextLevelConfig.name,
+                        resources: nextLevelConfig.resources,
+                    };
+                }
+                return p;
+            });
+            return {
+                ...prev,
+                playerGold: (prev.playerGold || 0) - cost,
+                mapPointsOfInterest: newPois,
+            };
+        });
+        return; 
+    }
 
     if (action === 'collect') {
         if (poi.ownerId !== PLAYER_ID) {
             toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
             return;
         }
-        if (!poi.resources || poi.resources.length === 0) {
-            toast({ title: "Aucune Ressource", description: `${poi.name} ne produit aucune ressource à collecter.`, variant: "default" });
-            return;
-        }
-
+        
         const currentTurn = narrativeMessages.length;
         const cooldownDuration = 10;
         const lastCollected = poi.lastCollectedTurn;
@@ -2394,11 +2462,26 @@ export default function Home() {
             return;
         }
         
+        const poiLevel = poi.level || 1;
+        const poiType = poi.icon;
+        let resourcesToCollect: GeneratedResource[] = [];
+
+        if (poiType === 'Village' && poiLevelConfig.Village[poiLevel as keyof typeof poiLevelConfig.Village]) {
+            resourcesToCollect = poiLevelConfig.Village[poiLevel as keyof typeof poiLevelConfig.Village].resources;
+        } else {
+            resourcesToCollect = poi.resources || [];
+        }
+
+        if (resourcesToCollect.length === 0) {
+            toast({ title: "Aucune Ressource", description: `${poi.name} ne produit aucune ressource à collecter.`, variant: "default" });
+            return;
+        }
+        
         const collectedItemsSummary: { name: string, quantity: number }[] = [];
         let collectedCurrencyAmount = 0;
         const inventoryUpdates: Partial<PlayerInventoryItem>[] = [];
 
-        poi.resources.forEach(resource => {
+        resourcesToCollect.forEach(resource => {
             if (resource.type === 'currency') {
                 collectedCurrencyAmount += resource.quantity;
                 collectedItemsSummary.push({ name: resource.name, quantity: resource.quantity });
@@ -2488,7 +2571,6 @@ export default function Home() {
 
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
     const formCharacters: FormCharacterDefinition[] = JSON.parse(stringifiedStagedCharsForFormMemo);
-    const effectiveStats = calculateEffectiveStats(stagedAdventureSettings);
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
@@ -2506,24 +2588,14 @@ export default function Home() {
       characters: formCharacters,
       playerClass: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerClass : undefined,
       playerLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerLevel : undefined,
-      playerExpToNextLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerExpToNextLevel : undefined,
-      playerGold: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerGold : undefined,
-
       playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? creationPoints : undefined,
       totalDistributableAttributePoints: stagedAdventureSettings.rpgMode ? totalDistributable : undefined,
-
       playerStrength: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerDexterity: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerConstitution: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerIntelligence: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerWisdom: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerCharisma: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
-
-      playerAttackBonus: stagedAdventureSettings.rpgMode ? effectiveStats.playerAttackBonus : undefined,
-      playerDamageBonus: stagedAdventureSettings.rpgMode ? effectiveStats.playerDamageBonus : undefined,
-      playerMaxHp: stagedAdventureSettings.rpgMode ? effectiveStats.playerMaxHp : undefined,
-      playerMaxMp: stagedAdventureSettings.rpgMode ? effectiveStats.playerMaxMp : undefined,
-      playerArmorClass: stagedAdventureSettings.rpgMode ? effectiveStats.playerArmorClass : undefined,
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
 
@@ -2684,26 +2756,40 @@ export default function Home() {
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => {
+    let resources: GeneratedResource[] = [];
+    let name = data.name;
+    let description = data.description;
+    
+    if (data.type === 'Village') {
+        name = poiLevelConfig.Village[1].name;
+        resources = poiLevelConfig.Village[1].resources;
+        if (!description) {
+            description = "Un nouvel hameau plein de potentiel."
+        }
+    } else if (data.type === 'Trees') {
+        resources = [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }];
+        if (!description) {
+            description = "Une forêt dense."
+        }
+    } else if (data.type === 'Shield') { // Mine
+        resources = [{ type: 'item', name: "Minerai de Fer", quantity: 3 }];
+        if (!description) {
+            description = "Une mine riche en minerais."
+        }
+    }
+
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-        name: data.name,
-        description: data.description,
+        name: name,
+        description: description,
         icon: data.type,
+        level: 1,
         position: { x: 50, y: 50 },
         actions: ['travel', 'examine', 'attack', 'collect'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
+        resources: resources,
     };
-
-    let resources: GeneratedResource[] = [];
-    if (data.type === 'Trees') {
-        resources = [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }];
-    } else if (data.type === 'Village') {
-        resources = [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }];
-    } else if (data.type === 'Shield') { // Mine
-        resources = [{ type: 'item', name: "Minerai de Fer", quantity: 3 }];
-    }
-    newPoi.resources = resources;
 
     setAdventureSettings(prev => ({
         ...prev,

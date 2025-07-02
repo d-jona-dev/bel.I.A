@@ -100,7 +100,7 @@ interface PageStructureProps {
   setSellQuantity: (quantity: number) => void;
   confirmSellMultipleItems: (quantity: number) => void;
   onCloseSellDialog: () => void;
-  handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
+  handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
   onGenerateMap: () => Promise<void>;
@@ -665,6 +665,7 @@ export function PageStructure({
                                     onMapAction={handleMapAction}
                                     currentTurn={currentTurn}
                                     isLoading={isLoading}
+                                    playerGold={adventureSettings.playerGold}
                                  />
                              </AccordionContent>
                          </AccordionItem>

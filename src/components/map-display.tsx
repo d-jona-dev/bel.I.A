@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 interface MapDisplayProps {
     playerId: string;
     pointsOfInterest: MapPointOfInterest[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     mapImageUrl: string | null | undefined;
@@ -40,14 +40,29 @@ interface MapDisplayProps {
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => void;
 }
 
-const iconMap: Record<MapPointOfInterest['icon'], React.ElementType> = {
+const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2', React.ElementType> = {
     Castle: Castle,
     Mountain: Mountain,
     Trees: Trees,
     Village: VillageIcon,
     Shield: ShieldIcon,
     Landmark: Landmark,
+    Building: Building,
+    Building2: Building2,
 };
+
+const getIconForPoi = (poi: MapPointOfInterest) => {
+    if (poi.icon === 'Village') {
+        const level = poi.level || 1;
+        if (level <= 2) return iconMap.Village;
+        if (level === 3) return iconMap.Building;
+        if (level === 4) return iconMap.Building2;
+        if (level === 5) return iconMap.Landmark;
+        if (level >= 6) return iconMap.Castle;
+    }
+    return iconMap[poi.icon] || Landmark;
+};
+
 
 export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi }: MapDisplayProps) {
     const { toast } = useToast();
@@ -243,7 +258,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             </div>
             
             {pointsOfInterest.map((poi) => {
-                const IconComponent = iconMap[poi.icon] || Landmark;
+                const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
                 const owner = characters.find(c => c.id === poi.ownerId);
