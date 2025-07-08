@@ -24,6 +24,10 @@ const SuggestPlayerSkillOutputSchema = z.object({
 });
 export type SuggestPlayerSkillOutput = z.infer<typeof SuggestPlayerSkillOutputSchema>;
 
+// New type for the flow's return value, including potential errors
+export type SuggestPlayerSkillFlowOutput = SuggestPlayerSkillOutput & { error?: string };
+
+
 // Define the prompt locally; it will be used by the exported flow.
 const suggestPlayerSkillPrompt = ai.definePrompt({
   name: 'suggestPlayerSkillPromptInternal', // Renamed to avoid conflict if used as flow name
@@ -52,9 +56,9 @@ export const suggestPlayerSkill = ai.defineFlow(
   {
     name: 'suggestPlayerSkill', // This is the name Genkit will register for this flow.
     inputSchema: SuggestPlayerSkillInputSchema,
-    outputSchema: SuggestPlayerSkillOutputSchema,
+    outputSchema: SuggestPlayerSkillOutputSchema, // This is for the AI, not the function's return
   },
-  async (input: SuggestPlayerSkillInput): Promise<SuggestPlayerSkillOutput> => {
+  async (input: SuggestPlayerSkillInput): Promise<SuggestPlayerSkillFlowOutput> => {
     // Logic for handling playerLevel, if necessary, can go here.
     // For this specific flow, the prompt is geared towards level 1.
     if (input.playerLevel !== 1) {
@@ -66,17 +70,16 @@ export const suggestPlayerSkill = ai.defineFlow(
         const {output} = await suggestPlayerSkillPrompt(input); // Use the locally defined prompt
 
         if (!output?.name || !output?.description) {
-          throw new Error("AI failed to generate a skill name or description for suggestPlayerSkill flow.");
+          return { name: '', description: '', error: "AI failed to generate a skill name or description for suggestPlayerSkill flow." };
         }
-        return output;
+        return { ...output, error: undefined };
     } catch (e: any) {
         console.error("Error in suggestPlayerSkill flow:", e);
-        // Re-throw the error so the client-side catch block can handle it and show a toast.
         const errorMessage = e.message || String(e);
         if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-             throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
+             return { name: '', description: '', error: "Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants." };
         }
-        throw new Error(`Une erreur est survenue lors de la suggestion de compétence : ${errorMessage}`);
+        return { name: '', description: '', error: `Une erreur est survenue lors de la suggestion de compétence : ${errorMessage}`};
     }
   }
 );

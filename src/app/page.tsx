@@ -15,7 +15,7 @@ import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/transla
 import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
-import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput } from "@/ai/flows/suggest-player-skill";
+import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION } from "@/lib/buildings";
 
 
@@ -404,7 +404,20 @@ export default function Home() {
             playerLevel: 1,
             currentLanguage: currentLanguage,
           };
-          const suggestedSkill = await suggestPlayerSkill(skillInput);
+          const suggestedSkill: SuggestPlayerSkillFlowOutput = await suggestPlayerSkill(skillInput);
+
+          if (suggestedSkill.error) {
+            console.error("Failed to fetch initial skill:", suggestedSkill.error);
+            setTimeout(() => {
+              toast({
+                title: "Erreur de Compétence",
+                description: suggestedSkill.error,
+                variant: "destructive",
+              });
+            }, 0);
+            return; // Exit early
+          }
+
           const newSkill: PlayerSkill = {
             id: `skill-${suggestedSkill.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
             name: suggestedSkill.name,
@@ -427,11 +440,11 @@ export default function Home() {
             });
           }, 0);
         } catch (error) {
-          console.error("Failed to fetch initial skill:", error);
+          console.error("Unexpected error fetching initial skill:", error);
            setTimeout(() => {
             toast({
-              title: "Erreur de Compétence",
-              description: "Impossible de suggérer la compétence initiale.",
+              title: "Erreur Inattendue",
+              description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la suggestion de compétence.",
               variant: "destructive",
             });
           }, 0);
