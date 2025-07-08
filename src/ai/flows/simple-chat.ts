@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A simple chat AI agent for interacting with a single character.
@@ -93,28 +92,38 @@ const simpleChatFlow = ai.defineFlow<
     console.log("SimpleChat Flow Input:", JSON.stringify(input, null, 2));
     console.log("SimpleChat Flow actualHistoryToSend:", JSON.stringify(actualHistoryToSend, null, 2));
 
-    const {output, history: updatedHistory} = await prompt(
-      // Pass context for the prompt's handlebars (system and user message template)
-      {
-        characterName: input.characterName,
-        characterDetails: input.characterDetails,
-        userMessage: input.userMessage, // This is the 'prompt' part for the last user message
-        adventureContextSummary: input.adventureContextSummary,
-        playerName: input.playerName,
-      },
-      // Pass the conversation history
-      {
-        history: actualHistoryToSend, // This is for the messages array
-      }
-    );
+    try {
+        const {output, history: updatedHistory} = await prompt(
+          // Pass context for the prompt's handlebars (system and user message template)
+          {
+            characterName: input.characterName,
+            characterDetails: input.characterDetails,
+            userMessage: input.userMessage, // This is the 'prompt' part for the last user message
+            adventureContextSummary: input.adventureContextSummary,
+            playerName: input.playerName,
+          },
+          // Pass the conversation history
+          {
+            history: actualHistoryToSend, // This is for the messages array
+          }
+        );
+    
+        if (!output?.response) {
+          console.error("AI did not return a response. History from call:", updatedHistory);
+          throw new Error("AI failed to generate a response for the character.");
+        }
+        console.log("SimpleChat Flow Output:", JSON.stringify(output, null, 2));
+        console.log("SimpleChat Flow History after call:", JSON.stringify(updatedHistory, null, 2));
+    
+        return { response: output.response };
 
-    if (!output?.response) {
-      console.error("AI did not return a response. History from call:", updatedHistory);
-      throw new Error("AI failed to generate a response for the character.");
+    } catch (e: any) {
+        console.error("Error in simpleChat flow:", e);
+        const errorMessage = e.message || String(e);
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+             throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
+        }
+        throw new Error(`Erreur du tchat IA : ${errorMessage}`);
     }
-    console.log("SimpleChat Flow Output:", JSON.stringify(output, null, 2));
-    console.log("SimpleChat Flow History after call:", JSON.stringify(updatedHistory, null, 2));
-
-    return { response: output.response };
   }
 );

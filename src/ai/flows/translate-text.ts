@@ -50,6 +50,15 @@ const translateTextFlow = ai.defineFlow<
   outputSchema: TranslateTextOutputSchema,
 },
 async input => {
-  const {output} = await prompt(input);
-  return output!;
+    try {
+      const {output} = await prompt(input);
+      return output!;
+    } catch (e: any) {
+        console.error("Error in translateText flow:", e);
+        const errorMessage = e.message || String(e);
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+             throw new Error("Le modèle d'IA de traduction est actuellement surchargé. Veuillez réessayer.");
+        }
+        throw new Error(`Erreur de traduction : ${errorMessage}`);
+    }
 });

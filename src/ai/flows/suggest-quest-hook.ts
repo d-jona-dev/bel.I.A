@@ -57,10 +57,19 @@ const suggestQuestHookFlow = ai.defineFlow(
     outputSchema: SuggestQuestHookOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
-    if (!output?.questHook || !output?.justification) {
-      throw new Error("AI failed to generate a quest hook or justification.");
+    try {
+        const {output} = await prompt(input);
+        if (!output?.questHook || !output?.justification) {
+          throw new Error("AI failed to generate a quest hook or justification.");
+        }
+        return output;
+    } catch (e: any) {
+        console.error("Error in suggestQuestHook flow:", e);
+        const errorMessage = e.message || String(e);
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+             throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
+        }
+        throw new Error(`Erreur lors de la suggestion de quête : ${errorMessage}`);
     }
-    return output;
   }
 );

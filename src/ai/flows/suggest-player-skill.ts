@@ -62,11 +62,21 @@ export const suggestPlayerSkill = ai.defineFlow(
         console.warn("Flow 'suggestPlayerSkill' (intended for level 1) called for level > 1. The prompt is geared for level 1 skills.");
     }
 
-    const {output} = await suggestPlayerSkillPrompt(input); // Use the locally defined prompt
+    try {
+        const {output} = await suggestPlayerSkillPrompt(input); // Use the locally defined prompt
 
-    if (!output?.name || !output?.description) {
-      throw new Error("AI failed to generate a skill name or description for suggestPlayerSkill flow.");
+        if (!output?.name || !output?.description) {
+          throw new Error("AI failed to generate a skill name or description for suggestPlayerSkill flow.");
+        }
+        return output;
+    } catch (e: any) {
+        console.error("Error in suggestPlayerSkill flow:", e);
+        // Re-throw the error so the client-side catch block can handle it and show a toast.
+        const errorMessage = e.message || String(e);
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+             throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
+        }
+        throw new Error(`Une erreur est survenue lors de la suggestion de compétence : ${errorMessage}`);
     }
-    return output;
   }
 );
