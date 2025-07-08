@@ -499,12 +499,13 @@ Tasks:
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Building & Service Interaction:** If the user's action implies interacting with a specific service or building type (e.g., "Je vais chez le forgeron", "Je cherche une auberge pour la nuit", "Je veux acheter une amulette", "J'aimerais me soigner"):
-            *   **STEP 1: Identify Player Location.** Deduce the player's current location (e.g., the name of the town or area) from the 'Current Situation/Recent Narrative'.
-            *   **STEP 2: Identify Required Building.** Determine which building corresponds to the user's action. Examples: 'forgeron' for buying weapons/armor, 'bijoutier' for jewelry, 'auberge' for resting, 'poste-guerisseur' for healing/resurrection.
-            *   **STEP 3: Check Building Availability.** Look up the player's current location in the 'Points of Interest' list and check its 'buildings' array.
-            *   **STEP 4: Respond Appropriately.**
-                *   **If the required building is NOT in the list:** You MUST respond that the service is unavailable. For example: "Il n'y a pas de forgeron ici.", "Vous ne trouvez aucune auberge dans ce village.", "Personne ne vend de bijoux dans ce lieu."
-                *   **If the required building IS in the list:**
+            *   **CRITICAL RULE: CHECK BUILDING AVAILABILITY.**
+            *   **STEP 1: Identify Player Location.** Deduce the player's current location (e.g., the name of the town or area) from the 'Current Situation/Recent Narrative'. If the location is ambiguous, assume the last mentioned POI.
+            *   **STEP 2: Identify Required Building.** Determine the required building ID for the action. Examples: 'forgeron' for buying weapons/armor, 'bijoutier' for jewelry, 'auberge' for resting, 'poste-guerisseur' for healing.
+            *   **STEP 3: Check for Building.** Look up the current location in the 'Points of Interest' list and strictly check if its 'buildings' array contains the required building ID from Step 2.
+            *   **STEP 4: Respond.**
+                *   **If the required building ID is NOT found in the array:** You MUST state that the service is unavailable and why. For example: "Il n'y a pas de forgeron ici à Bourgenval.", "Vous ne trouvez aucune auberge dans ce village." Then, stop. Do not proceed to narrate the interaction.
+                *   **If the required building ID IS found:** Proceed with the interaction. For example:
                     *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user wants to buy something, present a list of 3-5 thematically appropriate items for sale in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Include the line: "N'achetez qu'un objet à la fois, Aventurier."
                     *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
                     *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
