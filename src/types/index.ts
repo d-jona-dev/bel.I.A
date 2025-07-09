@@ -200,6 +200,7 @@ export interface AdventureSettings {
     playerSkills?: PlayerSkill[];
     mapPointsOfInterest?: MapPointOfInterest[];
     mapImageUrl?: string | null;
+    playerLocationId?: string;
 }
 
 export interface SaveData {

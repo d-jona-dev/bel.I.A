@@ -160,6 +160,7 @@ const GenerateAdventureInputSchema = z.object({
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
   playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
+  playerLocationId: z.string().optional().describe("The ID of the POI where the player is currently located. This is the source of truth for location."),
   mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
 });
 
@@ -362,6 +363,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         equippedWeaponName: input.equippedWeaponName,
         equippedArmorName: input.equippedArmorName,
         equippedJewelryName: input.equippedJewelryName,
+        playerLocationId: input.playerLocationId,
         mapPointsOfInterest: input.mapPointsOfInterest?.map(poi => ({
             id: poi.id,
             name: poi.name,
@@ -472,16 +474,23 @@ Known Characters (excluding player unless explicitly listed for context):
 {{/each}}
 
 {{#if mapPointsOfInterest.length}}
---- Points of Interest ---
-A list of known locations on the map. This provides crucial context about available services based on built buildings.
+--- CONTEXTE DE LOCALISATION ACTUELLE ---
+{{#if playerLocationId}}
+Le joueur se trouve actuellement au point d'intérêt avec l'ID '{{playerLocationId}}'.
 {{#each mapPointsOfInterest}}
-- Name: {{this.name}} (ID: {{this.id}})
-  Description: {{this.description}}
-  Owner ID: {{this.ownerId}}
-  {{#if this.buildings}}
-  Buildings: {{#each this.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}. (e.g., 'forgeron' allows weapon/armor purchase, 'auberge' allows resting and rumors, 'poste-gardes' reduces hostile encounters when traveling *to* this location).
-  {{/if}}
+{{#ifeq this.id ../playerLocationId}}
+Nom du lieu: **{{this.name}}**
+Description: {{this.description}}
+{{#if this.buildings.length}}
+Services disponibles : {{#each this.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
+{{else}}
+Il n'y a pas de bâtiments ou de services spéciaux dans ce lieu.
+{{/if}}
+{{/ifeq}}
 {{/each}}
+{{else}}
+Le joueur est actuellement en déplacement ou dans un lieu non spécifié.
+{{/if}}
 ---
 {{/if}}
 
@@ -498,18 +507,17 @@ Tasks:
             *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Building & Service Interaction:** If the user's action implies interacting with a specific service or building type (e.g., "Je vais chez le forgeron", "Je cherche une auberge pour la nuit", "Je veux acheter une amulette", "J'aimerais me soigner"):
-            *   **CRITICAL RULE: CHECK BUILDING AVAILABILITY.**
-            *   **STEP 1: Identify Player Location.** Deduce the player's current location (e.g., the name of the town or area) from the 'Current Situation/Recent Narrative'. If the location is ambiguous, assume the last mentioned POI.
-            *   **STEP 2: Identify Required Building.** Determine the required building ID for the action. Examples: 'forgeron' for buying weapons/armor, 'bijoutier' for jewelry, 'auberge' for resting, 'poste-guerisseur' for healing.
-            *   **STEP 3: Check for Building.** Look up the current location in the 'Points of Interest' list and strictly check if its 'buildings' array contains the required building ID from Step 2.
-            *   **STEP 4: Respond.**
-                *   **If the required building ID is NOT found in the array:** You MUST state that the service is unavailable and why. For example: "Il n'y a pas de forgeron ici à Bourgenval.", "Vous ne trouvez aucune auberge dans ce village." Then, stop. Do not proceed to narrate the interaction.
+        *   **CRITICAL RULE: CHECK BUILDING AVAILABILITY.**
+        *   If the user's action implies interacting with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit'):
+            *   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge').
+            *   **STEP 2: Check for Building.** **Strictly refer to the 'CONTEXTE DE LOCALISATION ACTUELLE' section above.** Check if the required building ID is listed under 'Services disponibles'.
+            *   **STEP 3: Respond.**
+                *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
                 *   **If the required building ID IS found:** Proceed with the interaction. For example:
-                    *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user wants to buy something, present a list of 3-5 thematically appropriate items for sale in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Include the line: "N'achetez qu'un objet à la fois, Aventurier."
+                    *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user wants to buy something, present a list of 3-5 thematically appropriate items for sale in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
                     *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
                     *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
-                    *   **Other interactions:** Handle other building interactions logically based on their description in the 'Points of Interest' list.
+                    *   **Other interactions:** Handle other building interactions logically based on their description.
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
@@ -592,14 +600,24 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like 'J'attaque la Grotte Grinçante' started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'Points of Interest' list above**.
+    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like 'J'attaque la Grotte Grinçante' started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'mapPointsOfInterest' context list**.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
 `,
-        });
+  config: {
+    custom: {
+        ifeq: (a: any, b: any, options: any) => {
+            if (a === b) {
+                return options.fn(this);
+            }
+            return options.inverse(this);
+        }
+    }
+  }
+});
 
 
 const generateAdventureFlow = ai.defineFlow<

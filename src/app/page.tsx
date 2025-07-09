@@ -238,6 +238,7 @@ export default function Home() {
         { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000', buildings: [] },
     ],
     mapImageUrl: null,
+    playerLocationId: 'poi-bourgenval',
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -950,26 +951,30 @@ export default function Home() {
       });
   }, [toast, characters]);
 
-  const callGenerateAdventure = React.useCallback(async (userActionText: string) => {
+  const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
       setIsLoading(true);
     });
 
-    const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
-    const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
+    const settingsForThisTurn = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
+    if (locationIdOverride) {
+        settingsForThisTurn.playerLocationId = locationIdOverride;
+    }
+
+    const effectiveStatsThisTurn = calculateEffectiveStats(settingsForThisTurn);
     const currentGlobalCharacters = characters;
     let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
     // This logic ensures the combat state sent to the AI is synced with the canonical character/player state
     // without rebuilding the combatant list, which prevents duplication bugs.
-    if (currentTurnSettings.rpgMode && currentActiveCombatStateForAI?.isActive) {
+    if (settingsForThisTurn.rpgMode && currentActiveCombatStateForAI?.isActive) {
         const updatedCombatants = currentActiveCombatStateForAI.combatants.map(combatant => {
             if (combatant.characterId === PLAYER_ID) {
                 return {
                     ...combatant,
-                    currentHp: currentTurnSettings.playerCurrentHp ?? combatant.maxHp,
+                    currentHp: settingsForThisTurn.playerCurrentHp ?? combatant.maxHp,
                     maxHp: effectiveStatsThisTurn.playerMaxHp,
-                    currentMp: currentTurnSettings.playerCurrentMp ?? combatant.maxMp,
+                    currentMp: settingsForThisTurn.playerCurrentMp ?? combatant.maxMp,
                     maxMp: effectiveStatsThisTurn.playerMaxMp,
                 };
             }
@@ -991,38 +996,39 @@ export default function Home() {
 
 
     const input: GenerateAdventureInput = {
-        world: currentTurnSettings.world,
-        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+        world: settingsForThisTurn.world,
+        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${settingsForThisTurn.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
         characters: currentGlobalCharacters, 
         userAction: userActionText,
         currentLanguage: currentLanguage,
-        playerName: currentTurnSettings.playerName || "Player",
-        rpgModeActive: currentTurnSettings.rpgMode,
-        relationsModeActive: currentTurnSettings.relationsMode ?? true,
+        playerName: settingsForThisTurn.playerName || "Player",
+        rpgModeActive: settingsForThisTurn.rpgMode,
+        relationsModeActive: settingsForThisTurn.relationsMode ?? true,
         activeCombat: currentActiveCombatStateForAI,
-        playerGold: currentTurnSettings.playerGold,
-        playerSkills: currentTurnSettings.playerSkills,
-        playerClass: currentTurnSettings.playerClass,
-        playerLevel: currentTurnSettings.playerLevel,
-        playerCurrentHp: currentTurnSettings.playerCurrentHp,
+        playerGold: settingsForThisTurn.playerGold,
+        playerSkills: settingsForThisTurn.playerSkills,
+        playerClass: settingsForThisTurn.playerClass,
+        playerLevel: settingsForThisTurn.playerLevel,
+        playerCurrentHp: settingsForThisTurn.playerCurrentHp,
         playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
-        playerCurrentMp: currentTurnSettings.playerCurrentMp,
+        playerCurrentMp: settingsForThisTurn.playerCurrentMp,
         playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
-        playerCurrentExp: currentTurnSettings.playerCurrentExp,
-        playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
-        playerStrength: currentTurnSettings.playerStrength,
-        playerDexterity: currentTurnSettings.playerDexterity,
-        playerConstitution: currentTurnSettings.playerConstitution,
-        playerIntelligence: currentTurnSettings.playerIntelligence,
-        playerWisdom: currentTurnSettings.playerWisdom,
-        playerCharisma: currentTurnSettings.playerCharisma,
+        playerCurrentExp: settingsForThisTurn.playerCurrentExp,
+        playerExpToNextLevel: settingsForThisTurn.playerExpToNextLevel,
+        playerStrength: settingsForThisTurn.playerStrength,
+        playerDexterity: settingsForThisTurn.playerDexterity,
+        playerConstitution: settingsForThisTurn.playerConstitution,
+        playerIntelligence: settingsForThisTurn.playerIntelligence,
+        playerWisdom: settingsForThisTurn.playerWisdom,
+        playerCharisma: settingsForThisTurn.playerCharisma,
         playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
         playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
         playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
-        equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
-        equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
-        equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
-        mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
+        equippedWeaponName: settingsForThisTurn.equippedItemIds?.weapon ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.weapon)?.name : undefined,
+        equippedArmorName: settingsForThisTurn.equippedItemIds?.armor ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.armor)?.name : undefined,
+        equippedJewelryName: settingsForThisTurn.equippedItemIds?.jewelry ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.jewelry)?.name : undefined,
+        playerLocationId: settingsForThisTurn.playerLocationId,
+        mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
     };
 
     try {
@@ -1036,6 +1042,9 @@ export default function Home() {
         }
 
         React.startTransition(() => {
+            if (locationIdOverride) {
+                setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
+            }
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
@@ -1619,6 +1628,7 @@ export default function Home() {
                  equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
                  equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
+                 playerLocationId: currentTurnSettings.playerLocationId,
                  mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
              };
 
@@ -2422,9 +2432,8 @@ export default function Home() {
   }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings, baseCharacters, adventureSettings, activeCombat]);
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => {
-    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi) return;
     let userActionText = '';
+    let locationOverride: string | undefined = undefined;
 
     if (action === 'upgrade') {
         const poiToUpgrade = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
@@ -2473,6 +2482,8 @@ export default function Home() {
         const nextLevel = (poiToUpgrade.level || 1) + 1;
         const nextLevelConfig = typeConfig[nextLevel as keyof typeof typeConfig];
 
+        userActionText = `J'améliore ${poiToUpgrade.name} en ${nextLevelConfig.name}.`;
+
         const postUpgradeToast = () => {
              toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
         };
@@ -2495,14 +2506,11 @@ export default function Home() {
             };
         });
         
-        // Schedule toast to run after state update
         setTimeout(postUpgradeToast, 0);
 
-        return; 
-    }
-
-    if (action === 'collect') {
-        if (poi.ownerId !== PLAYER_ID) {
+    } else if (action === 'collect') {
+        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+        if (!poi || poi.ownerId !== PLAYER_ID) {
             setTimeout(() => {
                 toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
             }, 0);
@@ -2604,20 +2612,29 @@ export default function Home() {
         userActionText = `Je collecte les ressources de ${poi.name}.`;
 
     } else if (action === 'travel') {
+        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+        if (!poi) return;
         userActionText = `Je me déplace vers ${poi.name}.`;
+        locationOverride = poi.id;
     } else if (action === 'examine') {
+        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+        if (!poi) return;
         userActionText = `J'examine les environs de ${poi.name}.`;
     } else if (action === 'attack') {
+        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+        if (!poi) return;
         userActionText = `J'attaque le territoire de ${poi.name}.`;
     } else {
         return;
     }
+    
+    if (!userActionText) return;
 
     setIsLoading(true);
     handleNarrativeUpdate(userActionText, 'user');
 
     try {
-        await callGenerateAdventure(userActionText);
+        await callGenerateAdventure(userActionText, locationOverride);
     } catch (error) {
         console.error("Error in handleMapAction trying to generate adventure:", error);
         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });
@@ -2890,7 +2907,7 @@ export default function Home() {
         return;
     }
 
-    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length];
+    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length] ?? Infinity;
     if ((adventureSettings.playerGold || 0) < cost) {
         toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
         return;
