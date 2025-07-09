@@ -162,9 +162,10 @@ const GenerateAdventureInputSchema = z.object({
   playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
   playerLocationId: z.string().optional().describe("The ID of the POI where the player is currently located. This is the source of truth for location."),
   mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
+  playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
     playerSkills?: PlayerSkill[];
@@ -334,6 +335,9 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         category: skill.category,
     }));
 
+    const currentPlayerLocation = input.playerLocationId && input.mapPointsOfInterest
+        ? input.mapPointsOfInterest.find(poi => poi.id === input.playerLocationId)
+        : undefined;
 
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
@@ -371,6 +375,13 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             ownerId: poi.ownerId,
             buildings: poi.buildings,
         })),
+        playerLocation: currentPlayerLocation ? {
+            id: currentPlayerLocation.id,
+            name: currentPlayerLocation.name,
+            description: currentPlayerLocation.description,
+            ownerId: currentPlayerLocation.ownerId,
+            buildings: currentPlayerLocation.buildings,
+        } : undefined,
     };
 
   return generateAdventureFlow(flowInput);
@@ -473,24 +484,19 @@ Known Characters (excluding player unless explicitly listed for context):
   **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Biographie/Notes, Affinity towards {{../playerName}}, their Relationship Statuses with others, and their recent History. Their style of speech (vocabulary, tone, formality) must also align. They should react logically to the User Action and the Current Situation.**
 {{/each}}
 
-{{#if mapPointsOfInterest.length}}
+{{#if playerLocation}}
 --- CONTEXTE DE LOCALISATION ACTUELLE ---
-{{#if playerLocationId}}
-Le joueur se trouve actuellement au point d'intérêt avec l'ID '{{playerLocationId}}'.
-{{#each mapPointsOfInterest}}
-{{#ifeq this.id ../playerLocationId}}
-Nom du lieu: **{{this.name}}**
-Description: {{this.description}}
-{{#if this.buildings.length}}
-Services disponibles : {{#each this.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
+Nom du lieu: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
+Description: {{playerLocation.description}}
+{{#if playerLocation.buildings.length}}
+Services disponibles : {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
 {{else}}
 Il n'y a pas de bâtiments ou de services spéciaux dans ce lieu.
 {{/if}}
-{{/ifeq}}
-{{/each}}
+---
 {{else}}
+--- CONTEXTE DE LOCALISATION ACTUELLE ---
 Le joueur est actuellement en déplacement ou dans un lieu non spécifié.
-{{/if}}
 ---
 {{/if}}
 
@@ -607,16 +613,6 @@ Tasks:
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
 `,
-  config: {
-    custom: {
-        ifeq: (a: any, b: any, options: any) => {
-            if (a === b) {
-                return options.fn(this);
-            }
-            return options.inverse(this);
-        }
-    }
-  }
 });
 
 
