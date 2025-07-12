@@ -99,7 +99,7 @@ interface PageStructureProps {
   setSellQuantity: (quantity: number) => void;
   confirmSellMultipleItems: (quantity: number) => void;
   onCloseSellDialog: () => void;
-  handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
+  handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
   onGenerateMap: () => Promise<void>;

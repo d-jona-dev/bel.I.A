@@ -11,6 +11,16 @@ import { ScrollArea } from "./ui/scroll-area";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION } from "@/lib/buildings";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 const iconMap: Record<string, React.ElementType> = {
     Castle: Castle,
@@ -96,7 +106,7 @@ interface PoiSidebarProps {
     playerName: string;
     pointsOfInterest: MapPointOfInterest[];
     characters: Character[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => void;
     onBuildInPoi: (poiId: string, buildingId: string) => void;
     currentTurn: number;
     isLoading: boolean;
@@ -157,6 +167,47 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                     <IconComponent className="h-5 w-5" style={{ color: owner?.factionColor || '#808080' }} />
                                     <CardTitle className="text-base">{poi.name}</CardTitle>
                                 </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-6 px-2">Actions</Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')} disabled={isLoading}>
+                                            <MoveRight className="mr-2 h-4 w-4"/> Se Déplacer
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')} disabled={isLoading}>
+                                            <Search className="mr-2 h-4 w-4"/> Examiner
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollectNow || isLoading}>
+                                            <Briefcase className="mr-2 h-4 w-4"/> Collecter
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'upgrade')} disabled={!isUpgradable || !canAffordUpgrade || isLoading}>
+                                            <ArrowUpCircle className="mr-2 h-4 w-4"/> Améliorer ({upgradeCost} PO)
+                                        </DropdownMenuItem>
+                                         {isPlayerOwned && builtBuildings.length > 0 && (
+                                            <DropdownMenuSub>
+                                                <DropdownMenuSubTrigger>
+                                                    <Building className="mr-2 h-4 w-4"/> Visiter un Bâtiment
+                                                </DropdownMenuSubTrigger>
+                                                <DropdownMenuSubContent>
+                                                    {builtBuildings.map(buildingId => {
+                                                        const def = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
+                                                        return (
+                                                            <DropdownMenuItem key={buildingId} onSelect={() => onMapAction(poi.id, 'visit', buildingId)} disabled={isLoading}>
+                                                                {def?.name || buildingId}
+                                                            </DropdownMenuItem>
+                                                        )
+                                                    })}
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuSub>
+                                        )}
+                                        {!isPlayerOwned && (
+                                            <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'attack')} disabled={isLoading} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                                <Swords className="mr-2 h-4 w-4"/> Attaquer
+                                            </DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </CardHeader>
                             <CardContent className="p-3 pt-0 text-sm">
                                 <CardDescription className="text-xs mb-2">{poi.description}</CardDescription>
@@ -172,73 +223,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex gap-2 mt-3">
-                                    {poi.actions.includes('travel') && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'travel')} disabled={isLoading}>
-                                                        <MoveRight className="h-4 w-4"/>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>Se déplacer vers {poi.name}</p></TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                    {poi.actions.includes('examine') && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'examine')} disabled={isLoading}>
-                                                        <Search className="h-4 w-4"/>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>Examiner</p></TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                    {poi.actions.includes('collect') && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'collect')} disabled={!canCollectNow || isLoading}>
-                                                        <Briefcase className="h-4 w-4"/>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>Collecter</p></TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                     {poi.actions.includes('attack') && !isPlayerOwned && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button variant="destructive" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'attack')} disabled={isLoading}>
-                                                        <Swords className="h-4 w-4"/>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent><p>Attaquer</p></TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                    {isUpgradable && (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span tabIndex={!canAffordUpgrade || isLoading ? 0 : -1}>
-                                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onMapAction(poi.id, 'upgrade')} disabled={!canAffordUpgrade || isLoading}>
-                                                            <ArrowUpCircle className="h-4 w-4"/>
-                                                        </Button>
-                                                    </span>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{canAffordUpgrade ? `Améliorer pour ${upgradeCost} PO` : `Coût: ${upgradeCost} PO`}</p>
-                                                    {!canAffordUpgrade && <p className="text-destructive">Fonds insuffisants</p>}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                </div>
+                                
                                 {isPlayerOwned && maxSlots > 0 && (
                                     <div className="mt-3 pt-3 border-t border-dashed">
                                         <h4 className="text-xs font-semibold mb-2">Aménagements ({builtBuildings.length}/{maxSlots})</h4>

@@ -120,6 +120,7 @@ const PointOfInterestSchemaForAI = z.object({
     id: z.string(),
     name: z.string(),
     description: z.string(),
+    level: z.number().optional().default(1),
     ownerId: z.string().optional().describe("The ID of the character who owns this POI, or 'player'."),
     buildings: z.array(z.string()).optional().describe("A list of building IDs that exist at this location, e.g., ['forgeron', 'auberge']."),
 });
@@ -372,6 +373,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             id: poi.id,
             name: poi.name,
             description: poi.description,
+            level: poi.level,
             ownerId: poi.ownerId,
             buildings: poi.buildings,
         })),
@@ -379,6 +381,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             id: currentPlayerLocation.id,
             name: currentPlayerLocation.name,
             description: currentPlayerLocation.description,
+            level: currentPlayerLocation.level,
             ownerId: currentPlayerLocation.ownerId,
             buildings: currentPlayerLocation.buildings,
         } : undefined,
@@ -487,6 +490,7 @@ Known Characters (excluding player unless explicitly listed for context):
 {{#if playerLocation}}
 --- CONTEXTE DE LOCALISATION ACTUELLE ---
 Nom du lieu: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
+Niveau du lieu: {{playerLocation.level}}
 Description: {{playerLocation.description}}
 {{#if playerLocation.buildings.length}}
 Services disponibles : {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
@@ -514,13 +518,13 @@ Tasks:
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **CRITICAL RULE: CHECK BUILDING AVAILABILITY.**
-        *   If the user's action implies interacting with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit'):
+        *   If the user's action implies interacting with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier'):
             *   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge').
             *   **STEP 2: Check for Building.** **Strictly refer to the 'CONTEXTE DE LOCALISATION ACTUELLE' section above.** Check if the required building ID is listed under 'Services disponibles'.
             *   **STEP 3: Respond.**
                 *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
-                *   **If the required building ID IS found:** Proceed with the interaction. For example:
-                    *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user wants to buy something, present a list of 3-5 thematically appropriate items for sale in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
+                *   **If the required building ID IS found:** Proceed with the interaction.
+                    *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The QUALITY and TYPE of these items MUST depend on the **level of the current POI (playerLocation.level)**. A level 1 village forgeron will sell rusty, basic gear. A level 6 metropolis forgeron will sell powerful, magical, or masterwork items. The items MUST be presented in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Finally, include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
                     *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
                     *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
                     *   **Other interactions:** Handle other building interactions logically based on their description.

@@ -2431,20 +2431,27 @@ export default function Home() {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings, baseCharacters, adventureSettings, activeCombat]);
 
-  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => {
+  const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
     let locationOverride: string | undefined = undefined;
 
+    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+    if (!poi) return;
+    
+    // Set current player location for all actions except travel to another POI
+    if (action !== 'travel') {
+        locationOverride = poi.id;
+    }
+
     if (action === 'upgrade') {
-        const poiToUpgrade = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poiToUpgrade || poiToUpgrade.ownerId !== PLAYER_ID) {
+        if (poi.ownerId !== PLAYER_ID) {
              setTimeout(() => {
                 toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les lieux que vous possédez.", variant: "destructive" });
              }, 0);
             return;
         }
         
-        const poiType = poiToUpgrade.icon;
+        const poiType = poi.icon;
         if (!Object.keys(poiLevelConfig).includes(poiType)) {
              setTimeout(() => {
                 toast({ title: "Amélioration Impossible", description: "Ce type de lieu n'est pas améliorable.", variant: "destructive" });
@@ -2453,11 +2460,11 @@ export default function Home() {
         }
 
         const typeConfig = poiLevelConfig[poiType as keyof typeof poiLevelConfig];
-        const currentLevel = poiToUpgrade.level || 1;
+        const currentLevel = poi.level || 1;
 
         if (currentLevel >= Object.keys(typeConfig).length) {
              setTimeout(() => {
-                toast({ title: "Niveau Maximum Atteint", description: `${poiToUpgrade.name} a atteint son plus haut niveau.`, variant: "default" });
+                toast({ title: "Niveau Maximum Atteint", description: `${poi.name} a atteint son plus haut niveau.`, variant: "default" });
              }, 0);
             return;
         }
@@ -2479,13 +2486,13 @@ export default function Home() {
             return;
         }
         
-        const nextLevel = (poiToUpgrade.level || 1) + 1;
+        const nextLevel = (poi.level || 1) + 1;
         const nextLevelConfig = typeConfig[nextLevel as keyof typeof typeConfig];
 
-        userActionText = `J'améliore ${poiToUpgrade.name} en ${nextLevelConfig.name}.`;
+        userActionText = `J'améliore ${poi.name}.`;
 
         const postUpgradeToast = () => {
-             toast({ title: "Lieu Amélioré !", description: `${poiToUpgrade.name} est maintenant un(e) ${nextLevelConfig.name} !` });
+             toast({ title: "Lieu Amélioré !", description: `${poi.name} a maintenant atteint le niveau ${nextLevel} !` });
         };
         
         setAdventureSettings(prev => {
@@ -2509,8 +2516,7 @@ export default function Home() {
         setTimeout(postUpgradeToast, 0);
 
     } else if (action === 'collect') {
-        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poi || poi.ownerId !== PLAYER_ID) {
+        if (poi.ownerId !== PLAYER_ID) {
             setTimeout(() => {
                 toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
             }, 0);
@@ -2612,19 +2618,18 @@ export default function Home() {
         userActionText = `Je collecte les ressources de ${poi.name}.`;
 
     } else if (action === 'travel') {
-        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poi) return;
         userActionText = `Je me déplace vers ${poi.name}.`;
         locationOverride = poi.id;
     } else if (action === 'examine') {
-        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poi) return;
         userActionText = `J'examine les environs de ${poi.name}.`;
     } else if (action === 'attack') {
-        const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-        if (!poi) return;
         userActionText = `J'attaque le territoire de ${poi.name}.`;
-    } else {
+    } else if (action === 'visit') {
+        if (!buildingId) return;
+        const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
+        userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
+    }
+    else {
         return;
     }
     
