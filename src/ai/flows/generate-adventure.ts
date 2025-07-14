@@ -488,25 +488,42 @@ Known Characters (excluding player unless explicitly listed for context):
 {{/each}}
 
 {{#if playerLocation}}
---- CONTEXTE DE LOCALISATION ACTUELLE ---
-Nom du lieu: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
-Niveau du lieu: {{playerLocation.level}}
+--- CURRENT LOCATION CONTEXT ---
+Location Name: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
+Location Level: {{playerLocation.level}}
 Description: {{playerLocation.description}}
 {{#if playerLocation.buildings.length}}
-Services disponibles : {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
+Available Services: {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
 {{else}}
-Il n'y a pas de bâtiments ou de services spéciaux dans ce lieu.
+There are no special buildings or services in this location.
 {{/if}}
 ---
 {{else}}
---- CONTEXTE DE LOCALISATION ACTUELLE ---
-Le joueur est actuellement en déplacement ou dans un lieu non spécifié.
+--- CURRENT LOCATION CONTEXT ---
+Player is currently travelling or in an unspecified location.
 ---
 {{/if}}
 
 User Action (from {{playerName}}): {{{userAction}}}
 
-**RÈGLE IMPÉRATIVE DE COMBAT:** If rpgModeActive is true AND activeCombat.isActive is true (or if a combat is initiated this turn), you **MUST** impérativement suivre les étapes de combat au tour par tour décrites ci-dessous. Générez les combatUpdates pour chaque combattant. Ne narrez PAS le combat comme une simple histoire ; décrivez les actions, leurs succès ou échecs, les dégâts, les effets de statut, et mettez à jour l'état des combattants via combatUpdates. La narration principale (narrative) doit être le reflet direct et détaillé de combatUpdates.turnNarration.
+**CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
+If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier'):
+*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge').
+*   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section above.** Check if the required building ID is listed under 'Available Services'.
+*   **STEP 3: Respond.**
+    *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
+    *   **If the required building ID IS found:** Proceed with the interaction.
+        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The quality and price of these items MUST depend on the **'Location Level' provided in the 'CURRENT LOCATION CONTEXT'**.
+            *   **MANDATORY ITEM QUALITY TIERS (BY LOCATION LEVEL):**
+            *   **Level 1-2:** 'Basique', 'Commun'. Simple, slightly worn, or basic materials (e.g., 'Dague Rouillée', 'Tunique en cuir simple', 'Potion de soin mineure').
+            *   **Level 3-4:** 'Bonne qualité', 'Solide', 'Efficace'. Well-made, standard materials (e.g., 'Épée en fer', 'Armure de mailles', 'Amulette de vitalité (+5 PV)').
+            *   **Level 5-6:** 'Chef-d'œuvre', 'Magique', 'Rare', 'Épique', 'Légendaire'. Exceptional craftsmanship, enchanted, rare materials (e.g., 'Lame runique de givre', 'Armure en plaques de mithril', 'Anneau de régénération').
+            *   You MUST follow these quality tiers. A level 6 metropolis **CANNOT** sell rusty daggers. A level 1 village **CANNOT** sell legendary items.
+            *   The items MUST be presented in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Finally, include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
+        *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
+        *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
+        *   **Other interactions:** Handle other building interactions logically based on their description.
+
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
@@ -517,23 +534,6 @@ Tasks:
             *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **CRITICAL RULE: CHECK BUILDING AVAILABILITY.**
-        *   If the user's action implies interacting with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier'):
-            *   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge').
-            *   **STEP 2: Check for Building.** **Strictly refer to the 'CONTEXTE DE LOCALISATION ACTUELLE' section above.** Check if the required building ID is listed under 'Services disponibles'.
-            *   **STEP 3: Respond.**
-                *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
-                *   **If the required building ID IS found:** Proceed with the interaction.
-                    *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The quality and price of these items MUST depend on the **level of the current POI (playerLocation.level)**.
-                        *   **MANDATORY ITEM QUALITY TIERS:**
-                        *   **Level 1-2:** 'Basique', 'Commun'. Simple, slightly worn, or basic materials (e.g., 'Dague Rouillée', 'Tunique en cuir simple', 'Potion de soin mineure').
-                        *   **Level 3-4:** 'Bonne qualité', 'Solide', 'Efficace'. Well-made, standard materials (e.g., 'Épée en fer', 'Armure de mailles', 'Amulette de vitalité (+5 PV)').
-                        *   **Level 5-6:** 'Chef-d'œuvre', 'Magique', 'Rare', 'Épique', 'Légendaire'. Exceptional craftsmanship, enchanted, rare materials (e.g., 'Lame runique de givre', 'Armure en plaques de mithril', 'Anneau de régénération').
-                        *   You MUST follow these quality tiers. A level 6 metropolis **CANNOT** sell rusty daggers. A level 1 village **CANNOT** sell legendary items.
-                        *   The items MUST be presented in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Finally, include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
-                    *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
-                    *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
-                    *   **Other interactions:** Handle other building interactions logically based on their description.
         *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).

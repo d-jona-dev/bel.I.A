@@ -16,7 +16,7 @@ import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
-import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
+import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 
 
 const PLAYER_ID = "player";
@@ -936,12 +936,19 @@ export default function Home() {
     });
 
     const settingsForThisTurn = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
+    const currentGlobalCharacters = characters;
+
+    // Override location if a map action specified it
     if (locationIdOverride) {
         settingsForThisTurn.playerLocationId = locationIdOverride;
     }
+    
+    // Get the current location details to pass to the AI
+    const currentPlayerLocation = settingsForThisTurn.playerLocationId
+        ? settingsForThisTurn.mapPointsOfInterest?.find(poi => poi.id === settingsForThisTurn.playerLocationId)
+        : undefined;
 
     const effectiveStatsThisTurn = calculateEffectiveStats(settingsForThisTurn);
-    const currentGlobalCharacters = characters;
     let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
     // This logic ensures the combat state sent to the AI is synced with the canonical character/player state
@@ -1008,6 +1015,7 @@ export default function Home() {
         equippedJewelryName: settingsForThisTurn.equippedItemIds?.jewelry ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.jewelry)?.name : undefined,
         playerLocationId: settingsForThisTurn.playerLocationId,
         mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
+        playerLocation: currentPlayerLocation,
     };
 
     try {
@@ -1572,6 +1580,10 @@ export default function Home() {
             currentActiveCombatRegen.combatants = Array.from(combatantsForAIRegenMap.values());
             console.log('[LOG_PAGE_TSX] Combatants sent to AI (handleRegenerateLastResponse):', JSON.stringify(currentActiveCombatRegen.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
         }
+        
+        const currentPlayerLocation = currentTurnSettings.playerLocationId
+        ? currentTurnSettings.mapPointsOfInterest?.find(poi => poi.id === currentTurnSettings.playerLocationId)
+        : undefined;
 
 
          try {
@@ -1609,6 +1621,7 @@ export default function Home() {
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
                  playerLocationId: currentTurnSettings.playerLocationId,
                  mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
+                 playerLocation: currentPlayerLocation,
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
