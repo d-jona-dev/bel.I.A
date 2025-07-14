@@ -2438,10 +2438,9 @@ export default function Home() {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
     
-    // Set current player location for all actions except travel to another POI
-    if (action !== 'travel') {
-        locationOverride = poi.id;
-    }
+    // Set current player location for all actions
+    locationOverride = poi.id;
+    
 
     if (action === 'upgrade') {
         if (poi.ownerId !== PLAYER_ID) {
@@ -2488,12 +2487,10 @@ export default function Home() {
         
         const nextLevel = (poi.level || 1) + 1;
         const nextLevelConfig = typeConfig[nextLevel as keyof typeof typeConfig];
+        const nextLevelName = (poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap] && poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][nextLevel as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]) || poi.name;
+
 
         userActionText = `J'améliore ${poi.name}.`;
-
-        const postUpgradeToast = () => {
-             toast({ title: "Lieu Amélioré !", description: `${poi.name} a maintenant atteint le niveau ${nextLevel} !` });
-        };
         
         setAdventureSettings(prev => {
             const newPois = prev.mapPointsOfInterest!.map(p => {
@@ -2506,6 +2503,11 @@ export default function Home() {
                 }
                 return p;
             });
+            const toastPostUpdate = () => {
+                toast({ title: "Lieu Amélioré !", description: `${poi.name} est maintenant un(e) ${nextLevelName} (Niveau ${nextLevel}) !` });
+            }
+            setTimeout(toastPostUpdate, 0);
+
             return {
                 ...prev,
                 playerGold: (prev.playerGold || 0) - cost,
@@ -2513,8 +2515,6 @@ export default function Home() {
             };
         });
         
-        setTimeout(postUpgradeToast, 0);
-
     } else if (action === 'collect') {
         if (poi.ownerId !== PLAYER_ID) {
             setTimeout(() => {
@@ -2619,7 +2619,6 @@ export default function Home() {
 
     } else if (action === 'travel') {
         userActionText = `Je me déplace vers ${poi.name}.`;
-        locationOverride = poi.id;
     } else if (action === 'examine') {
         userActionText = `J'examine les environs de ${poi.name}.`;
     } else if (action === 'attack') {
@@ -2857,7 +2856,7 @@ export default function Home() {
     if (poiTypeConfig) {
         resources = poiTypeConfig[1].resources;
         if (!description) {
-            description = `Un(e) nouveau/nouvelle ${poiTypeConfig[1].name.toLowerCase()} plein(e) de potentiel.`
+            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][1].name.toLowerCase()} plein(e) de potentiel.`
         }
     }
 
