@@ -1,6 +1,6 @@
 // src/lib/buildings.ts
 
-import type { MapPointOfInterest } from "@/types";
+import type { MapPointOfInterest, GeneratedResource } from "@/types";
 
 export interface BuildingDefinition {
   id: string; // e.g. 'blacksmith'
@@ -88,4 +88,46 @@ export const BUILDING_SLOTS: Record<MapPointOfInterest['icon'], number[]> = {
     Castle: [0, 0, 0, 0, 0, 0],
     Mountain: [0, 0, 0, 0, 0, 0],
     Landmark: [0, 0, 0, 0, 0, 0],
+};
+
+export const poiLevelConfig: Record<string, Record<number, { name: string; upgradeCost: number | null; resources: GeneratedResource[] }>> = {
+    Village: {
+        1: { name: 'Village', upgradeCost: 50, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] },
+        2: { name: 'Bourg', upgradeCost: 200, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 25 }] },
+        3: { name: 'Petite Ville', upgradeCost: 500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 50 }] },
+        4: { name: 'Ville Moyenne', upgradeCost: 1000, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 100 }] },
+        5: { name: 'Grande Ville', upgradeCost: 2500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 200 }] },
+        6: { name: 'Métropole', upgradeCost: null, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 350 }] },
+    },
+    Trees: { // Forêt
+        1: { name: 'Petite Forêt', upgradeCost: 100, resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }] },
+        2: { name: 'Forêt Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Bois", quantity: 12 }, { type: 'item', name: "Viande", quantity: 5 }] },
+        3: { name: 'Grande Forêt', upgradeCost: null, resources: [{ type: 'item', name: "Bois", quantity: 25 }, { type: 'item', name: "Viande", quantity: 10 }] },
+    },
+    Shield: { // Mine
+        1: { name: 'Petite Mine', upgradeCost: 100, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }] },
+        2: { name: 'Mine Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 8 }, { type: 'item', name: "Charbon", quantity: 5 }] },
+        3: { name: 'Grande Mine', upgradeCost: null, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 15 }, { type: 'item', name: "Charbon", quantity: 10 }, { type: 'item', name: "Gemmes", quantity: 1 }] },
+    }
+};
+
+export const poiLevelNameMap: Record<string, Record<number, string>> = {
+    Village: {
+        1: 'Village',
+        2: 'Bourg',
+        3: 'Petite Ville',
+        4: 'Ville Moyenne',
+        5: 'Grande Ville',
+        6: 'Métropole',
+    },
+    Trees: {
+        1: 'Petite Forêt',
+        2: 'Forêt Moyenne',
+        3: 'Grande Forêt',
+    },
+    Shield: {
+        1: 'Petite Mine',
+        2: 'Mine Moyenne',
+        3: 'Grande Mine',
+    }
 };

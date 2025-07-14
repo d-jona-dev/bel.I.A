@@ -16,7 +16,7 @@ import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
-import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION } from "@/lib/buildings";
+import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
 
 
 const PLAYER_ID = "player";
@@ -167,27 +167,6 @@ export interface SellingItemDetails {
   sellPricePerUnit: number;
 }
 
-const poiLevelConfig: Record<string, Record<number, { name: string; upgradeCost: number | null; resources: GeneratedResource[] }>> = {
-    Village: {
-        1: { name: 'Village', upgradeCost: 50, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 10 }] },
-        2: { name: 'Bourg', upgradeCost: 200, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 25 }] },
-        3: { name: 'Petite Ville', upgradeCost: 500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 50 }] },
-        4: { name: 'Ville Moyenne', upgradeCost: 1000, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 100 }] },
-        5: { name: 'Grande Ville', upgradeCost: 2500, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 200 }] },
-        6: { name: 'Métropole', upgradeCost: null, resources: [{ type: 'currency', name: "Pièces d'Or (Taxes)", quantity: 350 }] },
-    },
-    Trees: { // Forêt
-        1: { name: 'Petite Forêt', upgradeCost: 100, resources: [{ type: 'item', name: "Bois", quantity: 5 }, { type: 'item', name: "Viande", quantity: 2 }] },
-        2: { name: 'Forêt Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Bois", quantity: 12 }, { type: 'item', name: "Viande", quantity: 5 }] },
-        3: { name: 'Grande Forêt', upgradeCost: null, resources: [{ type: 'item', name: "Bois", quantity: 25 }, { type: 'item', name: "Viande", quantity: 10 }] },
-    },
-    Shield: { // Mine
-        1: { name: 'Petite Mine', upgradeCost: 100, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 3 }] },
-        2: { name: 'Mine Moyenne', upgradeCost: 500, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 8 }, { type: 'item', name: "Charbon", quantity: 5 }] },
-        3: { name: 'Grande Mine', upgradeCost: null, resources: [{ type: 'item', name: "Minerai de Fer", quantity: 15 }, { type: 'item', name: "Charbon", quantity: 10 }, { type: 'item', name: "Gemmes", quantity: 1 }] },
-    }
-};
-
 export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -233,9 +212,9 @@ export default function Home() {
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700', buildings: [] },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF', buildings: [] },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000', buildings: [] },
+        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700', buildings: [] },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF', buildings: [] },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000', buildings: [] },
     ],
     mapImageUrl: null,
     playerLocationId: 'poi-bourgenval',

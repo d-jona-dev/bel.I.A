@@ -8,7 +8,7 @@ import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Lan
 import type { Character, MapPointOfInterest } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "./ui/scroll-area";
-import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION } from "@/lib/buildings";
+import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
@@ -46,59 +46,17 @@ const getIconForPoi = (poi: MapPointOfInterest) => {
         if (level === 5) return iconMap.Landmark;
         if (level >= 6) return iconMap.Castle;
     }
-    if (poi.icon === 'Trees') {
+    if (poi.icon === 'Trees') { // Forêt
         if (level === 1) return iconMap.TreeDeciduous;
         if (level === 2) return iconMap.Trees;
         if (level >= 3) return iconMap.TreePine;
     }
-    if (poi.icon === 'Shield') {
+    if (poi.icon === 'Shield') { // Mine
         if (level === 1) return iconMap.Shield;
         if (level === 2) return iconMap.Hammer;
         if (level >= 3) return iconMap.Gem;
     }
     return iconMap[poi.icon] || Landmark;
-};
-
-const poiLevelConfig: Record<string, Record<number, { upgradeCost: number | null }>> = {
-    Village: {
-        1: { upgradeCost: 50 },
-        2: { upgradeCost: 200 },
-        3: { upgradeCost: 500 },
-        4: { upgradeCost: 1000 },
-        5: { upgradeCost: 2500 },
-        6: { upgradeCost: null },
-    },
-    Trees: {
-        1: { upgradeCost: 100 },
-        2: { upgradeCost: 500 },
-        3: { upgradeCost: null },
-    },
-    Shield: {
-        1: { upgradeCost: 100 },
-        2: { upgradeCost: 500 },
-        3: { upgradeCost: null },
-    },
-};
-
-const poiLevelNameMap: Record<string, Record<number, string>> = {
-    Village: {
-        1: 'Village',
-        2: 'Bourg',
-        3: 'Petite Ville',
-        4: 'Ville Moyenne',
-        5: 'Grande Ville',
-        6: 'Métropole',
-    },
-    Trees: {
-        1: 'Petite Forêt',
-        2: 'Forêt Moyenne',
-        3: 'Grande Forêt',
-    },
-    Shield: {
-        1: 'Petite Mine',
-        2: 'Mine Moyenne',
-        3: 'Grande Mine',
-    }
 };
 
 interface PoiSidebarProps {
