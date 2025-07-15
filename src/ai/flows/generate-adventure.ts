@@ -497,6 +497,7 @@ Available Services: {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}
 {{else}}
 There are no special buildings or services in this location.
 {{/if}}
+**Your narrative, including NPC dialogue, MUST reflect the status of this location. For example, if the location level is high (e.g., 6, a 'Métropole'), NPCs should not refer to it as a 'petit patelin' (small village). Their dialogue should reflect the grandeur and activity of a bustling city.**
 ---
 {{else}}
 --- CURRENT LOCATION CONTEXT ---
