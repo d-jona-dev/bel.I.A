@@ -196,7 +196,7 @@ const NewCharacterSchema = z.object({
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice', 'Marchand d'armes')."),
     level: z.number().optional().describe("Level if relevant."),
     inventory: z.array(InventoryItemForAISchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]. DO NOT include currency here."),
-    isAlly: z.boolean().optional().default(false).describe("Is this new character initially an ally of the player?"),
+    isAlly: z.boolean().optional().default(false).describe("Is this new character initially an ally of the player? This MUST be set to true if the character is purchased at a slave market."),
 });
 
 const CharacterUpdateSchema = z.object({
@@ -508,8 +508,8 @@ Player is currently travelling or in an unspecified location.
 User Action (from {{playerName}}): {{{userAction}}}
 
 **CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
-If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier'):
-*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge').
+If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves'):
+*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves').
 *   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section above.** Check if the required building ID is listed under 'Available Services'.
 *   **STEP 3: Respond.**
     *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
@@ -523,6 +523,7 @@ If the 'User Action' implies interaction with a specific service or building typ
             *   The items MUST be presented in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Finally, include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
         *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
+        *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
         *   **Other interactions:** Handle other building interactions logically based on their description.
 
 
@@ -535,11 +536,19 @@ Tasks:
             *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Player Buying from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
+        *   **Player Buying Item from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
             1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
             2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
             3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details (itemName, itemType, description, effect, goldValue, statBonuses if applicable).
             4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
+        *   **Player Buying NPC from Slave Market:** If userAction indicates buying an NPC from a list you just provided (e.g., "J'achète Kael le Guerrier"):
+            1.  Identify the NPC and their price FROM THE RECENT DIALOGUE HISTORY.
+            2.  If {{playerName}} can afford it:
+                *   Narrate the transaction.
+                *   **CRITICAL:** Create a new character for this NPC in the 'newCharacters' array. Give them a name, description, and class based on your previous narration. **You MUST set 'isAlly' to 'true' for this new character.** Also provide basic RPG stats (level 1, HP, etc.).
+                *   Set 'currencyGained' to the NEGATIVE price of the NPC.
+                *   **DO NOT** add the NPC to 'itemsObtained'. They are a character, not an item.
+            3.  If not affordable: Narrate that the player cannot afford them.
         *   **Player Selling to Merchant/NPC:** If userAction indicates selling an item (e.g., "Je vends ma Dague Rouillée"):
             1.  Identify the item. The game system handles player inventory and gold changes.
             2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
@@ -590,7 +599,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set isAlly to false unless explicitly stated otherwise in the introduction context.{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set isAlly to false unless explicitly stated otherwise in the introduction context. **If the character was purchased at a slave market, you MUST set isAlly to true.**{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
@@ -730,5 +739,3 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
-
-    
