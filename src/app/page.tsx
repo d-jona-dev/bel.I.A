@@ -696,100 +696,105 @@ export default function Home() {
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
     if (!newChars || newChars.length === 0) return;
 
-    const currentStagedPlayerName = stagedAdventureSettings.playerName || "Player";
-    const currentStagedRPGMode = stagedAdventureSettings.rpgMode;
-    const currentStagedRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+    const currentSettings = adventureSettings;
     const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
     const newCharactersToAdd: Character[] = newChars.map(nc => {
-      const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-      let initialRelations: Record<string, string> = {};
-      if (currentStagedRelationsMode) {
-        initialRelations[PLAYER_ID] = defaultRelationDesc;
-        if (nc.initialRelations) {
-          nc.initialRelations.forEach(rel => {
-            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
-            if (targetChar) {
-              initialRelations[targetChar.id] = rel.description;
-            } else if (rel.targetName.toLowerCase() === currentStagedPlayerName.toLowerCase()) {
-              initialRelations[PLAYER_ID] = rel.description;
+        let initialRelations: Record<string, string> = {};
+        if (currentSettings.relationsMode) {
+            initialRelations[PLAYER_ID] = defaultRelationDesc;
+            if (nc.initialRelations) {
+                nc.initialRelations.forEach(rel => {
+                    const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
+                    if (targetChar) {
+                        initialRelations[targetChar.id] = rel.description;
+                    } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
+                        initialRelations[PLAYER_ID] = rel.description;
+                    }
+                });
             }
-          });
         }
-      }
 
-      const inventoryRecord: Record<string, number> = {};
-      if (currentStagedRPGMode && nc.inventory) {
-        nc.inventory.forEach(item => {
-          inventoryRecord[item.itemName] = item.quantity;
-        });
-      }
-
-      const npcLevel = nc.level ?? 1;
-      const npcBaseDerivedStats = calculateBaseDerivedStats({
-          level: npcLevel,
-          characterClass: nc.characterClass || "PNJ",
-          strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-          intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-      });
-
-
-      return {
-        id: newId,
-        name: nc.name,
-        details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
-        biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
-        history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
-        portraitUrl: null,
-        affinity: currentStagedRelationsMode ? 50 : undefined,
-        relations: currentStagedRelationsMode ? initialRelations : undefined,
-        isAlly: nc.isAlly ?? false,
-        initialAttributePoints: currentStagedRPGMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined,
-        currentExp: currentStagedRPGMode ? 0 : undefined,
-        expToNextLevel: currentStagedRPGMode ? Math.floor(100 * Math.pow(1.5, npcLevel -1)) : undefined,
-        ...(currentStagedRPGMode ? {
+        const inventoryRecord: Record<string, number> = {};
+        if (currentSettings.rpgMode && nc.inventory) {
+            nc.inventory.forEach(item => {
+                inventoryRecord[item.itemName] = item.quantity;
+            });
+        }
+        
+        const npcLevel = nc.level ?? 1;
+        const npcBaseDerivedStats = calculateBaseDerivedStats({
             level: npcLevel,
             characterClass: nc.characterClass || "PNJ",
-            inventory: inventoryRecord,
             strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
             intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-            hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
-            maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
-            manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
-            maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
-            armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
-            attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
-            damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
-            isHostile: nc.isHostile ?? false,
-        } : {})
-      };
+        });
+
+        return {
+            id: newId,
+            name: nc.name,
+            details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
+            biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
+            history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
+            portraitUrl: null,
+            affinity: currentSettings.relationsMode ? 50 : undefined,
+            relations: currentSettings.relationsMode ? initialRelations : undefined,
+            isAlly: nc.isAlly ?? false,
+            initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined,
+            currentExp: currentSettings.rpgMode ? 0 : undefined,
+            expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
+            ...(currentSettings.rpgMode ? {
+                level: npcLevel,
+                characterClass: nc.characterClass || "PNJ",
+                inventory: inventoryRecord,
+                strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+                intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
+                hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
+                attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
+                damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
+                isHostile: nc.isHostile ?? false,
+            } : {})
+        };
     });
 
-    setStagedCharacters(prevStagedChars => {
-      const updatedChars = [...prevStagedChars];
-      newCharactersToAdd.forEach(newChar => {
-        if (!updatedChars.some(sc => sc.id === newChar.id || sc.name.toLowerCase() === newChar.name.toLowerCase())) {
-          updatedChars.push(newChar);
-          if (currentStagedRelationsMode) {
-            for (let i = 0; i < updatedChars.length -1; i++) {
-                if (!updatedChars[i].relations) updatedChars[i].relations = {};
-                if (!updatedChars[i].relations![newChar.id]) {
-                    updatedChars[i].relations![newChar.id] = defaultRelationDesc;
+    const updateAndNotify = (prevChars: Character[]) => {
+        const updatedChars = [...prevChars];
+        newCharactersToAdd.forEach(newChar => {
+            if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
+                updatedChars.push(newChar);
+                if (currentSettings.relationsMode) {
+                    for (let i = 0; i < updatedChars.length - 1; i++) {
+                        if (!updatedChars[i].relations) updatedChars[i].relations = {};
+                        if (!updatedChars[i].relations![newChar.id]) {
+                            updatedChars[i].relations![newChar.id] = defaultRelationDesc;
+                        }
+                        if (!newChar.relations) newChar.relations = {};
+                        if (!newChar.relations![updatedChars[i].id]) {
+                            newChar.relations![updatedChars[i].id] = defaultRelationDesc;
+                        }
+                    }
                 }
-                if (!newChar.relations) newChar.relations = {};
-                 if (!newChar.relations![updatedChars[i].id]) {
-                    newChar.relations![updatedChars[i].id] = defaultRelationDesc;
-                }
+                setTimeout(() => {
+                    toast({
+                        title: "Nouveau Personnage Rencontré!",
+                        description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
+                    });
+                }, 0);
             }
-          }
-          setTimeout(() => {toast({ title: "Nouveau Personnage Rencontré!", description: `${newChar.name} a été ajouté aux personnages de l'aventure (modifications en attente).`}); }, 0);
-        }
-      });
-      return updatedChars;
-    });
+        });
+        return updatedChars;
+    };
+    
+    setCharacters(updateAndNotify);
+    setStagedCharacters(updateAndNotify);
 
-  }, [currentLanguage, stagedAdventureSettings.playerName, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode, toast, characters]);
+  }, [currentLanguage, toast, characters, adventureSettings]);
 
   const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
     if (!updates || updates.length === 0) return;
