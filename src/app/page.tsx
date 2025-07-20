@@ -91,35 +91,12 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Charact
 
 // Calculates effective stats including equipment (PLAYER ONLY FOR NOW)
 const calculateEffectiveStats = (settings: AdventureSettings) => {
-    const basePlayerStats = {
-        strength: settings.playerStrength,
-        dexterity: settings.playerDexterity,
-        constitution: settings.playerConstitution,
-        intelligence: settings.playerIntelligence,
-        wisdom: settings.playerWisdom,
-        playerClass: settings.playerClass,
-        playerLevel: settings.playerLevel,
-    };
-    const baseDerived = calculateBaseDerivedStats(basePlayerStats as any);
-
-    let effectiveAC = baseDerived.armorClass;
-    let effectiveAttackBonus = baseDerived.attackBonus;
     let effectiveStrength = settings.playerStrength || BASE_ATTRIBUTE_VALUE;
     let effectiveDexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
     let effectiveConstitution = settings.playerConstitution || BASE_ATTRIBUTE_VALUE;
     let effectiveIntelligence = settings.playerIntelligence || BASE_ATTRIBUTE_VALUE;
     let effectiveWisdom = settings.playerWisdom || BASE_ATTRIBUTE_VALUE;
     let effectiveCharisma = settings.playerCharisma || BASE_ATTRIBUTE_VALUE;
-
-
-    const inventory = settings.playerInventory || [];
-    const weaponId = settings.equippedItemIds?.weapon;
-    const armorId = settings.equippedItemIds?.armor;
-    const jewelryId = settings.equippedItemIds?.jewelry;
-
-    const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
-    const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
-    const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
     
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
     if (activeFamiliar) {
@@ -131,10 +108,37 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         if (bonus.type === 'intelligence') effectiveIntelligence += bonusValue;
         if (bonus.type === 'wisdom') effectiveWisdom += bonusValue;
         if (bonus.type === 'charisma') effectiveCharisma += bonusValue;
+    }
+
+    const basePlayerStats = {
+        strength: effectiveStrength,
+        dexterity: effectiveDexterity,
+        constitution: effectiveConstitution,
+        intelligence: effectiveIntelligence,
+        playerClass: settings.playerClass,
+        playerLevel: settings.playerLevel,
+    };
+    const baseDerived = calculateBaseDerivedStats(basePlayerStats as any);
+
+    let effectiveAC = baseDerived.armorClass;
+    let effectiveAttackBonus = baseDerived.attackBonus;
+    
+    if (activeFamiliar) {
+        const bonus = activeFamiliar.passiveBonus;
+        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
         if (bonus.type === 'armor_class') effectiveAC += bonusValue;
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
 
+
+    const inventory = settings.playerInventory || [];
+    const weaponId = settings.equippedItemIds?.weapon;
+    const armorId = settings.equippedItemIds?.armor;
+    const jewelryId = settings.equippedItemIds?.jewelry;
+
+    const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
+    const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
+    const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
 
     if (equippedArmor?.statBonuses?.ac) {
         effectiveAC += equippedArmor.statBonuses.ac;
@@ -862,7 +866,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         };
 
         const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
-
+        
         setTimeout(() => {
             toast({
                 title: "Nouveau Familier !",
@@ -1180,40 +1184,43 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   ]);
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    let narrativeAction = `J'utilise ${item.name} pour invoquer mon nouveau compagnon.`;
-    
-    // Extract familiar details from the item
-    const nameMatch = item.name.match(/(?:Collier|Œuf|Pierre d'âme) d[ue']\s*(.+)/i);
-    const familiarName = nameMatch ? nameMatch[1] : item.name;
-
+    // Regular expression to parse familiar details from the item's effect and description
+    const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
-    const rarity = (rarityMatch ? rarityMatch[1].toLowerCase() : 'common') as Familiar['rarity'];
     
-    const bonusTypeMatch = item.effect?.match(/Bonus\s*:\s*\+(\d+)\s*en\s*([a-zA-Z_]+)/i);
+    // Extract familiar's name from the item's name
+    const nameMatch = item.name.match(/(?:Collier|Œuf|Pierre d'âme) d[ue']\s*(.+)/i);
+    const familiarName = nameMatch ? nameMatch[1] : item.name.replace(/(Collier|Œuf|Pierre d'âme)\s*/i, '');
+
+    if (!effectMatch || !rarityMatch) {
+         setTimeout(() => {
+            toast({
+                title: "Objet de Familier Invalide",
+                description: "Les informations du familier n'ont pas pu être lues depuis l'objet.",
+                variant: "destructive",
+            });
+         }, 0);
+        return;
+    }
+
     const bonus: FamiliarPassiveBonus = {
-        type: (bonusTypeMatch ? bonusTypeMatch[2].toLowerCase() : 'strength') as FamiliarPassiveBonus['type'],
-        value: bonusTypeMatch ? parseInt(bonusTypeMatch[1], 10) : 1,
-        description: item.effect || "Bonus passif"
+        value: parseInt(effectMatch[1], 10),
+        type: effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type'],
+        description: item.effect || "Bonus Passif",
     };
 
     const newFamiliar: NewFamiliarSchema = {
-        name: familiarName,
+        name: familiarName.trim(),
         description: item.description || `Un familier nommé ${familiarName}.`,
-        rarity: rarity,
-        passiveBonus: bonus
+        rarity: rarityMatch[1].toLowerCase() as Familiar['rarity'],
+        passiveBonus: bonus,
     };
 
     handleNewFamiliar(newFamiliar);
     
+    const narrativeAction = `J'utilise ${item.name} pour invoquer mon nouveau compagnon.`;
     handleNarrativeUpdate(narrativeAction, 'user');
     callGenerateAdventure(narrativeAction);
-
-    setTimeout(() => {
-      toast({
-        title: "Familier Invoqué !",
-        description: `${familiarName} a été ajouté à votre groupe. Consultez l'onglet "Familiers" pour le gérer.`
-      });
-    }, 500);
 
 }, [handleNewFamiliar, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
@@ -1310,7 +1317,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
         if (itemActionSuccessful && itemUsedOrDiscarded) {
              if (action === 'use' && itemUsedOrDiscarded.type === 'misc') {
-                // Specific familiar logic
                 handleUseFamiliarItem(itemUsedOrDiscarded);
              } else {
                 if(effectAppliedMessage) {
@@ -3066,23 +3072,24 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
         setAdventureSettings(prev => {
-            const updatedFamiliars = (prev.familiars || []).map(f => {
-                if (f.id === updatedFamiliar.id) {
-                    // If we are activating this one, deactivate others
-                    if (updatedFamiliar.isActive && !f.isActive) {
-                        return (prev.familiars || []).map(other => other.id === updatedFamiliar.id ? updatedFamiliar : {...other, isActive: false});
-                    }
-                    return updatedFamiliar;
-                }
-                return f;
-            });
-            
-            // This handles the case where we just activated one familiar
-            if (Array.isArray(updatedFamiliars[0])) {
-                 return {...prev, familiars: updatedFamiliars.flat()};
-            }
+            const familiars = prev.familiars || [];
+            let updatedFamiliars;
 
-            return {...prev, familiars: updatedFamiliars};
+            // If we are activating this one, deactivate others
+            if (updatedFamiliar.isActive) {
+                updatedFamiliars = familiars.map(f => 
+                    f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
+                );
+            } else {
+                 updatedFamiliars = familiars.map(f => 
+                    f.id === updatedFamiliar.id ? updatedFamiliar : f
+                );
+            }
+            
+            const newSettings = {...prev, familiars: updatedFamiliars};
+            const newEffectiveStats = calculateEffectiveStats(newSettings);
+
+            return { ...newSettings, ...newEffectiveStats };
         });
     }, []);
 

@@ -16,7 +16,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill, MapPointOfInterest } from '@/types';
+import type { Character, PlayerSkill, MapPointOfInterest, FamiliarPassiveBonus } from '@/types';
 import { LootedItemSchema } from '@/types';
 
 
@@ -239,6 +239,18 @@ const PoiOwnershipChangeSchema = z.object({
     newOwnerId: z.string().describe("The ID of the new owner (e.g., 'player', 'frak-1')."),
 });
 
+const NewFamiliarSchema = z.object({
+    name: z.string().describe("The name of the new familiar."),
+    description: z.string().describe("A brief description of the familiar, including its appearance and origin."),
+    rarity: z.enum(['common', 'uncommon', 'rare', 'epic', 'legendary']).describe("The rarity of the familiar."),
+    passiveBonus: z.object({
+        type: z.enum(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'gold_find', 'exp_gain', 'armor_class', 'attack_bonus']).describe("The type of passive bonus."),
+        value: z.number().describe("The base bonus value at level 1."),
+        description: z.string().describe("A short description of the bonus effect, e.g., '+X en Force'."),
+    }).describe("The passive bonus the familiar provides."),
+});
+export type NewFamiliarSchema = z.infer<typeof NewFamiliarSchema>;
+
 const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here.**'),
   sceneDescriptionForImage: z
@@ -265,6 +277,7 @@ const GenerateAdventureOutputSchema = z.object({
   itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'jewelry', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). **Crucially, for ALL non-currency items intended as loot (even common or 'junk' items like 'Cailloux pointus'), YOU MUST provide a goldValue. If an item has minimal or nuisance value, assign it a goldValue of 1. Do not omit goldValue for such items.** Include statBonuses if applicable. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). If the player buys an item, this should be the negative price of the item. IF NO CURRENCY CHANGE, PROVIDE 0."),
   poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
+  newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -282,6 +295,7 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     itemsObtained: [],
     currencyGained: 0,
     poiOwnershipChanges: [],
+    newFamiliars: [],
     error: errorMsg,
 });
 
@@ -508,11 +522,11 @@ Player is currently travelling or in an unspecified location.
 User Action (from {{playerName}}): {{{userAction}}}
 
 **CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
-If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves'):
-*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves').
+If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves', 'Je visite la ménagerie'):
+*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves', 'menagerie').
 *   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section above.** Check if the required building ID is listed under 'Available Services'.
 *   **STEP 3: Respond.**
-    *   **If the required building ID is NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
+    *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
         *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The quality and price of these items MUST depend on the **'Location Level' provided in the 'CURRENT LOCATION CONTEXT'**.
             *   **MANDATORY ITEM QUALITY TIERS (BY LOCATION LEVEL):**
@@ -524,7 +538,15 @@ If the 'User Action' implies interaction with a specific service or building typ
         *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
         *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
-        *   **Other interactions:** Handle other building interactions logically based on their description.
+        *   **Ménagerie (menagerie):** If the user is visiting a menagerie, you MUST create a unique NPC handler/owner. Narrate the encounter. Then, you MUST generate a list of 1-3 unique **familiars for sale**. **IMPORTANT: You are selling an *item* that summons the familiar, not the familiar directly.**
+            *   The items MUST be of type 'misc'. The name should reflect the familiar (e.g., "Collier du Chien de Garde", "Œuf de Bébé Griffon", "Pierre d'âme du Golem de Pierre").
+            *   The rarity of the familiar (common, uncommon, rare, epic, legendary) and its associated bonus MUST depend on the **'Location Level'**.
+            *   **MANDATORY FAMILIAR RARITY/QUALITY TIERS (BY LOCATION LEVEL):**
+            *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
+            *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
+            *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à une stat, +1 à toutes les stats, régénération de PM).
+            *   **CRITICAL:** The familiar's information MUST be in the item's 'description' and 'effect' fields, including its name, rarity, and passive bonus. For example: an item's description could be "Un collier qui contient l'esprit d'un familier de type Chat de ferme. Rareté: common." and its effect could be "Bonus passif : +1 en Dextérité.".
+            *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
 
 
 Tasks:
@@ -534,6 +556,8 @@ Tasks:
             *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the location's defenders as enemies. You MUST also set 'contestedPoiId' to the ID of the location being attacked.
         *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
             *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
+        *   **Is it a Capture attempt?** (e.g., userAction is "Je tente de capturer la créature").
+            *   **YES:** If you are NOT in combat and an unowned, non-hostile creature is present, you can attempt to capture it as a familiar. Based on a Charisma check (roll a d20, if result + player's charisma modifier > 15), if successful, populate the 'newFamiliars' field with the details of the newly captured familiar. The rarity should be determined by the context (a simple forest animal would be 'common', a mysterious glowing fox might be 'rare'). Give it a random appropriate passive bonus. If it fails, narrate the creature running away or becoming aggressive.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Player Buying Item from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
@@ -552,7 +576,7 @@ Tasks:
         *   **Player Selling to Merchant/NPC:** If userAction indicates selling an item (e.g., "Je vends ma Dague Rouillée"):
             1.  Identify the item. The game system handles player inventory and gold changes.
             2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
-            3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system based on player's action.
+            3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
         *   **Étape 1: Tour du Joueur ({{playerName}}).**
@@ -591,7 +615,7 @@ Tasks:
     *   **Currency Management (General):**
         *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
         *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
-        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained; this is handled by the game system prior to this call.
+        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained or itemsObtained; this is handled by the game system prior to this call.
         *   **If no currency change, set currencyGained to 0.**
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
