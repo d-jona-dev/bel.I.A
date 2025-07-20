@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -846,6 +846,8 @@ export default function Home() {
 
 const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
     setAdventureSettings(prevSettings => {
+        if (!newFamiliarSchema) return prevSettings;
+
         const newFamiliar: Familiar = {
             id: `${newFamiliarSchema.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
             name: newFamiliarSchema.name,
@@ -1177,6 +1179,43 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       adventureSettings, characters, activeCombat, handleNewFamiliar
   ]);
 
+const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+    let narrativeAction = `J'utilise ${item.name} pour invoquer mon nouveau compagnon.`;
+    
+    // Extract familiar details from the item
+    const nameMatch = item.name.match(/(?:Collier|Œuf|Pierre d'âme) d[ue']\s*(.+)/i);
+    const familiarName = nameMatch ? nameMatch[1] : item.name;
+
+    const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
+    const rarity = (rarityMatch ? rarityMatch[1].toLowerCase() : 'common') as Familiar['rarity'];
+    
+    const bonusTypeMatch = item.effect?.match(/Bonus\s*:\s*\+(\d+)\s*en\s*([a-zA-Z_]+)/i);
+    const bonus: FamiliarPassiveBonus = {
+        type: (bonusTypeMatch ? bonusTypeMatch[2].toLowerCase() : 'strength') as FamiliarPassiveBonus['type'],
+        value: bonusTypeMatch ? parseInt(bonusTypeMatch[1], 10) : 1,
+        description: item.effect || "Bonus passif"
+    };
+
+    const newFamiliar: NewFamiliarSchema = {
+        name: familiarName,
+        description: item.description || `Un familier nommé ${familiarName}.`,
+        rarity: rarity,
+        passiveBonus: bonus
+    };
+
+    handleNewFamiliar(newFamiliar);
+    
+    handleNarrativeUpdate(narrativeAction, 'user');
+    callGenerateAdventure(narrativeAction);
+
+    setTimeout(() => {
+      toast({
+        title: "Familier Invoqué !",
+        description: `${familiarName} a été ajouté à votre groupe. Consultez l'onglet "Familiers" pour le gérer.`
+      });
+    }, 500);
+
+}, [handleNewFamiliar, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
   const handlePlayerItemAction = React.useCallback((itemId: string, action: 'use' | 'discard') => {
     React.startTransition(() => {
@@ -1207,7 +1246,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
             const itemToUpdate = { ...newInventory[itemIndex] };
             itemUsedOrDiscarded = itemToUpdate;
-            itemActionSuccessful = true;
             let newSettings = { ...prevSettings };
 
             if (action === 'use') {
@@ -1231,14 +1269,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                } else if (itemToUpdate.type === 'misc') {
-                    // This is where familiar item logic would go if we were using it.
-                    // For now, just a generic message.
-                    setTimeout(() => { toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} directement de cette manière.`, variant: "default" }); }, 0);
-                    itemActionSuccessful = false;
-                    return prevSettings;
+                    itemActionSuccessful = true;
+                } else if (itemToUpdate.type === 'misc' && (itemToUpdate.description?.toLowerCase().includes('familier') || itemToUpdate.description?.toLowerCase().includes('créature'))) {
+                    // This is our familiar item. The logic will be handled outside the state update.
+                    // We just need to consume it here.
+                    newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                    itemActionSuccessful = true; // Signal success to trigger external logic.
                 } else {
-                     setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} de cette manière.`, variant: "default" });},0);
+                     setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} directement de cette manière.`, variant: "default" });},0);
                     itemActionSuccessful = false;
                     return prevSettings;
                 }
@@ -1252,6 +1290,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     else if (newSettings.equippedItemIds?.jewelry === itemToUpdate.id) newSettings.equippedItemIds.jewelry = null;
                     newInventory[itemIndex].isEquipped = false;
                 }
+                itemActionSuccessful = true;
             }
 
             if (newInventory[itemIndex].quantity <= 0) {
@@ -1269,19 +1308,21 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             return newSettings;
         });
 
-        if (itemActionSuccessful && narrativeAction && itemUsedOrDiscarded) {
-             if(effectAppliedMessage) {
-                 setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
+        if (itemActionSuccessful && itemUsedOrDiscarded) {
+             if (action === 'use' && itemUsedOrDiscarded.type === 'misc') {
+                // Specific familiar logic
+                handleUseFamiliarItem(itemUsedOrDiscarded);
+             } else {
+                if(effectAppliedMessage) {
+                    setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
+                }
+                handleNarrativeUpdate(narrativeAction, 'user');
+                callGenerateAdventure(narrativeAction);
              }
-            handleNarrativeUpdate(narrativeAction, 'user');
-             if (updatedSettingsForToast) {
-                // No need to update ref, callGenerateAdventure will get the new state
-             }
-            callGenerateAdventure(narrativeAction);
         }
     });
   }, [
-    callGenerateAdventure, handleNarrativeUpdate, toast
+    callGenerateAdventure, handleNarrativeUpdate, toast, handleUseFamiliarItem
   ]);
 
   const handleSellItem = React.useCallback((itemId: string) => {
@@ -1543,7 +1584,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
        });
         setTimeout(() => {
             toast({ title: "Message Modifié" });
-        },0);
+        }, 0);
    }, [toast]);
 
     const handleUndoLastMessage = React.useCallback(() => {
@@ -1951,7 +1992,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         });
         setTimeout(() => {
             if (characterWasAdded) {
-                toast({ title: "Personnage Ajouté à l'Aventure", description: `${characterNameForToast} a été ajouté aux modifications en attente pour cette aventure. N'oubliez pas d'enregistrer les modifications.` });
+                toast({ title: "Personnage Ajouté à l'Aventure", description: `${characterNameForToast} a été ajouté aux modifications en attente. N'oubliez pas d'enregistrer les modifications.` });
             } else {
                 toast({ title: "Personnage déjà présent", description: `${characterNameForToast} est déjà dans l'aventure actuelle.`, variant: "default" });
             }
