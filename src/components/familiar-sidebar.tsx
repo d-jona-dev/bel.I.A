@@ -16,6 +16,7 @@ import type { Familiar } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Separator } from "./ui/separator";
 
 interface FamiliarSidebarProps {
     familiars: Familiar[];
