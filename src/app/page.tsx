@@ -1270,7 +1270,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
-                } else if (itemToUpdate.type === 'misc' && (itemToUpdate.description?.toLowerCase().includes('familier') || itemToUpdate.description?.toLowerCase().includes('créature'))) {
+                } else if (itemToUpdate.type === 'misc') {
                     // This is our familiar item. The logic will be handled outside the state update.
                     // We just need to consume it here.
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
