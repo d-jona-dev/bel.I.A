@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide } from 'lucide-react'; // Added BookOpen
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint } from 'lucide-react'; // Added PawPrint
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest } from "@/types"; // Added PlayerSkill
-import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar } from "@/types"; // Added Familiar
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +46,7 @@ import { Separator } from '@/components/ui/separator';
 import type { SellingItemDetails } from './page'; 
 import { Input } from '@/components/ui/input'; 
 import { PoiSidebar } from '@/components/poi-sidebar';
+import { FamiliarSidebar } from '@/components/familiar-sidebar';
 
 
 interface PageStructureProps {
@@ -109,6 +110,10 @@ interface PageStructureProps {
   onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
   onBuildInPoi: (poiId: string, buildingId: string) => void;
   currentTurn: number;
+  handleNewFamiliar: (newFamiliar: NewFamiliarSchema) => void;
+  handleFamiliarUpdate: (updatedFamiliar: Familiar) => void;
+  handleSaveFamiliar: (familiar: Familiar) => void;
+  handleAddStagedFamiliar: (familiar: Familiar) => void;
 }
 
 export function PageStructure({
@@ -172,6 +177,10 @@ export function PageStructure({
   onCreatePoi,
   onBuildInPoi,
   currentTurn,
+  handleNewFamiliar,
+  handleFamiliarUpdate,
+  handleSaveFamiliar,
+  handleAddStagedFamiliar,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -263,6 +272,19 @@ export function PageStructure({
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/familiers">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
+                                <PawPrint className="h-5 w-5" />
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Gérer les Familiers</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
               </nav>
@@ -578,7 +600,7 @@ export function PageStructure({
                                                                 )}
                                                                 <DropdownMenuItem
                                                                   onSelect={() => handlePlayerItemAction(item.id, 'use')}
-                                                                  disabled={item.type !== 'consumable' || isLoading}
+                                                                  disabled={(item.type !== 'consumable' && item.type !== 'misc') || isLoading}
                                                                 >
                                                                   <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                                 </DropdownMenuItem>
@@ -693,6 +715,25 @@ export function PageStructure({
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
+                                 />
+                             </AccordionContent>
+                         </AccordionItem>
+                     </Accordion>
+                      <Accordion type="single" collapsible className="w-full">
+                         <AccordionItem value="familiars-accordion">
+                             <AccordionTrigger>
+                                 <div className="flex items-center gap-2">
+                                     <PawPrint className="h-5 w-5" /> Familiers
+                                 </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="pt-2">
+                                 <FamiliarSidebar
+                                     familiars={stagedAdventureSettings.familiars || []}
+                                     onFamiliarUpdate={handleFamiliarUpdate}
+                                     onSaveFamiliar={handleSaveFamiliar}
+                                     onAddStagedFamiliar={handleAddStagedFamiliar}
+                                     generateImageAction={generateSceneImageAction}
+                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
                                  />
                              </AccordionContent>
                          </AccordionItem>

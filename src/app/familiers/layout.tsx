@@ -1,5 +1,5 @@
 
-// src/app/avatars/layout.tsx
+// src/app/familiers/layout.tsx
 "use client"; // Add 'use client' directive
 
 import * as React from 'react';
@@ -10,18 +10,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint } from 'lucide-react';
 
-export default function AvatarsLayout({
+export default function FamiliersLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Ref for file input (can be null if not needed on this specific layout)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Placeholder handlers if needed, otherwise pass null or undefined
   const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Load triggered from avatars layout", event.target.files);
-     // TODO: Implement actual load logic if needed here, or manage globally
+    console.log("Load triggered from familiers layout", event.target.files);
   };
 
 
@@ -66,7 +63,7 @@ export default function AvatarsLayout({
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/avatars">
-                            <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Avatars Joueur"> {/* Active style */}
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Avatars Joueur">
                                 <UserCircle className="h-5 w-5" />
                                 <span className="ml-2 group-data-[collapsible=icon]:hidden">Avatars</span>
                              </Button>
@@ -92,7 +89,7 @@ export default function AvatarsLayout({
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/familiers">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
+                            <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
                                 <PawPrint className="h-5 w-5" />
                                 <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
                             </Button>
@@ -106,7 +103,6 @@ export default function AvatarsLayout({
            </SidebarContent>
          </ScrollArea>
          <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-             {/* Load Button */}
              <TooltipProvider>
                   <Tooltip>
                      <TooltipTrigger asChild>
@@ -118,7 +114,6 @@ export default function AvatarsLayout({
                      <TooltipContent side="right" align="center">Charger une Aventure/Personnage (JSON)</TooltipContent>
                   </Tooltip>
              </TooltipProvider>
-             {/* Hidden file input */}
              <input
                  type="file"
                  ref={fileInputRef}
@@ -126,7 +121,6 @@ export default function AvatarsLayout({
                  onChange={handleLoad}
                  className="hidden"
              />
-            {/* Settings Button (placeholder) */}
             <TooltipProvider>
              <Tooltip>
                <TooltipTrigger asChild>
@@ -141,21 +135,17 @@ export default function AvatarsLayout({
          </SidebarFooter>
        </Sidebar>
 
-       {/* Main Content Area */}
        <SidebarInset className="flex flex-col h-screen">
          <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
             <div className="flex items-center space-x-2">
-              <SidebarTrigger /> {/* Trigger for Left Sidebar */}
-              <span className="font-semibold">Avatars</span> {/* Updated title */}
+              <SidebarTrigger />
+              <span className="font-semibold">Mes Familiers</span>
             </div>
-           {/* Add header actions if needed */}
          </header>
-         <main className="flex-1 overflow-auto"> {/* Changed to overflow-auto */}
-             {children} {/* The content of /avatars/page.tsx will be rendered here */}
+         <main className="flex-1 overflow-auto">
+             {children}
          </main>
        </SidebarInset>
-
-       {/* No right sidebar needed for this layout, or add if necessary */}
      </>
   );
 }

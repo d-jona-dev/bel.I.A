@@ -3,11 +3,11 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -44,6 +44,7 @@ export type AdventureFormValues = {
   playerIntelligence?: number;
   playerWisdom?: number;
   playerCharisma?: number;
+  familiars?: Familiar[];
 };
 
 // Calculates base stats derived from attributes, before equipment
@@ -103,6 +104,13 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
 
     let effectiveAC = baseDerived.armorClass;
     let effectiveAttackBonus = baseDerived.attackBonus;
+    let effectiveStrength = settings.playerStrength || BASE_ATTRIBUTE_VALUE;
+    let effectiveDexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
+    let effectiveConstitution = settings.playerConstitution || BASE_ATTRIBUTE_VALUE;
+    let effectiveIntelligence = settings.playerIntelligence || BASE_ATTRIBUTE_VALUE;
+    let effectiveWisdom = settings.playerWisdom || BASE_ATTRIBUTE_VALUE;
+    let effectiveCharisma = settings.playerCharisma || BASE_ATTRIBUTE_VALUE;
+
 
     const inventory = settings.playerInventory || [];
     const weaponId = settings.equippedItemIds?.weapon;
@@ -112,6 +120,21 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
     const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
     const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
+    
+    const activeFamiliar = settings.familiars?.find(f => f.isActive);
+    if (activeFamiliar) {
+        const bonus = activeFamiliar.passiveBonus;
+        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
+        if (bonus.type === 'strength') effectiveStrength += bonusValue;
+        if (bonus.type === 'dexterity') effectiveDexterity += bonusValue;
+        if (bonus.type === 'constitution') effectiveConstitution += bonusValue;
+        if (bonus.type === 'intelligence') effectiveIntelligence += bonusValue;
+        if (bonus.type === 'wisdom') effectiveWisdom += bonusValue;
+        if (bonus.type === 'charisma') effectiveCharisma += bonusValue;
+        if (bonus.type === 'armor_class') effectiveAC += bonusValue;
+        if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
+    }
+
 
     if (equippedArmor?.statBonuses?.ac) {
         effectiveAC += equippedArmor.statBonuses.ac;
@@ -127,7 +150,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         effectiveAttackBonus += equippedJewelry.statBonuses.attack;
     }
 
-    const strengthModifierValue = Math.floor(((settings.playerStrength || BASE_ATTRIBUTE_VALUE) - 10) / 2);
+    const strengthModifierValue = Math.floor((effectiveStrength - 10) / 2);
     let weaponDamageDice = "1";
 
     if (equippedWeapon?.statBonuses?.damage) {
@@ -159,6 +182,12 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         playerArmorClass: effectiveAC,
         playerAttackBonus: effectiveAttackBonus,
         playerDamageBonus: effectiveDamageBonus,
+        playerStrength: effectiveStrength,
+        playerDexterity: effectiveDexterity,
+        playerConstitution: effectiveConstitution,
+        playerIntelligence: effectiveIntelligence,
+        playerWisdom: effectiveWisdom,
+        playerCharisma: effectiveCharisma,
     };
 };
 
@@ -211,6 +240,7 @@ export default function Home() {
     ],
     equippedItemIds: { weapon: null, armor: null, jewelry: null },
     playerSkills: [],
+    familiars: [],
     mapPointsOfInterest: [
         { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700', buildings: [] },
         { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF', buildings: [] },
@@ -480,6 +510,64 @@ export default function Home() {
     const currentRpgMode = adventureSettings.rpgMode;
     const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
 
+    const allExpGainingCharacters = (expGained: number) => {
+        setCharacters(prevChars => {
+            if (!currentRpgMode) return prevChars;
+            return prevChars.map(char => {
+                if (!char.isAlly || char.level === undefined) return char;
+                let newChar = {...char};
+                if (newChar.currentExp === undefined) newChar.currentExp = 0;
+                if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
+                
+                newChar.currentExp += expGained;
+                let leveledUp = false;
+                while(newChar.currentExp >= newChar.expToNextLevel!) {
+                    leveledUp = true;
+                    newChar.currentExp -= newChar.expToNextLevel!;
+                    newChar.level! += 1;
+                    newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
+                    newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                }
+                if (leveledUp) {
+                    toastsToShow.push({
+                        title: `Montée de Niveau: ${newChar.name}!`,
+                        description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
+                        duration: 7000
+                    });
+                }
+                return newChar;
+            });
+        });
+
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.familiars) return prevSettings;
+            const updatedFamiliars = prevSettings.familiars.map(fam => {
+                let newFam = {...fam};
+                newFam.currentExp += expGained;
+                 let leveledUp = false;
+                while(newFam.currentExp >= newFam.expToNextLevel) {
+                    leveledUp = true;
+                    newFam.currentExp -= newFam.expToNextLevel;
+                    newFam.level += 1;
+                    newFam.expToNextLevel = Math.floor(newFam.expToNextLevel * 1.5);
+                }
+                if(leveledUp) {
+                     toastsToShow.push({
+                        title: `Montée de Niveau: ${newFam.name}!`,
+                        description: `${newFam.name} a atteint le niveau ${newFam.level} et son bonus passif a été amélioré !`,
+                        duration: 7000
+                    });
+                }
+                return newFam;
+            });
+            return {...prevSettings, familiars: updatedFamiliars};
+        });
+    };
+
+    if ((combatUpdates.expGained ?? 0) > 0) {
+        allExpGainingCharacters(combatUpdates.expGained!);
+    }
+
     setCharacters(prevChars => {
         if (!currentRpgMode) {
              return prevChars;
@@ -497,50 +585,6 @@ export default function Home() {
                 currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
             }
             
-            if (char.isAlly && (combatUpdates.expGained ?? 0) > 0 && char.level !== undefined) {
-                if (currentCharacterState.level === undefined) currentCharacterState.level = 1;
-                if (currentCharacterState.currentExp === undefined) currentCharacterState.currentExp = 0;
-                if (currentCharacterState.expToNextLevel === undefined || currentCharacterState.expToNextLevel <= 0) {
-                    currentCharacterState.expToNextLevel = Math.floor(100 * Math.pow(1.5, (currentCharacterState.level || 1) - 1));
-                }
-                 if (currentCharacterState.initialAttributePoints === undefined) {
-                    currentCharacterState.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
-                }
-
-                currentCharacterState.currentExp += combatUpdates.expGained!;
-                
-                let leveledUpThisTurn = false;
-                while (currentCharacterState.currentExp >= currentCharacterState.expToNextLevel!) {
-                    leveledUpThisTurn = true;
-                    const prevExpToNextLvl = currentCharacterState.expToNextLevel!;
-                    currentCharacterState.level! += 1;
-                    currentCharacterState.expToNextLevel = Math.floor(prevExpToNextLvl * 1.5);
-                    currentCharacterState.currentExp -= prevExpToNextLvl;
-                    currentCharacterState.initialAttributePoints = (currentCharacterState.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-
-                    const npcDerivedStats = calculateBaseDerivedStats(currentCharacterState);
-                    currentCharacterState.maxHitPoints = npcDerivedStats.maxHitPoints;
-                    currentCharacterState.hitPoints = currentCharacterState.maxHitPoints;
-                    if (currentCharacterState.maxManaPoints !== undefined && currentCharacterState.maxManaPoints > 0) {
-                        currentCharacterState.maxManaPoints = npcDerivedStats.maxManaPoints;
-                        currentCharacterState.manaPoints = currentCharacterState.maxManaPoints;
-                    } else if (currentCharacterState.maxManaPoints === undefined && npcDerivedStats.maxManaPoints > 0) {
-                        currentCharacterState.maxManaPoints = npcDerivedStats.maxManaPoints;
-                        currentCharacterState.manaPoints = currentCharacterState.maxManaPoints;
-                    }
-
-                    currentCharacterState.armorClass = npcDerivedStats.armorClass;
-                    currentCharacterState.attackBonus = npcDerivedStats.attackBonus;
-                    currentCharacterState.damageBonus = npcDerivedStats.damageBonus;
-                }
-                if (leveledUpThisTurn) {
-                    toastsToShow.push({
-                        title: `Montée de Niveau: ${currentCharacterState.name}!`,
-                        description: `${currentCharacterState.name} a atteint le niveau ${currentCharacterState.level} et a gagné ${ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points d'attributs ! (Modifications en attente)`,
-                        duration: 7000
-                    });
-                }
-            }
             return currentCharacterState;
         });
         return charactersCopy;
@@ -800,6 +844,34 @@ export default function Home() {
     });
 }, [currentLanguage, toast, characters]);
 
+const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
+    setAdventureSettings(prevSettings => {
+        const newFamiliar: Familiar = {
+            id: `${newFamiliarSchema.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+            name: newFamiliarSchema.name,
+            description: newFamiliarSchema.description,
+            rarity: newFamiliarSchema.rarity,
+            level: 1,
+            currentExp: 0,
+            expToNextLevel: 100, // Initial EXP to next level
+            isActive: false, // Not active by default
+            passiveBonus: newFamiliarSchema.passiveBonus,
+            portraitUrl: null,
+        };
+
+        const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
+
+        setTimeout(() => {
+            toast({
+                title: "Nouveau Familier !",
+                description: `${newFamiliar.name} a rejoint votre groupe ! Allez le voir dans l'onglet Familiers pour l'activer.`,
+            });
+        }, 0);
+
+        return { ...prevSettings, familiars: updatedFamiliars };
+    });
+}, [toast]);
+
 
   const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
     if (!updates || updates.length === 0) return;
@@ -1011,12 +1083,12 @@ export default function Home() {
         playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
         playerCurrentExp: settingsForThisTurn.playerCurrentExp,
         playerExpToNextLevel: settingsForThisTurn.playerExpToNextLevel,
-        playerStrength: settingsForThisTurn.playerStrength,
-        playerDexterity: settingsForThisTurn.playerDexterity,
-        playerConstitution: settingsForThisTurn.playerConstitution,
-        playerIntelligence: settingsForThisTurn.playerIntelligence,
-        playerWisdom: settingsForThisTurn.playerWisdom,
-        playerCharisma: settingsForThisTurn.playerCharisma,
+        playerStrength: effectiveStatsThisTurn.playerStrength,
+        playerDexterity: effectiveStatsThisTurn.playerDexterity,
+        playerConstitution: effectiveStatsThisTurn.playerConstitution,
+        playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
+        playerWisdom: effectiveStatsThisTurn.playerWisdom,
+        playerCharisma: effectiveStatsThisTurn.playerCharisma,
         playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
         playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
         playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
@@ -1044,6 +1116,7 @@ export default function Home() {
             }
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
+            if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
@@ -1101,7 +1174,7 @@ export default function Home() {
       currentLanguage, narrativeMessages, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat
+      adventureSettings, characters, activeCombat, handleNewFamiliar
   ]);
 
 
@@ -1158,6 +1231,12 @@ export default function Home() {
                     
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                } else if (itemToUpdate.type === 'misc') {
+                    // This is where familiar item logic would go if we were using it.
+                    // For now, just a generic message.
+                    setTimeout(() => { toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} directement de cette manière.`, variant: "default" }); }, 0);
+                    itemActionSuccessful = false;
+                    return prevSettings;
                 } else {
                      setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} de cette manière.`, variant: "default" });},0);
                     itemActionSuccessful = false;
@@ -1617,12 +1696,12 @@ export default function Home() {
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
                  playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
-                 playerStrength: currentTurnSettings.playerStrength,
-                 playerDexterity: currentTurnSettings.playerDexterity,
-                 playerConstitution: currentTurnSettings.playerConstitution,
-                 playerIntelligence: currentTurnSettings.playerIntelligence,
-                 playerWisdom: currentTurnSettings.playerWisdom,
-                 playerCharisma: currentTurnSettings.playerCharisma,
+                 playerStrength: effectiveStatsThisTurn.playerStrength,
+                 playerDexterity: effectiveStatsThisTurn.playerDexterity,
+                 playerConstitution: effectiveStatsThisTurn.playerConstitution,
+                 playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
+                 playerWisdom: effectiveStatsThisTurn.playerWisdom,
+                 playerCharisma: effectiveStatsThisTurn.playerCharisma,
                  playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
                  playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
                  playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
@@ -1676,6 +1755,7 @@ export default function Home() {
                 });
 
                 if (result.newCharacters) handleNewCharacters(result.newCharacters);
+                 if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
@@ -1718,7 +1798,7 @@ export default function Home() {
          }
      }, [
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
-         handleNarrativeUpdate,
+         handleNewFamiliar,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
          handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat
@@ -2040,6 +2120,7 @@ export default function Home() {
                             }
                         })
                     }
+                     loadedData.adventureSettings.familiars = loadedData.adventureSettings.familiars || [];
                 }
 
 
@@ -2155,6 +2236,7 @@ export default function Home() {
             playerGold: initialSettingsFromBase.playerGold ?? (baseAdventureSettings.playerGold ?? 0),
             equippedItemIds: { weapon: null, armor: null, jewelry: null },
             playerSkills: [],
+            familiars: [],
         };
         setAdventureSettings(newLiveAdventureSettings);
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
@@ -2692,6 +2774,7 @@ export default function Home() {
       playerIntelligence: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerWisdom: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerCharisma: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
+      familiars: stagedAdventureSettings.familiars || [],
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
 
@@ -2871,7 +2954,7 @@ export default function Home() {
         icon: data.type,
         level: 1,
         position: { x: 50, y: 50 },
-        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade'],
+        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
@@ -2939,6 +3022,67 @@ export default function Home() {
 
     toast({ title: "Bâtiment Construit !", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
   }, [adventureSettings, toast]);
+
+    const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
+        setAdventureSettings(prev => {
+            const updatedFamiliars = (prev.familiars || []).map(f => {
+                if (f.id === updatedFamiliar.id) {
+                    // If we are activating this one, deactivate others
+                    if (updatedFamiliar.isActive && !f.isActive) {
+                        return (prev.familiars || []).map(other => other.id === updatedFamiliar.id ? updatedFamiliar : {...other, isActive: false});
+                    }
+                    return updatedFamiliar;
+                }
+                return f;
+            });
+            
+            // This handles the case where we just activated one familiar
+            if (Array.isArray(updatedFamiliars[0])) {
+                 return {...prev, familiars: updatedFamiliars.flat()};
+            }
+
+            return {...prev, familiars: updatedFamiliars};
+        });
+    }, []);
+
+    const handleSaveFamiliar = React.useCallback((familiarToSave: Familiar) => {
+        if (typeof window !== 'undefined') {
+            try {
+                const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+                let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+                const familiarIndex = existingFamiliars.findIndex(f => f.id === familiarToSave.id);
+
+                if (familiarIndex > -1) {
+                    existingFamiliars[familiarIndex] = { ...familiarToSave, _lastSaved: Date.now() };
+                } else {
+                    existingFamiliars.push({ ...familiarToSave, _lastSaved: Date.now() });
+                }
+                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
+                toast({ title: "Familier Sauvegardé Globalement", description: `${familiarToSave.name} est maintenant disponible pour d'autres aventures.` });
+                
+                handleFamiliarUpdate({...familiarToSave, _lastSaved: Date.now()});
+                
+            } catch (error) {
+                 console.error("Failed to save familiar to localStorage:", error);
+                 toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le familier.", variant: "destructive" });
+            }
+        }
+    }, [toast, handleFamiliarUpdate]);
+
+     const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+        setStagedAdventureSettings(prev => {
+            const familiars = prev.familiars || [];
+            if (familiars.some(f => f.id === familiarToAdd.id)) {
+                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                return prev;
+            }
+            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté aux modifications en attente.` });
+            return {
+                ...prev,
+                familiars: [...familiars, familiarToAdd]
+            };
+        });
+    }, [toast]);
 
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
@@ -3025,6 +3169,10 @@ export default function Home() {
         onCreatePoi={handleCreatePoi}
         onBuildInPoi={handleBuildInPoi}
         currentTurn={narrativeMessages.length}
+        handleNewFamiliar={handleNewFamiliar}
+        handleFamiliarUpdate={handleFamiliarUpdate}
+        handleSaveFamiliar={handleSaveFamiliar}
+        handleAddStagedFamiliar={handleAddStagedFamiliar}
       />
       </>
   );

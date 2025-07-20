@@ -30,6 +30,12 @@ export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
     applicablePoiTypes: ['Village'],
   },
   {
+    id: 'menagerie',
+    name: "Ménagerie",
+    description: "Permet d'acheter des créatures et familiers exotiques.",
+    applicablePoiTypes: ['Village'],
+  },
+  {
     id: 'bureau-comptes',
     name: "Bureau des Comptes",
     description: "Augmente les revenus en or de ce lieu de 25%.",

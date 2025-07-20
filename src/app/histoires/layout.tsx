@@ -8,7 +8,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2 } from 'lucide-react';
+import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint } from 'lucide-react';
 
 export default function HistoiresLayout({
   children,
@@ -86,6 +86,19 @@ export default function HistoiresLayout({
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/familiers">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
+                                <PawPrint className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Gérer les Familiers</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                </nav>
