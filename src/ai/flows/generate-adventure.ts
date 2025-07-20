@@ -538,14 +538,14 @@ If the 'User Action' implies interaction with a specific service or building typ
         *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
         *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
-        *   **Ménagerie (menagerie):** If the user is visiting a menagerie, you MUST create a unique NPC handler/owner. Narrate the encounter. Then, you MUST generate a list of 1-3 unique **familiars for sale**. **IMPORTANT: You are selling an *item* that summons the familiar, not the familiar directly.**
-            *   The items MUST be of type 'misc'. The name should reflect the familiar (e.g., "Collier du Chien de Garde", "Œuf de Bébé Griffon", "Pierre d'âme du Golem de Pierre").
+        *   **Ménagerie (menagerie):** If the user is visiting a menagerie, you MUST create a unique NPC handler/owner. Narrate the encounter. Then, you MUST generate a list of 1-3 unique **familiars for sale**. **IMPORTANT: You are selling an *item* that represents the familiar, not a container for it.**
+            *   The items MUST be of type 'misc'. The item's name MUST be the familiar's name (e.g., 'Chien de Garde', 'Bébé Griffon', 'Golem de Pierre').
             *   The rarity of the familiar (common, uncommon, rare, epic, legendary) and its associated bonus MUST depend on the **'Location Level'**.
             *   **MANDATORY FAMILIAR RARITY/QUALITY TIERS (BY LOCATION LEVEL):**
-            *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
-            *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
-            *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à une stat, +1 à toutes les stats, régénération de PM).
-            *   **CRITICAL:** The familiar's information MUST be in the item's 'description' and 'effect' fields, including its name, rarity, and passive bonus. For example: an item's description could be "Un collier qui contient l'esprit d'un familier de type Chat de ferme. Rareté: common." and its effect could be "Bonus passif : +1 en Dextérité.".
+            *   **Level 1-2:** 'Common'. Basic creatures (e.g., 'Chat de ferme', 'Chien loyal'). Bonus is simple (e.g., '+1 à une stat').
+            *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., 'Loup des neiges', 'Faucon dressé', 'Familier élémentaire mineur'). Bonus is more significant (e.g., '+3 à une stat', '+5% d'or trouvé').
+            *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., 'Bébé dragon', 'Golem runique', 'Phénix naissant'). Bonus is strong and unique (e.g., '+5 à une stat', '+1 à toutes les stats', 'régénération de PM').
+            *   **CRITICAL:** The familiar's information MUST be in the item's 'description' and 'effect' fields. For example, an item's description could be "Un familier de type Chat de ferme. Rareté: common." and its effect could be "Bonus passif : +1 en Dextérité.".
             *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
 
 

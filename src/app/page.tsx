@@ -1188,9 +1188,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
     
-    // Extract familiar's name from the item's name
-    const nameMatch = item.name.match(/(?:Collier|Œuf|Pierre d'âme) d[ue']\s*(.+)/i);
-    const familiarName = nameMatch ? nameMatch[1] : item.name.replace(/(Collier|Œuf|Pierre d'âme)\s*/i, '');
+    // The familiar's name is now the item's name directly
+    const familiarName = item.name;
 
     if (!effectMatch || !rarityMatch) {
          setTimeout(() => {
@@ -1218,7 +1217,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     handleNewFamiliar(newFamiliar);
     
-    const narrativeAction = `J'utilise ${item.name} pour invoquer mon nouveau compagnon.`;
+    const narrativeAction = `J'utilise l'objet pour invoquer mon nouveau compagnon: ${item.name}.`;
     handleNarrativeUpdate(narrativeAction, 'user');
     callGenerateAdventure(narrativeAction);
 
