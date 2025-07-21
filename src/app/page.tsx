@@ -2517,11 +2517,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerSkills = undefined;
         }
         
-        if (newLiveSettings.rpgMode) {
-            newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
-        } else {
-            newLiveSettings.playerGold = undefined;
-        }
+        newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
@@ -3092,20 +3088,24 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             let updatedFamiliars;
 
             if (updatedFamiliar.isActive) {
+                // When activating a familiar, deactivate all others
                 updatedFamiliars = familiars.map(f =>
                     f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
                 );
             } else {
+                // When deactivating, just update the specific one
                 updatedFamiliars = familiars.map(f =>
                     f.id === updatedFamiliar.id ? updatedFamiliar : f
                 );
             }
             newSettings.familiars = updatedFamiliars;
             
+            // Recalculate player stats based on the new active familiar
             const newEffectiveStats = calculateEffectiveStats(newSettings);
             
             const finalSettings = { ...newSettings, ...newEffectiveStats };
             
+            // Also update the staged settings to keep UI in sync
             setStagedAdventureSettings(finalSettings);
             return finalSettings;
         });
@@ -3143,7 +3143,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             return;
         }
 
-        const updater = (prev: AdventureSettings) => ({
+        const updater = (prev: AdventureSettings): AdventureSettings => ({
             ...prev,
             familiars: [...(prev.familiars || []), familiarToAdd]
         });
@@ -3247,4 +3247,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       </>
   );
 }
-
