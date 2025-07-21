@@ -1,3 +1,4 @@
+
 // src/lib/buildings.ts
 
 import type { MapPointOfInterest, GeneratedResource } from "@/types";
@@ -97,6 +98,25 @@ export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
     description: "Permet de chasser des créatures rares et éthérées durant la nuit. Déclenche un combat.",
     applicablePoiTypes: ['Trees'],
   },
+  // Mine Buildings
+  {
+    id: 'camp-mineurs',
+    name: "Camp de mineurs",
+    description: "Augmente la quantité de gemmes précieuses récoltées.",
+    applicablePoiTypes: ['Shield'],
+  },
+  {
+    id: 'berlines',
+    name: "Berlines",
+    description: "Réduit le temps de recharge avant la prochaine collecte de ressources.",
+    applicablePoiTypes: ['Shield'],
+  },
+  {
+    id: 'equipe-archeologues',
+    name: "Équipe d'archéologues",
+    description: "Permet d'explorer des ruines antiques pour trouver des trésors ou des dangers. Déclenche une exploration.",
+    applicablePoiTypes: ['Shield'],
+  },
 ];
 
 // Le coût du N-ième bâtiment. (index 0 = 1er bâtiment, etc.)
@@ -156,3 +176,5 @@ export const poiLevelNameMap: Record<string, Record<number, string>> = {
         3: 'Grande Mine',
     }
 };
+
+  

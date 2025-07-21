@@ -2657,7 +2657,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }
         
         const currentTurn = narrativeMessages.length;
-        const cooldownDuration = 10;
+        const hasBerlines = (poi.buildings || []).includes('berlines');
+        const cooldownDuration = hasBerlines ? 5 : 10;
         const lastCollected = poi.lastCollectedTurn;
 
         if (lastCollected !== undefined && currentTurn < lastCollected + cooldownDuration) {
@@ -2697,6 +2698,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         const taxBonus = (poi.buildings || []).includes('bureau-comptes') ? 1.25 : 1.0;
         const huntBonus = (poi.buildings || []).includes('poste-chasse') ? 1.5 : 1.0;
         const woodBonus = (poi.buildings || []).includes('poste-bucheron') ? 1.5 : 1.0;
+        const gemBonus = (poi.buildings || []).includes('camp-mineurs') ? 1 : 0;
 
 
         resourcesToCollect.forEach(resource => {
@@ -2711,6 +2713,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 }
                 if (resource.name.toLowerCase().includes('bois')) {
                     finalQuantity = Math.floor(finalQuantity * woodBonus);
+                }
+                if (resource.name.toLowerCase().includes('gemmes')) {
+                    finalQuantity += gemBonus;
                 }
                 inventoryUpdates.push({
                     name: resource.name,
@@ -3083,30 +3088,29 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
         setAdventureSettings(prevSettings => {
-            const newSettings = {...prevSettings};
+            let newSettings = { ...prevSettings };
             const familiars = newSettings.familiars || [];
             let updatedFamiliars;
 
             if (updatedFamiliar.isActive) {
-                // When activating a familiar, deactivate all others
+                // Deactivate all others, activate this one
                 updatedFamiliars = familiars.map(f =>
-                    f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
+                    f.id === updatedFamiliar.id ? { ...f, isActive: true } : { ...f, isActive: false }
                 );
             } else {
-                // When deactivating, just update the specific one
+                // Deactivate this one
                 updatedFamiliars = familiars.map(f =>
-                    f.id === updatedFamiliar.id ? updatedFamiliar : f
+                    f.id === updatedFamiliar.id ? { ...f, isActive: false } : f
                 );
             }
             newSettings.familiars = updatedFamiliars;
-            
-            // Recalculate player stats based on the new active familiar
+
             const newEffectiveStats = calculateEffectiveStats(newSettings);
-            
             const finalSettings = { ...newSettings, ...newEffectiveStats };
             
-            // Also update the staged settings to keep UI in sync
-            setStagedAdventureSettings(finalSettings);
+            // Also update staged settings to keep them in sync
+            setStagedAdventureSettings(prevStaged => ({...prevStaged, ...finalSettings}));
+            
             return finalSettings;
         });
     }, []);
@@ -3135,10 +3139,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }
     }, [toast, handleFamiliarUpdate]);
 
-     const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        const isAlreadyInAdventure = adventureSettings.familiars?.some(f => f.id === familiarToAdd.id);
-    
-        if (isAlreadyInAdventure) {
+    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+        if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
             toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
             return;
         }
