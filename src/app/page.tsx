@@ -1184,18 +1184,16 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   ]);
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    // Regular expression to parse familiar details from the item's effect and description
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
     
-    // The familiar's name is now the item's name directly
     const familiarName = item.name;
 
-    if (!effectMatch || !rarityMatch) {
+    if (!rarityMatch || !effectMatch) {
          setTimeout(() => {
             toast({
                 title: "Objet de Familier Invalide",
-                description: "Les informations du familier n'ont pas pu être lues depuis l'objet.",
+                description: "Les informations du familier n'ont pas pu être lues depuis l'objet. L'effet ou la rareté est manquant.",
                 variant: "destructive",
             });
          }, 0);
@@ -1277,10 +1275,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
                 } else if (itemToUpdate.type === 'misc') {
-                    // This is our familiar item. The logic will be handled outside the state update.
-                    // We just need to consume it here.
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                    itemActionSuccessful = true; // Signal success to trigger external logic.
+                    itemActionSuccessful = true;
                 } else {
                      setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} directement de cette manière.`, variant: "default" });},0);
                     itemActionSuccessful = false;
@@ -2329,7 +2325,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerClass: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerClass : undefined,
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
             playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerExpToNextLevel : undefined,
-            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
+            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold : undefined,
             playerInitialAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
             totalDistributableAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.totalDistributableAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
             playerStrength: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
@@ -2456,7 +2452,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       if (JSON.stringify(prevStagedChars) !== JSON.stringify(updatedCharsList)) { return updatedCharsList; }
       return prevStagedChars;
     });
-  }, [currentLanguage, baseAdventureSettings.playerGold]);
+  }, [currentLanguage]);
 
   const handleApplyStagedChanges = React.useCallback(() => {
     let initialSituationChanged = false;
@@ -2483,16 +2479,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
                 newLiveSettings.playerInventory = newLiveSettings.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [];
-                newLiveSettings.playerGold = newLiveSettings.playerGold ?? (baseAdventureSettings.playerGold ?? 0);
                 newLiveSettings.equippedItemIds = { weapon: null, armor: null, jewelry: null };
                 newLiveSettings.playerSkills = [];
-
             } else {
                 newLiveSettings.playerCurrentHp = Math.min(prevLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
                 newLiveSettings.playerCurrentMp = Math.min(prevLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp ?? 0, newLiveSettings.playerMaxMp ?? 0);
                 newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp ?? 0;
                 newLiveSettings.playerInventory = newLiveSettings.playerInventory || prevLiveSettings.playerInventory || [];
-                newLiveSettings.playerGold = newLiveSettings.playerGold ?? prevLiveSettings.playerGold ?? 0;
                 newLiveSettings.equippedItemIds = newLiveSettings.equippedItemIds || prevLiveSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null };
                 newLiveSettings.playerSkills = newLiveSettings.playerSkills || prevLiveSettings.playerSkills || [];
             }
@@ -2507,7 +2500,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerMaxHp = undefined; newLiveSettings.playerCurrentHp = undefined;
             newLiveSettings.playerMaxMp = undefined; newLiveSettings.playerCurrentMp = undefined;
             newLiveSettings.playerExpToNextLevel = undefined; newLiveSettings.playerCurrentExp = undefined;
-            newLiveSettings.playerInventory = undefined; newLiveSettings.playerGold = undefined;
+            newLiveSettings.playerInventory = undefined;
             newLiveSettings.playerInitialAttributePoints = undefined;
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
             newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined;
@@ -2517,6 +2510,14 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.equippedItemIds = undefined;
             newLiveSettings.playerSkills = undefined;
         }
+        
+        // This was the source of the bug. Ensure the new gold value from the form is always respected.
+        if (newLiveSettings.rpgMode) {
+            newLiveSettings.playerGold = stagedAdventureSettings.playerGold ?? (prevLiveSettings.playerGold ?? 0);
+        } else {
+            newLiveSettings.playerGold = undefined;
+        }
+
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
     });
@@ -2560,7 +2561,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setTimeout(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
     }, 0);
-  }, [stagedAdventureSettings, stagedCharacters, toast, baseAdventureSettings, baseCharacters, adventureSettings, activeCombat]);
+  }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings, activeCombat]);
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
@@ -2820,6 +2821,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       playerIntelligence: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerWisdom: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
       playerCharisma: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
+      playerGold: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerGold : undefined,
       familiars: stagedAdventureSettings.familiars || [],
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
