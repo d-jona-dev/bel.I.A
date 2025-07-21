@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -550,7 +549,7 @@ If the 'User Action' implies interaction with a specific service or building typ
             *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
             *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
             *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à une stat, +1 à toutes les stats, régénération de PM).
-            *   **CRITICAL:** The item for sale MUST be the familiar itself, NOT a container. The item name should be the familiar's name (e.g., 'Bébé Griffon'). The item's description and effect MUST detail the familiar's rarity and passive bonus. For example, for a 'Chat de Ferme' item, the description could be 'Un familier de type Chat de ferme. Rareté: common.' and its effect could be 'Bonus passif : +1 en Dextérité.'. The item's type must be 'misc'.
+            *   **CRITICAL:** The item for sale MUST be the familiar itself, NOT a container. The item name should be the familiar's name (e.g., 'Bébé Griffon'). The item's description and effect MUST detail the familiar's rarity and passive bonus. For example, for a 'Chat de Ferme' item, the description would detail a common rarity, and its effect would detail the passive bonus like '+1 en Dextérité'. The item's type must be 'misc'.
             *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
 
 
@@ -768,5 +767,3 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
-
-  

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -1186,13 +1185,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     
-    // Simplification : on considère que si un objet est de type 'misc' et utilisable, c'est pour invoquer un familier.
-    // L'IA est censée créer des objets `misc` pour les familiers.
-    const familiarName = item.name;
-    const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
-    const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
-
-    if (!item.type || item.type !== 'misc') {
+    if (!item.type || item.type !== 'misc' || !item.name) {
         setTimeout(() => {
            toast({
                title: "Utilisation Narrative",
@@ -1206,7 +1199,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         callGenerateAdventure(narrativeAction);
         return;
     }
-    
+
+    const familiarName = item.name;
+    const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
+    const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
+
     const bonus: FamiliarPassiveBonus = {
         value: effectMatch ? parseInt(effectMatch[1], 10) : 1, // Default value if not found
         type: effectMatch ? (effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type']) : 'strength', // Default type
@@ -1924,22 +1921,23 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }
     }, [toast]);
 
-  const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-    if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
-        toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-        return;
-    }
+    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+        if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
+            toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+            return;
+        }
+    
+        const updater = (prev: AdventureSettings): AdventureSettings => ({
+            ...prev,
+            familiars: [...(prev.familiars || []), familiarToAdd]
+        });
+    
+        setAdventureSettings(updater);
+        setStagedAdventureSettings(updater);
+    
+        toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+    }, [toast, adventureSettings.familiars]);
 
-    const updater = (prev: AdventureSettings): AdventureSettings => ({
-        ...prev,
-        familiars: [...(prev.familiars || []), familiarToAdd]
-    });
-
-    setAdventureSettings(updater);
-    setStagedAdventureSettings(updater);
-
-    toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-  }, [toast, adventureSettings.familiars]);
     
   const handleAddStagedCharacter = (globalCharToAdd: Character) => {
     const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
@@ -2527,7 +2525,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerSkills = undefined;
         }
         
-        newLiveSettings.playerGold = stagedAdventureSettings.playerGold || 0;
+        newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;

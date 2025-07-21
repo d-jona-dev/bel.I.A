@@ -1,4 +1,3 @@
-
 // src/lib/buildings.ts
 
 import type { MapPointOfInterest, GeneratedResource } from "@/types";
@@ -176,5 +175,3 @@ export const poiLevelNameMap: Record<string, Record<number, string>> = {
         3: 'Grande Mine',
     }
 };
-
-  
