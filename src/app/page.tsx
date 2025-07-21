@@ -1924,86 +1924,96 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }
     }, [toast]);
 
-  const handleAddStagedCharacter = React.useCallback((globalCharToAdd: Character) => {
-        const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
+  const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+    if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
+        toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+        return;
+    }
+
+    const updater = (prev: AdventureSettings): AdventureSettings => ({
+        ...prev,
+        familiars: [...(prev.familiars || []), familiarToAdd]
+    });
+
+    setAdventureSettings(updater);
+    setStagedAdventureSettings(updater);
+
+    toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+  }, [toast, adventureSettings.familiars]);
     
-        if (isAlreadyInAdventure) {
-            setTimeout(() => {
-                toast({ title: "Personnage déjà présent", description: `${globalCharToAdd.name} est déjà dans l'aventure actuelle.`, variant: "default" });
-            }, 0);
-            return;
-        }
+  const handleAddStagedCharacter = (globalCharToAdd: Character) => {
+    const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
 
-        const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-        const newCharRPGMode = stagedAdventureSettings.rpgMode;
-        const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
-        const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
-        const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
-        const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (newCharLevel ?? 1) -1))) : undefined;
+    if (isAlreadyInAdventure) {
+        toast({ title: "Personnage déjà présent", description: `${globalCharToAdd.name} est déjà dans l'aventure actuelle.`, variant: "default" });
+        return;
+    }
 
-        const newChar: Character = {
-            ...globalCharToAdd,
-            history: [`Ajouté à l'aventure depuis les personnages globaux le ${new Date().toLocaleString()}`],
-            isAlly: globalCharToAdd.isAlly ?? false,
-            initialAttributePoints: newCharInitialPoints,
-            currentExp: newCharCurrentExp,
-            expToNextLevel: newCharExpToNext,
-            ...(newCharRPGMode ? {
-                level: newCharLevel,
-                characterClass: globalCharToAdd.characterClass ?? '',
-                inventory: globalCharToAdd.inventory ?? {},
-                hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10,
-                maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
-                manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0,
-                maxManaPoints: globalCharToAdd.maxManaPoints ?? 0,
-                armorClass: globalCharToAdd.armorClass ?? 10,
-                attackBonus: globalCharToAdd.attackBonus ?? 0,
-                damageBonus: globalCharToAdd.damageBonus ?? "1",
-                isHostile: globalCharToAdd.isHostile ?? false,
-                strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE,
-                dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE,
-                constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE,
-                intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE,
-                wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE,
-                charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
+    const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+    const newCharRPGMode = stagedAdventureSettings.rpgMode;
+    const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
+    const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
+    const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
+    const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (newCharLevel ?? 1) -1))) : undefined;
 
-            } : {
-                level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
-                armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
-                strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
-                initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
-                }),
-                ...(stagedAdventureSettings.relationsMode ?? true ? {
-                affinity: globalCharToAdd.affinity ?? 50,
-                relations: globalCharToAdd.relations || { [PLAYER_ID]: defaultRelation },
-                } : { affinity: undefined, relations: undefined, })
-        };
+    const newChar: Character = {
+        ...globalCharToAdd,
+        history: [`Ajouté à l'aventure depuis les personnages globaux le ${new Date().toLocaleString()}`],
+        isAlly: globalCharToAdd.isAlly ?? false,
+        initialAttributePoints: newCharInitialPoints,
+        currentExp: newCharCurrentExp,
+        expToNextLevel: newCharExpToNext,
+        ...(newCharRPGMode ? {
+            level: newCharLevel,
+            characterClass: globalCharToAdd.characterClass ?? '',
+            inventory: globalCharToAdd.inventory ?? {},
+            hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10,
+            maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
+            manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0,
+            maxManaPoints: globalCharToAdd.maxManaPoints ?? 0,
+            armorClass: globalCharToAdd.armorClass ?? 10,
+            attackBonus: globalCharToAdd.attackBonus ?? 0,
+            damageBonus: globalCharToAdd.damageBonus ?? "1",
+            isHostile: globalCharToAdd.isHostile ?? false,
+            strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE,
+            dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE,
+            constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE,
+            intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE,
+            wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE,
+            charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
 
-        if ((stagedAdventureSettings.relationsMode ?? true) && newChar.relations && !newChar.relations[PLAYER_ID]) {
-            newChar.relations[PLAYER_ID] = defaultRelation;
-        }
-        
-        const updateStagedChars = (prevStagedChars: Character[]) => {
-            const updatedPrevChars = prevStagedChars.map(existingChar => {
-                if (stagedAdventureSettings.relationsMode ?? true) {
-                    const updatedRelations = { ...(existingChar.relations || {}), [newChar.id]: defaultRelation };
-                    if (newChar.relations && !newChar.relations[existingChar.id]) {
-                        newChar.relations[existingChar.id] = defaultRelation;
-                    }
-                    return { ...existingChar, relations: updatedRelations };
+        } : {
+            level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
+            armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
+            strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
+            initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
+            }),
+            ...(stagedAdventureSettings.relationsMode ?? true ? {
+            affinity: globalCharToAdd.affinity ?? 50,
+            relations: globalCharToAdd.relations || { [PLAYER_ID]: defaultRelation },
+            } : { affinity: undefined, relations: undefined, })
+    };
+
+    if ((stagedAdventureSettings.relationsMode ?? true) && newChar.relations && !newChar.relations[PLAYER_ID]) {
+        newChar.relations[PLAYER_ID] = defaultRelation;
+    }
+    
+    setStagedCharacters(prevStagedChars => {
+        const updatedPrevChars = prevStagedChars.map(existingChar => {
+            if (stagedAdventureSettings.relationsMode ?? true) {
+                const updatedRelations = { ...(existingChar.relations || {}), [newChar.id]: defaultRelation };
+                if (newChar.relations && !newChar.relations[existingChar.id]) {
+                    newChar.relations[existingChar.id] = defaultRelation;
                 }
-                return existingChar;
-            });
-            return [...updatedPrevChars, newChar];
-        };
-        
-        setStagedCharacters(updateStagedChars);
+                return { ...existingChar, relations: updatedRelations };
+            }
+            return existingChar;
+        });
+        return [...updatedPrevChars, newChar];
+    });
 
-        setTimeout(() => {
-            toast({ title: "Personnage Ajouté à l'Aventure", description: `${globalCharToAdd.name} a été ajouté aux modifications en attente. N'oubliez pas d'enregistrer les modifications.` });
-        }, 0);
-
-  }, [currentLanguage, toast, stagedAdventureSettings, PLAYER_ID, stagedCharacters]);
+    toast({ title: "Personnage Ajouté à l'Aventure", description: `${globalCharToAdd.name} a été ajouté aux modifications en attente. N'oubliez pas d'enregistrer les modifications.` });
+  };
 
 
   const handleSave = React.useCallback(() => {
@@ -2517,7 +2527,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerSkills = undefined;
         }
         
-        newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
+        newLiveSettings.playerGold = stagedAdventureSettings.playerGold || 0;
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
@@ -3090,25 +3100,15 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         setAdventureSettings(prevSettings => {
             let newSettings = { ...prevSettings };
             const familiars = newSettings.familiars || [];
-            let updatedFamiliars;
-
-            if (updatedFamiliar.isActive) {
-                // Deactivate all others, activate this one
-                updatedFamiliars = familiars.map(f =>
-                    f.id === updatedFamiliar.id ? { ...f, isActive: true } : { ...f, isActive: false }
-                );
-            } else {
-                // Deactivate this one
-                updatedFamiliars = familiars.map(f =>
-                    f.id === updatedFamiliar.id ? { ...f, isActive: false } : f
-                );
-            }
+            
+            const updatedFamiliars = familiars.map(f =>
+                f.id === updatedFamiliar.id ? updatedFamiliar : (updatedFamiliar.isActive ? { ...f, isActive: false } : f)
+            );
             newSettings.familiars = updatedFamiliars;
 
             const newEffectiveStats = calculateEffectiveStats(newSettings);
             const finalSettings = { ...newSettings, ...newEffectiveStats };
             
-            // Also update staged settings to keep them in sync
             setStagedAdventureSettings(prevStaged => ({...prevStaged, ...finalSettings}));
             
             return finalSettings;
@@ -3138,25 +3138,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             }
         }
     }, [toast, handleFamiliarUpdate]);
-
-    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
-            toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-            return;
-        }
-
-        const updater = (prev: AdventureSettings): AdventureSettings => ({
-            ...prev,
-            familiars: [...(prev.familiars || []), familiarToAdd]
-        });
-
-        setAdventureSettings(updater);
-        setStagedAdventureSettings(updater);
-
-        toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-    }, [toast, adventureSettings.familiars]);
-
-
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
