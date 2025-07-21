@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -528,7 +529,7 @@ If the 'User Action' implies interaction with a specific service or building typ
     *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
         *   **Nocturnal Hunt Post (poste-chasse-nocturne):** If the user action is specifically to visit this post, you MUST initiate a combat. Create a unique, rare, and ethereal creature for the player to fight. Examples: 'Loup sombre aux lueurs spectrales', 'Hibou grand duc noir aux yeux étoilés', 'Lapin de la nuit avec une fourrure d'obsidienne'. Describe the creature appearing mysteriously. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a new familiar in the 'newFamiliars' field, corresponding to the defeated creature. The rarity MUST be determined by a random roll: common (10% chance), uncommon (15%), rare (20%), epic (25%), legendary (30%).
-        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, you MUST initiate a combat in ancient ruins. Create a unique, powerful, ancient creature for the player to fight (e.g., 'Gardien de Golem Ancien', 'Spectre des Profondeurs', 'Bête de pierre fossilisée'). Describe the player descending into the ruins and awakening the creature. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a random reward based on the following weighted probabilities:
+        *   **Archaeology Team (equipe-archeologues):** If the user action is to visit this team, you MUST initiate combat in ruins. Create a unique, powerful, ancient creature (e.g., 'Gardien de Golem Ancien', 'Spectre des Profondeurs'). Describe descending into the ruins and awakening the creature. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, **YOU MUST** generate a random reward based on the following weighted probabilities and **IMMEDIATELY** place it in the appropriate structured output field for items, currency, or familiars. Narrate that the player finds and takes this reward. **DO NOT** make the player take another action to get the reward.
             *   **Legendary Equipment (10% chance):** Generate ONE legendary item (weapon or armor). Example: 'Lame des Abysses', 'Armure des Titans'. Populate 'itemsObtained'.
             *   **Epic Equipment (15% chance):** Generate ONE epic item. Example: 'Hache runique', 'Plastron en ébonite'. Populate 'itemsObtained'.
             *   **Gold (20% chance):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
@@ -549,7 +550,7 @@ If the 'User Action' implies interaction with a specific service or building typ
             *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
             *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
             *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à une stat, +1 à toutes les stats, régénération de PM).
-            *   **CRITICAL:** The item for sale MUST be the familiar itself, NOT a container. The item name should be the familiar's name (e.g., 'Bébé Griffon'). The item's description and effect MUST detail the familiar's rarity and passive bonus. For example, for a 'Chat de Ferme' item, the description would detail a common rarity, and its effect would detail the passive bonus like '+1 en Dextérité'. The item's type must be 'misc'.
+            *   **CRITICAL:** The item for sale MUST be the familiar itself, NOT a container. The item name should be the familiar's name (e.g., 'Bébé Griffon'). The item's description and effect MUST detail the familiar's rarity and passive bonus. For example, for a 'Chat de Ferme' item, its description could be 'Un familier de type Chat de ferme. Rareté: common.' and its effect could be 'Bonus passif : +1 en Dextérité.'. The item's type must be 'misc'.
             *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
 
 
@@ -680,8 +681,6 @@ const generateAdventureFlow = ai.defineFlow<
       const mutableCombatants = input.activeCombat.combatants.map(combatant => {
         const augmentedCombatant = { ...combatant } as any;
         augmentedCombatant.isPlayerTeam = combatant.team === 'player';
-        augmentedCombatant.isEnemyTeam = combatant.team === 'enemy';
-        augmentedCombatant.isNeutralTeam = combatant.team === 'neutral';
         return augmentedCombatant;
       });
       input.activeCombat = {
