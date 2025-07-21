@@ -44,6 +44,7 @@ export type AdventureFormValues = {
   playerIntelligence?: number;
   playerWisdom?: number;
   playerCharisma?: number;
+  playerGold?: number;
   familiars?: Familiar[];
 };
 
@@ -1698,7 +1699,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         currentHp: existingCombatantData?.currentHp ?? char.hitPoints!,
                         maxHp: existingCombatantData?.maxHp ?? char.maxHitPoints!,
                         currentMp: existingCombatantData?.currentMp ?? char.manaPoints,
-                        maxMp: existingCombatantData?.maxMp ?? char.maxManaPoints,
+                        maxMp: existingCombatantData?.maxManaPoints,
                         team: 'player', isDefeated: existingCombatantData ? existingCombatantData.isDefeated : (char.hitPoints! <= 0),
                         statusEffects: existingCombatantData?.statusEffects || char.statusEffects || [],
                     };
@@ -2337,6 +2338,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerIntelligence: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerWisdom: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
             playerCharisma: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
+            playerGold: newSettingsFromForm.playerGold,
         };
 
         const effectiveStats = calculateEffectiveStats(tempSettingsForCalc);
@@ -2364,7 +2366,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                     ? prevStagedSettings.playerCurrentExp
                     : 0)
                 : undefined,
-            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerGold : undefined,
         };
 
         if (newSettingsCandidate.playerCurrentHp !== undefined && newSettingsCandidate.playerMaxHp !== undefined) {
@@ -2509,13 +2510,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
             newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined;
             newLiveSettings.playerCharisma = undefined;
-            newLiveSettings.playerArmorClass = undefined; newLiveSettings.playerAttackBonus = undefined;
+            newLiveSettings.playerArmorClass = undefined;
+            newLiveSettings.playerAttackBonus = undefined;
             newLiveSettings.playerDamageBonus = undefined;
             newLiveSettings.equippedItemIds = undefined;
             newLiveSettings.playerSkills = undefined;
         }
         
-        // This is the fix. The gold value from the staged settings should always be applied.
         if (newLiveSettings.rpgMode) {
             newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
         } else {
@@ -3084,7 +3085,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Bâtiment Construit !", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
   }, [adventureSettings, toast]);
 
-    const handleFamiliarUpdate = (updatedFamiliar: Familiar) => {
+    const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
         setAdventureSettings(prevSettings => {
             const newSettings = {...prevSettings};
             const familiars = newSettings.familiars || [];
@@ -3108,7 +3109,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             setStagedAdventureSettings(finalSettings);
             return finalSettings;
         });
-    };
+    }, []);
 
     const handleSaveFamiliar = React.useCallback((familiarToSave: Familiar) => {
         if (typeof window !== 'undefined') {
@@ -3246,3 +3247,4 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       </>
   );
 }
+
