@@ -454,6 +454,8 @@ Combatants (Player team listed first, then Enemies):
 {{#if this.isPlayerTeam}}
 - Name: {{this.name}} (Team: Joueur/Allié) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
 {{/if}}
+{{/each}}
+{{#each activeCombat.combatants}}
 {{#if this.isEnemyTeam}}
 - Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
 {{/if}}
@@ -520,12 +522,13 @@ Player is currently travelling or in an unspecified location.
 User Action (from {{playerName}}): {{{userAction}}}
 
 **CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
-If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves', 'Je visite la ménagerie'):
-*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves', 'menagerie').
+If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves', 'Je visite la ménagerie', 'Je visite le poste de chasse nocturne'):
+*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves', 'menagerie', 'poste-chasse-nocturne').
 *   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section above.** Check if the required building ID is listed under 'Available Services'.
 *   **STEP 3: Respond.**
     *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
+        *   **Nocturnal Hunt Post (poste-chasse-nocturne):** If the user action is specifically to visit this post, you MUST initiate a combat. Create a unique, rare, and ethereal creature for the player to fight. Examples: 'Loup sombre aux lueurs spectrales', 'Hibou grand duc noir aux yeux étoilés', 'Lapin de la nuit avec une fourrure d'obsidienne'. Describe the creature appearing mysteriously. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a new familiar in the 'newFamiliars' field, corresponding to the defeated creature. The rarity MUST be determined by a random roll: common (10% chance), uncommon (15%), rare (20%), epic (25%), legendary (30%).
         *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The quality and price of these items MUST depend on the **'Location Level' provided in the 'CURRENT LOCATION CONTEXT'**.
             *   **MANDATORY ITEM QUALITY TIERS (BY LOCATION LEVEL):**
             *   **Level 1-2:** 'Basique', 'Commun'. Simple, slightly worn, or basic materials (e.g., 'Dague Rouillée', 'Tunique en cuir simple', 'Potion de soin mineure').
@@ -537,13 +540,13 @@ If the 'User Action' implies interaction with a specific service or building typ
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
         *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
         *   **Ménagerie (menagerie):** If the user is visiting a menagerie, you MUST create a unique NPC handler/owner. Narrate the encounter. Then, you MUST generate a list of 1-3 unique **familiars for sale**. **IMPORTANT: You are selling an *item* that summons the familiar, not the familiar directly.**
-            *   The items MUST be of type 'misc'. The name of the item should be the familiar's name (e.g., "Chien de Garde", "Bébé Griffon", "Golem de Pierre").
+            *   The items MUST be of type 'misc'. The name of the item should be the familiar's name (e.g., 'Bébé Griffon', 'Golem de Pierre').
             *   The rarity of the familiar (common, uncommon, rare, epic, legendary) and its associated bonus MUST depend on the **'Location Level'**.
             *   **MANDATORY FAMILIAR RARITY/QUALITY TIERS (BY LOCATION LEVEL):**
             *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
             *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
             *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à une stat, +1 à toutes les stats, régénération de PM).
-            *   **CRITICAL:** The familiar's information MUST be in the item's 'description' and 'effect' fields, including its name, rarity, and passive bonus. For example, an item's description could be "Un familier de type Chat de ferme. Rareté: common." and its effect could be "Bonus passif : +1 en Dextérité.".
+            *   **CRITICAL:** The familiar's information MUST be in the item's 'description' and 'effect' fields, including its name, rarity, and passive bonus. For example, for a 'Chat de Ferme', the item's description could be 'Un familier de type Chat de ferme. Rareté: common.' and its effect could be 'Bonus passif : +1 en Dextérité.'.
             *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
 
 

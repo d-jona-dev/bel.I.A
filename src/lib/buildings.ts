@@ -11,6 +11,7 @@ export interface BuildingDefinition {
 }
 
 export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
+  // Village Buildings
   {
     id: 'forgeron',
     name: "Forgeron",
@@ -77,7 +78,25 @@ export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
     description: "Permet de ressusciter les alliés tombés au combat contre de l'or.",
     applicablePoiTypes: ['Village'],
   },
-  // Future buildings for other POI types can be added here
+  // Forest Buildings
+  {
+    id: 'poste-chasse',
+    name: "Poste de chasse",
+    description: "Augmente la quantité de viande collectée de 50%.",
+    applicablePoiTypes: ['Trees'],
+  },
+  {
+    id: 'poste-bucheron',
+    name: "Poste de bûcheron",
+    description: "Augmente la quantité de bois récoltée de 50%.",
+    applicablePoiTypes: ['Trees'],
+  },
+  {
+    id: 'poste-chasse-nocturne',
+    name: "Poste de chasse Nocturne",
+    description: "Permet de chasser des créatures rares et éthérées durant la nuit. Déclenche un combat.",
+    applicablePoiTypes: ['Trees'],
+  },
 ];
 
 // Le coût du N-ième bâtiment. (index 0 = 1er bâtiment, etc.)
@@ -88,8 +107,8 @@ export const BUILDING_COST_PROGRESSION: number[] = [
 // Nombre de slots de bâtiment débloqués par niveau de POI
 export const BUILDING_SLOTS: Record<MapPointOfInterest['icon'], number[]> = {
     Village: [0, 1, 1, 2, 2, 3, 5], // index 0 is placeholder, level 1 gives 1 slot, level 2 gives 1...
-    Trees: [0, 0, 1, 2],
-    Shield: [0, 0, 1, 2],
+    Trees: [0, 1, 2, 3],
+    Shield: [0, 1, 2, 3],
     // Other types have 0 slots for now
     Castle: [0, 0, 0, 0, 0, 0],
     Mountain: [0, 0, 0, 0, 0, 0],
