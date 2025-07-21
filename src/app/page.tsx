@@ -2329,7 +2329,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerClass: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerClass : undefined,
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
             playerExpToNextLevel: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerExpToNextLevel : undefined,
-            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
+            playerGold: (newSettingsFromForm.enableRpgMode ?? false) ? prevStagedSettings.playerGold ?? (baseAdventureSettings.playerGold ?? 0) : undefined,
             playerInitialAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
             totalDistributableAttributePoints: (newSettingsFromForm.enableRpgMode ?? false) ? (newSettingsFromForm.totalDistributableAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER) : undefined,
             playerStrength: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
@@ -3070,11 +3070,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [adventureSettings, toast]);
 
     const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
-        setAdventureSettings(prev => {
+        const updateState = (prev: AdventureSettings) => {
             const familiars = prev.familiars || [];
             let updatedFamiliars;
 
-            // If we are activating this one, deactivate others
             if (updatedFamiliar.isActive) {
                 updatedFamiliars = familiars.map(f => 
                     f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
@@ -3089,7 +3088,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             const newEffectiveStats = calculateEffectiveStats(newSettings);
 
             return { ...newSettings, ...newEffectiveStats };
-        });
+        };
+
+        setAdventureSettings(updateState);
+        setStagedAdventureSettings(updateState);
     }, []);
 
     const handleSaveFamiliar = React.useCallback((familiarToSave: Familiar) => {
@@ -3117,19 +3119,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }, [toast, handleFamiliarUpdate]);
 
      const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        setStagedAdventureSettings(prev => {
+        const updateState = (prev: AdventureSettings) => {
             const familiars = prev.familiars || [];
             if (familiars.some(f => f.id === familiarToAdd.id)) {
-                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                if(prev === adventureSettings) { // Only toast once
+                    toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                }
                 return prev;
             }
-            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté aux modifications en attente.` });
+            if(prev === adventureSettings) { // Only toast once
+                toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+            }
             return {
                 ...prev,
                 familiars: [...familiars, familiarToAdd]
             };
-        });
-    }, [toast]);
+        };
+
+        setAdventureSettings(updateState);
+        setStagedAdventureSettings(updateState);
+    }, [toast, adventureSettings]);
 
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
