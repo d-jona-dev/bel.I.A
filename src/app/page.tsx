@@ -1184,25 +1184,31 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   ]);
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+    
+    // Simplification : on considère que si un objet est de type 'misc' et utilisable, c'est pour invoquer un familier.
+    // L'IA est censée créer des objets `misc` pour les familiers.
+    const familiarName = item.name;
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
-    
-    const familiarName = item.name;
 
-    if (!rarityMatch || !effectMatch) {
-         setTimeout(() => {
-            toast({
-                title: "Objet de Familier Invalide",
-                description: "Les informations du familier n'ont pas pu être lues depuis l'objet. L'effet ou la rareté est manquant.",
-                variant: "destructive",
-            });
-         }, 0);
+    if (!rarityMatch) {
+        setTimeout(() => {
+           toast({
+               title: "Utilisation Narrative",
+               description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
+               variant: "default",
+           });
+        }, 0);
+        // On continue quand même avec l'action narrative
+        const narrativeAction = `J'utilise l'objet : ${item.name}.`;
+        handleNarrativeUpdate(narrativeAction, 'user');
+        callGenerateAdventure(narrativeAction);
         return;
     }
-
+    
     const bonus: FamiliarPassiveBonus = {
-        value: parseInt(effectMatch[1], 10),
-        type: effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type'],
+        value: effectMatch ? parseInt(effectMatch[1], 10) : 1, // Default value if not found
+        type: effectMatch ? (effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type']) : 'strength', // Default type
         description: item.effect || "Bonus Passif",
     };
 
@@ -2511,7 +2517,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerSkills = undefined;
         }
         
-        // This was the source of the bug. Ensure the new gold value from the form is always respected.
         if (newLiveSettings.rpgMode) {
             newLiveSettings.playerGold = stagedAdventureSettings.playerGold ?? (prevLiveSettings.playerGold ?? 0);
         } else {
@@ -3072,29 +3077,29 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [adventureSettings, toast]);
 
     const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
-        const updateState = (prev: AdventureSettings) => {
-            const familiars = prev.familiars || [];
-            let updatedFamiliars;
+        const newSettings = {...adventureSettings};
+        const familiars = newSettings.familiars || [];
+        let updatedFamiliars;
 
-            if (updatedFamiliar.isActive) {
-                updatedFamiliars = familiars.map(f => 
-                    f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
-                );
-            } else {
-                 updatedFamiliars = familiars.map(f => 
-                    f.id === updatedFamiliar.id ? updatedFamiliar : f
-                );
-            }
-            
-            const newSettings = {...prev, familiars: updatedFamiliars};
-            const newEffectiveStats = calculateEffectiveStats(newSettings);
+        if (updatedFamiliar.isActive) {
+            updatedFamiliars = familiars.map(f =>
+                f.id === updatedFamiliar.id ? updatedFamiliar : { ...f, isActive: false }
+            );
+        } else {
+            updatedFamiliars = familiars.map(f =>
+                f.id === updatedFamiliar.id ? updatedFamiliar : f
+            );
+        }
+        newSettings.familiars = updatedFamiliars;
+        
+        const newEffectiveStats = calculateEffectiveStats(newSettings);
+        
+        const finalSettings = { ...newSettings, ...newEffectiveStats };
 
-            return { ...newSettings, ...newEffectiveStats };
-        };
+        setAdventureSettings(finalSettings);
+        setStagedAdventureSettings(finalSettings);
 
-        setAdventureSettings(updateState);
-        setStagedAdventureSettings(updateState);
-    }, []);
+    }, [adventureSettings]);
 
     const handleSaveFamiliar = React.useCallback((familiarToSave: Familiar) => {
         if (typeof window !== 'undefined') {
@@ -3124,12 +3129,12 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         const updateState = (prev: AdventureSettings) => {
             const familiars = prev.familiars || [];
             if (familiars.some(f => f.id === familiarToAdd.id)) {
-                if(prev === adventureSettings) { // Only toast once
+                if(prev.world === adventureSettings.world) { // Only toast once by checking against live state
                     toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
                 }
                 return prev;
             }
-            if(prev === adventureSettings) { // Only toast once
+            if(prev.world === adventureSettings.world) {
                 toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
             }
             return {
@@ -3140,7 +3145,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
         setAdventureSettings(updateState);
         setStagedAdventureSettings(updateState);
-    }, [toast, adventureSettings]);
+    }, [toast, adventureSettings.world]);
 
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
