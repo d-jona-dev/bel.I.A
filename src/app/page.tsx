@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -720,7 +721,7 @@ export default function Home() {
 
       } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
         // For subsequent turns, trust the combatant list from the previous turn and just update it.
-        const updatedCombatants = activeCombat!.combatants.map(existingCombatant => {
+        const updatedCombatants = (activeCombat?.combatants || []).map(existingCombatant => {
             const update = combatUpdates.updatedCombatants.find(u => u.combatantId === existingCombatant.characterId);
             if (update) {
                 return { ...existingCombatant, currentHp: update.newHp, currentMp: update.newMp ?? existingCombatant.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || existingCombatant.statusEffects };
@@ -2544,7 +2545,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerSkills = undefined;
         }
         
-        newLiveSettings.playerGold = stagedAdventureSettings.playerGold;
+        newLiveSettings.playerGold = stagedAdventureSettings.playerGold ?? newLiveSettings.playerGold ?? 0;
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
