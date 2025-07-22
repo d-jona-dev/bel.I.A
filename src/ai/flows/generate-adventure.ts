@@ -62,6 +62,7 @@ const BaseCharacterSchema = z.object({
   isAlly: z.boolean().optional().default(false).describe("Is this character currently an ally of the player in combat?"),
   skills: z.record(z.string(), z.union([z.boolean(), z.string()])).optional().describe("Character's skills (e.g., {'Coup Puissant': true, 'Crochetage': 'Avancé'}). For AI decision making."),
   spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
+  locationId: z.string().optional().describe("The ID of the POI where the character is currently located. This is the source of truth for location."),
 }).passthrough();
 
 
@@ -477,7 +478,7 @@ Previous Turn Summary:
 --- END COMBAT INFO ---
 {{/if}}
 
-Known Characters (excluding player unless explicitly listed for context):
+Known Characters Present at Current Location (excluding player):
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
@@ -618,7 +619,7 @@ Tasks:
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre [].**
             *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
-        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory, you MUST check the 'initialSituation' to see if a territory attack initiated the combat. If 'contestedPoiId' was present for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
+        *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory, you MUST check if a territory attack initiated the combat. If 'contestedPoiId' was present for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut, et le 'contestedPoiId' s'il était présent) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
     *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**

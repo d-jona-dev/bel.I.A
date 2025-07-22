@@ -715,6 +715,7 @@ export function PageStructure({
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
+                                     pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
                                  />
                              </AccordionContent>
                          </AccordionItem>

@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon } from "lucide-react"; // Added ExpIcon
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin } from "lucide-react"; // Added ExpIcon and MapPin
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character } from "@/types";
+import type { Character, MapPointOfInterest } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -45,6 +45,7 @@ interface CharacterSidebarProps {
     playerId: string;
     playerName: string;
     currentLanguage: string;
+    pointsOfInterest: MapPointOfInterest[]; // Add POIs for location selection
 }
 
 // Helper Components (defined outside CharacterSidebar)
@@ -190,6 +191,7 @@ export function CharacterSidebar({
     playerId,
     playerName,
     currentLanguage,
+    pointsOfInterest,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
@@ -536,6 +538,8 @@ export function CharacterSidebar({
                     const tooltipContent = isAllySwitchDisabled
                         ? `L'affinité doit être d'au moins ${AFFINITY_THRESHOLD} pour recruter ce dirigeant. (Actuelle: ${char.affinity ?? 50})`
                         : null;
+                        
+                    const charLocation = pointsOfInterest.find(poi => poi.id === char.locationId);
 
                     return (
                     <AccordionItem value={char.id} key={char.id}>
@@ -623,6 +627,22 @@ export function CharacterSidebar({
                            </div>
 
                             <Separator />
+                            
+                             <div className="space-y-1">
+                                <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
+                                <Select value={char.locationId ?? ""} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
+                                    <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
+                                        <SelectValue placeholder="Sélectionner un lieu..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">Aucun lieu (En voyage)</SelectItem>
+                                        {pointsOfInterest.map(poi => (
+                                            <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
 
                             {rpgMode && (
                                 <TooltipProvider>

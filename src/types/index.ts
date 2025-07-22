@@ -131,6 +131,7 @@ export interface Character {
   currentExp?: number; // For NPC progression
   expToNextLevel?: number; // For NPC progression
   factionColor?: string; // e.g. '#FF0000' for a faction's color
+  locationId?: string | null; // ID of the MapPointOfInterest where the character is currently located.
   _lastSaved?: number; // Timestamp of last global save
 }
 
