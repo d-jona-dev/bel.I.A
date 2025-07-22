@@ -132,7 +132,7 @@ const PointOfInterestSchemaForAI = z.object({
 const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
-  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include isAlly status.'),
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters who are PRESENT at the player\'s location, with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include isAlly status.'),
   userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
   playerName: z.string().describe('The name of the player character.'),
@@ -343,7 +343,8 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             inventory: input.rpgModeActive ? (char.inventory || {}) : undefined,
             isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
             skills: char.skills, // Pass skills
-            spells: char.spells, // Pass spells
+            spells: char.spells, // Pass spells,
+            locationId: char.locationId,
         };
     });
 
@@ -478,7 +479,7 @@ Previous Turn Summary:
 --- END COMBAT INFO ---
 {{/if}}
 
-Known Characters Present at Current Location (excluding player):
+**Characters Present at Current Location ({{playerLocation.name}}):**
 {{#each characters}}
 - Name: {{this.name}}
   Description: {{this.details}}
@@ -508,6 +509,8 @@ Known Characters Present at Current Location (excluding player):
   {{/if}}
   History (summary): {{{this.historySummary}}}
   **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Biographie/Notes, Affinity towards {{../playerName}}, their Relationship Statuses with others, and their recent History. Their style of speech (vocabulary, tone, formality) must also align. They should react logically to the User Action and the Current Situation.**
+{{else}}
+**No other characters are currently present.**
 {{/each}}
 
 {{#if playerLocation}}
