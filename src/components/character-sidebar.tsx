@@ -278,6 +278,9 @@ export function CharacterSidebar({
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
+            if (field === 'locationId' && value === '__traveling__') {
+                value = null; // Convert special value to null
+            }
             const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints', 'currentExp', 'expToNextLevel'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
@@ -630,12 +633,12 @@ export function CharacterSidebar({
                             
                              <div className="space-y-1">
                                 <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
-                                <Select value={char.locationId ?? ""} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
+                                <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
                                     <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
                                         <SelectValue placeholder="Sélectionner un lieu..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Aucun lieu (En voyage)</SelectItem>
+                                        <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
                                         {pointsOfInterest.map(poi => (
                                             <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
                                         ))}
