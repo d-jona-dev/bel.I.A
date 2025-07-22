@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -1036,6 +1037,20 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         ? settingsForThisTurn.mapPointsOfInterest?.find(poi => poi.id === settingsForThisTurn.playerLocationId)
         : undefined;
 
+    // Dynamically determine owner name for the prompt
+    let ownerNameForPrompt = "Inconnu";
+    if (currentPlayerLocation?.ownerId) {
+        if (currentPlayerLocation.ownerId === PLAYER_ID) {
+            ownerNameForPrompt = settingsForThisTurn.playerName || "Player";
+        } else {
+            const ownerChar = currentGlobalCharacters.find(c => c.id === currentPlayerLocation!.ownerId);
+            if (ownerChar) {
+                ownerNameForPrompt = ownerChar.name;
+            }
+        }
+    }
+
+
     const effectiveStatsThisTurn = calculateEffectiveStats(settingsForThisTurn);
     let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
@@ -1103,7 +1118,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         equippedJewelryName: settingsForThisTurn.equippedItemIds?.jewelry ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.jewelry)?.name : undefined,
         playerLocationId: settingsForThisTurn.playerLocationId,
         mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
-        playerLocation: currentPlayerLocation,
+        playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
     };
 
     try {
@@ -1923,22 +1938,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
         if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
-            toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+            setTimeout(() => {
+                 toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+            }, 0);
             return;
         }
-    
+
         const updater = (prev: AdventureSettings): AdventureSettings => ({
             ...prev,
             familiars: [...(prev.familiars || []), familiarToAdd]
         });
-    
+
         setAdventureSettings(updater);
         setStagedAdventureSettings(updater);
-    
-        toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+
+        setTimeout(() => {
+            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+        }, 0);
     }, [toast, adventureSettings.familiars]);
 
-    
+
   const handleAddStagedCharacter = (globalCharToAdd: Character) => {
     const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
 
