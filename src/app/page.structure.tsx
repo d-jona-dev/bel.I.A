@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint } from 'lucide-react'; // Added PawPrint
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin } from 'lucide-react'; // Added MapPin & PawPrint
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar } from "@/types"; // Added Familiar
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
@@ -209,6 +209,11 @@ export function PageStructure({
     if (item.goldValue === 1) price = 1;
     return price;
   };
+
+  const playerLocation = adventureSettings.mapPointsOfInterest?.find(
+    poi => poi.id === adventureSettings.playerLocationId
+  );
+  const playerLocationName = playerLocation ? playerLocation.name : "En voyage";
 
 
   return (
@@ -465,6 +470,14 @@ export function PageStructure({
                                                     <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
                                                 </div>
                                             )}
+
+                                            <div className="mt-2 pt-2 border-t">
+                                                <Label className="text-sm font-medium flex items-center">
+                                                    <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
+                                                    Lieu Actuel
+                                                </Label>
+                                                <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
+                                            </div>
                                             
                                             <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
                                                 <AccordionItem value="player-equipment-accordion">
