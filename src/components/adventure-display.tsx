@@ -581,6 +581,7 @@ export function AdventureDisplay({
                             characters={characters}
                             playerName={adventureSettings.playerName || "Joueur"}
                             onCreatePoi={onCreatePoi}
+                            playerLocationId={adventureSettings.playerLocationId}
                         />
                     </TabsContent>
                   </Tabs>

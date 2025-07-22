@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,18 +17,19 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Separator } from "./ui/separator";
 
 interface MapDisplayProps {
     playerId: string;
     pointsOfInterest: MapPointOfInterest[];
-    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade') => void;
+    onMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
     mapImageUrl: string | null | undefined;
@@ -38,6 +39,7 @@ interface MapDisplayProps {
     characters: Character[];
     playerName: string;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => void;
+    playerLocationId?: string; // Add playerLocationId
 }
 
 const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
@@ -99,7 +101,7 @@ const poiLevelNameMap: Record<string, Record<number, string>> = {
 };
 
 
-export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi }: MapDisplayProps) {
+export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId }: MapDisplayProps) {
     const { toast } = useToast();
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
@@ -109,6 +111,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
     const [newPoiType, setNewPoiType] = React.useState<MapPointOfInterest['icon']>("Village");
     const [newPoiOwnerId, setNewPoiOwnerId] = React.useState(playerId);
 
+    const playerCurrentPoi = pointsOfInterest.find(p => p.id === playerLocationId);
 
     const handleMouseDown = (e: React.MouseEvent, poiId: string) => {
         e.preventDefault();
@@ -291,6 +294,32 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                     </Tooltip>
                 </TooltipProvider>
             </div>
+
+            {/* Render Player Avatar */}
+            {playerCurrentPoi && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <div
+                                className="absolute z-30"
+                                style={{
+                                    left: `calc(${playerCurrentPoi.position.x}% + 20px)`, // Offset from POI
+                                    top: `${playerCurrentPoi.position.y}%`,
+                                    transform: 'translate(-50%, -50%)',
+                                }}
+                            >
+                                <Avatar className="h-8 w-8 border-2 border-primary ring-2 ring-primary-foreground">
+                                    <AvatarFallback><UserIcon /></AvatarFallback>
+                                </Avatar>
+                            </div>
+                        </TooltipTrigger>
+                         <TooltipContent side="bottom" align="center" className={cn("text-base z-30", useAestheticFont && "font-medieval")}>
+                            <p className="font-semibold">{playerName} (Vous)</p>
+                            <p className="text-sm text-muted-foreground">Localisation: {playerCurrentPoi.name}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
             
             {pointsOfInterest.map((poi) => {
                 const IconComponent = getIconForPoi(poi);
@@ -312,6 +341,8 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 const levelName = (poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap] && poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]])
                     ? poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]
                     : null;
+                    
+                const charactersAtPoi = characters.filter(c => c.locationId === poi.id);
 
                 return (
                     <div
@@ -343,10 +374,26 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                             </button>
                                         </DropdownMenuTrigger>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top" align="center" className={cn("text-base z-30", useAestheticFont && "font-medieval")}>
-                                        <p className="font-semibold flex items-center gap-1"><Move className="h-3 w-3"/>{poi.name}</p>
+                                    <TooltipContent side="top" align="center" className={cn("text-base z-30 max-w-xs", useAestheticFont && "font-medieval")}>
+                                        <p className="font-semibold flex items-center gap-1">{poi.name}</p>
                                         {levelName && <p className="text-sm font-medium text-foreground/90">{levelName} (Niveau {level})</p>}
                                         <p className="text-sm text-muted-foreground">{poi.description}</p>
+                                        {charactersAtPoi.length > 0 && (
+                                            <>
+                                                <Separator className="my-2" />
+                                                <h4 className="font-semibold text-sm">Personnages Présents :</h4>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                {charactersAtPoi.map(char => (
+                                                    <div key={char.id} className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-md">
+                                                        <Avatar className="h-5 w-5">
+                                                            {char.portraitUrl ? <AvatarImage src={char.portraitUrl} alt={char.name} /> : <AvatarFallback className="text-xs">{char.name.substring(0, 1)}</AvatarFallback>}
+                                                        </Avatar>
+                                                        <span className="text-xs">{char.name}</span>
+                                                    </div>
+                                                ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
