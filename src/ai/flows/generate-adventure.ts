@@ -629,7 +629,7 @@ Tasks:
     *   **Currency Management (General):**
         *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
         *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
-        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained or itemsObtained; this is managed by the game system prior to this call.
+        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
         *   **If no currency change, set currencyGained to 0.**
     *   **Regardless of combat, if relationsModeActive is true:**
         Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
@@ -779,3 +779,5 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
+
+    
