@@ -352,10 +352,22 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
         category: skill.category,
     }));
     
-    // We get the player location object from the input directly.
-    // The preparation of this object (including ownerName) is now done in page.tsx before calling this flow.
-    const currentPlayerLocation = input.playerLocation;
+    const currentPlayerLocation = input.playerLocationId
+        ? input.mapPointsOfInterest?.find(poi => poi.id === input.playerLocationId)
+        : undefined;
 
+    let ownerNameForPrompt = "Inconnu";
+    if (currentPlayerLocation?.ownerId) {
+        if (currentPlayerLocation.ownerId === 'player') {
+            ownerNameForPrompt = input.playerName;
+        } else {
+            const ownerChar = input.characters.find(c => c.id === currentPlayerLocation.ownerId);
+            if (ownerChar) {
+                ownerNameForPrompt = ownerChar.name;
+            }
+        }
+    }
+    
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
         characters: processedCharacters,
@@ -394,7 +406,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             ownerName: poi.ownerId === 'player' ? input.playerName : input.characters.find(c => c.id === poi.ownerId)?.name,
             buildings: poi.buildings,
         })),
-        playerLocation: currentPlayerLocation,
+        playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
     };
 
   return generateAdventureFlow(flowInput);
