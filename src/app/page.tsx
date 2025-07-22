@@ -272,7 +272,8 @@ export default function Home() {
         strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
         hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
         spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true},
-        factionColor: '#8A2BE2' // BlueViolet
+        factionColor: '#8A2BE2', // BlueViolet
+        locationId: 'poi-bourgenval',
       },
       {
         id: 'elara-1',
@@ -294,7 +295,8 @@ export default function Home() {
         attackBonus: 2,
         damageBonus: "1d6",
         spells: ["Projectile Magique", "Armure de Mage"], skills: {"Arcanes": true},
-        factionColor: '#00FFFF' // Cyan
+        factionColor: '#00FFFF', // Cyan
+        locationId: 'poi-bourgenval',
       },
       {
         id: 'duc-asdrubael',
@@ -311,7 +313,8 @@ export default function Home() {
         strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
         hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
         inventory: {"Sceptre Orné": 1, "Carte de la région": 1},
-        factionColor: '#0000FF' // Blue
+        factionColor: '#0000FF', // Blue
+        locationId: 'poi-foret',
       },
       {
         id: 'frak-1',
@@ -328,7 +331,8 @@ export default function Home() {
         strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
         hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
         inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12},
-        factionColor: '#FF0000' // Red
+        factionColor: '#FF0000', // Red
+        locationId: 'poi-grotte',
       },
       {
         id: 'snirf-1',
@@ -345,7 +349,8 @@ export default function Home() {
         strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
         hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
         inventory: {"Dague Courte": 1, "Cailloux pointus": 5},
-        factionColor: '#DC143C' // Crimson
+        factionColor: '#DC143C', // Crimson
+        locationId: 'poi-grotte',
       }
   ]);
 
@@ -796,6 +801,7 @@ export default function Home() {
                 initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined,
                 currentExp: currentSettings.rpgMode ? 0 : undefined,
                 expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
+                locationId: currentSettings.playerLocationId, // Assume new char appears at player's location
                 ...(currentSettings.rpgMode ? {
                     level: npcLevel,
                     characterClass: nc.characterClass || "PNJ",
@@ -1026,12 +1032,24 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     });
 
     const settingsForThisTurn = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
-    const currentGlobalCharacters = characters;
+    let currentGlobalCharacters = characters;
 
-    // Override location if a map action specified it
+    // Handle location change from map action
     if (locationIdOverride) {
         settingsForThisTurn.playerLocationId = locationIdOverride;
+        // Update allies' location as well
+        currentGlobalCharacters = currentGlobalCharacters.map(char => {
+            if (char.isAlly) {
+                return { ...char, locationId: locationIdOverride };
+            }
+            return char;
+        });
     }
+
+    // Filter characters to only those present at the player's location
+    const presentCharacters = currentGlobalCharacters.filter(
+        char => char.locationId === settingsForThisTurn.playerLocationId
+    );
     
     // Get the current location details to pass to the AI
     const currentPlayerLocation = settingsForThisTurn.playerLocationId
@@ -1088,7 +1106,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     const input: GenerateAdventureInput = {
         world: settingsForThisTurn.world,
         initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${settingsForThisTurn.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
-        characters: currentGlobalCharacters, 
+        characters: presentCharacters, 
         userAction: userActionText,
         currentLanguage: currentLanguage,
         playerName: settingsForThisTurn.playerName || "Player",
@@ -1135,6 +1153,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         React.startTransition(() => {
             if (locationIdOverride) {
                 setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
+                setCharacters(currentGlobalCharacters); // Persist the location change for allies
+                setStagedCharacters(currentGlobalCharacters); // Also update staged characters
             }
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
@@ -1741,7 +1761,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
              const input: GenerateAdventureInput = {
                  world: currentTurnSettings.world,
                  initialSituation: contextMessages.map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'),
-                 characters: currentGlobalCharactersRegen, 
+                 characters: currentGlobalCharactersRegen.filter(c => c.locationId === currentTurnSettings.playerLocationId), 
                  userAction: lastUserAction,
                  currentLanguage: currentLanguage,
                  playerName: currentTurnSettings.playerName || "Player",
@@ -1981,6 +2001,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         initialAttributePoints: newCharInitialPoints,
         currentExp: newCharCurrentExp,
         expToNextLevel: newCharExpToNext,
+        locationId: stagedAdventureSettings.playerLocationId, // Add character at player's location
         ...(newCharRPGMode ? {
             level: newCharLevel,
             characterClass: globalCharToAdd.characterClass ?? '',
@@ -2228,6 +2249,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         initialAttributePoints: rpgModeActive ? (c.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
                         currentExp: rpgModeActive ? (c.currentExp ?? 0) : undefined,
                         expToNextLevel: rpgModeActive ? (c.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, ((charLevel ?? 1) || 1) -1))) : undefined,
+                        locationId: c.locationId,
                         ...(rpgModeActive ? {
                             level: charLevel, characterClass: c.characterClass ?? '', inventory: typeof c.inventory === 'object' && c.inventory !== null ? c.inventory : {},
                             hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10,
@@ -2464,6 +2486,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
           return {
             id: newId, name: formDef.name, details: formDef.details, history: [`Créé via formulaire le ${new Date().toLocaleString()}`], portraitUrl: null,
             isAlly: false,
+            locationId: stagedAdventureSettings.playerLocationId,
              ...(newRPGMode ? defaultCharRPGStats : {level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined, armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined, strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined, initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined}),
             ...(newRelationsMode ? { affinity: 50, relations: { [PLAYER_ID]: defaultRelation }, } : {affinity: undefined, relations: undefined})
           };
