@@ -122,6 +122,7 @@ const PointOfInterestSchemaForAI = z.object({
     description: z.string(),
     level: z.number().optional().default(1),
     ownerId: z.string().optional().describe("The ID of the character who owns this POI, or 'player'."),
+    ownerName: z.string().optional().describe("The name of the current owner of this POI."),
     buildings: z.array(z.string()).optional().describe("A list of building IDs that exist at this location, e.g., ['forgeron', 'auberge']."),
 });
 
@@ -353,6 +354,16 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
     const currentPlayerLocation = input.playerLocationId && input.mapPointsOfInterest
         ? input.mapPointsOfInterest.find(poi => poi.id === input.playerLocationId)
         : undefined;
+    
+    let ownerNameForPrompt = "Inconnu";
+    if (currentPlayerLocation?.ownerId) {
+        if (currentPlayerLocation.ownerId === 'player') {
+            ownerNameForPrompt = input.playerName;
+        } else {
+            ownerNameForPrompt = input.characters.find(c => c.id === currentPlayerLocation!.ownerId)?.name || 'Inconnu';
+        }
+    }
+
 
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
@@ -389,6 +400,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             description: poi.description,
             level: poi.level,
             ownerId: poi.ownerId,
+            ownerName: poi.ownerId === 'player' ? input.playerName : input.characters.find(c => c.id === poi.ownerId)?.name,
             buildings: poi.buildings,
         })),
         playerLocation: currentPlayerLocation ? {
@@ -397,6 +409,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             description: currentPlayerLocation.description,
             level: currentPlayerLocation.level,
             ownerId: currentPlayerLocation.ownerId,
+            ownerName: ownerNameForPrompt,
             buildings: currentPlayerLocation.buildings,
         } : undefined,
     };
@@ -456,9 +469,9 @@ Combatants (Player team listed first, then Enemies):
   {{/if}}
 {{/each}}
 {{#each activeCombat.combatants}}
-  {{#unless this.isPlayerTeam}}
+  {{#if this.isEnemyTeam}}
 - Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
-  {{/unless}}
+  {{/if}}
 {{/each}}
 {{#if activeCombat.turnLog}}
 Previous Turn Summary:
@@ -504,6 +517,7 @@ Known Characters (excluding player unless explicitly listed for context):
 {{#if playerLocation}}
 --- CURRENT LOCATION CONTEXT ---
 Location Name: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
+Current Owner: **{{playerLocation.ownerName}}**
 Location Level: {{playerLocation.level}}
 Description: {{playerLocation.description}}
 {{#if playerLocation.buildings.length}}
@@ -511,7 +525,7 @@ Available Services: {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}
 {{else}}
 There are no special buildings or services in this location.
 {{/if}}
-**Your narrative, including NPC dialogue, MUST reflect the status of this location. For example, if the location level is high (e.g., 6, a 'Métropole'), NPCs should not refer to it as a 'petit patelin' (small village). Their dialogue should reflect the grandeur and activity of a bustling city.**
+**Your narrative, including NPC dialogue, MUST reflect the status and ownership of this location. For example, if the location level is high (e.g., 6, a 'Métropole'), NPCs MUST NOT refer to it as a 'petit patelin' (small village). For example, a blacksmith in "Bourgenval" (a Level 6 metropolis owned by {{../playerName}}) might say, 'Bienvenue dans ma forge, puissant(e) {{../playerName}} ! En tant que dirigeant(e) de cette grande métropole de Bourgenval, vous ne trouverez que les meilleures lames ici !' instead of 'Bourgenval n'est qu'un village, pas une capitale regorgeant de trésors oubliés'. They must acknowledge the owner.**
 ---
 {{else}}
 --- CURRENT LOCATION CONTEXT ---
@@ -529,7 +543,7 @@ If the 'User Action' implies interaction with a specific service or building typ
     *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
         *   **Nocturnal Hunt Post (poste-chasse-nocturne):** If the user action is specifically to visit this post, you MUST initiate a combat. Create a unique, rare, and ethereal creature for the player to fight. Examples: 'Loup sombre aux lueurs spectrales', 'Hibou grand duc noir aux yeux étoilés', 'Lapin de la nuit avec une fourrure d'obsidienne'. Describe the creature appearing mysteriously. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a new familiar in the 'newFamiliars' field, corresponding to the defeated creature. The rarity MUST be determined by a random roll: common (10% chance), uncommon (15%), rare (20%), epic (25%), legendary (30%).
-        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers a descent into ancient ruins and a combat. DO NOT narrate a simple meeting with archaeologists. Instead, narrate the player descending into the ruins and awakening a powerful, ancient creature (e.g., 'Gardien de Golem Ancien', 'Spectre des Profondeurs', 'Bête de pierre fossilisée'). This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a random reward based on the following weighted probabilities. IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be random based on these percentages. You MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
+        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers a descent into ancient ruins and a combat. DO NOT narrate a simple meeting with archaeologists. Instead, narrate the player descending into the ruins and awakening a powerful, ancient creature (e.g., 'Gardien de Golem Ancien', 'Spectre des Profondeurs', 'Bête de pierre fossilisée'). This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, YOU MUST generate a random reward based on the following weighted probabilities. IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be random based on these percentages. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
             *   Legendary Equipment (10% chance): Generate ONE legendary item (weapon or armor). Example: 'Lame des Abysses', 'Armure des Titans'. Populate 'itemsObtained'.
             *   Epic Equipment (15% chance): Generate ONE epic item. Example: 'Hache runique', 'Plastron en ébonite'. Populate 'itemsObtained'.
             *   Gold (20% chance): Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
@@ -681,6 +695,7 @@ const generateAdventureFlow = ai.defineFlow<
       const mutableCombatants = input.activeCombat.combatants.map(combatant => {
         const augmentedCombatant = { ...combatant } as any;
         augmentedCombatant.isPlayerTeam = combatant.team === 'player';
+        augmentedCombatant.isEnemyTeam = combatant.team === 'enemy';
         return augmentedCombatant;
       });
       input.activeCombat = {
@@ -766,5 +781,3 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
-
-    
