@@ -120,6 +120,9 @@ const simpleChatFlow = ai.defineFlow<
     } catch (e: any) {
         console.error("Error in simpleChat flow:", e);
         const errorMessage = e.message || String(e);
+        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+             throw new Error("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
+        }
         if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
              throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
         }

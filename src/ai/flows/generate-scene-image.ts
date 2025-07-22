@@ -66,7 +66,10 @@ const generateSceneImageFlow = ai.defineFlow<
     } catch (e: any) {
       console.error("Error during ai.generate call for image:", e);
       const errorMessage = e.message || String(e);
-      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
+       if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+            return getDefaultOutput("Le quota de l'API d'images a été dépassé. Veuillez réessayer plus tard.");
+        }
+      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
           return getDefaultOutput("Le modèle d'IA pour la génération d'images est actuellement surchargé. Veuillez réessayer.");
       }
       return getDefaultOutput(`Échec de la génération d'image par l'IA: ${errorMessage}`);
@@ -88,4 +91,3 @@ const generateSceneImageFlow = ai.defineFlow<
     return {imageUrl: media.url, error: undefined }; // Add error: undefined for successful case
   }
 );
-

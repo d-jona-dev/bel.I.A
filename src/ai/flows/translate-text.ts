@@ -56,6 +56,9 @@ async input => {
     } catch (e: any) {
         console.error("Error in translateText flow:", e);
         const errorMessage = e.message || String(e);
+        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+             throw new Error("Le quota de l'API de traduction a été dépassé. Veuillez réessayer plus tard.");
+        }
         if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
              throw new Error("Le modèle d'IA de traduction est actuellement surchargé. Veuillez réessayer.");
         }

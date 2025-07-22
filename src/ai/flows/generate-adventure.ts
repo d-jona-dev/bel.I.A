@@ -699,7 +699,10 @@ const generateAdventureFlow = ai.defineFlow<
     } catch (e: any) {
         console.error("Error during AI prompt call in generateAdventureFlow:", e);
         const errorMessage = e.message || String(e);
-        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("the model is overloaded")) {
+        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+            return getDefaultOutput("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
+        }
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
             return getDefaultOutput("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
         }
         return getDefaultOutput(`Une erreur est survenue lors de la génération de l'aventure par l'IA: ${errorMessage}`);
@@ -764,5 +767,3 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
-
-    
