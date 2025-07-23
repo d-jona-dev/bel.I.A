@@ -25,6 +25,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Separator } from "./ui/separator";
+import { BUILDING_DEFINITIONS, BUILDING_SLOTS, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
+import { ScrollArea } from "./ui/scroll-area";
+import { Checkbox } from "./ui/checkbox";
 
 interface MapDisplayProps {
     playerId: string;
@@ -38,8 +41,8 @@ interface MapDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
     characters: Character[];
     playerName: string;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => void;
-    playerLocationId?: string; // Add playerLocationId
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
+    playerLocationId?: string;
 }
 
 const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
@@ -79,37 +82,20 @@ const getIconForPoi = (poi: MapPointOfInterest) => {
     return iconMap[poi.icon] || Landmark;
 };
 
-const poiLevelNameMap: Record<string, Record<number, string>> = {
-    Village: {
-        1: 'Village',
-        2: 'Bourg',
-        3: 'Petite Ville',
-        4: 'Ville Moyenne',
-        5: 'Grande Ville',
-        6: 'Métropole',
-    },
-    Trees: {
-        1: 'Petite Forêt',
-        2: 'Forêt Moyenne',
-        3: 'Grande Forêt',
-    },
-    Shield: {
-        1: 'Petite Mine',
-        2: 'Mine Moyenne',
-        3: 'Grande Mine',
-    }
-};
-
 
 export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId }: MapDisplayProps) {
     const { toast } = useToast();
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+    
+    // Form state for new POI
     const [newPoiName, setNewPoiName] = React.useState("");
     const [newPoiDescription, setNewPoiDescription] = React.useState("");
     const [newPoiType, setNewPoiType] = React.useState<MapPointOfInterest['icon']>("Village");
     const [newPoiOwnerId, setNewPoiOwnerId] = React.useState(playerId);
+    const [newPoiLevel, setNewPoiLevel] = React.useState(1);
+    const [newPoiBuildings, setNewPoiBuildings] = React.useState<string[]>([]);
 
     const playerCurrentPoi = pointsOfInterest.find(p => p.id === playerLocationId);
 
@@ -135,6 +121,15 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
         setDraggingPoi(null);
     };
 
+    const resetCreateForm = () => {
+        setNewPoiName("");
+        setNewPoiDescription("");
+        setNewPoiType("Village");
+        setNewPoiOwnerId(playerId);
+        setNewPoiLevel(1);
+        setNewPoiBuildings([]);
+    }
+
     const handleCreateClick = () => {
         if (!newPoiName.trim()) {
             toast({ title: "Erreur", description: "Le nom du point d'intérêt est requis.", variant: "destructive" });
@@ -145,14 +140,45 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             description: newPoiDescription,
             type: newPoiType,
             ownerId: newPoiOwnerId,
+            level: newPoiLevel,
+            buildings: newPoiBuildings,
         });
         setIsCreateDialogOpen(false);
-        // Reset form
-        setNewPoiName("");
-        setNewPoiDescription("");
-        setNewPoiType("Village");
-        setNewPoiOwnerId(playerId);
+        resetCreateForm();
     };
+    
+    const availableLevelsForType = Object.keys(poiLevelConfig[newPoiType] || {}).map(Number);
+    const buildingSlotsForLevel = BUILDING_SLOTS[newPoiType]?.[newPoiLevel] ?? 0;
+    const availableBuildingsForType = BUILDING_DEFINITIONS.filter(def => def.applicablePoiTypes.includes(newPoiType));
+
+    const handleBuildingSelection = (buildingId: string, checked: boolean) => {
+        setNewPoiBuildings(prev => {
+            const newSelection = checked ? [...prev, buildingId] : prev.filter(id => id !== buildingId);
+            if (newSelection.length > buildingSlotsForLevel) {
+                toast({
+                    title: "Limite de bâtiments atteinte",
+                    description: `Vous ne pouvez sélectionner que ${buildingSlotsForLevel} bâtiment(s) pour ce niveau.`,
+                    variant: "destructive"
+                });
+                return prev;
+            }
+            return newSelection;
+        });
+    };
+    
+    React.useEffect(() => {
+        // Reset level and buildings if type changes
+        setNewPoiLevel(1);
+        setNewPoiBuildings([]);
+    }, [newPoiType]);
+    
+    React.useEffect(() => {
+        // Prune selected buildings if they exceed the new slot limit
+        if (newPoiBuildings.length > buildingSlotsForLevel) {
+            setNewPoiBuildings(prev => prev.slice(0, buildingSlotsForLevel));
+        }
+    }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings.length]);
+
 
     return (
         <div 
@@ -224,19 +250,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                 <Textarea id="poi-description" value={newPoiDescription} onChange={e => setNewPoiDescription(e.target.value)} className="col-span-3" />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="poi-type" className="text-right">Type</Label>
-                                <Select value={newPoiType} onValueChange={(value) => setNewPoiType(value as MapPointOfInterest['icon'])}>
-                                    <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Choisir un type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Village">Ville (Produit de l'or)</SelectItem>
-                                        <SelectItem value="Trees">Forêt (Produit bois/viande)</SelectItem>
-                                        <SelectItem value="Shield">Mine (Produit du minerai)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="poi-owner" className="text-right">Propriétaire</Label>
                                 <Select value={newPoiOwnerId} onValueChange={setNewPoiOwnerId}>
                                     <SelectTrigger className="col-span-3">
@@ -250,8 +263,60 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     </SelectContent>
                                 </Select>
                             </div>
+                             <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-type" className="text-right">Type</Label>
+                                <Select value={newPoiType} onValueChange={(value) => setNewPoiType(value as MapPointOfInterest['icon'])}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Choisir un type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Village">Ville (Produit de l'or)</SelectItem>
+                                        <SelectItem value="Trees">Forêt (Produit bois/viande)</SelectItem>
+                                        <SelectItem value="Shield">Mine (Produit du minerai)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="poi-level" className="text-right">Niveau</Label>
+                                <Select value={String(newPoiLevel)} onValueChange={(value) => setNewPoiLevel(Number(value))}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Choisir un niveau" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableLevelsForType.map(level => (
+                                            <SelectItem key={level} value={String(level)}>
+                                                Niveau {level} - {poiLevelNameMap[newPoiType]?.[level] || `Type ${level}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             {buildingSlotsForLevel > 0 && (
+                                <div className="grid grid-cols-4 items-start gap-4">
+                                    <Label className="text-right pt-2">Bâtiments</Label>
+                                    <div className="col-span-3 space-y-2">
+                                        <p className="text-sm text-muted-foreground">
+                                            Emplacements disponibles: {buildingSlotsForLevel - newPoiBuildings.length}/{buildingSlotsForLevel}
+                                        </p>
+                                        <ScrollArea className="h-32 w-full rounded-md border p-2">
+                                            {availableBuildingsForType.map(building => (
+                                                <div key={building.id} className="flex items-center space-x-2 mb-1">
+                                                     <Checkbox
+                                                        id={`building-${building.id}`}
+                                                        checked={newPoiBuildings.includes(building.id)}
+                                                        onCheckedChange={(checked) => handleBuildingSelection(building.id, !!checked)}
+                                                    />
+                                                    <Label htmlFor={`building-${building.id}`} className="text-sm font-normal">{building.name}</Label>
+                                                </div>
+                                            ))}
+                                        </ScrollArea>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                         <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetCreateForm(); }}>Annuler</Button>
                             <Button type="button" onClick={handleCreateClick}>Créer</Button>
                         </DialogFooter>
                     </DialogContent>

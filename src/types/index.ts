@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -80,7 +81,7 @@ export interface GeneratedResource {
 export interface MapPointOfInterest {
   id: string;
   name: string;
-  level?: number;
+  level: number; // Level is now mandatory
   description: string;
   icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Shield' | 'Landmark';
   position: { x: number; y: number }; // Pourcentage

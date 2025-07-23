@@ -3048,31 +3048,30 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string }) => {
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
     let resources: GeneratedResource[] = [];
     let description = data.description;
     
     const poiTypeConfig = poiLevelConfig[data.type as keyof typeof poiLevelConfig];
     if (poiTypeConfig) {
-        resources = poiTypeConfig[1].resources;
+        resources = poiTypeConfig[data.level as keyof typeof poiTypeConfig]?.resources || [];
         if (!description) {
-            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][1].name.toLowerCase()} plein(e) de potentiel.`
+            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][data.level]?.name.toLowerCase()} plein(e) de potentiel.`
         }
     }
-
 
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: data.name,
         description: description,
         icon: data.type,
-        level: 1,
+        level: data.level,
         position: { x: 50, y: 50 },
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
-        buildings: [],
+        buildings: data.buildings,
     };
 
     setAdventureSettings(prev => ({

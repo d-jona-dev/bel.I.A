@@ -75,7 +75,7 @@ interface AdventureDisplayProps {
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
 }
 
 
