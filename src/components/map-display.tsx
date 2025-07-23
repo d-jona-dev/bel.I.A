@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -43,6 +43,7 @@ interface MapDisplayProps {
     playerName: string;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
     playerLocationId?: string;
+    onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
@@ -83,10 +84,11 @@ const getIconForPoi = (poi: MapPointOfInterest) => {
 };
 
 
-export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId }: MapDisplayProps) {
+export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId, onMapImageUpload }: MapDisplayProps) {
     const { toast } = useToast();
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
     
     // Form state for new POI
@@ -321,6 +323,31 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={onMapImageUpload}
+                    className="hidden"
+                />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-background/70 backdrop-blur-sm"
+                                aria-label="Charger une image de carte"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <UploadCloud className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="center">
+                           Charger une image de carte
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
                  <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>

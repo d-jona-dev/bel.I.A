@@ -3178,6 +3178,33 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             }
         }
     }, [toast, handleFamiliarUpdate]);
+
+  const handleMapImageUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        toast({
+            title: "Fichier Invalide",
+            description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setAdventureSettings(prev => ({ ...prev, mapImageUrl: imageUrl }));
+        toast({
+            title: "Image de Carte Chargée",
+            description: "Le fond de la carte a été mis à jour avec votre image.",
+        });
+    };
+    reader.readAsDataURL(file);
+    if(event.target) event.target.value = '';
+  }, [toast]);
+    
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3266,6 +3293,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         handleFamiliarUpdate={handleFamiliarUpdate}
         handleSaveFamiliar={handleSaveFamiliar}
         handleAddStagedFamiliar={handleAddStagedFamiliar}
+        onMapImageUpload={handleMapImageUpload}
       />
       </>
   );

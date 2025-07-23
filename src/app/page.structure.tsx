@@ -111,9 +111,10 @@ interface PageStructureProps {
   onBuildInPoi: (poiId: string, buildingId: string) => void;
   currentTurn: number;
   handleNewFamiliar: (newFamiliar: NewFamiliarSchema) => void;
-  handleFamiliarUpdate: (updatedFamiliar: Familiar) => void;
+  handleFamiliarUpdate: (familiar: Familiar) => void;
   handleSaveFamiliar: (familiar: Familiar) => void;
   handleAddStagedFamiliar: (familiar: Familiar) => void;
+  onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export function PageStructure({
@@ -181,6 +182,7 @@ export function PageStructure({
   handleFamiliarUpdate,
   handleSaveFamiliar,
   handleAddStagedFamiliar,
+  onMapImageUpload,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -387,6 +389,7 @@ export function PageStructure({
                 isGeneratingMap={isGeneratingMap}
                 onPoiPositionChange={onPoiPositionChange}
                 onCreatePoi={onCreatePoi}
+                onMapImageUpload={onMapImageUpload}
              />
         </main>
       </SidebarInset>

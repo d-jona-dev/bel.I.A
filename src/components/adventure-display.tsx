@@ -15,11 +15,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
@@ -76,6 +76,7 @@ interface AdventureDisplayProps {
     isGeneratingMap: boolean;
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
+    onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 
@@ -107,6 +108,7 @@ export function AdventureDisplay({
     isGeneratingMap,
     onPoiPositionChange,
     onCreatePoi,
+    onMapImageUpload,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -582,6 +584,7 @@ export function AdventureDisplay({
                             playerName={adventureSettings.playerName || "Joueur"}
                             onCreatePoi={onCreatePoi}
                             playerLocationId={adventureSettings.playerLocationId}
+                            onMapImageUpload={onMapImageUpload}
                         />
                     </TabsContent>
                   </Tabs>
@@ -947,3 +950,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    
