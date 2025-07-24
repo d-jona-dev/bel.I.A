@@ -42,6 +42,7 @@ interface CharacterSidebarProps {
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
     relationsMode: boolean;
+    strategyMode: boolean;
     playerId: string;
     playerName: string;
     currentLanguage: string;
@@ -188,6 +189,7 @@ export function CharacterSidebar({
     generateImageAction,
     rpgMode,
     relationsMode,
+    strategyMode,
     playerId,
     playerName,
     currentLanguage,
@@ -542,8 +544,6 @@ export function CharacterSidebar({
                         ? `L'affinité doit être d'au moins ${AFFINITY_THRESHOLD} pour recruter ce dirigeant. (Actuelle: ${char.affinity ?? 50})`
                         : null;
                         
-                    const charLocation = pointsOfInterest.find(poi => poi.id === char.locationId);
-
                     return (
                     <AccordionItem value={char.id} key={char.id}>
                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
@@ -631,6 +631,7 @@ export function CharacterSidebar({
 
                             <Separator />
                             
+                             {strategyMode && (
                              <div className="space-y-1">
                                 <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
                                 <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
@@ -645,6 +646,7 @@ export function CharacterSidebar({
                                     </SelectContent>
                                 </Select>
                             </div>
+                            )}
 
 
                             {rpgMode && (
@@ -728,7 +730,7 @@ export function CharacterSidebar({
                                             <>
                                                 <Separator className="my-2"/>
                                                 <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
-                                                <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg} />
+                                                <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
                                                 <div className="text-xs text-muted-foreground">Total distribuables (Niv. {char.level || 1}): {totalDistributableNpc}</div>
                                                  <div className="p-1 border rounded-md bg-background text-center text-xs">
                                                     Points d'attributs restants : <span className={`font-bold ${remainingNpcPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingNpcPoints}</span>

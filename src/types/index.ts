@@ -193,6 +193,7 @@ export interface AdventureSettings {
     initialSituation: string;
     rpgMode: boolean;
     relationsMode?: boolean;
+    strategyMode?: boolean;
     playerName?: string;
     playerClass?: string;
     playerLevel?: number;

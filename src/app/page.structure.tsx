@@ -474,6 +474,7 @@ export function PageStructure({
                                                 </div>
                                             )}
 
+                                            {adventureSettings.strategyMode && (
                                             <div className="mt-2 pt-2 border-t">
                                                 <Label className="text-sm font-medium flex items-center">
                                                     <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
@@ -481,6 +482,7 @@ export function PageStructure({
                                                 </Label>
                                                 <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
                                             </div>
+                                            )}
                                             
                                             <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
                                                 <AccordionItem value="player-equipment-accordion">
@@ -688,6 +690,7 @@ export function PageStructure({
                         </Accordion>
                     )}
 
+                     {adventureSettings.strategyMode && (
                      <Accordion type="single" collapsible className="w-full" defaultValue="poi-accordion">
                          <AccordionItem value="poi-accordion">
                              <AccordionTrigger>
@@ -710,6 +713,7 @@ export function PageStructure({
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
+                     )}
 
                      <Accordion type="single" collapsible className="w-full">
                          <AccordionItem value="characters-accordion">
@@ -728,6 +732,7 @@ export function PageStructure({
                                      generateImageAction={generateSceneImageAction}
                                      rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
                                      relationsMode={stagedAdventureSettings.enableRelationsMode ?? true}
+                                     strategyMode={stagedAdventureSettings.enableStrategyMode ?? true}
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}

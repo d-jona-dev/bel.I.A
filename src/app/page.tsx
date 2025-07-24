@@ -34,6 +34,7 @@ export type AdventureFormValues = {
   characters: FormCharacterDefinition[];
   enableRpgMode?: boolean;
   enableRelationsMode?: boolean;
+  enableStrategyMode?: boolean;
   playerName?: string;
   playerClass?: string;
   playerLevel?: number;
@@ -230,6 +231,7 @@ export default function Home() {
     initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
     rpgMode: true,
     relationsMode: true,
+    strategyMode: true,
     playerName: "Héros",
     playerClass: "Guerrier",
     playerLevel: 1,
@@ -2274,6 +2276,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                     ...effectiveStats,
                     relationsMode: relationsModeActive,
                     rpgMode: rpgModeActive,
+                    strategyMode: loadedData.adventureSettings.strategyMode ?? true,
                     playerCurrentHp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp) : undefined,
                     playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp) : undefined,
                     playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
@@ -2376,6 +2379,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             initialSituation: newSettingsFromForm.initialSituation,
             rpgMode: newSettingsFromForm.enableRpgMode ?? false,
             relationsMode: newSettingsFromForm.enableRelationsMode ?? true,
+            strategyMode: newSettingsFromForm.enableStrategyMode ?? true,
             playerName: newSettingsFromForm.playerName || "Player",
             playerClass: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerClass : undefined,
             playerLevel: (newSettingsFromForm.enableRpgMode ?? false) ? newSettingsFromForm.playerLevel : undefined,
@@ -2876,6 +2880,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       playerName: stagedAdventureSettings.playerName,
       enableRpgMode: stagedAdventureSettings.rpgMode,
       enableRelationsMode: stagedAdventureSettings.relationsMode ?? true,
+      enableStrategyMode: stagedAdventureSettings.strategyMode ?? true,
       characters: formCharacters,
       playerClass: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerClass : undefined,
       playerLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerLevel : undefined,

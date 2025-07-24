@@ -412,12 +412,14 @@ export function AdventureDisplay({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-       <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as "narrative" | "map")} className="mb-2">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="narrative"><ScrollText className="mr-2 h-4 w-4" />Narrative</TabsTrigger>
-          <TabsTrigger value="map"><MapIcon className="mr-2 h-4 w-4" />Carte</TabsTrigger>
-        </TabsList>
-      </Tabs>
+       {adventureSettings.strategyMode && (
+         <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as "narrative" | "map")} className="mb-2">
+           <TabsList className="grid w-full grid-cols-2">
+             <TabsTrigger value="narrative"><ScrollText className="mr-2 h-4 w-4" />Narrative</TabsTrigger>
+             <TabsTrigger value="map"><MapIcon className="mr-2 h-4 w-4" />Carte</TabsTrigger>
+           </TabsList>
+         </Tabs>
+       )}
 
       <div className="flex-1 flex gap-4 overflow-hidden">
             <Card className="flex-1 flex flex-col overflow-hidden">
@@ -819,12 +821,12 @@ export function AdventureDisplay({
                             onKeyPress={handleKeyPress}
                             rows={1}
                             className="min-h-[40px] max-h-[150px] resize-y flex-1"
-                            disabled={isLoading || currentMode === 'map'}
+                            disabled={isLoading || (adventureSettings.strategyMode && currentMode === 'map')}
                         />
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim() || currentMode === 'map'}>
+                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim() || (adventureSettings.strategyMode && currentMode === 'map')}>
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
