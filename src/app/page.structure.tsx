@@ -115,6 +115,7 @@ interface PageStructureProps {
   handleSaveFamiliar: (familiar: Familiar) => void;
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onToggleStrategyMode: () => void; // New prop
 }
 
 export function PageStructure({
@@ -183,6 +184,7 @@ export function PageStructure({
   handleSaveFamiliar,
   handleAddStagedFamiliar,
   onMapImageUpload,
+  onToggleStrategyMode,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -413,6 +415,7 @@ export function PageStructure({
                                     formPropKey={formPropKey}
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
+                                    onToggleStrategyMode={onToggleStrategyMode}
                                 />
                              </AccordionContent>
                          </AccordionItem>

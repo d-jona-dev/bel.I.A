@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -90,9 +91,10 @@ interface AdventureFormProps {
     formPropKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
+    onToggleStrategyMode: () => void; // New prop
 }
 
-export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: AdventureFormProps) {
+export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode }: AdventureFormProps) {
   const { toast } = useToast();
   
   const form = useForm<AdventureFormValues>({
@@ -108,7 +110,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        onSettingsChange(value as AdventureFormValues);
+        // Exclude strategy mode from general form updates, as it's handled separately
+        if (name !== 'enableStrategyMode') {
+            onSettingsChange(value as AdventureFormValues);
+        }
     });
     return () => subscription.unsubscribe();
   }, [form, onSettingsChange]);
@@ -253,7 +258,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        onToggleStrategyMode();
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -583,6 +591,3 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     </Form>
   );
 }
-
-    
-    

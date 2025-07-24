@@ -250,9 +250,9 @@ export default function Home() {
     playerSkills: [],
     familiars: [],
     mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, factionColor: '#FFD700', buildings: [] },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, factionColor: '#0000FF', buildings: [] },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, factionColor: '#FF0000', buildings: [] },
+        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
+        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
+        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
     ],
     mapImageUrl: null,
     playerLocationId: 'poi-bourgenval',
@@ -2619,6 +2619,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings, activeCombat]);
 
+  const handleToggleStrategyMode = React.useCallback(() => {
+    const newMode = !adventureSettings.strategyMode;
+    const newSettings = { ...adventureSettings, strategyMode: newMode };
+    setAdventureSettings(newSettings);
+    setStagedAdventureSettings(s => ({ ...s, enableStrategyMode: newMode }));
+    setTimeout(() => {
+        toast({ title: "Mode Stratégie", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
+    }, 0);
+  }, [adventureSettings, toast]);
+
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
     let locationOverride: string | undefined = undefined;
@@ -3053,15 +3063,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => {
     let resources: GeneratedResource[] = [];
+    let level = 1;
     let description = data.description;
     
     const poiTypeConfig = poiLevelConfig[data.type as keyof typeof poiLevelConfig];
     if (poiTypeConfig) {
-        resources = poiTypeConfig[data.level as keyof typeof poiTypeConfig]?.resources || [];
+        resources = poiTypeConfig[level as keyof typeof poiTypeConfig]?.resources || [];
         if (!description) {
-            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][data.level]?.name.toLowerCase()} plein(e) de potentiel.`
+            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][level]?.name.toLowerCase()} plein(e) de potentiel.`
         }
     }
 
@@ -3070,13 +3081,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         name: data.name,
         description: description,
         icon: data.type,
-        level: data.level,
+        level: level,
         position: { x: 50, y: 50 },
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
-        buildings: data.buildings,
+        buildings: [],
     };
 
     setAdventureSettings(prev => ({
@@ -3299,6 +3310,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         handleSaveFamiliar={handleSaveFamiliar}
         handleAddStagedFamiliar={handleAddStagedFamiliar}
         onMapImageUpload={handleMapImageUpload}
+        onToggleStrategyMode={handleToggleStrategyMode}
       />
       </>
   );
