@@ -117,6 +117,7 @@ interface PageStructureProps {
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onToggleStrategyMode: () => void;
   onToggleRpgMode: () => void;
+  onToggleRelationsMode: () => void;
 }
 
 export function PageStructure({
@@ -187,6 +188,7 @@ export function PageStructure({
   onMapImageUpload,
   onToggleStrategyMode,
   onToggleRpgMode,
+  onToggleRelationsMode,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -419,6 +421,7 @@ export function PageStructure({
                                     onSettingsChange={handleSettingsUpdate}
                                     onToggleStrategyMode={onToggleStrategyMode}
                                     onToggleRpgMode={onToggleRpgMode}
+                                    onToggleRelationsMode={onToggleRelationsMode}
                                 />
                              </AccordionContent>
                          </AccordionItem>
@@ -736,9 +739,9 @@ export function PageStructure({
                                      onAddStagedCharacter={handleAddStagedCharacter}
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
-                                     relationsMode={stagedAdventureSettings.enableRelationsMode ?? true}
-                                     strategyMode={stagedAdventureSettings.enableStrategyMode ?? true}
+                                     rpgMode={stagedAdventureSettings.rpgMode ?? false}
+                                     relationsMode={adventureSettings.relationsMode ?? true}
+                                     strategyMode={stagedAdventureSettings.strategyMode ?? true}
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
@@ -763,7 +766,7 @@ export function PageStructure({
                                         onSaveFamiliar={handleSaveFamiliar}
                                         onAddStagedFamiliar={handleAddStagedFamiliar}
                                         generateImageAction={generateSceneImageAction}
-                                        rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
+                                        rpgMode={stagedAdventureSettings.rpgMode ?? false}
                                     />
                                 </AccordionContent>
                             </AccordionItem>

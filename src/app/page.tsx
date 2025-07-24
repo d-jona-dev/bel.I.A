@@ -2639,6 +2639,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }, 0);
   }, [adventureSettings, toast]);
 
+  const handleToggleRelationsMode = React.useCallback(() => {
+    const newMode = !adventureSettings.relationsMode;
+    const newSettings = { ...adventureSettings, relationsMode: newMode };
+    setAdventureSettings(newSettings);
+    setStagedAdventureSettings(s => ({ ...s, enableRelationsMode: newMode }));
+    setTimeout(() => {
+        toast({ title: "Mode Relations", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
+    }, 0);
+  }, [adventureSettings, toast]);
+
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
     let locationOverride: string | undefined = undefined;
@@ -3322,6 +3332,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         onMapImageUpload={handleMapImageUpload}
         onToggleStrategyMode={handleToggleStrategyMode}
         onToggleRpgMode={handleToggleRpgMode}
+        onToggleRelationsMode={handleToggleRelationsMode}
       />
       </>
   );

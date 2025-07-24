@@ -93,9 +93,10 @@ interface AdventureFormProps {
     onSettingsChange: (values: AdventureFormValues) => void;
     onToggleStrategyMode: () => void;
     onToggleRpgMode: () => void;
+    onToggleRelationsMode: () => void;
 }
 
-export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode, onToggleRpgMode }: AdventureFormProps) {
+export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode, onToggleRpgMode, onToggleRelationsMode }: AdventureFormProps) {
   const { toast } = useToast();
   
   const form = useForm<AdventureFormValues>({
@@ -111,9 +112,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && type !== 'change') { // Prevent updates on every keystroke
+        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && name !== 'enableRelationsMode' && type !== 'change') { // Prevent updates on every keystroke
             onSettingsChange(value as AdventureFormValues);
-        } else if (name === 'enableStrategyMode' || name === 'enableRpgMode') {
+        } else if (name === 'enableStrategyMode' || name === 'enableRpgMode' || name === 'enableRelationsMode') {
             // instant updates for switches are handled by their own callbacks
         }
     });
@@ -282,7 +283,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        onToggleRelationsMode();
+                      }}
                     />
                   </FormControl>
                 </FormItem>
