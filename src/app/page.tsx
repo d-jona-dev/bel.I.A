@@ -2629,6 +2629,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }, 0);
   }, [adventureSettings, toast]);
 
+  const handleToggleRpgMode = React.useCallback(() => {
+    const newMode = !adventureSettings.rpgMode;
+    const newSettings = { ...adventureSettings, rpgMode: newMode };
+    setAdventureSettings(newSettings);
+    setStagedAdventureSettings(s => ({ ...s, enableRpgMode: newMode }));
+    setTimeout(() => {
+        toast({ title: "Mode Jeu de Rôle", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
+    }, 0);
+  }, [adventureSettings, toast]);
+
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
     let locationOverride: string | undefined = undefined;
@@ -3311,6 +3321,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         handleAddStagedFamiliar={handleAddStagedFamiliar}
         onMapImageUpload={handleMapImageUpload}
         onToggleStrategyMode={handleToggleStrategyMode}
+        onToggleRpgMode={handleToggleRpgMode}
       />
       </>
   );

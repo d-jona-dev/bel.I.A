@@ -91,10 +91,11 @@ interface AdventureFormProps {
     formPropKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
-    onToggleStrategyMode: () => void; // New prop
+    onToggleStrategyMode: () => void;
+    onToggleRpgMode: () => void;
 }
 
-export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode }: AdventureFormProps) {
+export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode, onToggleRpgMode }: AdventureFormProps) {
   const { toast } = useToast();
   
   const form = useForm<AdventureFormValues>({
@@ -110,8 +111,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        // Exclude strategy mode from general form updates, as it's handled separately
-        if (name !== 'enableStrategyMode') {
+        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode') {
             onSettingsChange(value as AdventureFormValues);
         }
     });
@@ -297,13 +297,16 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   <div className="space-y-0.5">
                     <FormLabel className="flex items-center gap-2"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
                     <FormDescription>
-                      Activer les systèmes RPG (stats, combat, EXP, etc.).
+                      Activer les systèmes RPG (stats, combat, etc.).
                     </FormDescription>
                   </div>
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        onToggleRpgMode();
+                      }}
                     />
                   </FormControl>
                 </FormItem>

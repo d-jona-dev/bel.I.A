@@ -115,7 +115,8 @@ interface PageStructureProps {
   handleSaveFamiliar: (familiar: Familiar) => void;
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onToggleStrategyMode: () => void; // New prop
+  onToggleStrategyMode: () => void;
+  onToggleRpgMode: () => void;
 }
 
 export function PageStructure({
@@ -185,6 +186,7 @@ export function PageStructure({
   handleAddStagedFamiliar,
   onMapImageUpload,
   onToggleStrategyMode,
+  onToggleRpgMode,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -416,6 +418,7 @@ export function PageStructure({
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
                                     onToggleStrategyMode={onToggleStrategyMode}
+                                    onToggleRpgMode={onToggleRpgMode}
                                 />
                              </AccordionContent>
                          </AccordionItem>
@@ -744,25 +747,29 @@ export function PageStructure({
                              </AccordionContent>
                          </AccordionItem>
                      </Accordion>
-                      <Accordion type="single" collapsible className="w-full">
-                         <AccordionItem value="familiars-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <PawPrint className="h-5 w-5" /> Familiers
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2">
-                                 <FamiliarSidebar
-                                     familiars={stagedAdventureSettings.familiars || []}
-                                     onFamiliarUpdate={handleFamiliarUpdate}
-                                     onSaveFamiliar={handleSaveFamiliar}
-                                     onAddStagedFamiliar={handleAddStagedFamiliar}
-                                     generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
-                                 />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
+                      
+                     {adventureSettings.rpgMode && (
+                        <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="familiars-accordion">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <PawPrint className="h-5 w-5" /> Familiers
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                    <FamiliarSidebar
+                                        familiars={stagedAdventureSettings.familiars || []}
+                                        onFamiliarUpdate={handleFamiliarUpdate}
+                                        onSaveFamiliar={handleSaveFamiliar}
+                                        onAddStagedFamiliar={handleAddStagedFamiliar}
+                                        generateImageAction={generateSceneImageAction}
+                                        rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                      )}
+
                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="ai-model-config-accordion">
                             <AccordionTrigger>
