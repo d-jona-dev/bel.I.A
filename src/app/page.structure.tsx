@@ -132,6 +132,7 @@ export function PageStructure({
   currentLanguage,
   fileInputRef,
   handleSettingsUpdate,
+  handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters,
   handleCharacterHistoryUpdate,
