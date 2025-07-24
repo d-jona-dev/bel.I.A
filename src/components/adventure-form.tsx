@@ -102,7 +102,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     values: initialValues,
-    mode: "onBlur", // Changed from "onChange" to "onBlur"
+    mode: "onBlur",
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -112,10 +112,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && name !== 'enableRelationsMode' && type !== 'change') { // Prevent updates on every keystroke
+        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && name !== 'enableRelationsMode' && type !== 'change') {
             onSettingsChange(value as AdventureFormValues);
         } else if (name === 'enableStrategyMode' || name === 'enableRpgMode' || name === 'enableRelationsMode') {
-            // instant updates for switches are handled by their own callbacks
         }
     });
     return () => subscription.unsubscribe();
@@ -177,7 +176,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   const [spentPoints, setSpentPoints] = React.useState(() => calculateSpentPoints());
 
-  // This effect updates the 'spentPoints' state when the form values change.
   React.useEffect(() => {
     setSpentPoints(calculateSpentPoints());
   }, [
@@ -208,7 +206,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
     }
 
     form.setValue(fieldName, newAttributeValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    // Manually trigger form update for parent component after validation
     onSettingsChange(form.getValues());
   };
 
@@ -236,7 +233,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                       {...field}
                       value={field.value || ""}
                       className="bg-background border"
-                      onBlur={field.onBlur} // Ensure blur event triggers form update
+                      onBlur={field.onBlur}
                     />
                   </FormControl>
                    <FormDescription>Le nom que le joueur portera dans l'aventure.</FormDescription>
@@ -407,6 +404,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                                         <Input
                                             type="number"
                                             {...field}
+                                            value={field.value ?? ''}
                                             onBlur={e => handleAttributeBlur(attr, e.target.value)}
                                             min={BASE_ATTRIBUTE_VALUE_FORM}
                                             className="bg-background border"
@@ -601,5 +599,3 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
     </Form>
   );
 }
-
-    
