@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -51,13 +52,13 @@ interface CharacterSidebarProps {
 
 // Helper Components (defined outside CharacterSidebar)
 
-const EditableField = ({ label, id, value, onChange, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number, disabled?: boolean }) => (
+const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number, disabled?: boolean }) => (
     <div className="space-y-1">
           <Label htmlFor={id}>{label}</Label>
           {rows ? (
-              <Textarea id={id} value={value ?? ""} onChange={onChange} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
+              <Textarea id={id} defaultValue={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
           ) : (
-              <Input id={id} type={type} value={value ?? ""} onChange={onChange} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
+              <Input id={id} type={type} defaultValue={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
           )}
       </div>
 );
@@ -74,8 +75,8 @@ const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, 
                            <Input
                                id={`${charId}-${field}-${key}`}
                                type={valueType === 'number' ? 'number' : 'text'}
-                               value={String(value)}
-                               onChange={(e) => onUpdate(charId, field, key, e.target.value)}
+                               defaultValue={String(value)}
+                               onBlur={(e) => onUpdate(charId, field, key, e.target.value)}
                                className="h-8 text-sm flex-1 bg-background border"
                                min={valueType === 'number' ? "0" : undefined}
                                disabled={disabled}
@@ -110,8 +111,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                       <Input
                           id={`${charId}-relations-${playerId}`}
                           type="text"
-                          value={data?.[playerId] || unknownRelation}
-                          onChange={(e) => onUpdate(charId, 'relations', playerId, e.target.value)}
+                          defaultValue={data?.[playerId] || unknownRelation}
+                          onBlur={(e) => onUpdate(charId, 'relations', playerId, e.target.value)}
                           className="h-8 text-sm flex-1 bg-background border"
                           placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
                           disabled={disabled}
@@ -124,8 +125,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                           <Input
                               id={`${charId}-relations-${otherChar.id}`}
                               type="text"
-                              value={data?.[otherChar.id] || unknownRelation}
-                              onChange={(e) => onUpdate(charId, 'relations', otherChar.id, e.target.value)}
+                              defaultValue={data?.[otherChar.id] || unknownRelation}
+                              onBlur={(e) => onUpdate(charId, 'relations', otherChar.id, e.target.value)}
                               className="h-8 text-sm flex-1 bg-background border"
                               placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
                               disabled={disabled}
@@ -155,8 +156,8 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                       {data.map((item, index) => (
                           <div key={index} className="flex items-center gap-2 mb-1">
                               <Textarea
-                                  value={item}
-                                  onChange={(e) => onUpdate(charId, field, index, e.target.value)}
+                                  defaultValue={item}
+                                  onBlur={(e) => onUpdate(charId, field, index, e.target.value)}
                                   className="text-sm flex-1 bg-background border"
                                   placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
                                   rows={1}
@@ -200,7 +201,6 @@ export function CharacterSidebar({
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
-  // State for managing spent attribute points for each NPC
   const [npcSpentPoints, setNpcSpentPoints] = React.useState<Record<string, number>>({});
 
   React.useEffect(() => {
@@ -440,23 +440,21 @@ export function CharacterSidebar({
         setNpcSpentPoints(newSpentPoints);
     }, [characters, calculateNpcSpentPoints, rpgMode]);
 
-    const handleNpcAttributeChange = (charId: string, fieldName: keyof Character, value: string) => {
+    const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character, value: string) => {
         const char = characters.find(c => c.id === charId);
         if (!char || !char.isAlly || !rpgMode) return;
 
         const numericValue = parseInt(value, 10);
+        let newAttributeValue = isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM 
+            ? BASE_ATTRIBUTE_VALUE_FORM 
+            : numericValue;
+
         const currentAttributeValue = Number(char[fieldName]) || BASE_ATTRIBUTE_VALUE_FORM;
-        let newAttributeValue = isNaN(numericValue) ? BASE_ATTRIBUTE_VALUE_FORM : numericValue;
-
-        if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
-            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
-        }
-
+        
         const creationPoints = char.initialAttributePoints || 0;
         const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
 
-        // Calculate points spent *before* this modification for this field
         const spentBeforeThisChange = calculateNpcSpentPoints(char) - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
         const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
         const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
@@ -466,6 +464,7 @@ export function CharacterSidebar({
             newAttributeValue -= pointsOver;
             if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
+        
         onCharacterUpdate({ ...char, [fieldName]: newAttributeValue });
     };
 
@@ -689,8 +688,8 @@ export function CharacterSidebar({
                                         </UICardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-2 text-sm">
-                                        <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
-                                        <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
+                                        <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} onBlur={e => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
+                                        <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} onBlur={e => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
                                         {char.level !== undefined && char.level >=1 && (
                                             <>
                                             <div className="flex justify-between items-center mb-0.5">
@@ -730,14 +729,14 @@ export function CharacterSidebar({
                                             <>
                                                 <Separator className="my-2"/>
                                                 <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
-                                                <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
+                                                <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} onBlur={e => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
                                                 <div className="text-xs text-muted-foreground">Total distribuables (Niv. {char.level || 1}): {totalDistributableNpc}</div>
                                                  <div className="p-1 border rounded-md bg-background text-center text-xs">
                                                     Points d'attributs restants : <span className={`font-bold ${remainingNpcPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingNpcPoints}</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {(["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const).map(attr => (
-                                                        <EditableField key={attr} label={attr.charAt(0).toUpperCase() + attr.slice(1)} id={`${char.id}-${attr}`} type="number" value={char[attr]} onChange={e => handleNpcAttributeChange(char.id, attr, e.target.value)} min={BASE_ATTRIBUTE_VALUE_FORM.toString()} disabled={!isAllyAndRpg}/>
+                                                        <EditableField key={attr} label={attr.charAt(0).toUpperCase() + attr.slice(1)} id={`${char.id}-${attr}`} type="number" value={char[attr]} onChange={() => {}} onBlur={e => handleNpcAttributeBlur(char.id, attr, e.target.value)} min={BASE_ATTRIBUTE_VALUE_FORM.toString()} disabled={!isAllyAndRpg}/>
                                                     ))}
                                                 </div>
                                             </>
@@ -752,12 +751,14 @@ export function CharacterSidebar({
                                 id={`${char.id}-name`}
                                 value={char.name}
                                 onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                                onBlur={(e) => handleFieldChange(char.id, 'name', e.target.value)}
                             />
                             <EditableField
                                 label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
                                 id={`${char.id}-details`}
                                 value={char.details}
                                 onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
+                                onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                                 rows={4}
                             />
                              <EditableField
@@ -765,6 +766,7 @@ export function CharacterSidebar({
                                 id={`${char.id}-biographyNotes`}
                                 value={char.biographyNotes || ""}
                                 onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
+                                onBlur={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
                                 rows={5}
                                 placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
                             />
@@ -778,8 +780,8 @@ export function CharacterSidebar({
                                                 type="number"
                                                 min="0"
                                                 max="100"
-                                                value={currentAffinity}
-                                                onChange={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
+                                                defaultValue={currentAffinity}
+                                                onBlur={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
                                                 className="h-8 text-sm w-20 flex-none bg-background border"
                                             />
                                             <Progress value={currentAffinity} className="flex-1 h-2" />
@@ -821,3 +823,5 @@ export function CharacterSidebar({
     </div>
   );
 }
+
+    

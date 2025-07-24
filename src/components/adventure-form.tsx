@@ -101,7 +101,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
     values: initialValues,
-    mode: "onChange",
+    mode: "onBlur", // Changed from "onChange" to "onBlur"
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -111,8 +111,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode') {
+        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && type !== 'change') { // Prevent updates on every keystroke
             onSettingsChange(value as AdventureFormValues);
+        } else if (name === 'enableStrategyMode' || name === 'enableRpgMode') {
+            // instant updates for switches are handled by their own callbacks
         }
     });
     return () => subscription.unsubscribe();
@@ -128,6 +130,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
         ],
         enableRpgMode: true,
         enableRelationsMode: true,
+        enableStrategyMode: true,
         playerName: "Héros",
         playerClass: "Étudiant Combattant",
         playerLevel: 1,
@@ -152,9 +155,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
   };
 
   const isRpgModeEnabled = form.watch('enableRpgMode');
-  const watchedPlayerLevel = form.watch('playerLevel');
-  const watchedCreationPoints = form.watch('playerInitialAttributePoints');
-
 
   const totalDistributablePointsForCurrentLevel = React.useMemo(() => {
     return initialValues.totalDistributableAttributePoints || 0;
@@ -176,40 +176,39 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
 
   const [spentPoints, setSpentPoints] = React.useState(() => calculateSpentPoints());
 
+  // This effect updates the 'spentPoints' state when the form values change.
   React.useEffect(() => {
     setSpentPoints(calculateSpentPoints());
   }, [
       form.watch("playerStrength"), form.watch("playerDexterity"), form.watch("playerConstitution"),
       form.watch("playerIntelligence"), form.watch("playerWisdom"), form.watch("playerCharisma"),
-      calculateSpentPoints, totalDistributablePointsForCurrentLevel
+      calculateSpentPoints
   ]);
 
   const remainingPoints = totalDistributablePointsForCurrentLevel - spentPoints;
 
-  const handleAttributeChange = (
+  const handleAttributeBlur = (
     fieldName: keyof AdventureFormValues,
     value: string
   ) => {
     const numericValue = parseInt(value, 10);
+    let newAttributeValue = isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM
+        ? BASE_ATTRIBUTE_VALUE_FORM
+        : numericValue;
+
     const currentAttributeValue = Number(form.getValues(fieldName)) || BASE_ATTRIBUTE_VALUE_FORM;
-    let newAttributeValue = isNaN(numericValue) ? BASE_ATTRIBUTE_VALUE_FORM : numericValue;
-
-    if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
-        newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
-    }
-
     const spentBeforeThisChange = calculateSpentPoints() - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
     const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
     const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
 
-
     if (projectedTotalSpentPoints > totalDistributablePointsForCurrentLevel) {
         const pointsOver = projectedTotalSpentPoints - totalDistributablePointsForCurrentLevel;
         newAttributeValue -= pointsOver;
-        if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
     }
 
-    form.setValue(fieldName, newAttributeValue as any, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    form.setValue(fieldName, newAttributeValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    // Manually trigger form update for parent component after validation
+    onSettingsChange(form.getValues());
   };
 
 
@@ -220,7 +219,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
         <div className="space-y-4">
             <div className="flex justify-end">
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
-                    <Upload className="mr-2 h-4 w-4" /> Charger Prompt Example
+                    <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
                 </Button>
             </div>
 
@@ -236,6 +235,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                       {...field}
                       value={field.value || ""}
                       className="bg-background border"
+                      onBlur={field.onBlur} // Ensure blur event triggers form update
                     />
                   </FormControl>
                    <FormDescription>Le nom que le joueur portera dans l'aventure.</FormDescription>
@@ -323,7 +323,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                     <FormItem>
                       <FormLabel>Classe du Joueur</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Guerrier, Mage, Étudiant..." {...field} value={field.value || ""} className="bg-background border"/>
+                        <Input placeholder="Ex: Guerrier, Mage, Étudiant..." {...field} value={field.value || ""} className="bg-background border" onBlur={field.onBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -336,7 +336,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                     <FormItem>
                       <FormLabel>Niveau Joueur</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                        <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={field.onBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -359,6 +359,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                             {...field}
                             value={field.value || 0}
                             onChange={e => field.onChange(parseInt(e.target.value,10) || 0)}
+                            onBlur={field.onBlur}
                             className="bg-background border"
                         />
                       </FormControl>
@@ -370,7 +371,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   )}
                 />
                 <FormItem>
-                    <FormLabel>Total de Points d'Attributs Bonus Distribuables (Niv. {watchedPlayerLevel || 1})</FormLabel>
+                    <FormLabel>Total de Points d'Attributs Bonus Distribuables (Niv. {initialValues.playerLevel || 1})</FormLabel>
                     <Input
                         type="number"
                         value={totalDistributablePointsForCurrentLevel}
@@ -378,7 +379,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                         className="bg-muted border text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 cursor-default"
                     />
                     <FormDescription>
-                        ({watchedCreationPoints || 0} points de création + {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points par niveau après le Niv. 1).
+                        ({initialValues.playerInitialAttributePoints || 0} points de création + {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} points par niveau après le Niv. 1).
                     </FormDescription>
                      {form.formState.errors.totalDistributableAttributePoints && (
                         <p className="text-xs text-destructive">{form.formState.errors.totalDistributableAttributePoints.message}</p>
@@ -402,8 +403,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                                         <Input
                                             type="number"
                                             {...field}
-                                            value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
-                                            onChange={e => handleAttributeChange(attr, e.target.value)}
+                                            onBlur={e => handleAttributeBlur(attr, e.target.value)}
                                             min={BASE_ATTRIBUTE_VALUE_FORM}
                                             className="bg-background border"
                                         />
@@ -459,7 +459,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                     <FormItem>
                       <FormLabel>EXP pour Niveau Suivant</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="100" {...field} value={field.value || 100} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border"/>
+                        <Input type="number" placeholder="100" {...field} value={field.value || 100} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={field.onBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -472,7 +472,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                     <FormItem>
                         <FormLabel className="flex items-center gap-1"><Coins className="h-4 w-4"/> Or Initial</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border"/>
+                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border" onBlur={field.onBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -493,6 +493,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                       {...field}
                       rows={4}
                       className="bg-background border"
+                      onBlur={field.onBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -512,6 +513,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                       {...field}
                       rows={3}
                       className="bg-background border"
+                      onBlur={field.onBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -544,7 +546,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nom" {...field} className="bg-background border"/>
+                                <Input placeholder="Nom" {...field} className="bg-background border" onBlur={field.onBlur}/>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -562,6 +564,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                                   {...field}
                                   rows={3}
                                   className="bg-background border"
+                                  onBlur={field.onBlur}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -594,3 +597,5 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
     </Form>
   );
 }
+
+    
