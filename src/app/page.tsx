@@ -2651,13 +2651,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
-    let locationOverride: string | undefined = undefined;
+    let locationIdOverride: string | undefined = undefined;
 
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
     
     // Set current player location for all actions
-    locationOverride = poi.id;
+    locationIdOverride = poi.id;
     
 
     if (action === 'upgrade') {
@@ -2870,7 +2870,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     handleNarrativeUpdate(userActionText, 'user');
 
     try {
-        await callGenerateAdventure(userActionText, locationOverride);
+        await callGenerateAdventure(userActionText, locationIdOverride);
     } catch (error) {
         console.error("Error in handleMapAction trying to generate adventure:", error);
         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });

@@ -15,6 +15,7 @@ import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar } from "@/types"; // Added Familiar
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateSceneImageInput, GenerateSceneImageOutput } from '@/ai/flows/generate-scene-image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,7 +132,6 @@ export function PageStructure({
   currentLanguage,
   fileInputRef,
   handleSettingsUpdate,
-  handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters,
   handleCharacterHistoryUpdate,
@@ -739,9 +739,9 @@ export function PageStructure({
                                      onAddStagedCharacter={handleAddStagedCharacter}
                                      onRelationUpdate={handleRelationUpdate}
                                      generateImageAction={generateSceneImageAction}
-                                     rpgMode={stagedAdventureSettings.rpgMode ?? false}
+                                     rpgMode={adventureSettings.rpgMode ?? false}
                                      relationsMode={adventureSettings.relationsMode ?? true}
-                                     strategyMode={stagedAdventureSettings.strategyMode ?? true}
+                                     strategyMode={adventureSettings.strategyMode ?? false}
                                      playerId={playerId}
                                      playerName={stagedAdventureSettings.playerName || "Player"}
                                      currentLanguage={currentLanguage}
