@@ -630,23 +630,22 @@ export function CharacterSidebar({
 
                             <Separator />
                             
-                             {strategyMode && (
-                             <div className="space-y-1">
-                                <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
-                                <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
-                                    <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
-                                        <SelectValue placeholder="Sélectionner un lieu..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
-                                        {pointsOfInterest.map(poi => (
-                                            <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {strategyMode && (
+                                <div className="space-y-1">
+                                    <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
+                                    <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
+                                        <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
+                                            <SelectValue placeholder="Sélectionner un lieu..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
+                                            {pointsOfInterest.map(poi => (
+                                                <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             )}
-
 
                             {rpgMode && (
                                 <TooltipProvider>
