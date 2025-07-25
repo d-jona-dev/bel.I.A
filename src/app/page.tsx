@@ -393,26 +393,6 @@ export default function Home() {
   }, [useAestheticFont, toast]);
 
   React.useEffect(() => {
-    setStagedAdventureSettings(prevStaged => {
-      const newLiveSettingsCopy = JSON.parse(JSON.stringify(adventureSettings));
-      if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveSettingsCopy)) {
-        return newLiveSettingsCopy;
-      }
-      return prevStaged;
-    });
-  }, [adventureSettings]);
-
-  React.useEffect(() => {
-    setStagedCharacters(prevStaged => {
-      const newLiveCharsCopy = JSON.parse(JSON.stringify(characters));
-      if (JSON.stringify(prevStaged) !== JSON.stringify(newLiveCharsCopy)) {
-        return newLiveCharsCopy;
-      }
-      return prevStaged;
-    });
-  }, [characters]);
-
-  React.useEffect(() => {
     const fetchInitialSkill = async () => {
       if (
         adventureSettings.rpgMode &&
@@ -518,7 +498,7 @@ export default function Home() {
     });
   }, []);
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
+  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
     const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
@@ -1106,7 +1086,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
+                handleCombatUpdates(result.combatUpdates);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -1797,7 +1777,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
+                    handleCombatUpdates(result.combatUpdates);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
