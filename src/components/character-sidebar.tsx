@@ -55,9 +55,9 @@ const EditableField = ({ label, id, value, onChange, onBlur, type = "text", plac
     <div className="space-y-1">
           <Label htmlFor={id}>{label}</Label>
           {rows ? (
-              <Textarea id={id} defaultValue={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
+              <Textarea id={id} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
           ) : (
-              <Input id={id} type={type} defaultValue={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
+              <Input id={id} type={type} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
           )}
       </div>
 );
@@ -341,39 +341,6 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
-    const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character, value: string) => {
-        const char = characters.find(c => c.id === charId);
-        if (!char || !char.isAlly || !rpgMode) return;
-    
-        const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-        const levelPoints = (char.level && char.level > 1) ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
-        const totalDistributable = creationPoints + levelPoints;
-    
-        const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-        
-        let spentOnOtherAttrs = 0;
-        attributes.forEach(attrKey => {
-            if (attrKey !== fieldName) {
-                spentOnOtherAttrs += (Number(char[attrKey] || BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
-            }
-        });
-
-        let newAttributeValue = parseInt(value, 10);
-        if (isNaN(newAttributeValue) || newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
-            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
-        }
-
-        const pointsForThisAttr = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
-        
-        if (spentOnOtherAttrs + pointsForThisAttr > totalDistributable) {
-            const maxPointsForThis = totalDistributable - spentOnOtherAttrs;
-            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM + maxPointsForThis;
-        }
-        
-        onCharacterUpdate({ ...char, [fieldName]: newAttributeValue });
-    };
-
-
   return (
     <div className="w-full">
         {isClient && (
@@ -430,7 +397,6 @@ export function CharacterSidebar({
                         handleArrayFieldChange={handleArrayFieldChange}
                         addArrayFieldItem={addArrayFieldItem}
                         removeArrayFieldItem={removeArrayFieldItem}
-                        handleNpcAttributeBlur={handleNpcAttributeBlur}
                         onCharacterUpdate={onCharacterUpdate}
                         getAffinityLabel={getAffinityLabel}
                         rpgMode={rpgMode}
@@ -463,7 +429,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleArrayFieldChange,
     addArrayFieldItem,
     removeArrayFieldItem,
-    handleNpcAttributeBlur,
     onCharacterUpdate,
     getAffinityLabel,
     rpgMode,
@@ -487,7 +452,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleArrayFieldChange: (charId: string, field: 'history' | 'spells', index: number, value: string) => void;
     addArrayFieldItem: (charId: string, field: 'history' | 'spells') => void;
     removeArrayFieldItem: (charId: string, field: 'history' | 'spells', index: number) => void;
-    handleNpcAttributeBlur: (charId: string, fieldName: keyof Character, value: string) => void;
     onCharacterUpdate: (updatedCharacter: Character) => void;
     getAffinityLabel: (affinity: number | undefined) => string;
     rpgMode: boolean;
@@ -500,47 +464,99 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     allCharacters: Character[];
 }) {
 
+    const ATTRIBUTES: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+    const [remainingPoints, setRemainingPoints] = React.useState(0);
+
+    const calculatePoints = React.useCallback((character: Character) => {
+        if (!rpgMode || !character.isAlly) return { total: 0, spent: 0 };
+        const creationPoints = character.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+        const levelPoints = character.level && character.level > 1 ? (character.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+        const totalDistributable = creationPoints + levelPoints;
+
+        const spent = ATTRIBUTES.reduce((acc, attr) => {
+            return acc + ((Number(character[attr]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
+        }, 0);
+        
+        return { total: totalDistributable, spent: spent };
+    }, [rpgMode, ATTRIBUTES]);
+
+
     React.useEffect(() => {
-        if (rpgMode && char.isAlly) {
-            const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-            const levelPoints = (char.level && char.level > 1) ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
-            const totalDistributable = creationPoints + levelPoints;
+        let updatedChar = { ...char };
+        let changed = false;
 
-            const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-            let spentPoints = 0;
-            let updatedChar = { ...char };
-            let changed = false;
+        // Ensure attributes are defined for calculation
+        ATTRIBUTES.forEach(attr => {
+            if (updatedChar[attr] === undefined || updatedChar[attr] === null) {
+                (updatedChar as any)[attr] = BASE_ATTRIBUTE_VALUE_FORM;
+                changed = true;
+            }
+        });
 
-            attributes.forEach(attr => {
-                if (updatedChar[attr] === undefined) {
-                    (updatedChar as any)[attr] = BASE_ATTRIBUTE_VALUE_FORM;
+        const { total, spent } = calculatePoints(updatedChar);
+
+        if (spent > total) {
+            let pointsOver = spent - total;
+            // Reduce highest attributes first to meet the budget
+            const sortedAttrs = ATTRIBUTES
+                .map(attr => ({ name: attr, value: Number(updatedChar[attr]) }))
+                .sort((a, b) => b.value - a.value);
+
+            for (const attr of sortedAttrs) {
+                if (pointsOver <= 0) break;
+                const currentValue = attr.value;
+                const reduction = Math.min(pointsOver, currentValue - BASE_ATTRIBUTE_VALUE_FORM);
+                if (reduction > 0) {
+                    (updatedChar as any)[attr.name] = currentValue - reduction;
+                    pointsOver -= reduction;
                     changed = true;
                 }
-                spentPoints += (Number(updatedChar[attr]) - BASE_ATTRIBUTE_VALUE_FORM);
-            });
-
-            if (spentPoints > totalDistributable) {
-                let pointsOver = spentPoints - totalDistributable;
-                const sortedAttrs = attributes.map(attr => ({ name: attr, value: Number(updatedChar[attr]) })).sort((a, b) => b.value - a.value);
-
-                for (const attr of sortedAttrs) {
-                    if (pointsOver <= 0) break;
-                    const currentValue = attr.value;
-                    const reduction = Math.min(pointsOver, currentValue - BASE_ATTRIBUTE_VALUE_FORM);
-                    if (reduction > 0) {
-                        (updatedChar as any)[attr.name] = currentValue - reduction;
-                        pointsOver -= reduction;
-                        changed = true;
-                    }
-                }
-            }
-            
-            if (changed) {
-                onCharacterUpdate(updatedChar);
             }
         }
-    }, [char, rpgMode, onCharacterUpdate]);
+        
+        if (changed) {
+            onCharacterUpdate(updatedChar);
+        } else {
+             // If no correction was needed, just update the remaining points display
+            setRemainingPoints(total - spent);
+        }
+
+    }, [char, rpgMode, calculatePoints, onCharacterUpdate, ATTRIBUTES]);
     
+    // Update remaining points whenever the character state changes from parent
+     React.useEffect(() => {
+        const { total, spent } = calculatePoints(char);
+        setRemainingPoints(total - spent);
+    }, [char, calculatePoints]);
+
+
+    const handleNpcAttributeChange = (charId: string, fieldName: keyof Character, value: string) => {
+        let numericValue = parseInt(value, 10);
+        if (isNaN(numericValue)) {
+            numericValue = BASE_ATTRIBUTE_VALUE_FORM;
+        }
+        onCharacterUpdate({ ...char, [fieldName]: numericValue });
+    };
+
+    const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character) => {
+        let character = { ...char };
+        let numericValue = Number(character[fieldName]);
+        
+        if (isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM) {
+            numericValue = BASE_ATTRIBUTE_VALUE_FORM;
+            character[fieldName] = numericValue;
+        }
+
+        const { total, spent } = calculatePoints(character);
+        
+        if (spent > total) {
+            const overspent = spent - total;
+            character[fieldName] = numericValue - overspent;
+        }
+        onCharacterUpdate(character);
+    };
+
     let isPotentiallyNew = false;
     if (isClient) {
         try {
@@ -553,17 +569,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     }
     const currentAffinity = char.affinity ?? 50;
     const isAllyAndRpg = rpgMode && char.isAlly;
-    
-    const creationPointsNpc = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-    const levelPointsNpc = (rpgMode && char.level && char.level > 1) ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
-    const totalDistributableNpc = creationPointsNpc + levelPointsNpc;
-
-    const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-    const currentNpcSpentPoints = attributes.reduce((acc, attr) => {
-        return acc + ((Number(char[attr]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
-    }, 0);
-
-    const remainingNpcPoints = totalDistributableNpc - currentNpcSpentPoints;
 
     const RULER_CLASSES = ["impératrice", "empereur", "duc", "duchesse", "roi", "reine", "noble"];
     const AFFINITY_THRESHOLD = 80;
@@ -765,19 +770,19 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     <Separator className="my-2"/>
                                     <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
                                     <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} onBlur={e => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
-                                    <div className="text-xs text-muted-foreground">Total distribuables (Niv. {char.level || 1}): {totalDistributableNpc}</div>
+                                    
                                      <div className="p-1 border rounded-md bg-background text-center text-xs">
-                                        Points d'attributs restants : <span className={`font-bold ${remainingNpcPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingNpcPoints}</span>
+                                        Points d'attributs restants : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {attributes.map(attr => (
+                                        {ATTRIBUTES.map(attr => (
                                             <EditableField 
                                                 key={attr} 
                                                 label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
                                                 id={`${char.id}-${attr}`} type="number" 
                                                 value={char[attr]} 
-                                                onChange={(e) => onCharacterUpdate({ ...char, [attr]: isNaN(parseInt(e.target.value)) ? char[attr] : parseInt(e.target.value) })}
-                                                onBlur={e => handleNpcAttributeBlur(char.id, attr, e.target.value)} 
+                                                onChange={(e) => handleNpcAttributeChange(char.id, attr, e.target.value)}
+                                                onBlur={() => handleNpcAttributeBlur(char.id, attr)} 
                                                 min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
                                                 disabled={!isAllyAndRpg}
                                             />
