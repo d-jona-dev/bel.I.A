@@ -119,7 +119,7 @@ interface PageStructureProps {
   onToggleStrategyMode: () => void;
   onToggleRpgMode: () => void;
   onToggleRelationsMode: () => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
 }
 
 export function PageStructure({

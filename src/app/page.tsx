@@ -518,7 +518,7 @@ export default function Home() {
     });
   }, []);
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[] = [], currencyGained: number = 0) => {
+  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
     const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
@@ -1142,7 +1142,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates, result.itemsObtained, result.currencyGained);
+                handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -1821,7 +1821,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates, result.itemsObtained, result.currencyGained);
+                    handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -3217,95 +3217,94 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
-    <>
-      <PageStructure
-        adventureSettings={adventureSettings}
-        characters={characters}
-        stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
-        stagedCharacters={stagedCharacters}
-        formPropKey={formPropKey}
-        handleApplyStagedChanges={handleApplyStagedChanges}
-        narrativeMessages={narrativeMessages}
-        currentLanguage={currentLanguage}
-        fileInputRef={fileInputRef}
-        handleSettingsUpdate={handleSettingsUpdate}
-        handleNarrativeUpdate={handleNarrativeUpdate}
-        handleCharacterUpdate={handleCharacterUpdate}
-        handleNewCharacters={handleNewCharacters}
-        handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
-        handleAffinityUpdates={handleAffinityUpdates}
-        handleRelationUpdate={(charId, targetId, newRelation) => {
-             const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
-             if (!currentRelationsMode) return;
-             setStagedCharacters(prevChars =>
-               prevChars.map(char => {
-                 if (char.id === charId) {
-                   const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
-                   return { ...char, relations: updatedRelations };
-                 }
-                 if (targetId !== PLAYER_ID && char.id === targetId ) {
-                     const sourceChar = prevChars.find(c => c.id === charId);
-                     if (sourceChar) {
-                         const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
-                         return { ...char, relations: updatedRelations };
-                     }
-                 }
-                 return char;
-               })
-             );
-        }}
-        handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
-        handleSaveNewCharacter={handleSaveNewCharacter}
-        handleAddStagedCharacter={handleAddStagedCharacter}
-        handleSave={handleSave}
-        handleLoad={handleLoad}
-        setCurrentLanguage={setCurrentLanguage}
-        translateTextAction={translateText}
-        generateAdventureAction={callGenerateAdventure}
-        generateSceneImageAction={generateSceneImageActionWrapper}
-        handleEditMessage={handleEditMessage}
-        handleRegenerateLastResponse={handleRegenerateLastResponse}
-        handleUndoLastMessage={handleUndoLastMessage}
-        playerId={PLAYER_ID}
-        playerName={adventureSettings.playerName || "Player"}
-        onRestartAdventure={confirmRestartAdventure}
-        activeCombat={activeCombat}
-        onCombatUpdates={handleCombatUpdates}
-        suggestQuestHookAction={callSuggestQuestHook}
-        isSuggestingQuest={isSuggestingQuest}
-        showRestartConfirm={showRestartConfirm}
-        setShowRestartConfirm={setShowRestartConfirm}
-        handleTakeLoot={handleTakeLoot}
-        handleDiscardLoot={handleDiscardLoot}
-        handlePlayerItemAction={handlePlayerItemAction}
-        handleSellItem={handleSellItem}
-        handleGenerateItemImage={handleGenerateItemImage}
-        isGeneratingItemImage={isGeneratingItemImage}
-        handleEquipItem={handleEquipItem}
-        handleUnequipItem={handleUnequipItem}
-        itemToSellDetails={itemToSellDetails}
-        sellQuantity={sellQuantity}
-        setSellQuantity={setSellQuantity}
-        confirmSellMultipleItems={confirmSellMultipleItems}
-        onCloseSellDialog={() => setItemToSellDetails(null)}
-        handleMapAction={handleMapAction}
-        useAestheticFont={useAestheticFont}
-        onToggleAestheticFont={handleToggleAestheticFont}
-        onGenerateMap={handleGenerateMapImage}
-        isGeneratingMap={isGeneratingMap}
-        onPoiPositionChange={handlePoiPositionChange}
-        onCreatePoi={handleCreatePoi}
-        onBuildInPoi={handleBuildInPoi}
-        currentTurn={narrativeMessages.length}
-        handleNewFamiliar={handleNewFamiliar}
-        handleFamiliarUpdate={handleFamiliarUpdate}
-        handleSaveFamiliar={handleSaveFamiliar}
-        handleAddStagedFamiliar={handleAddStagedFamiliar}
-        onMapImageUpload={handleMapImageUpload}
-        onToggleStrategyMode={handleToggleStrategyMode}
-        onToggleRpgMode={handleToggleRpgMode}
-        onToggleRelationsMode={handleToggleRelationsMode}
-      />
-      </>
+    <PageStructure
+      adventureSettings={adventureSettings}
+      characters={characters}
+      stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
+      stagedCharacters={stagedCharacters}
+      formPropKey={formPropKey}
+      handleApplyStagedChanges={handleApplyStagedChanges}
+      narrativeMessages={narrativeMessages}
+      currentLanguage={currentLanguage}
+      fileInputRef={fileInputRef}
+      handleSettingsUpdate={handleSettingsUpdate}
+      handleNarrativeUpdate={handleNarrativeUpdate}
+      handleCharacterUpdate={handleCharacterUpdate}
+      handleNewCharacters={handleNewCharacters}
+      handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+      handleAffinityUpdates={handleAffinityUpdates}
+      handleRelationUpdate={(charId, targetId, newRelation) => {
+           const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+           if (!currentRelationsMode) return;
+           setStagedCharacters(prevChars =>
+             prevChars.map(char => {
+               if (char.id === charId) {
+                 const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
+                 return { ...char, relations: updatedRelations };
+               }
+               if (targetId !== PLAYER_ID && char.id === targetId ) {
+                   const sourceChar = prevChars.find(c => c.id === charId);
+                   if (sourceChar) {
+                       const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
+                       return { ...char, relations: updatedRelations };
+                   }
+               }
+               return char;
+             })
+           );
+      }}
+      handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
+      handleSaveNewCharacter={handleSaveNewCharacter}
+      handleAddStagedCharacter={handleAddStagedCharacter}
+      handleSave={handleSave}
+      handleLoad={handleLoad}
+      setCurrentLanguage={setCurrentLanguage}
+      translateTextAction={translateText}
+      generateAdventureAction={callGenerateAdventure}
+      generateSceneImageAction={generateSceneImageActionWrapper}
+      handleEditMessage={handleEditMessage}
+      handleRegenerateLastResponse={handleRegenerateLastResponse}
+      handleUndoLastMessage={handleUndoLastMessage}
+      playerId={PLAYER_ID}
+      playerName={adventureSettings.playerName || "Player"}
+      onRestartAdventure={confirmRestartAdventure}
+      activeCombat={activeCombat}
+      onCombatUpdates={handleCombatUpdates}
+      suggestQuestHookAction={callSuggestQuestHook}
+      isSuggestingQuest={isSuggestingQuest}
+      showRestartConfirm={showRestartConfirm}
+      setShowRestartConfirm={setShowRestartConfirm}
+      handleTakeLoot={handleTakeLoot}
+      handleDiscardLoot={handleDiscardLoot}
+      handlePlayerItemAction={handlePlayerItemAction}
+      handleSellItem={handleSellItem}
+      handleGenerateItemImage={handleGenerateItemImage}
+      isGeneratingItemImage={isGeneratingItemImage}
+      handleEquipItem={handleEquipItem}
+      handleUnequipItem={handleUnequipItem}
+      itemToSellDetails={itemToSellDetails}
+      sellQuantity={sellQuantity}
+      setSellQuantity={setSellQuantity}
+      confirmSellMultipleItems={confirmSellMultipleItems}
+      onCloseSellDialog={() => setItemToSellDetails(null)}
+      handleMapAction={handleMapAction}
+      useAestheticFont={useAestheticFont}
+      onToggleAestheticFont={handleToggleAestheticFont}
+      onGenerateMap={handleGenerateMapImage}
+      isGeneratingMap={isGeneratingMap}
+      onPoiPositionChange={handlePoiPositionChange}
+      onCreatePoi={handleCreatePoi}
+      onBuildInPoi={handleBuildInPoi}
+      currentTurn={narrativeMessages.length}
+      handleNewFamiliar={handleNewFamiliar}
+      handleFamiliarUpdate={handleFamiliarUpdate}
+      handleSaveFamiliar={handleSaveFamiliar}
+      handleAddStagedFamiliar={handleAddStagedFamiliar}
+      onMapImageUpload={handleMapImageUpload}
+      isLoading={isUiLocked}
+      onToggleStrategyMode={handleToggleStrategyMode}
+      onToggleRpgMode={handleToggleRpgMode}
+      onToggleRelationsMode={handleToggleRelationsMode}
+    />
   );
 }
