@@ -61,7 +61,7 @@ interface AdventureDisplayProps {
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     activeCombat?: ActiveCombat;
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+    onCombatUpdates: (combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
     handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
@@ -94,6 +94,7 @@ export function AdventureDisplay({
     onRegenerateLastResponse,
     onUndoLastMessage,
     activeCombat,
+    onCombatUpdates,
     onRestartAdventure,
     isSuggestingQuest,
     handleTakeLoot,
@@ -917,8 +918,8 @@ export function AdventureDisplay({
                             <>
                                 <Separator className="my-2" />
                                 <UICardDescription className="text-xs text-center py-1">Combattants Vaincus</UICardDescription>
-                                {activeCombat.combatants.filter(c => c.isDefeated).map(defeated => (
-                                     <NpcCombatantCard key={`defeated-${defeated.characterId}`} combatData={defeated}/>
+                                {activeCombat.combatants.filter(c => c.isDefeated).map((defeated, index) => (
+                                     <NpcCombatantCard key={`defeated-${defeated.characterId}-${index}`} combatData={defeated}/>
                                 ))}
                             </>
                          )}
