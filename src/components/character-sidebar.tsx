@@ -367,25 +367,25 @@ export function CharacterSidebar({
         const char = characters.find(c => c.id === charId);
         if (!char || !char.isAlly || !rpgMode) return;
 
-        const numericValue = parseInt(value, 10);
-        let newAttributeValue = isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM 
-            ? BASE_ATTRIBUTE_VALUE_FORM 
-            : numericValue;
+        let newAttributeValue = parseInt(value, 10);
+        if (isNaN(newAttributeValue) || newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
+            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
+        }
 
-        const currentAttributeValue = Number(char[fieldName]) || BASE_ATTRIBUTE_VALUE_FORM;
-        
-        const creationPoints = char.initialAttributePoints || 0;
-        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+        const tempCharForCalc = { ...char, [fieldName]: newAttributeValue };
+
+        const creationPoints = tempCharForCalc.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+        const levelPoints = tempCharForCalc.level && tempCharForCalc.level > 1 ? (tempCharForCalc.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
 
-        const spentBeforeThisChange = calculateNpcSpentPoints(char) - (currentAttributeValue - BASE_ATTRIBUTE_VALUE_FORM);
-        const costOfNewValue = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
-        const projectedTotalSpentPoints = spentBeforeThisChange + costOfNewValue;
-
+        const projectedTotalSpentPoints = calculateNpcSpentPoints(tempCharForCalc);
+        
         if (projectedTotalSpentPoints > totalDistributable) {
             const pointsOver = projectedTotalSpentPoints - totalDistributable;
             newAttributeValue -= pointsOver;
-            if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
+            if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
+                newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
+            }
         }
         
         onCharacterUpdate({ ...char, [fieldName]: newAttributeValue });
@@ -446,6 +446,7 @@ export function CharacterSidebar({
                     }
                     const currentAffinity = char.affinity ?? 50;
                     const isAllyAndRpg = rpgMode && char.isAlly;
+                    
                     const creationPointsNpc = char.initialAttributePoints || (rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : 0);
                     const levelPointsNpc = rpgMode && char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
                     const totalDistributableNpc = creationPointsNpc + levelPointsNpc;
@@ -658,7 +659,16 @@ export function CharacterSidebar({
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {(["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const).map(attr => (
-                                                        <EditableField key={attr} label={attr.charAt(0).toUpperCase() + attr.slice(1)} id={`${char.id}-${attr}`} type="number" value={char[attr]} onChange={() => {}} onBlur={e => handleNpcAttributeBlur(char.id, attr, e.target.value)} min={BASE_ATTRIBUTE_VALUE_FORM.toString()} disabled={!isAllyAndRpg}/>
+                                                        <EditableField 
+                                                            key={attr} 
+                                                            label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
+                                                            id={`${char.id}-${attr}`} type="number" 
+                                                            value={char[attr]} 
+                                                            onChange={() => {}} 
+                                                            onBlur={e => handleNpcAttributeBlur(char.id, attr, e.target.value)} 
+                                                            min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
+                                                            disabled={!isAllyAndRpg}
+                                                        />
                                                     ))}
                                                 </div>
                                             </>
