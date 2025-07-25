@@ -1079,7 +1079,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 setCharacters(currentGlobalCharacters); // Persist the location change for allies
                 setStagedCharacters(currentGlobalCharacters); // Also update staged characters
             }
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
+            
+            const combatLoot = result.combatUpdates?.itemsObtained;
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, combatLoot);
+
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
@@ -1092,36 +1095,30 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
 
-            if (adventureSettings.rpgMode && !result.combatUpdates && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
-                const amount = result.currencyGained;
-                if (amount < 0) {
-                    const currentGold = adventureSettings.playerGold ?? 0;
-                    if (currentGold + amount < 0) {
-                         setTimeout(() => {
-                            toast({
-                                title: "Pas assez de Pièces d'Or!",
-                                description: "L'IA a suggéré une dépense que vous ne pouvez pas couvrir. La transaction a été annulée.",
-                                variant: "destructive"
-                            });
-                        }, 0);
-                    } else {
-                        addCurrencyToPlayer(amount);
-                         setTimeout(() => {
-                            toast({
-                                title: "Transaction Effectuée",
-                                description: `Votre trésorerie a été mise à jour.`
-                            });
-                        }, 0);
-                    }
-                } else {
-                    addCurrencyToPlayer(amount);
-                    setTimeout(() => {
-                        toast({
-                            title: "Pièces d'Or Reçues !",
-                            description: `Votre trésorerie a été mise à jour.`
-                        });
-                    }, 0);
-                }
+            // Handle NON-combat currency and items
+            if (result.itemsObtained && result.itemsObtained.length > 0) {
+                 handleTakeLoot(`temp-non-combat-loot-${Date.now()}`, result.itemsObtained.map(item => ({
+                    id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                    name: item.itemName,
+                    quantity: item.quantity,
+                    description: item.description,
+                    effect: item.effect,
+                    type: item.itemType,
+                    goldValue: item.goldValue,
+                    statBonuses: item.statBonuses,
+                    generatedImageUrl: null,
+                    isEquipped: false,
+                })), true); // silent = true
+            }
+
+            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
+                addCurrencyToPlayer(result.currencyGained);
+                setTimeout(() => {
+                    toast({
+                        title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Dépense Effectuée",
+                        description: `Votre trésorerie a été mise à jour.`
+                    });
+                }, 0);
             }
         });
     } catch (error) { 
@@ -1501,7 +1498,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [toast]);
 
 
-    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[]) => {
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
         React.startTransition(() => {
             setAdventureSettings(prevSettings => {
                 if (!prevSettings.rpgMode) return prevSettings;
@@ -1516,7 +1513,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         currencyGained = currencyItem.quantity;
                     }
                  }
-
 
                 itemsToTake.forEach(item => {
                     if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
@@ -1538,7 +1534,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 )
             );
         });
-        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+        if (!silent) {
+            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+        }
     }, [toast, narrativeMessages]);
 
     const handleDiscardLoot = React.useCallback((messageId: string) => {
@@ -3264,4 +3262,5 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 

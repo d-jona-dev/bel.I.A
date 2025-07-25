@@ -228,6 +228,8 @@ const CombatOutcomeSchema = z.object({
 const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn. THIS IS MANDATORY if combat took place."),
     expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
+    itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+    currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces looted by the player if combat is won. IF NO CURRENCY CHANGE, PROVIDE 0."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. THIS IS MANDATORY if combat took place. This will be part of the main narrative output as well."),
     nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false. Ensure this state includes all active combatants: player, allies, and enemies."),
@@ -273,8 +275,8 @@ const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn (from combat loot, finding, gifts, or PURCHASE). **CRITICAL RULE: DO NOT include any currency (gold, coins, etc.) here; use currencyGained instead.** Each item MUST have itemName, quantity, and itemType ('consumable', 'weapon', 'armor', 'jewelry', 'quest', 'misc'). Optionally, provide itemDescription and itemEffect (all text in {{currentLanguage}}). **Crucially, for ALL non-currency items intended as loot (even common or 'junk' items like 'Cailloux pointus'), YOU MUST provide a goldValue. If an item has minimal or nuisance value, assign it a goldValue of 1. Do not omit goldValue for such items.** Include statBonuses if applicable. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
-  currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). If the player buys an item, this should be the negative price of the item. IF NO CURRENCY CHANGE, PROVIDE 0."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn through NON-COMBAT means (e.g., finding, gifts, or PURCHASE). **If items are obtained from combat loot, they MUST be returned inside the `combatUpdates` object, not here.** IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+  currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
   poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
 });
@@ -589,39 +591,19 @@ Tasks:
             3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
     *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
-        *   **Étape 1: Tour du Joueur ({{playerName}}).**
-            *   L'action du joueur est: {{{userAction}}}. Cela peut être une attaque, un sort, l'utilisation d'un objet (ex: "J'utilise Potion de Soin Mineure", "Je jette Dague Rouillée"), l'utilisation d'une compétence de combat, ou une autre manœuvre.
-            *   **Si le joueur utilise ou jette un objet:** Narrez l'action. L'effet de l'objet (ex: restauration de PV pour une potion de soin, dégâts pour une bombe) DOIT être pris en compte dans le calcul des combatUpdates.updatedCombatants pour le joueur ou la cible. Un objet consommé est conceptuellement retiré de son inventaire (la gestion réelle de l'inventaire se fait côté client).
-            *   **Si le joueur utilise une compétence de combat:** Narrez l'action. L'effet de la compétence (basé sur son nom et sa description) DOIT être pris en compte. Par exemple, "Coup Puissant" devrait infliger plus de dégâts ou avoir une chance d'étourdir. Décrivez le succès ou l'échec et les conséquences dans combatUpdates.turnNarration et mettez à jour combatUpdates.updatedCombatants.
-            *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
-        *   **Étape 1.5: Tour des PNJ Alliés (si présents et actifs).**
-            *   Pour chaque PNJ allié (identifié par team: 'player' dans activeCombat.combatants et qui n'est PAS le joueur, et qui a isAlly: true dans ses détails de personnage connus) qui est actif et non vaincu :
-                *   Déterminez une action appropriée pour cet allié. Basez cette action sur ses détails de personnage fournis (characterClass, stats, spells, damageBonus, attackBonus) et la situation tactique.
-                *   Les alliés devraient agir de manière à aider l'équipe du joueur (soigner, attaquer des ennemis dangereux, utiliser des buffs/debuffs, etc.). Si l'allié est un "Mage", il devrait préférer lancer des sorts. Si c'est un "Guerrier", il attaquera.
-                *   Narrez l'action de l'allié et déterminez son succès/effet (ex: "Ancienne Elara lance Boule de Feu sur le Gobelin Fureteur. Elle touche et inflige X dégâts de feu.").
-                *   Prenez en compte les PM pour les sorts, les objets consommés de leur inventaire conceptuel.
-                *   Mettez à jour les PV/PM et les effets de statut de l'allié (et de sa cible, si applicable) dans combatUpdates.updatedCombatants.
-            *   Les tours des alliés doivent être inclus dans combatUpdates.turnNarration avec la même attention qu'un ennemi.
-        *   **Étape 2: Tour des PNJ Ennemis.**
-            *   Pour chaque ennemi actif et non vaincu (identifié par team: 'enemy'):
-                *   Déterminez l'action de cet ennemi.
-                *   Narrez l'action de l'ennemi, les résultats (dégâts, effets), et intégrez-les dans combatUpdates.turnNarration.
-                *   Mettez à jour les PV/PM et les effets de statut de l'ennemi et de sa cible (si applicable) dans combatUpdates.updatedCombatants.
-        *   **Étape 3: Gestion des Effets de Statut.** Au début du tour de chaque PNJ (ou à la fin), appliquez les dégâts/effets des statusEffects en cours (ex: 'Empoisonné' inflige des dégâts). Si un PNJ a un statut comme 'Étourdi' ou 'Paralysé', il peut sauter son tour ou agir avec désavantage. Décrémentez la duration des effets temporaires sur les PNJ. Si la duration atteint 0, l'effet disparaît. Narrez ces changements.
-        *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ (alliés et ennemis), ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
-        *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
-        *   **Étape 6: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory, you MUST check if a territory attack initiated the combat. If 'contestedPoiId' was present for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
-        *   **Étape 7: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut, et le 'contestedPoiId' s'il était présent) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
-        *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
-    *   **CRITICAL CURRENCY RULE:** **DO NOT include any currency (Gold Pieces, etc.) in itemsObtained. Currency is handled EXCLUSIVELY by the currencyGained field.**
-    *   **Item Acquisition (Exploration/Gift):** If the player finds or is given items outside of combat, list these in the top-level itemsObtained field.
-    *   **Currency Management (General):**
-        *   If the player finds, is given, or loots Gold Pieces: Calculate TOTAL value and set currencyGained (positive value).
-        *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
-        *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
+        *   **MANDATORY RULE:** If a combat took place this turn (either starting, continuing, or ending), you **MUST** populate the combatUpdates field in your output. This field is the **ONLY** place for all combat-related information.
+        *   **1. Narrate the turn:** In combatUpdates.turnNarration, describe the player's action, then any allies' actions, then all enemies' actions. Detail the outcomes, damage, and effects. This text will also be used as the main narrative output.
+        *   **2. Update Combatants:** In combatUpdates.updatedCombatants, provide an entry for **every combatant** involved in the turn, with their newHp, newMp, isDefeated status, and any newStatusEffects.
+        *   **3. Handle Combat End:** If the combat is over, set combatUpdates.combatEnded to true.
+        *   **4. Provide Rewards (if any):** If the combat ended and enemies were defeated, you **MUST** populate the reward fields **INSIDE combatUpdates**:
+            *   expGained: The total EXP gained. If none, provide 0.
+            *   itemsObtained: A list of all items looted. If none, provide an empty array [].
+            *   currencyGained: The total gold/currency looted. If none, provide 0.
+        *   **5. Update Combat State:** If combat is NOT over (combatEnded: false), you **MUST** populate combatUpdates.nextActiveCombatState with the full, updated state of all remaining combatants for the next turn.
+    *   **Item Acquisition (NON-COMBAT):** If the player finds or is given items outside of combat, list these in the top-level itemsObtained field.
+    *   **Currency Management (NON-COMBAT):**
+        *   If the player finds/is given/PAYS Gold Pieces outside combat: set the top-level currencyGained field (positive for gain, negative for loss).
         *   **If no currency change, set currencyGained to 0.**
-    *   **Regardless of combat, if relationsModeActive is true:**
-        Character behavior MUST reflect their 'Current Affinity' towards {{playerName}} and 'Relationship Statuses' as described in the character list and the Behavior Guide. Their dialogue and willingness to cooperate should be strongly influenced by this.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
@@ -657,15 +639,8 @@ Tasks:
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
     
-**Output Specification for Rewards (MANDATORY if combat is won):**
-**If combat has ended AND the player's team is victorious (e.g., all enemies are defeated), you MUST populate the reward fields. If no specific reward is applicable, use default values (0 for numbers, empty array for lists).**
-*   expGained: (Mandatory) The total EXP gained by the player's party.
-*   itemsObtained: (Mandatory) A list of items looted. For ALL non-currency items, you MUST provide itemName, quantity, itemType, and a goldValue. Even common or 'junk' items like 'Cailloux pointus' MUST have a goldValue (e.g., 1). Do not omit goldValue.
-*   currencyGained: (Mandatory) The total amount of Gold Pieces looted.
-**CRITICAL RULE: Under NO circumstances should you describe the EXP, items, or currency obtained in the narrative field. The game client handles displaying rewards separately.**
-
 Narrative Continuation (in {{currentLanguage}}):
-[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. Do NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game system will display the loot separately.]
+[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. DO NOT describe items or gold from combat loot here; the game client displays loot separately from the combatUpdates data.]
 `,
 });
 
