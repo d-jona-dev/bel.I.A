@@ -366,26 +366,41 @@ export function CharacterSidebar({
     const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character, value: string) => {
         const char = characters.find(c => c.id === charId);
         if (!char || !char.isAlly || !rpgMode) return;
-
+    
         let newAttributeValue = parseInt(value, 10);
         if (isNaN(newAttributeValue) || newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
-
-        const tempCharForCalc = { ...char, [fieldName]: newAttributeValue };
-
-        const creationPoints = tempCharForCalc.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-        const levelPoints = tempCharForCalc.level && tempCharForCalc.level > 1 ? (tempCharForCalc.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+    
+        const creationPoints = char.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
-
-        const projectedTotalSpentPoints = calculateNpcSpentPoints(tempCharForCalc);
+    
+        const currentAttributes = {
+            strength: char.strength ?? BASE_ATTRIBUTE_VALUE_FORM,
+            dexterity: char.dexterity ?? BASE_ATTRIBUTE_VALUE_FORM,
+            constitution: char.constitution ?? BASE_ATTRIBUTE_VALUE_FORM,
+            intelligence: char.intelligence ?? BASE_ATTRIBUTE_VALUE_FORM,
+            wisdom: char.wisdom ?? BASE_ATTRIBUTE_VALUE_FORM,
+            charisma: char.charisma ?? BASE_ATTRIBUTE_VALUE_FORM,
+        };
+        // Temporarily set the new value to calculate projected spend
+        currentAttributes[fieldName as keyof typeof currentAttributes] = newAttributeValue;
         
-        if (projectedTotalSpentPoints > totalDistributable) {
-            const pointsOver = projectedTotalSpentPoints - totalDistributable;
-            newAttributeValue -= pointsOver;
-            if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
-                newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
-            }
+        const spentBeforeThisField = (Object.keys(currentAttributes) as (keyof typeof currentAttributes)[])
+            .filter(key => key !== fieldName)
+            .reduce((acc, key) => acc + (currentAttributes[key] - BASE_ATTRIBUTE_VALUE_FORM), 0);
+    
+        const pointsAvailableForThisField = totalDistributable - spentBeforeThisField;
+    
+        // Ensure new value doesn't exceed available points
+        if (newAttributeValue > BASE_ATTRIBUTE_VALUE_FORM + pointsAvailableForThisField) {
+            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM + pointsAvailableForThisField;
+        }
+    
+        // Final check to ensure it's not below base
+        if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
+            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
         
         onCharacterUpdate({ ...char, [fieldName]: newAttributeValue });
