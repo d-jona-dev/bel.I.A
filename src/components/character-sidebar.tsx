@@ -730,7 +730,6 @@ export function CharacterSidebar({
                             )}
                             <Separator />
                              <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
-                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"} onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addArrayFieldItem}/>
                         </AccordionContent>
                     </AccordionItem>
                     )
