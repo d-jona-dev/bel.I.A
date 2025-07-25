@@ -97,15 +97,12 @@ export interface Character {
   name: string;
   details: string;
   biographyNotes?: string;
-  stats?: Record<string, number | string>;
-  inventory?: Record<string, number>; // nom de l'objet: quantité
   history?: string[];
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
   affinity?: number;
   relations?: Record<string, string>; // Clé: characterId ou 'player', Valeur: description de la relation
   level?: number;
-  experience?: number;
   characterClass?: string;
   strength?: number;
   dexterity?: number;
@@ -113,7 +110,6 @@ export interface Character {
   intelligence?: number;
   wisdom?: number;
   charisma?: number;
-  baseHitPoints?: number;
   hitPoints?: number;
   maxHitPoints?: number;
   manaPoints?: number;
@@ -121,10 +117,7 @@ export interface Character {
   armorClass?: number;
   attackBonus?: number;
   damageBonus?: string;
-  skills?: Record<string, boolean | number>;
   spells?: string[];
-  techniques?: string[];
-  passiveAbilities?: string[];
   isHostile?: boolean;
   isQuestGiver?: boolean;
   isAlly?: boolean; // New field to mark NPC as an ally

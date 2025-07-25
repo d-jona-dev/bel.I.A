@@ -35,7 +35,6 @@ const RpgContextSchema = z.object({
         name: z.string(),
         details: z.string().optional().describe("Brief description of the character for context."),
         stats: z.record(z.union([z.string(), z.number()])).optional().describe("Character's statistics."),
-        inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity)."),
         relations: z.string().optional().describe("Summary of relations towards player and others.")
     })).optional().describe("Details of relevant secondary characters already known."),
     mode: z.enum(["exploration", "dialogue", "combat"]).optional().describe("Current game mode."),
@@ -58,9 +57,7 @@ const BaseCharacterSchema = z.object({
   characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage', 'Marchand'."),
   level: z.number().optional().describe("Character's level."),
   isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
-  inventory: z.record(z.string(), z.number()).optional().describe("Character's inventory (item name: quantity). DO NOT include currency here."),
   isAlly: z.boolean().optional().default(false).describe("Is this character currently an ally of the player in combat?"),
-  skills: z.record(z.string(), z.union([z.boolean(), z.string()])).optional().describe("Character's skills (e.g., {'Coup Puissant': true, 'Crochetage': 'Avancé'}). For AI decision making."),
   spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
   locationId: z.string().optional().describe("The ID of the POI where the character is currently located. This is the source of truth for location."),
 }).passthrough();
@@ -198,7 +195,6 @@ const NewCharacterSchema = z.object({
     damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
     characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice', 'Marchand d'armes')."),
     level: z.number().optional().describe("Level if relevant."),
-    inventory: z.array(InventoryItemForAISchema).optional().describe("List of items in the new character's inventory, e.g., [{\"itemName\": \"Dague Rouillée\", \"quantity\": 1}]. DO NOT include currency here."),
     isAlly: z.boolean().optional().default(false).describe("Is this new character initially an ally of the player? This MUST be set to true if the character is purchased at a slave market."),
 });
 
@@ -340,9 +336,7 @@ export async function generateAdventure(input: GenerateAdventureInput): Promise<
             characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
             level: input.rpgModeActive ? (char.level ?? 1) : undefined,
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
-            inventory: input.rpgModeActive ? (char.inventory || {}) : undefined,
             isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
-            skills: char.skills, // Pass skills
             spells: char.spells, // Pass spells,
             locationId: char.locationId,
         };
@@ -490,9 +484,7 @@ Previous Turn Summary:
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
   Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}} | Ally: {{#if this.isAlly}}Yes{{else}}No{{/if}}
-  {{#if this.skills}}Skills: {{#each this.skills}}{{@key}}{{#if this}}, {{/if}}{{/each}}{{/if}}
   {{#if this.spells}}Spells: {{#each this.spells}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
-  Inventory (conceptual - DO NOT list currency): {{#if this.inventory}}{{#each this.inventory}}{{@key}}: {{this}}; {{/each}}{{else}}Vide{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
@@ -604,7 +596,7 @@ Tasks:
             *   **Narrez l'action du joueur et déterminez son succès/effet.** Basez-vous sur les stats du joueur (fournies dans le contexte) et celles de la cible. Si le joueur lance un sort, notez le coût en PM s'il est implicite ou indiqué.
         *   **Étape 1.5: Tour des PNJ Alliés (si présents et actifs).**
             *   Pour chaque PNJ allié (identifié par team: 'player' dans activeCombat.combatants et qui n'est PAS le joueur, et qui a isAlly: true dans ses détails de personnage connus) qui est actif et non vaincu :
-                *   Déterminez une action appropriée pour cet allié. Basez cette action sur ses détails de personnage fournis (characterClass, stats, inventory, level, skills, spells, damageBonus, attackBonus) et la situation tactique.
+                *   Déterminez une action appropriée pour cet allié. Basez cette action sur ses détails de personnage fournis (characterClass, stats, spells, damageBonus, attackBonus) et la situation tactique.
                 *   Les alliés devraient agir de manière à aider l'équipe du joueur (soigner, attaquer des ennemis dangereux, utiliser des buffs/debuffs, etc.). Si l'allié est un "Mage", il devrait préférer lancer des sorts. Si c'est un "Guerrier", il attaquera.
                 *   Narrez l'action de l'allié et déterminez son succès/effet (ex: "Ancienne Elara lance Boule de Feu sur le Gobelin Fureteur. Elle touche et inflige X dégâts de feu.").
                 *   Prenez en compte les PM pour les sorts, les objets consommés de leur inventaire conceptuel.
@@ -641,7 +633,7 @@ Tasks:
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
     *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
     *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Also, include an optional initial inventory (e.g. [{"itemName": "Dague Rouillée", "quantity": 1}]). **DO NOT include currency in this inventory.** Set isAlly to false unless explicitly stated otherwise in the introduction context. **If the character was purchased at a slave market, you MUST set isAlly to true.**{{/if}}
+    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Set isAlly to false unless explicitly stated otherwise in the introduction context. **If the character was purchased at a slave market, you MUST set isAlly to true.**{{/if}}
     *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).

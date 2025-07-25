@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -63,40 +62,6 @@ const EditableField = ({ label, id, value, onChange, onBlur, type = "text", plac
       </div>
 );
 
-const NestedEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, valueType = "text", onUpdate, onRemove, onAdd, disabled = false }: { charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', title: string, icon: React.ElementType, data?: Record<string, string | number | boolean>, addLabel: string, valueType?: 'text' | 'number' | 'boolean', onUpdate: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills', key: string) => void, onAdd: (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills') => void, disabled?: boolean }) => (
-   <div className="space-y-2">
-       <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
-       <Card className="bg-muted/30 border">
-           <CardContent className="p-3 space-y-2">
-               {data && Object.keys(data).length > 0 ? (
-                   Object.entries(data).map(([key, value]) => (
-                       <div key={key} className="flex items-center gap-2">
-                           <Label htmlFor={`${charId}-${field}-${key}`} className="w-1/3 capitalize truncate text-sm">{key}</Label>
-                           <Input
-                               id={`${charId}-${field}-${key}`}
-                               type={valueType === 'number' ? 'number' : 'text'}
-                               defaultValue={String(value)}
-                               onBlur={(e) => onUpdate(charId, field, key, e.target.value)}
-                               className="h-8 text-sm flex-1 bg-background border"
-                               min={valueType === 'number' ? "0" : undefined}
-                               disabled={disabled}
-                           />
-                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, field, key)} disabled={disabled}>
-                               <Trash2 className="h-4 w-4" />
-                           </Button>
-                       </div>
-                   ))
-               ) : (
-                   <p className="text-muted-foreground italic text-sm">Aucun(e) {title.toLowerCase()} défini(e).</p>
-               )}
-               <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
-                  <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
-               </Button>
-           </CardContent>
-       </Card>
-   </div>
-);
-
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
   const otherCharacters = characters.filter(c => c.id !== charId);
   const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
@@ -146,7 +111,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false }: { charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => void, currentLanguage: string, disabled?: boolean }) => (
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean }) => (
    <div className="space-y-2">
        <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
        <Card className="bg-muted/30 border">
@@ -283,7 +248,7 @@ export function CharacterSidebar({
             if (field === 'locationId' && value === '__traveling__') {
                 value = null; // Convert special value to null
             }
-            const numberFields: (keyof Character)[] = ['level', 'experience', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints', 'currentExp', 'expToNextLevel'];
+            const numberFields: (keyof Character)[] = ['level', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints', 'currentExp', 'expToNextLevel'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
@@ -306,70 +271,28 @@ export function CharacterSidebar({
         }
    };
 
-    const handleNestedFieldChange = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations', key: string, value: string | number | boolean) => {
+    const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
         const character = characters.find(c => c.id === charId);
         if (character) {
              const currentFieldData = character[field] || {};
              let finalValue = value;
-             if ((field === 'inventory' || (field === 'skills' && typeof value === 'string'))) {
-                 const numValue = parseInt(value as string, 10);
-                 finalValue = isNaN(numValue) ? (field === 'inventory' ? 0 : value) : numValue;
-             }
 
              if (field === 'relations') {
                  onRelationUpdate(charId, key, String(finalValue));
-             } else {
-                const updatedField = { ...currentFieldData, [key]: finalValue };
-                onCharacterUpdate({ ...character, [field]: updatedField });
              }
         }
     };
 
-     const removeNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations', key: string) => {
+     const removeNestedField = (charId: string, field: 'relations', key: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
              if (field === 'relations') {
                  onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
-             } else {
-                const updatedField = { ...character[field] };
-                delete updatedField[key];
-                onCharacterUpdate({ ...character, [field]: updatedField });
              }
         }
     };
 
-    const addNestedField = (charId: string, field: 'stats' | 'inventory' | 'opinion' | 'skills' | 'relations') => {
-        if (field === 'relations') {
-             toast({ title: "Modification de Relation", description: "Modifiez les relations existantes via la liste déroulante ou le champ texte.", variant: "default" });
-             return;
-         }
-
-        const key = prompt(`Entrez le nom du nouveau champ pour ${field} :`);
-        if (key) {
-            let valuePrompt = `Entrez la valeur pour ${key} :`;
-            let defaultValue: string | number | boolean = '';
-            if (field === 'inventory') {
-                 valuePrompt = `Entrez la quantité pour ${key} :`;
-                 defaultValue = 1;
-            } else if (field === 'opinion') {
-                 defaultValue = currentLanguage === 'fr' ? 'Neutre' : 'Neutral';
-            } else if (field === 'skills') {
-                 valuePrompt = `Entrez la valeur/bonus pour ${key} (ou laissez vide pour compétence acquise) :`;
-                 defaultValue = true;
-            } else if (field === 'stats') {
-                 valuePrompt = `Entrez la valeur pour la statistique ${key} :`;
-                 defaultValue = 10;
-            }
-
-            const valueInput = prompt(valuePrompt);
-            if (valueInput !== null) {
-                 let value: string | number | boolean = valueInput.trim() === '' ? defaultValue : valueInput;
-                 handleNestedFieldChange(charId, field, key, value);
-            }
-        }
-    };
-
-    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number, value: string) => {
+    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells', index: number, value: string) => {
         const character = characters.find(c => c.id === charId);
         if (character && character[field]) {
             const updatedArray = [...character[field]!];
@@ -378,7 +301,7 @@ export function CharacterSidebar({
         }
     };
 
-    const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities') => {
+    const addArrayFieldItem = (charId: string, field: 'history' | 'spells') => {
         const character = characters.find(c => c.id === charId);
         if (character) {
              let promptMessage = `Ajouter un nouvel élément à ${field} :`;
@@ -391,7 +314,7 @@ export function CharacterSidebar({
         }
     };
 
-    const removeArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'techniques' | 'passiveAbilities', index: number) => {
+    const removeArrayFieldItem = (charId: string, field: 'history' | 'spells', index: number) => {
         const character = characters.find(c => c.id === charId);
          if (character && character[field]) {
             const updatedArray = [...character[field]!];
@@ -802,17 +725,12 @@ export function CharacterSidebar({
                             {rpgMode && (
                                 <>
                                     <Separator />
-                                    <NestedEditableCard charId={char.id} field="stats" title="Statistiques Diverses" icon={BarChartHorizontal} data={char.stats} addLabel="Ajouter Stat" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
-                                    <NestedEditableCard charId={char.id} field="skills" title="Compétences" icon={Star} data={char.skills} addLabel="Ajouter Compétence" valueType="text" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
-                                    <NestedEditableCard charId={char.id} field="inventory" title="Inventaire" icon={ScrollText} data={char.inventory} addLabel="Ajouter Objet" valueType="number" onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField} disabled={!isAllyAndRpg}/>
                                     <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
-                                    <ArrayEditableCard charId={char.id} field="techniques" title="Techniques de Combat" icon={Swords} data={char.techniques} addLabel="Ajouter Technique" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
-                                    <ArrayEditableCard charId={char.id} field="passiveAbilities" title="Capacités Passives" icon={Shield} data={char.passiveAbilities} addLabel="Ajouter Capacité" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
                                 </>
                             )}
                             <Separator />
                              <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
-                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"} onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addNestedField}/>
+                            <NestedEditableCard charId={char.id} field="opinion" title={currentLanguage === 'fr' ? "Opinions" : "Opinions"} icon={Brain} data={char.opinion} addLabel={currentLanguage === 'fr' ? "Ajouter Opinion" : "Add Opinion"} onUpdate={handleNestedFieldChange} onRemove={removeNestedField} onAdd={addArrayFieldItem}/>
                         </AccordionContent>
                     </AccordionItem>
                     )
@@ -822,5 +740,3 @@ export function CharacterSidebar({
     </div>
   );
 }
-
-    
