@@ -26,6 +26,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
@@ -111,7 +123,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean }) => (
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => (
    <div className="space-y-2">
        <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
        <Card className="bg-muted/30 border">
@@ -137,9 +149,11 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                ) : (
                    <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
                )}
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
-                   <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
-               </Button>
+                {addDialog || (
+                     <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
+                       <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
+                   </Button>
+                )}
            </CardContent>
        </Card>
    </div>
@@ -463,98 +477,82 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     pointsOfInterest: MapPointOfInterest[];
     allCharacters: Character[];
 }) {
-
+    const { toast } = useToast();
     const ATTRIBUTES: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
 
-    const [remainingPoints, setRemainingPoints] = React.useState(0);
+    const [isAddSpellDialogOpen, setIsAddSpellDialogOpen] = React.useState(false);
+    const [newSpellName, setNewSpellName] = React.useState("");
 
-    const calculatePoints = React.useCallback((character: Character) => {
-        if (!rpgMode || !character.isAlly) return { total: 0, spent: 0 };
-        const creationPoints = character.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-        const levelPoints = character.level && character.level > 1 ? (character.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
-        const totalDistributable = creationPoints + levelPoints;
+    const { total: totalDistributablePoints, spent: spentPoints } = React.useMemo(() => {
+        if (!rpgMode || !char.isAlly) return { total: 0, spent: 0 };
+        const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+        const total = creationPoints + levelPoints;
 
         const spent = ATTRIBUTES.reduce((acc, attr) => {
-            return acc + ((Number(character[attr]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
+            return acc + ((Number(char[attr]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
         }, 0);
         
-        return { total: totalDistributable, spent: spent };
-    }, [rpgMode, ATTRIBUTES]);
+        return { total, spent };
+    }, [char, rpgMode, ATTRIBUTES]);
 
-
+    const remainingPoints = totalDistributablePoints - spentPoints;
+    
     React.useEffect(() => {
-        let updatedChar = { ...char };
-        let changed = false;
-
-        // Ensure attributes are defined for calculation
-        ATTRIBUTES.forEach(attr => {
-            if (updatedChar[attr] === undefined || updatedChar[attr] === null) {
-                (updatedChar as any)[attr] = BASE_ATTRIBUTE_VALUE_FORM;
-                changed = true;
-            }
-        });
-
-        const { total, spent } = calculatePoints(updatedChar);
-
-        if (spent > total) {
-            let pointsOver = spent - total;
-            // Reduce highest attributes first to meet the budget
+        if (!rpgMode || !char.isAlly) return;
+        
+        const currentSpent = ATTRIBUTES.reduce((acc, attr) => acc + (Number(char[attr] || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM), 0);
+        
+        if (currentSpent > totalDistributablePoints) {
+            let characterWithCorrectedPoints = { ...char };
+            let pointsOver = currentSpent - totalDistributablePoints;
+            
             const sortedAttrs = ATTRIBUTES
-                .map(attr => ({ name: attr, value: Number(updatedChar[attr]) }))
+                .map(attr => ({ name: attr, value: Number(characterWithCorrectedPoints[attr] || BASE_ATTRIBUTE_VALUE_FORM) }))
                 .sort((a, b) => b.value - a.value);
-
+                
             for (const attr of sortedAttrs) {
                 if (pointsOver <= 0) break;
                 const currentValue = attr.value;
-                const reduction = Math.min(pointsOver, currentValue - BASE_ATTRIBUTE_VALUE_FORM);
+                const canReduceBy = currentValue - BASE_ATTRIBUTE_VALUE_FORM;
+                const reduction = Math.min(pointsOver, canReduceBy);
+
                 if (reduction > 0) {
-                    (updatedChar as any)[attr.name] = currentValue - reduction;
+                    (characterWithCorrectedPoints as any)[attr.name] = currentValue - reduction;
                     pointsOver -= reduction;
-                    changed = true;
                 }
             }
+            onCharacterUpdate(characterWithCorrectedPoints);
         }
-        
-        if (changed) {
-            onCharacterUpdate(updatedChar);
-        } else {
-             // If no correction was needed, just update the remaining points display
-            setRemainingPoints(total - spent);
-        }
-
-    }, [char, rpgMode, calculatePoints, onCharacterUpdate, ATTRIBUTES]);
+    }, [char.id, char.level, char.initialAttributePoints, rpgMode, char.isAlly, onCharacterUpdate]);
     
-    // Update remaining points whenever the character state changes from parent
-     React.useEffect(() => {
-        const { total, spent } = calculatePoints(char);
-        setRemainingPoints(total - spent);
-    }, [char, calculatePoints]);
-
-
-    const handleNpcAttributeChange = (charId: string, fieldName: keyof Character, value: string) => {
-        let numericValue = parseInt(value, 10);
-        if (isNaN(numericValue)) {
-            numericValue = BASE_ATTRIBUTE_VALUE_FORM;
-        }
-        onCharacterUpdate({ ...char, [fieldName]: numericValue });
-    };
-
-    const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character) => {
+    const handleNpcAttributeBlur = (fieldName: keyof Character) => {
         let character = { ...char };
         let numericValue = Number(character[fieldName]);
         
         if (isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM) {
             numericValue = BASE_ATTRIBUTE_VALUE_FORM;
-            character[fieldName] = numericValue;
+            (character as any)[fieldName] = numericValue;
         }
 
-        const { total, spent } = calculatePoints(character);
-        
-        if (spent > total) {
-            const overspent = spent - total;
-            character[fieldName] = numericValue - overspent;
+        const currentSpent = ATTRIBUTES.reduce((acc, attr) => acc + (Number(character[attr] || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM), 0);
+
+        if (currentSpent > totalDistributablePoints) {
+            const overspent = currentSpent - totalDistributablePoints;
+            (character as any)[fieldName] = numericValue - overspent;
         }
         onCharacterUpdate(character);
+    };
+
+    const handleAddSpell = () => {
+        if (!newSpellName.trim()) {
+            toast({ title: "Nom du sort requis", variant: "destructive" });
+            return;
+        }
+        const currentSpells = char.spells || [];
+        onCharacterUpdate({ ...char, spells: [...currentSpells, newSpellName.trim()] });
+        setNewSpellName("");
+        setIsAddSpellDialogOpen(false);
     };
 
     let isPotentiallyNew = false;
@@ -781,8 +779,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                                 label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
                                                 id={`${char.id}-${attr}`} type="number" 
                                                 value={char[attr]} 
-                                                onChange={(e) => handleNpcAttributeChange(char.id, attr, e.target.value)}
-                                                onBlur={() => handleNpcAttributeBlur(char.id, attr)} 
+                                                onChange={(e) => onCharacterUpdate({ ...char, [attr]: e.target.value ? parseInt(e.target.value, 10) : BASE_ATTRIBUTE_VALUE_FORM })}
+                                                onBlur={() => handleNpcAttributeBlur(attr)} 
                                                 min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
                                                 disabled={!isAllyAndRpg}
                                             />
@@ -852,7 +850,50 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 {rpgMode && (
                     <>
                         <Separator />
-                        <ArrayEditableCard charId={char.id} field="spells" title="Sorts" icon={Zap} data={char.spells} addLabel="Ajouter Sort" onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage} disabled={!isAllyAndRpg}/>
+                        <ArrayEditableCard
+                            charId={char.id}
+                            field="spells"
+                            title="Sorts"
+                            icon={Zap}
+                            data={char.spells}
+                            addLabel="Ajouter Sort"
+                            onUpdate={handleArrayFieldChange}
+                            onRemove={removeArrayFieldItem}
+                            onAdd={() => setIsAddSpellDialogOpen(true)}
+                            currentLanguage={currentLanguage}
+                            disabled={!isAllyAndRpg}
+                            addDialog={
+                                <AlertDialog open={isAddSpellDialogOpen} onOpenChange={setIsAddSpellDialogOpen}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="w-full mt-2" disabled={!isAllyAndRpg}>
+                                            <PlusCircle className="mr-1 h-4 w-4" /> Ajouter Sort
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Ajouter un nouveau sort</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Entrez le nom du sort à ajouter pour {char.name}.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <div className="py-4">
+                                            <Label htmlFor="new-spell-name">Nom du Sort</Label>
+                                            <Input
+                                                id="new-spell-name"
+                                                value={newSpellName}
+                                                onChange={(e) => setNewSpellName(e.target.value)}
+                                                className="mt-1"
+                                                placeholder="Ex: Boule de Feu"
+                                            />
+                                        </div>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setNewSpellName("")}>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleAddSpell}>Ajouter</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            }
+                        />
                     </>
                 )}
                 <Separator />
@@ -861,5 +902,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+    
 
     
