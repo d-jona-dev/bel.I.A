@@ -1,4 +1,5 @@
 
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -61,7 +62,6 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -83,7 +83,7 @@ interface PageStructureProps {
   playerName: string;
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
-  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+  onCombatUpdates: (combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => void;
   suggestQuestHookAction: () => Promise<void>;
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
@@ -119,6 +119,7 @@ interface PageStructureProps {
   onToggleStrategyMode: () => void;
   onToggleRpgMode: () => void;
   onToggleRelationsMode: () => void;
+  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
 }
 
 export function PageStructure({

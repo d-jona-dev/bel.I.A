@@ -518,7 +518,7 @@ export default function Home() {
     });
   }, []);
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
+  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[] = [], currencyGained: number = 0) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
     const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
@@ -660,6 +660,43 @@ export default function Home() {
                 }, 0);
             }
         }
+        
+        // Add items and currency from rewards
+        if (itemsObtained.length > 0) {
+            const newInventory = [...(newSettings.playerInventory || [])];
+            itemsObtained.forEach(item => {
+                 if (!item.itemName || typeof item.quantity !== 'number' || !item.itemType) {
+                    console.warn("Skipping invalid loot item:", item);
+                    return;
+                }
+                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.itemName);
+                if (existingItemIndex > -1) {
+                    newInventory[existingItemIndex].quantity += item.quantity;
+                } else {
+                    newInventory.push({
+                        id: `${item.itemName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                        name: item.itemName,
+                        quantity: item.quantity,
+                        description: item.description,
+                        effect: item.effect,
+                        type: item.itemType,
+                        goldValue: item.goldValue,
+                        statBonuses: item.statBonuses,
+                        generatedImageUrl: null,
+                        isEquipped: false
+                    });
+                }
+            });
+            newSettings.playerInventory = newInventory;
+        }
+
+        if (currencyGained > 0) {
+            newSettings.playerGold = (newSettings.playerGold || 0) + currencyGained;
+            setTimeout(() => {
+                toast({ title: "Pièces d'Or Reçues !", description: `Vous avez trouvé ${currencyGained} pièces d'or.` });
+            }, 0);
+        }
+
         return newSettings;
     });
     
@@ -1161,13 +1198,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates);
+                handleCombatUpdates(result.combatUpdates, result.itemsObtained, result.currencyGained);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
 
-            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
+            if (adventureSettings.rpgMode && !result.combatUpdates && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                 const amount = result.currencyGained;
                 if (amount < 0) {
                     const currentGold = adventureSettings.playerGold ?? 0;
@@ -1840,7 +1877,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates);
+                    handleCombatUpdates(result.combatUpdates, result.itemsObtained, result.currencyGained);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -3313,7 +3350,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         onGenerateMap={handleGenerateMapImage}
         isGeneratingMap={isGeneratingMap}
         onPoiPositionChange={handlePoiPositionChange}
-        isLoading={isUiLocked}
         onCreatePoi={handleCreatePoi}
         onBuildInPoi={handleBuildInPoi}
         currentTurn={narrativeMessages.length}
