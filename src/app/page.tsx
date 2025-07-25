@@ -273,7 +273,7 @@ export default function Home() {
         characterClass: "Impératrice", isHostile: false,
         strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
         hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"], skills: {"Diplomatie": true, "Histoire": true},
+        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"],
         factionColor: '#8A2BE2', // BlueViolet
         locationId: 'poi-bourgenval',
       },
@@ -296,7 +296,7 @@ export default function Home() {
         armorClass: 11,
         attackBonus: 2,
         damageBonus: "1d6",
-        spells: ["Projectile Magique", "Armure de Mage"], skills: {"Arcanes": true},
+        spells: ["Projectile Magique", "Armure de Mage"],
         factionColor: '#00FFFF', // Cyan
         locationId: 'poi-bourgenval',
       },
@@ -314,7 +314,7 @@ export default function Home() {
         characterClass: "Noble Reclus", isHostile: false,
         strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
         hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
-        inventory: {"Sceptre Orné": 1, "Carte de la région": 1},
+        
         factionColor: '#0000FF', // Blue
         locationId: 'poi-foret',
       },
@@ -332,7 +332,7 @@ export default function Home() {
         characterClass: "Chef Gobelin", isHostile: true,
         strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
         hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
-        inventory: {"Hache Rouillée": 1, "Pièces de Cuivre": 12},
+        
         factionColor: '#FF0000', // Red
         locationId: 'poi-grotte',
       },
@@ -350,7 +350,7 @@ export default function Home() {
         characterClass: "Fureteur Gobelin", isHostile: true,
         strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
         hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        inventory: {"Dague Courte": 1, "Cailloux pointus": 5},
+        
         factionColor: '#DC143C', // Crimson
         locationId: 'poi-grotte',
       }
@@ -664,87 +664,91 @@ export default function Home() {
     });
     
     if (currentRpgMode) {
-      if (isNewCombatStarting) {
-        const newCombatStateFromAI = combatUpdates.nextActiveCombatState!;
-        const allCombatantsFromAI = newCombatStateFromAI.combatants;
-        const finalCombatants = new Map<string, Combatant>();
+        if (isNewCombatStarting) {
+          const newCombatStateFromAI = combatUpdates.nextActiveCombatState!;
+          const allCombatantsFromAI = newCombatStateFromAI.combatants;
+          const finalCombatants = new Map<string, Combatant>();
+  
+          // 1. Add player
+          finalCombatants.set(PLAYER_ID, {
+              characterId: PLAYER_ID,
+              name: adventureSettings.playerName || "Player",
+              currentHp: adventureSettings.playerCurrentHp!,
+              maxHp: adventureSettings.playerMaxHp!,
+              currentMp: adventureSettings.playerCurrentMp,
+              maxMp: adventureSettings.playerMaxMp,
+              team: 'player',
+              isDefeated: (adventureSettings.playerCurrentHp ?? 0) <= 0,
+              statusEffects: [],
+          });
+  
+          // 2. Add all current allies from global state who are able to fight
+          characters
+              .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0)
+              .forEach(allyChar => {
+                  if (!finalCombatants.has(allyChar.id)) {
+                      finalCombatants.set(allyChar.id, {
+                          characterId: allyChar.id,
+                          name: allyChar.name,
+                          currentHp: allyChar.hitPoints!,
+                          maxHp: allyChar.maxHitPoints!,
+                          currentMp: allyChar.manaPoints,
+                          maxMp: allyChar.maxManaPoints,
+                          team: 'player',
+                          isDefeated: false,
+                          statusEffects: allyChar.statusEffects || [],
+                      });
+                  }
+              });
+  
+          // 3. Add enemies from AI output
+          allCombatantsFromAI
+              .filter(c => c.team === 'enemy')
+              .forEach(enemy => {
+                   if (!finalCombatants.has(enemy.characterId)) {
+                      finalCombatants.set(enemy.characterId, enemy);
+                   }
+              });
+  
+          let allCombatants = Array.from(finalCombatants.values());
+  
+          // Apply HP/MP updates from this turn's result
+          const updatedCombatantsForFirstTurn = allCombatants.map(c => {
+              const update = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
+              if (update) {
+                  return { ...c, currentHp: update.newHp, currentMp: update.newMp ?? c.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || c.statusEffects };
+              }
+              return c;
+          });
+  
+          setActiveCombat({
+              ...newCombatStateFromAI,
+              combatants: updatedCombatantsForFirstTurn,
+          });
+  
+        } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
+            // For subsequent turns, use the fresh list from the AI's nextActiveCombatState and apply updates.
+            const baseCombatantsForNextTurn = combatUpdates.nextActiveCombatState.combatants;
 
-        // 1. Add player
-        finalCombatants.set(PLAYER_ID, {
-            characterId: PLAYER_ID,
-            name: adventureSettings.playerName || "Player",
-            currentHp: adventureSettings.playerCurrentHp!,
-            maxHp: adventureSettings.playerMaxHp!,
-            currentMp: adventureSettings.playerCurrentMp,
-            maxMp: adventureSettings.playerMaxMp,
-            team: 'player',
-            isDefeated: (adventureSettings.playerCurrentHp ?? 0) <= 0,
-            statusEffects: [],
-        });
-
-        // 2. Add all current allies from global state who are able to fight
-        characters
-            .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0)
-            .forEach(allyChar => {
-                if (!finalCombatants.has(allyChar.id)) {
-                    finalCombatants.set(allyChar.id, {
-                        characterId: allyChar.id,
-                        name: allyChar.name,
-                        currentHp: allyChar.hitPoints!,
-                        maxHp: allyChar.maxHitPoints!,
-                        currentMp: allyChar.manaPoints,
-                        maxMp: allyChar.maxManaPoints,
-                        team: 'player',
-                        isDefeated: false,
-                        statusEffects: allyChar.statusEffects || [],
-                    });
+            const updatedCombatants = baseCombatantsForNextTurn.map(combatant => {
+                const update = combatUpdates.updatedCombatants.find(u => u.combatantId === combatant.characterId);
+                if (update) {
+                    // Apply this turn's results to the fresh list for the next turn
+                    return { ...combatant, currentHp: update.newHp, currentMp: update.newMp ?? combatant.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || combatant.statusEffects };
                 }
+                return combatant; // No update for this combatant, use the state from AI
             });
 
-        // 3. Add enemies from AI output
-        allCombatantsFromAI
-            .filter(c => c.team === 'enemy')
-            .forEach(enemy => {
-                 if (!finalCombatants.has(enemy.characterId)) {
-                    finalCombatants.set(enemy.characterId, enemy);
-                 }
+            setActiveCombat({
+                ...combatUpdates.nextActiveCombatState,
+                combatants: updatedCombatants,
             });
-
-        let allCombatants = Array.from(finalCombatants.values());
-
-        // Apply HP/MP updates from this turn's result
-        const updatedCombatantsForFirstTurn = allCombatants.map(c => {
-            const update = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
-            if (update) {
-                return { ...c, currentHp: update.newHp, currentMp: update.newMp ?? c.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || c.statusEffects };
-            }
-            return c;
-        });
-
-        setActiveCombat({
-            ...newCombatStateFromAI,
-            combatants: updatedCombatantsForFirstTurn,
-        });
-
-      } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
-        // For subsequent turns, trust the combatant list from the previous turn and just update it.
-        const updatedCombatants = (activeCombat?.combatants || []).map(existingCombatant => {
-            const update = combatUpdates.updatedCombatants.find(u => u.combatantId === existingCombatant.characterId);
-            if (update) {
-                return { ...existingCombatant, currentHp: update.newHp, currentMp: update.newMp ?? existingCombatant.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || existingCombatant.statusEffects };
-            }
-            return existingCombatant;
-        });
-        setActiveCombat({
-            ...combatUpdates.nextActiveCombatState,
-            combatants: updatedCombatants,
-        });
-
-      } else if (combatUpdates.combatEnded) {
-          setActiveCombat(undefined);
-          setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
+  
+        } else if (combatUpdates.combatEnded) {
+            setActiveCombat(undefined);
+            setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
+        }
       }
-    }
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [toast, adventureSettings, characters, activeCombat]);
@@ -774,13 +778,6 @@ export default function Home() {
                     });
                 }
             }
-
-            const inventoryRecord: Record<string, number> = {};
-            if (currentSettings.rpgMode && nc.inventory) {
-                nc.inventory.forEach(item => {
-                    inventoryRecord[item.itemName] = item.quantity;
-                });
-            }
             
             const npcLevel = nc.level ?? 1;
             const npcBaseDerivedStats = calculateBaseDerivedStats({
@@ -807,7 +804,6 @@ export default function Home() {
                 ...(currentSettings.rpgMode ? {
                     level: npcLevel,
                     characterClass: nc.characterClass || "PNJ",
-                    inventory: inventoryRecord,
                     strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
                     intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
                     hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
@@ -2007,7 +2003,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         ...(newCharRPGMode ? {
             level: newCharLevel,
             characterClass: globalCharToAdd.characterClass ?? '',
-            inventory: globalCharToAdd.inventory ?? {},
             hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10,
             maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
             manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0,
@@ -2024,7 +2019,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
 
         } : {
-            level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
+            level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
             armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
             strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
             initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
@@ -2185,7 +2180,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                          attackBonus: loadedData.adventureSettings?.rpgMode ? (c.attackBonus ?? 0) : undefined,
                          damageBonus: loadedData.adventureSettings?.rpgMode ? (c.damageBonus ?? "1") : undefined,
                          isHostile: loadedData.adventureSettings?.rpgMode ? (c.isHostile ?? false) : undefined,
-                         inventory: loadedData.adventureSettings?.rpgMode ? (c.inventory ?? {}) : undefined,
                      }));
                  }
                   if (loadedData.saveFormatVersion < 2.3) {
@@ -2253,7 +2247,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         expToNextLevel: rpgModeActive ? (c.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, ((charLevel ?? 1) || 1) -1))) : undefined,
                         locationId: c.locationId,
                         ...(rpgModeActive ? {
-                            level: charLevel, characterClass: c.characterClass ?? '', inventory: typeof c.inventory === 'object' && c.inventory !== null ? c.inventory : {},
+                            level: charLevel, characterClass: c.characterClass ?? '', 
                             hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10,
                             manaPoints: c.manaPoints ?? c.maxManaPoints ?? 0, maxManaPoints: c.maxManaPoints ?? 0,
                             armorClass: c.armorClass ?? 10, attackBonus: c.attackBonus ?? 0, damageBonus: c.damageBonus ?? "1",
@@ -2262,8 +2256,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                             intelligence: c.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: c.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: c.charisma ?? BASE_ATTRIBUTE_VALUE,
                             experience: c.experience ?? 0,
                             spells: Array.isArray(c.spells) ? c.spells : [],
-                            techniques: Array.isArray(c.techniques) ? c.techniques : [],
-                            passiveAbilities: Array.isArray(c.passiveAbilities) ? c.passiveAbilities : [],
                         } : {}),
                     } as Character;
                 });
@@ -2460,7 +2452,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             currentExp: charCurrentExp,
             expToNextLevel: charExpToNext,
             ...(newRPGMode ? {
-                level: charLevel, characterClass: existingChar.characterClass || '', inventory: existingChar.inventory || {},
+                level: charLevel, characterClass: existingChar.characterClass || '', 
                 hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10,
                 manaPoints: existingChar.manaPoints ?? existingChar.maxManaPoints ?? 0, maxManaPoints: existingChar.maxManaPoints ?? 0,
                 armorClass: existingChar.armorClass ?? 10, attackBonus: existingChar.attackBonus ?? 0, damageBonus: existingChar.damageBonus ?? "1",
@@ -2468,7 +2460,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 strength: existingChar.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: existingChar.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: existingChar.constitution ?? BASE_ATTRIBUTE_VALUE,
                 intelligence: existingChar.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: existingChar.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: existingChar.charisma ?? BASE_ATTRIBUTE_VALUE,
             } : {
-                level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
+                level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
                 armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
                 strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
                 initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
@@ -2480,7 +2472,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         } else {
           const newId = formDef.id || `${formDef.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
           const defaultCharRPGStats = {
-            level: 1, characterClass: '', inventory: {}, hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
+            level: 1, characterClass: '', hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
             attackBonus: 0, damageBonus: "1", isHostile: false,
             strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
             intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
@@ -2491,7 +2483,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             id: newId, name: formDef.name, details: formDef.details, history: [`Créé via formulaire le ${new Date().toLocaleString()}`], portraitUrl: null,
             isAlly: false,
             locationId: stagedAdventureSettings.playerLocationId,
-             ...(newRPGMode ? defaultCharRPGStats : {level: undefined, characterClass: undefined, inventory: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined, armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined, strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined, initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined}),
+             ...(newRPGMode ? defaultCharRPGStats : {level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined, armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined, strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined, initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined}),
             ...(newRelationsMode ? { affinity: 50, relations: { [PLAYER_ID]: defaultRelation }, } : {affinity: undefined, relations: undefined})
           };
         }
@@ -3256,6 +3248,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         currentLanguage={currentLanguage}
         fileInputRef={fileInputRef}
         handleSettingsUpdate={handleSettingsUpdate}
+        handleNarrativeUpdate={handleNarrativeUpdate}
         handleCharacterUpdate={handleCharacterUpdate}
         handleNewCharacters={handleNewCharacters}
         handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
@@ -3283,7 +3276,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
         handleSaveNewCharacter={handleSaveNewCharacter}
         handleAddStagedCharacter={handleAddStagedCharacter}
-        handleNarrativeUpdate={handleNarrativeUpdate}
         handleSave={handleSave}
         handleLoad={handleLoad}
         setCurrentLanguage={setCurrentLanguage}
