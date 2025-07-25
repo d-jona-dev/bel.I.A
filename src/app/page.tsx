@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -498,7 +497,7 @@ export default function Home() {
     });
   }, []);
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
+  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
 
@@ -637,6 +636,7 @@ export default function Home() {
                         duration: 9000,
                     });
                 }, 0);
+                 setFormPropKey(k => k + 1);
             }
         }
         
@@ -1080,6 +1080,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             }
             
             const combatLoot = result.combatUpdates?.itemsObtained;
+            const combatCurrency = result.combatUpdates?.currencyGained;
             handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, combatLoot);
 
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
@@ -1088,7 +1089,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates);
+                handleCombatUpdates(result.combatUpdates, combatLoot || [], combatCurrency || 0);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -1774,7 +1775,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates);
+                    handleCombatUpdates(result.combatUpdates, result.combatUpdates.itemsObtained || [], result.combatUpdates.currencyGained || 0);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -3261,6 +3262,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 
 
 
