@@ -52,7 +52,7 @@ interface AdventureDisplayProps {
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: PlayerInventoryItem[]) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
     onNewCharacters: (newChars: NewCharacterSchema[]) => void;
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
@@ -61,7 +61,7 @@ interface AdventureDisplayProps {
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     activeCombat?: ActiveCombat;
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+    onCombatUpdates: (combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
     handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
@@ -345,23 +345,16 @@ export function AdventureDisplay({
     );
   };
 
-  const NpcCombatantCard = ({ character, combatData }: { character: Character, combatData?: Combatant }) => {
-    const displayData = combatData || character;
-    const name = character.name;
-    const charClass = character.characterClass;
-    const level = character.level;
+  const NpcCombatantCard = ({ combatData }: { combatData: Combatant }) => {
+    const character = characters.find(c => c.id === combatData.characterId);
+    const name = character?.name || combatData.name;
+    const charClass = character?.characterClass;
+    const level = character?.level;
     
-    let currentHp = combatData?.currentHp ?? character.hitPoints ?? character.maxHitPoints ?? 10;
-    let maxHp = combatData?.maxHp ?? character.maxHitPoints ?? 10;
-    let currentMp = combatData?.currentMp ?? character.manaPoints ?? 0;
-    let maxMp = combatData?.maxMp ?? character.maxManaPoints ?? 0;
-    let statusEffects = combatData?.statusEffects ?? character.statusEffects ?? [];
-    let isDefeated = combatData ? combatData.isDefeated : (character.hitPoints !== undefined && character.hitPoints <= 0);
-
-    const cardBorderColor = combatData?.team === 'player' ? 'border-green-500' : (combatData?.team === 'enemy' ? 'border-red-500' : (character.isAlly ? 'border-green-300' : 'border-muted-foreground'));
+    const cardBorderColor = combatData.team === 'player' ? 'border-green-500' : 'border-red-500';
 
     return (
-        <Card key={character.id} className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
+        <Card key={combatData.characterId} className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
             <CardHeader className="p-3 pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
                     <span className="truncate">{name}</span>
@@ -371,39 +364,33 @@ export function AdventureDisplay({
                         </span>
                     )}
                 </CardTitle>
-                 {!activeCombat?.isActive && !combatData && character.isAlly && (
-                    <UICardDescription className="text-xs text-primary">Allié (Prêt)</UICardDescription>
-                )}
-                 {activeCombat?.isActive && !combatData && character.isAlly && (character.hitPoints ?? 0) > 0 && (
-                    <UICardDescription className="text-xs text-orange-500">Allié (Non engagé ce tour)</UICardDescription>
-                )}
             </CardHeader>
             <CardContent className="p-3 pt-0 space-y-1">
                 <div>
                     <div className="flex justify-between items-center mb-0.5">
-                        <Label htmlFor={`${character.id}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                        <span className="text-xs text-muted-foreground">{currentHp} / {maxHp}</span>
+                        <Label htmlFor={`${combatData.characterId}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                        <span className="text-xs text-muted-foreground">{combatData.currentHp} / {combatData.maxHp}</span>
                     </div>
-                    <Progress id={`${character.id}-hp`} value={(currentHp / (maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
+                    <Progress id={`${combatData.characterId}-hp`} value={(combatData.currentHp / (combatData.maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
                 </div>
-                {(maxMp > 0) && (
+                {(combatData.maxMp ?? 0) > 0 && (
                     <div>
                         <div className="flex justify-between items-center mb-0.5">
-                            <Label htmlFor={`${character.id}-mp`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                            <span className="text-xs text-muted-foreground">{currentMp} / {maxMp}</span>
+                            <Label htmlFor={`${combatData.characterId}-mp`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                            <span className="text-xs text-muted-foreground">{combatData.currentMp} / {combatData.maxMp}</span>
                         </div>
-                        <Progress id={`${character.id}-mp`} value={((currentMp) / (maxMp || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                        <Progress id={`${combatData.characterId}-mp`} value={((combatData.currentMp ?? 0) / (combatData.maxMp || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
                     </div>
                 )}
-                {statusEffects && statusEffects.length > 0 && (
+                {combatData.statusEffects && combatData.statusEffects.length > 0 && (
                     <div className="mt-1">
                         <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts</Label>
                         <div className="text-xs text-muted-foreground">
-                            {statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
+                            {combatData.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
                         </div>
                     </div>
                 )}
-                 {isDefeated && <p className="text-xs text-destructive font-semibold text-center mt-1">VAINCU</p>}
+                 {combatData.isDefeated && <p className="text-xs text-destructive font-semibold text-center mt-1">VAINCU</p>}
             </CardContent>
         </Card>
     );
@@ -892,21 +879,13 @@ export function AdventureDisplay({
                                 c.characterId !== playerId &&
                                 !c.isDefeated
                             )
-                            .map((ally) => {
-                              const allyCharData = characters.find(
-                                (cd) => cd.id === ally.characterId
-                              ) || ({
-                                name: ally.name,
-                                id: ally.characterId,
-                              } as Character);
-                              return (
+                            .map((ally) => (
                                 <NpcCombatantCard
                                   key={`ally-${ally.characterId}`}
-                                  character={allyCharData}
                                   combatData={ally}
                                 />
-                              );
-                            })}
+                              )
+                            )}
                         
                         {/* Enemies in Combat */}
                         {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
@@ -926,10 +905,9 @@ export function AdventureDisplay({
                                 <CardContent className="p-2 pt-0">
                                     {activeCombat.combatants
                                         .filter(c => c.team === 'enemy' && !c.isDefeated)
-                                        .map(enemy => {
-                                            const enemyCharData = characters.find(cd => cd.id === enemy.characterId) || { name: enemy.name, id: enemy.characterId } as Character;
-                                            return <NpcCombatantCard key={`enemy-${enemy.characterId}`} character={enemyCharData} combatData={enemy} />;
-                                        })}
+                                        .map(enemy => (
+                                            <NpcCombatantCard key={`enemy-${enemy.characterId}`} combatData={enemy} />
+                                        ))}
                                 </CardContent>
                             </Card>
                         )}
@@ -939,10 +917,9 @@ export function AdventureDisplay({
                             <>
                                 <Separator className="my-2" />
                                 <UICardDescription className="text-xs text-center py-1">Combattants Vaincus</UICardDescription>
-                                {activeCombat.combatants.filter(c => c.isDefeated).map(defeated => {
-                                    const defeatedCharData = characters.find(cd => cd.id === defeated.characterId) || { name: defeated.name, id: defeated.characterId } as Character;
-                                     return <NpcCombatantCard key={`defeated-${defeated.characterId}`} character={defeatedCharData} combatData={defeated}/>;
-                                })}
+                                {activeCombat.combatants.filter(c => c.isDefeated).map(defeated => (
+                                     <NpcCombatantCard key={`defeated-${defeated.characterId}`} combatData={defeated}/>
+                                ))}
                             </>
                          )}
                     </div>
@@ -952,5 +929,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    

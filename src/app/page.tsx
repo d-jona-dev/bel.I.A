@@ -701,94 +701,38 @@ export default function Home() {
     });
     
     if (currentRpgMode) {
-        if (isNewCombatStarting) {
-          const newCombatStateFromAI = combatUpdates.nextActiveCombatState!;
-          const allCombatantsFromAI = newCombatStateFromAI.combatants;
-          const finalCombatants = new Map<string, Combatant>();
-  
-          // 1. Add player
-          finalCombatants.set(PLAYER_ID, {
-              characterId: PLAYER_ID,
-              name: adventureSettings.playerName || "Player",
-              currentHp: adventureSettings.playerCurrentHp!,
-              maxHp: adventureSettings.playerMaxHp!,
-              currentMp: adventureSettings.playerCurrentMp,
-              maxMp: adventureSettings.playerMaxMp,
-              team: 'player',
-              isDefeated: (adventureSettings.playerCurrentHp ?? 0) <= 0,
-              statusEffects: [],
-          });
-  
-          // 2. Add all current allies from global state who are able to fight
-          characters
-              .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0)
-              .forEach(allyChar => {
-                  if (!finalCombatants.has(allyChar.id)) {
-                      finalCombatants.set(allyChar.id, {
-                          characterId: allyChar.id,
-                          name: allyChar.name,
-                          currentHp: allyChar.hitPoints!,
-                          maxHp: allyChar.maxHitPoints!,
-                          currentMp: allyChar.manaPoints,
-                          maxMp: allyChar.maxManaPoints,
-                          team: 'player',
-                          isDefeated: false,
-                          statusEffects: allyChar.statusEffects || [],
-                      });
-                  }
-              });
-  
-          // 3. Add enemies from AI output
-          allCombatantsFromAI
-              .filter(c => c.team === 'enemy')
-              .forEach(enemy => {
-                   if (!finalCombatants.has(enemy.characterId)) {
-                      finalCombatants.set(enemy.characterId, enemy);
-                   }
-              });
-  
-          let allCombatants = Array.from(finalCombatants.values());
-  
-          // Apply HP/MP updates from this turn's result
-          const updatedCombatantsForFirstTurn = allCombatants.map(c => {
-              const update = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
-              if (update) {
-                  return { ...c, currentHp: update.newHp, currentMp: update.newMp ?? c.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || c.statusEffects };
+      if (combatUpdates.nextActiveCombatState?.isActive) {
+          // If combat continues, update the state with the latest info from the AI.
+          // This is the source of truth for the *next* turn.
+          const nextState = { ...combatUpdates.nextActiveCombatState };
+
+          // But first, apply the results of the *current* turn to the combatant list.
+          // This ensures no "zombie" enemies.
+          const updatedCombatants = nextState.combatants.map(c => {
+              const updateForThisTurn = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
+              if (updateForThisTurn) {
+                  return {
+                      ...c,
+                      currentHp: updateForThisTurn.newHp,
+                      currentMp: updateForThisTurn.newMp ?? c.currentMp,
+                      isDefeated: updateForThisTurn.isDefeated,
+                      statusEffects: updateForThisTurn.newStatusEffects || c.statusEffects
+                  };
               }
               return c;
           });
-  
-          setActiveCombat({
-              ...newCombatStateFromAI,
-              combatants: updatedCombatantsForFirstTurn,
-          });
-  
-        } else if (combatUpdates.nextActiveCombatState && combatUpdates.nextActiveCombatState.isActive) {
-            // For subsequent turns, use the fresh list from the AI's nextActiveCombatState and apply updates.
-            const baseCombatantsForNextTurn = combatUpdates.nextActiveCombatState.combatants;
 
-            const updatedCombatants = baseCombatantsForNextTurn.map(combatant => {
-                const update = combatUpdates.updatedCombatants.find(u => u.combatantId === combatant.characterId);
-                if (update) {
-                    // Apply this turn's results to the fresh list for the next turn
-                    return { ...combatant, currentHp: update.newHp, currentMp: update.newMp ?? combatant.currentMp, isDefeated: update.isDefeated, statusEffects: update.newStatusEffects || combatant.statusEffects };
-                }
-                return combatant; // No update for this combatant, use the state from AI
-            });
-
-            setActiveCombat({
-                ...combatUpdates.nextActiveCombatState,
-                combatants: updatedCombatants,
-            });
-  
-        } else if (combatUpdates.combatEnded) {
-            setActiveCombat(undefined);
-            setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
-        }
+          setActiveCombat({ ...nextState, combatants: updatedCombatants });
+      } else if (combatUpdates.combatEnded) {
+          // If combat ended, clear the state.
+          setActiveCombat(undefined);
+          setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
       }
+    }
+
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings, characters, activeCombat]);
+  }, [toast, adventureSettings.rpgMode, activeCombat, characters]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
