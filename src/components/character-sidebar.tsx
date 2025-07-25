@@ -166,8 +166,6 @@ export function CharacterSidebar({
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
-  const [npcSpentPoints, setNpcSpentPoints] = React.useState<Record<string, number>>({});
-
   React.useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
@@ -343,27 +341,6 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
-    const calculateNpcSpentPoints = React.useCallback((char: Character) => {
-        if (!rpgMode || !char.isAlly) return 0;
-        let spent = 0;
-        const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-        attributes.forEach(attrKey => {
-            spent += (Number(char[attrKey] ?? BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
-        });
-        return spent;
-    }, [rpgMode]);
-
-
-    React.useEffect(() => {
-        const newSpentPoints: Record<string, number> = {};
-        characters.forEach(char => {
-            if (char.isAlly && rpgMode) {
-                newSpentPoints[char.id] = calculateNpcSpentPoints(char);
-            }
-        });
-        setNpcSpentPoints(newSpentPoints);
-    }, [characters, calculateNpcSpentPoints, rpgMode]);
-
     const handleNpcAttributeBlur = (charId: string, fieldName: keyof Character, value: string) => {
         const char = characters.find(c => c.id === charId);
         if (!char || !char.isAlly || !rpgMode) return;
@@ -372,26 +349,26 @@ export function CharacterSidebar({
         if (isNaN(newAttributeValue)) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
-
-        const creationPoints = char.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+    
+        const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+        const levelPoints = (char.level && char.level > 1) ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
-
-        // Calculate points spent on *other* attributes
-        let spentOnOtherAttrs = 0;
+    
         const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+        let spentOnOtherAttrs = 0;
         attributes.forEach(attrKey => {
             if (attrKey !== fieldName) {
-                spentOnOtherAttrs += (Number(char[attrKey] ?? BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
+                spentOnOtherAttrs += (Number(char[attrKey] || BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
             }
         });
-
-        const maxPointsForThisAttr = totalDistributable - spentOnOtherAttrs;
-        const maxValue = BASE_ATTRIBUTE_VALUE_FORM + maxPointsForThisAttr;
-
-        if (newAttributeValue > maxValue) {
-            newAttributeValue = maxValue;
+    
+        const pointsForThisAttr = newAttributeValue - BASE_ATTRIBUTE_VALUE_FORM;
+        
+        if (spentOnOtherAttrs + pointsForThisAttr > totalDistributable) {
+            const maxPointsForThis = totalDistributable - spentOnOtherAttrs;
+            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM + maxPointsForThis;
         }
+    
         if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
@@ -455,10 +432,15 @@ export function CharacterSidebar({
                     const currentAffinity = char.affinity ?? 50;
                     const isAllyAndRpg = rpgMode && char.isAlly;
                     
-                    const creationPointsNpc = char.initialAttributePoints || (rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : 0);
-                    const levelPointsNpc = rpgMode && char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
+                    const creationPointsNpc = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
+                    const levelPointsNpc = (rpgMode && char.level && char.level > 1) ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
                     const totalDistributableNpc = creationPointsNpc + levelPointsNpc;
-                    const currentNpcSpentPoints = npcSpentPoints[char.id] || 0;
+
+                    const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+                    const currentNpcSpentPoints = attributes.reduce((acc, attr) => {
+                        return acc + ((char[attr] as number ?? BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
+                    }, 0);
+
                     const remainingNpcPoints = totalDistributableNpc - currentNpcSpentPoints;
 
                     const RULER_CLASSES = ["impératrice", "empereur", "duc", "duchesse", "roi", "reine", "noble"];
@@ -666,7 +648,7 @@ export function CharacterSidebar({
                                                     Points d'attributs restants : <span className={`font-bold ${remainingNpcPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingNpcPoints}</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    {(["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const).map(attr => (
+                                                    {attributes.map(attr => (
                                                         <EditableField 
                                                             key={attr} 
                                                             label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
