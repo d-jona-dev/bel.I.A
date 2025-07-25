@@ -635,7 +635,7 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If a combat concludes with a victory for the player's team (e.g., all enemies defeated), you MUST check if this combat was initiated by an attack on a territory. Review the 'initialSituation' (narrative history) to see if an action like 'J'attaque la Grotte Grinçante' started the fight. If so, you MUST change the ownership of that territory to the player. The territory's ID **MUST be taken from the 'mapPointsOfInterest' context list**.
+    *   **Conquest:** If combat has ended, and the player's team is victorious, AND if the 'activeCombat.contestedPoiId' field was set for this combat, you MUST change the ownership of that POI to the player.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
     

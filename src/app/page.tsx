@@ -501,7 +501,6 @@ export default function Home() {
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
-    const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
 
     const allExpGainingCharacters = (expGained: number) => {
         setCharacters(prevChars => {
@@ -676,7 +675,7 @@ export default function Home() {
 
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings.rpgMode, activeCombat, characters]);
+  }, [toast, adventureSettings.rpgMode]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -3262,5 +3261,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 
 
