@@ -518,7 +518,7 @@ export default function Home() {
     });
   }, []);
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema) => {
+  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     const currentRpgMode = adventureSettings.rpgMode;
     const isNewCombatStarting = !activeCombat?.isActive && combatUpdates.nextActiveCombatState?.isActive;
@@ -1106,7 +1106,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates);
+                handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -1526,7 +1526,17 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             setAdventureSettings(prevSettings => {
                 if (!prevSettings.rpgMode) return prevSettings;
                 const newInventory = [...(prevSettings.playerInventory || [])];
-                const newCurrency = (prevSettings.playerGold || 0);
+                
+                // Get currency from the message loot if any, and add it
+                const lootMessage = narrativeMessages.find(m => m.id === messageId);
+                let currencyGained = 0;
+                 if (lootMessage?.loot) {
+                    const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
+                    if (currencyItem) {
+                        currencyGained = currencyItem.quantity;
+                    }
+                 }
+
 
                 itemsToTake.forEach(item => {
                     if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
@@ -1540,7 +1550,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         newInventory.push({ ...item, isEquipped: false });
                     }
                 });
-                return { ...prevSettings, playerInventory: newInventory, playerGold: newCurrency };
+                return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
             });
             setNarrativeMessages(prevMessages =>
                 prevMessages.map(msg =>
@@ -1549,7 +1559,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             );
         });
         setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
-    }, [toast]);
+    }, [toast, narrativeMessages]);
 
     const handleDiscardLoot = React.useCallback((messageId: string) => {
         React.startTransition(() => {
@@ -1787,7 +1797,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates);
+                    handleCombatUpdates(result.combatUpdates, result.itemsObtained || [], result.currencyGained || 0);
                 }
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
@@ -2502,7 +2512,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             newLiveSettings.playerInventory = undefined;
             newLiveSettings.playerInitialAttributePoints = undefined;
             newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
-            newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined; newLiveSettings.playerCharisma = undefined;
+            newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined;
+            newLiveSettings.playerCharisma = undefined;
             newLiveSettings.playerArmorClass = undefined;
             newLiveSettings.playerAttackBonus = undefined;
             newLiveSettings.playerDamageBonus = undefined;
@@ -3273,3 +3284,4 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
