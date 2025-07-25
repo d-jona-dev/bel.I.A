@@ -251,7 +251,7 @@ const NewFamiliarSchema = z.object({
 export type NewFamiliarSchema = z.infer<typeof NewFamiliarSchema>;
 
 const GenerateAdventureOutputSchema = z.object({
-  narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here.**'),
+  narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game client will display the loot separately based on the structured data provided in other fields.**'),
   sceneDescriptionForImage: z
     .string()
     .optional()
@@ -611,9 +611,10 @@ Tasks:
         *   **Étape 4: Narration du Tour.** La narration combinée des actions du joueur et des PNJ (alliés et ennemis), ainsi que leurs résultats (succès, échec, dégâts, nouveaux effets de statut appliqués), forme combatUpdates.turnNarration. Cette narration DOIT être la partie principale de la sortie narrative globale.
         *   **Étape 5: Mise à Jour des Combattants.** Calculez les changements de PV et PM pour TOUS les combattants impliqués ce tour. Populez combatUpdates.updatedCombatants avec ces résultats (obligatoirement combatantId, newHp, et optionnellement newMp, isDefeated (si PV <= 0), newStatusEffects).
         *   **Étape 6: Récompenses. MANDATORY IF ENEMIES DEFEATED.** Si un ou plusieurs ennemis sont vaincus ce tour, vous DEVEZ fournir les récompenses.
+            *   **CRITICAL RULE:** DO NOT describe the loot or gold found in the \`narrative\` output. The game system handles displaying loot.
             *   Calculez l'EXP gagnée par {{playerName}} (ex: 5-20 pour facile, 25-75 pour moyen, 100+ pour difficile/boss, en tenant compte du niveau du joueur) et mettez-la dans combatUpdates.expGained. **Si pas d'EXP, mettre 0.**
             *   Générez des objets appropriés (voir instructions "Item Acquisition" ci-dessous) et listez-les dans le champ itemsObtained (au niveau racine de la sortie). **Si pas d'objets, mettre un tableau vide [].**
-            *   Si de la monnaie est obtenue, décrivez-la en utilisant "Pièces d'Or" et calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
+            *   Si de la monnaie est obtenue, calculez la valeur totale pour currencyGained. **Si pas de monnaie, mettre 0 pour currencyGained.**
         *   **Étape 7: Fin du Combat.** Déterminez si le combat est terminé (par exemple, tous les ennemis vaincus/fuis, ou joueur/tous les alliés vaincus/fuis). Si oui, mettez combatUpdates.combatEnded: true. **CRITICAL:** If the combat ended with a player victory, you MUST check if a territory attack initiated the combat. If 'contestedPoiId' was present for this fight, you MUST add a 'poiOwnershipChanges' entry to transfer ownership of that POI to the player.
         *   **Étape 8: État du Combat Suivant.** Si combatUpdates.combatEnded est false, alors combatUpdates.nextActiveCombatState DOIT être populé avec l'état à jour de tous les combattants (PV, PM, effets de statut, et le 'contestedPoiId' s'il était présent) pour le prochain tour. Rappelez-vous de décrémenter aussi la durée des effets de statut du joueur et des alliés. Si combatUpdates.combatEnded est true, combatUpdates.nextActiveCombatState peut être omis ou avoir isActive: false.
         *   **LA STRUCTURE combatUpdates EST OBLIGATOIRE ET DOIT ÊTRE COMPLÈTE SI LE COMBAT EST ACTIF.**
@@ -623,7 +624,7 @@ Tasks:
         *   Optionally, provide itemDescription (in {{currentLanguage}}), itemEffect (in {{currentLanguage}}), goldValue (estimated gold piece value), and statBonuses (object with ac, attack, damage, str, dex, etc. bonuses).
         *   **Crucially, for ALL non-currency items intended as loot (even common or 'junk' items like 'Cailloux pointus'), YOU MUST provide a goldValue. If an item has minimal or nuisance value, assign it a goldValue of 1. Do not omit goldValue for such items.**
     *   **Currency Management (General):**
-        *   If the player finds, is given, or loots Gold Pieces: Narrate the gain. Calculate TOTAL value and set currencyGained (positive value).
+        *   If the player finds, is given, or loots Gold Pieces: Calculate TOTAL value and set currencyGained (positive value).
         *   If the player PAYS Gold Pieces (e.g., buys item, pays NPC): Narrate the loss. Calculate TOTAL value and set currencyGained to a **NEGATIVE** value (e.g., -50).
         *   If the player SELLS an item: Narrate the interaction. Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
         *   **If no currency change, set currencyGained to 0.**
@@ -665,7 +666,7 @@ Tasks:
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 Narrative Continuation (in {{currentLanguage}}):
-[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here.]
+[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST include a detailed description of the combat actions and outcomes, directly reflecting the content of the combatUpdates.turnNarration field you will also generate. DO NOT include the JSON structure of combatUpdates or any other JSON, code, or non-narrative text in THIS narrative field. Only the story text is allowed here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game system will display the loot separately.]
 `,
 });
 
@@ -775,3 +776,5 @@ const generateAdventureFlow = ai.defineFlow<
     return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
   }
 );
+
+    
