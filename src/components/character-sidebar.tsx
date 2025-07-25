@@ -348,15 +348,16 @@ export function CharacterSidebar({
         let spent = 0;
         const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
         attributes.forEach(attrKey => {
-            spent += (Number(char[attrKey]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM;
+            spent += (Number(char[attrKey] ?? BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
         });
         return spent;
     }, [rpgMode]);
 
+
     React.useEffect(() => {
         const newSpentPoints: Record<string, number> = {};
         characters.forEach(char => {
-            if (char.isAlly && rpgMode) { // Check rpgMode here too
+            if (char.isAlly && rpgMode) {
                 newSpentPoints[char.id] = calculateNpcSpentPoints(char);
             }
         });
@@ -368,37 +369,29 @@ export function CharacterSidebar({
         if (!char || !char.isAlly || !rpgMode) return;
     
         let newAttributeValue = parseInt(value, 10);
-        if (isNaN(newAttributeValue) || newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
+        if (isNaN(newAttributeValue)) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
-    
+
         const creationPoints = char.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
         const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
         const totalDistributable = creationPoints + levelPoints;
-    
-        const currentAttributes = {
-            strength: char.strength ?? BASE_ATTRIBUTE_VALUE_FORM,
-            dexterity: char.dexterity ?? BASE_ATTRIBUTE_VALUE_FORM,
-            constitution: char.constitution ?? BASE_ATTRIBUTE_VALUE_FORM,
-            intelligence: char.intelligence ?? BASE_ATTRIBUTE_VALUE_FORM,
-            wisdom: char.wisdom ?? BASE_ATTRIBUTE_VALUE_FORM,
-            charisma: char.charisma ?? BASE_ATTRIBUTE_VALUE_FORM,
-        };
-        // Temporarily set the new value to calculate projected spend
-        currentAttributes[fieldName as keyof typeof currentAttributes] = newAttributeValue;
-        
-        const spentBeforeThisField = (Object.keys(currentAttributes) as (keyof typeof currentAttributes)[])
-            .filter(key => key !== fieldName)
-            .reduce((acc, key) => acc + (currentAttributes[key] - BASE_ATTRIBUTE_VALUE_FORM), 0);
-    
-        const pointsAvailableForThisField = totalDistributable - spentBeforeThisField;
-    
-        // Ensure new value doesn't exceed available points
-        if (newAttributeValue > BASE_ATTRIBUTE_VALUE_FORM + pointsAvailableForThisField) {
-            newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM + pointsAvailableForThisField;
+
+        // Calculate points spent on *other* attributes
+        let spentOnOtherAttrs = 0;
+        const attributes: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+        attributes.forEach(attrKey => {
+            if (attrKey !== fieldName) {
+                spentOnOtherAttrs += (Number(char[attrKey] ?? BASE_ATTRIBUTE_VALUE_FORM)) - BASE_ATTRIBUTE_VALUE_FORM;
+            }
+        });
+
+        const maxPointsForThisAttr = totalDistributable - spentOnOtherAttrs;
+        const maxValue = BASE_ATTRIBUTE_VALUE_FORM + maxPointsForThisAttr;
+
+        if (newAttributeValue > maxValue) {
+            newAttributeValue = maxValue;
         }
-    
-        // Final check to ensure it's not below base
         if (newAttributeValue < BASE_ATTRIBUTE_VALUE_FORM) {
             newAttributeValue = BASE_ATTRIBUTE_VALUE_FORM;
         }
@@ -679,7 +672,7 @@ export function CharacterSidebar({
                                                             label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
                                                             id={`${char.id}-${attr}`} type="number" 
                                                             value={char[attr]} 
-                                                            onChange={() => {}} 
+                                                            onChange={(e) => onCharacterUpdate({ ...char, [attr]: isNaN(parseInt(e.target.value)) ? char[attr] : parseInt(e.target.value) })}
                                                             onBlur={e => handleNpcAttributeBlur(char.id, attr, e.target.value)} 
                                                             min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
                                                             disabled={!isAllyAndRpg}
