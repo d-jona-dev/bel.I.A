@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview Generates an image based on a textual scene description.
+ * @fileOverview Generates an image based on a textual scene description and an optional style.
  * Assumes the input description prioritizes visual details and physical descriptions over names.
  *
  * - generateSceneImage - A function that generates an image of the current scene.
@@ -17,6 +17,7 @@ const GenerateSceneImageInputSchema = z.object({
   sceneDescription: z
     .string()
     .describe('A visual description of the scene to generate an image for. Should prioritize physical descriptions of characters over names.'),
+  style: z.string().optional().describe("The artistic style for the image (e.g., 'Realistic', 'Manga', 'Fantasy Art')."),
 });
 export type GenerateSceneImageInput = z.infer<typeof GenerateSceneImageInputSchema>;
 
@@ -55,10 +56,12 @@ const generateSceneImageFlow = ai.defineFlow<
   },
   async (input): Promise<GenerateSceneImageFlowOutput> => { // Explicitly type the Promise return
     let fullResponse;
+    const finalPrompt = `${input.sceneDescription}${input.style ? `. Art style: ${input.style}` : ''}`;
+    
     try {
       fullResponse = await ai.generate({
         model: 'googleai/gemini-2.0-flash-exp',
-        prompt: input.sceneDescription,
+        prompt: finalPrompt,
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
         },
@@ -86,7 +89,7 @@ const generateSceneImageFlow = ai.defineFlow<
         return getDefaultOutput("La génération d'images a échoué ou n'a pas retourné d'URL. Vérifiez la console du serveur pour les détails.");
     }
 
-    console.log(`Image generated for prompt: "${input.sceneDescription.substring(0, 100)}..."`);
+    console.log(`Image generated for prompt: "${finalPrompt.substring(0, 100)}..."`);
 
     return {imageUrl: media.url, error: undefined }; // Add error: undefined for successful case
   }

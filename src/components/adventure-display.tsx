@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -118,6 +118,7 @@ export function AdventureDisplay({
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
   const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
+  const [imageStyle, setImageStyle] = React.useState<string>("");
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
@@ -219,7 +220,10 @@ export function AdventureDisplay({
      setImageUrl(null);
 
     try {
-        const result = await generateSceneImageAction({ sceneDescription: descriptionForImage });
+        const result = await generateSceneImageAction({ 
+            sceneDescription: descriptionForImage,
+            style: imageStyle,
+        });
         if (result.error) { 
             setImageUrl(null);
             return;
@@ -851,18 +855,44 @@ export function AdventureDisplay({
                             </div>
                         )}
                     </CardContent>
-                    <CardFooter className="p-4 border-t">
-                        <TooltipProvider>
-                            <Tooltip>
-                                 <TooltipTrigger asChild>
-                                    <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
-                                        <Wand2 className="mr-2 h-4 w-4" />
-                                        Générer Image Scène
-                                    </Button>
-                                 </TooltipTrigger>
-                                 <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                    <CardFooter className="p-4 border-t flex flex-col gap-2">
+                        <div className="flex w-full gap-2">
+                            <DropdownMenu>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" size="icon" className="flex-shrink-0">
+                                                    <Palette className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Choisir un style d'image</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("")}>Par Défaut</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("Realistic")}>Réaliste</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("Manga / Anime")}>Manga/Animé</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("Epic Fantasy Art")}>Fantaisie Epique</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("Oil Painting")}>Peinture à l'huile</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setImageStyle("Comic Book")}>Comics</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                     <TooltipTrigger asChild>
+                                        <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
+                                            <Wand2 className="mr-2 h-4 w-4" />
+                                            <span>Générer Image {imageStyle ? `(${imageStyle.split(' ')[0]})` : ''}</span>
+                                        </Button>
+                                     </TooltipTrigger>
+                                     <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                     </CardFooter>
                 </Card>
 
