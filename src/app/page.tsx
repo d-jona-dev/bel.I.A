@@ -502,9 +502,12 @@ export default function Home() {
     const currentRpgMode = adventureSettings.rpgMode;
 
     const allExpGainingCharacters = (expGained: number) => {
-        setCharacters(prevChars => {
+        const charUpdater = (prevChars: Character[]): Character[] => {
             if (!currentRpgMode) return prevChars;
-            return prevChars.map(char => {
+            let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
+            let changed = false;
+
+            charactersCopy = charactersCopy.map(char => {
                 if (!char.isAlly || char.level === undefined) return char;
                 let newChar = {...char};
                 if (newChar.currentExp === undefined) newChar.currentExp = 0;
@@ -514,6 +517,7 @@ export default function Home() {
                 let leveledUp = false;
                 while(newChar.currentExp >= newChar.expToNextLevel!) {
                     leveledUp = true;
+                    changed = true;
                     newChar.currentExp -= newChar.expToNextLevel!;
                     newChar.level! += 1;
                     newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
@@ -528,7 +532,13 @@ export default function Home() {
                 }
                 return newChar;
             });
-        });
+
+            if (changed) return charactersCopy;
+            return prevChars;
+        };
+
+        setCharacters(charUpdater);
+        setStagedCharacters(charUpdater); // Sync staged characters
 
         setAdventureSettings(prevSettings => {
             if (!prevSettings.familiars) return prevSettings;
@@ -604,31 +614,34 @@ export default function Home() {
             setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
 
             let gainedLevel = false;
-            while (newSettings.playerCurrentExp >= newSettings.playerExpToNextLevel!) {
-                gainedLevel = true;
-                newSettings.playerLevel! += 1;
-                newSettings.playerCurrentExp -= newSettings.playerExpToNextLevel!;
-                newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5);
-                newSettings.playerInitialAttributePoints = (newSettings.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+            let newSettingsForLevelUp = { ...newSettings }; // Create a mutable copy
 
-                const derivedStats = calculateEffectiveStats(newSettings);
-                newSettings.playerMaxHp = derivedStats.playerMaxHp;
-                newSettings.playerCurrentHp = newSettings.playerMaxHp;
-                if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
-                    newSettings.playerMaxMp = derivedStats.playerMaxMp;
-                    newSettings.playerCurrentMp = newSettings.playerMaxMp;
+            while (newSettingsForLevelUp.playerCurrentExp! >= newSettingsForLevelUp.playerExpToNextLevel!) {
+                gainedLevel = true;
+                newSettingsForLevelUp.playerLevel! += 1;
+                newSettingsForLevelUp.playerCurrentExp! -= newSettingsForLevelUp.playerExpToNextLevel!;
+                newSettingsForLevelUp.playerExpToNextLevel = Math.floor(newSettingsForLevelUp.playerExpToNextLevel! * 1.5);
+                newSettingsForLevelUp.playerInitialAttributePoints = (newSettingsForLevelUp.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+
+                const derivedStats = calculateEffectiveStats(newSettingsForLevelUp);
+                newSettingsForLevelUp.playerMaxHp = derivedStats.playerMaxHp;
+                newSettingsForLevelUp.playerCurrentHp = newSettingsForLevelUp.playerMaxHp;
+                if (newSettingsForLevelUp.playerMaxMp && newSettingsForLevelUp.playerMaxMp > 0) {
+                    newSettingsForLevelUp.playerMaxMp = derivedStats.playerMaxMp;
+                    newSettingsForLevelUp.playerCurrentMp = newSettingsForLevelUp.playerMaxMp;
                 }
-                 newSettings.playerArmorClass = derivedStats.playerArmorClass;
-                 newSettings.playerAttackBonus = derivedStats.playerAttackBonus;
-                 newSettings.playerDamageBonus = derivedStats.playerDamageBonus;
+                 newSettingsForLevelUp.playerArmorClass = derivedStats.playerArmorClass;
+                 newSettingsForLevelUp.playerAttackBonus = derivedStats.playerAttackBonus;
+                 newSettingsForLevelUp.playerDamageBonus = derivedStats.playerDamageBonus;
             }
+
             if (gainedLevel) {
                  setTimeout(() => {
                     toast({
                         title: "Niveau Supérieur!",
                         description: (
                             <div>
-                                <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                                <p>Vous avez atteint le niveau {newSettingsForLevelUp.playerLevel}! Vos PV et PM max ont augmenté.</p>
                                 <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
                                 <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                             </div>
@@ -637,7 +650,10 @@ export default function Home() {
                     });
                 }, 0);
                  setFormPropKey(k => k + 1);
+                 // Also update staged settings to reflect the level up in the form
+                 setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...newSettingsForLevelUp }));
             }
+             return newSettingsForLevelUp; // Return the updated settings
         }
         
         return newSettings;
@@ -3262,6 +3278,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 
 
 
