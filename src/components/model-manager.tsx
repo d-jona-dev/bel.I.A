@@ -59,10 +59,6 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     setModels(updatedModels);
     localStorage.setItem('llm_models', JSON.stringify(updatedModels));
   };
-
-  const handleSourceChange = (source: 'gemini' | 'openrouter') => {
-    onConfigChange({ ...config, source });
-  };
   
   const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['openRouter']>, value: string | boolean) => {
     onConfigChange({
@@ -77,12 +73,19 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   const handleSelectModel = (modelId: string) => {
     const selected = models.find(m => m.id === modelId);
     if (!selected) return;
-    
-    handleSourceChange(selected.source);
-    if (selected.source === 'openrouter' && selected.modelName) {
-        handleOpenRouterConfigChange('model', selected.modelName);
+
+    let newConfig: AiConfig = { ...config, source: selected.source };
+
+    if (selected.source === 'openrouter') {
+        newConfig.openRouter = {
+            ...(config.openRouter || { apiKey: '', enforceStructuredResponse: false }),
+            model: selected.modelName || '',
+        };
     }
+    
+    onConfigChange(newConfig);
   };
+
 
   const handleAddNewModel = () => {
     setEditingModel({ id: `new-${Date.now()}`, name: '', source: 'openrouter', modelName: '' });
