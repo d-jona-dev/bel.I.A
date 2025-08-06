@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -37,6 +37,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -838,16 +843,31 @@ export function AdventureDisplay({
                                 <p>Génération de l'image...</p>
                             </div>
                         ) : imageUrl ? (
-                             <div className="relative w-full aspect-square">
-                                <Image
-                                    src={imageUrl}
-                                    alt="Generated Scene"
-                                    fill
-                                    style={{ objectFit: 'contain' }}
-                                    data-ai-hint="adventure scene visual"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
-                                />
-                            </div>
+                            <Dialog>
+                                <div className="relative w-full aspect-square group">
+                                    <Image
+                                        src={imageUrl}
+                                        alt="Generated Scene"
+                                        fill
+                                        style={{ objectFit: 'contain' }}
+                                        data-ai-hint="adventure scene visual"
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
+                                    />
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/50 hover:bg-background/80">
+                                            <Expand className="h-4 w-4" />
+                                        </Button>
+                                    </DialogTrigger>
+                                </div>
+                                <DialogContent className="max-w-4xl h-[90vh]">
+                                    <Image
+                                        src={imageUrl}
+                                        alt="Generated Scene in Fullscreen"
+                                        layout="fill"
+                                        objectFit="contain"
+                                    />
+                                </DialogContent>
+                            </Dialog>
                         ) : (
                             <div className="text-center text-muted-foreground">
                                 <ImageIcon className="h-12 w-12 mx-auto mb-2" />
