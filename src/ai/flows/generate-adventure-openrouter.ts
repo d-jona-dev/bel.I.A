@@ -7,11 +7,12 @@ import { z } from 'zod';
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): string {
+function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): any[] {
     const promptSections: string[] = [];
     const isCompatibilityMode = input.aiConfig?.openRouter?.compatibilityMode ?? false;
+    const isStructuredResponseForced = input.aiConfig?.openRouter?.enforceStructuredResponse ?? false;
 
-    // Helper to add sections only if data exists
+
     const addSection = (title: string, content: string | undefined | null) => {
         if (content) {
             promptSections.push(`## ${title}\n${content}`);
@@ -22,27 +23,40 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
     addSection("SITUATION ACTUELLE / ÉVÉNEMENTS RÉCENTS", input.initialSituation);
 
     if (input.characters.length > 0) {
-        const charactersDesc = input.characters.map(char => `Nom: ${char.name}, Description: ${char.details}`).join('\n');
+        const charactersDesc = input.characters.map(char => `Nom: ${char.name}, Description: ${char.details}, Affinité: ${char.affinity}/100`).join('\n');
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
     }
 
     addSection(`ACTION DU JOUEUR (${input.playerName})`, input.userAction);
 
     let mainInstruction = `Tu es un moteur de fiction interactive. Ta tâche est de générer la suite de l'histoire en te basant sur le contexte fourni. La langue de sortie OBLIGATOIRE est: ${input.currentLanguage}. Ne narre JAMAIS les actions ou pensées du joueur (nommé "${input.playerName}"). Commence ta narration directement par les conséquences de son action.`;
+    
+    let systemPromptContent = "";
 
     if (isCompatibilityMode) {
         // Simplified prompt for compatibility mode
         mainInstruction += `\nRéponds DIRECTEMENT avec le texte narratif. N'ajoute AUCUN formatage JSON. Juste le texte de l'histoire.`;
+        systemPromptContent = "Tu es un auteur de fiction interactive. Réponds uniquement avec le texte de la narration, sans aucun autre formatage.";
     } else {
-        // Full structured prompt
-        mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant. N'ajoute AUCUN texte, explication, ou formatage (comme \`\`\`json) en dehors de l'objet JSON lui-même. Ne pas utiliser de guillemets pour encadrer l'objet JSON.`;
+        // Full structured prompt instruction
+        mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant.`;
+        
+        systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
+- Ne réponds avec AUCUN texte en dehors de l'objet JSON.
+- N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
+- Si une section est vide, utilise une valeur appropriée ([], {}, 0, null).
+- Le JSON doit être parfaitement formaté.`;
+        
         const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
         promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
     }
     
     promptSections.unshift(mainInstruction);
 
-    return promptSections.join('\n\n');
+    return [
+        { role: "system", content: systemPromptContent },
+        { role: "user", content: promptSections.join('\n\n') }
+    ];
 }
 
 
@@ -165,7 +179,7 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
 
     try {
         const processedInput = await commonAdventureProcessing(input);
-        const prompt = buildOpenRouterPrompt(processedInput);
+        const messages = buildOpenRouterPrompt(processedInput);
         
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
@@ -177,7 +191,7 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
             },
             body: JSON.stringify({
                 model: aiConfig.openRouter.model,
-                messages: [{ role: "user", content: prompt }],
+                messages: messages,
                 ...(aiConfig.openRouter.enforceStructuredResponse ? { response_format: { type: "json_object" } } : {})
             }),
         });
@@ -188,11 +202,16 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
             return { error: `Erreur de l'API OpenRouter: ${response.status} ${errorBody}`, narrative: "" };
         }
 
-        const rawText = await response.text();
-        let content = rawText;
+        const rawApiResponse = await response.json();
+        
+        let content = rawApiResponse.choices?.[0]?.message?.content;
+        
+        if (!content) {
+            return { error: "La réponse de l'API ne contenait pas de contenu valide.", narrative: "" };
+        }
 
+        // Handle cases where the response is a double-encoded JSON string
         try {
-            // Handle cases where the response is a double-encoded JSON string
             const parsedOnce = JSON.parse(content);
             if (typeof parsedOnce === 'string') {
                 content = parsedOnce; // It was double-encoded, use the inner string
@@ -202,10 +221,9 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         }
         
         if (aiConfig.openRouter.compatibilityMode) {
-            // In compatibility mode, we expect plain text.
             return {
                 narrative: content,
-                sceneDescriptionForImage: content.substring(0, 200), // Best-effort scene description
+                sceneDescriptionForImage: content.substring(0, 200),
                 error: undefined,
             };
         }
