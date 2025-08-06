@@ -204,6 +204,7 @@ export interface AiConfig {
         apiKey: string;
         baseUrl?: string;
         enforceStructuredResponse: boolean;
+        compatibilityMode?: boolean; // Added for compatibility mode
     }
 }
 
@@ -339,6 +340,7 @@ const AiConfigSchema = z.object({
         apiKey: z.string(),
         baseUrl: z.string().optional(),
         enforceStructuredResponse: z.boolean(),
+        compatibilityMode: z.boolean().optional(),
     }).optional(),
 }).optional();
 
@@ -381,7 +383,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerLocationId: z.string().optional().describe("The ID of the POI where the player is currently located. This is the source of truth for location."),
   mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
   playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
-  aiConfig: AiConfigSchema,
+  aiConfig: AiConfigSchema.optional(),
 });
 
 export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig'> & {
@@ -391,6 +393,9 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
     mapPointsOfInterest?: MapPointOfInterest[];
     aiConfig?: AiConfig;
 };
+
+// Represents the output from the flow to the main application, including potential errors.
+export type GenerateAdventureFlowOutput = z.infer<typeof GenerateAdventureOutputSchema> & { error?: string };
 
 
 export const NewCharacterSchema = z.object({

@@ -9,6 +9,7 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): string {
     const promptSections: string[] = [];
+    const isCompatibilityMode = input.aiConfig?.openRouter?.compatibilityMode ?? false;
 
     // Helper to add sections only if data exists
     const addSection = (title: string, content: string | undefined | null) => {
@@ -17,75 +18,33 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
         }
     };
     
-    const addConditionalSection = (condition: boolean, title: string, content: string) => {
-        if (condition) {
-            promptSections.push(`## ${title}\n${content}`);
-        }
-    };
-
     addSection("CONTEXTE GLOBAL (MONDE)", input.world);
     addSection("SITUATION ACTUELLE / ÉVÉNEMENTS RÉCENTS", input.initialSituation);
-    
-    if (input.rpgModeActive) {
-        let playerStats = `Classe: ${input.playerClass || 'N/A'} | Niveau: ${input.playerLevel || 1}\n`;
-        playerStats += `HP: ${input.playerCurrentHp}/${input.playerMaxHp}\n`;
-        if (input.playerMaxMp) playerStats += `MP: ${input.playerCurrentMp}/${input.playerMaxMp}\n`;
-        playerStats += `EXP: ${input.playerCurrentExp}/${input.playerExpToNextLevel}\n`;
-        playerStats += `Or: ${input.playerGold}\n`;
-        playerStats += `Attributs: FOR:${input.playerStrength}, DEX:${input.playerDexterity}, CON:${input.playerConstitution}, INT:${input.playerIntelligence}, SAG:${input.playerWisdom}, CHA:${input.playerCharisma}\n`;
-        playerStats += `Combat: AC:${input.playerArmorClass}, Attaque:+${input.playerAttackBonus}, Dégâts:${input.playerDamageBonus}\n`;
-        let equipement = `Équipement: ${input.equippedWeaponName ? `Arme: ${input.equippedWeaponName}`: 'Mains nues'}`;
-        if(input.equippedArmorName) equipement += `, Armure: ${input.equippedArmorName}`;
-        if(input.equippedJewelryName) equipement += `, Bijou: ${input.equippedJewelryName}`;
-        playerStats += equipement;
-        addSection(`STATISTIQUES DU JOUEUR (${input.playerName})`, playerStats);
-    }
-    
-    if (input.activeCombat?.isActive) {
-        let combatInfo = `Environnement: ${input.activeCombat.environmentDescription}\n`;
-        combatInfo += "Combattants:\n";
-        input.activeCombat.combatants.forEach(c => {
-            combatInfo += `- ${c.name} (Équipe: ${c.team}, HP: ${c.currentHp}/${c.maxHp}${c.currentMp ? `, MP: ${c.currentMp}/${c.maxMp}` : ''}) ${c.isDefeated ? '(VAINCU)' : ''}\n`;
-        });
-        addSection("COMBAT ACTIF", combatInfo);
-    }
 
     if (input.characters.length > 0) {
-        const charactersDesc = input.characters.map(char => {
-            let desc = `Nom: ${char.name}\nDescription: ${char.details}\n`;
-            if (input.rpgModeActive) {
-                 desc += `Classe: ${char.characterClass}, Nv: ${char.level}, HP: ${char.hitPoints}/${char.maxHitPoints}\n`;
-            }
-            if (input.relationsModeActive) {
-                desc += `Affinité (envers ${input.playerName}): ${char.affinity}/100\nRelations: ${char.relationsSummary}\n`;
-            }
-            desc += `Historique récent: ${char.historySummary}\n`;
-            return desc;
-        }).join('\n---\n');
+        const charactersDesc = input.characters.map(char => `Nom: ${char.name}, Description: ${char.details}`).join('\n');
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
-    } else {
-        addSection("PERSONNAGES PRÉSENTS", "Aucun autre personnage n'est présent.");
     }
 
     addSection(`ACTION DU JOUEUR (${input.playerName})`, input.userAction);
 
-    const mainInstruction = `Tu es un moteur de fiction interactive. Ta tâche est de générer la suite de l'histoire en te basant sur le contexte fourni.
-- **Langue de sortie OBLIGATOIRE**: ${input.currentLanguage}.
-- **CRITIQUE**: Tu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant. N'ajoute AUCUN texte, explication, ou formatage (comme \`\`\`json) en dehors de l'objet JSON lui-même.
-- **IMPORTANT**: Ne narre JAMAIS les actions ou pensées du joueur (nommé "${input.playerName}"). Commence ta narration directement par les conséquences de son action.
-- **COHÉRENCE**: Assure une stricte cohérence des personnages (personnalité, affinité, relations, historique).
-- **CONQUÊTE**: Si un combat pour un territoire est remporté ('activeCombat.contestedPoiId' était présent), le champ 'poiOwnershipChanges' DOIT être rempli pour transférer la propriété au joueur.`;
-    
-    promptSections.unshift(mainInstruction);
+    let mainInstruction = `Tu es un moteur de fiction interactive. Ta tâche est de générer la suite de l'histoire en te basant sur le contexte fourni. La langue de sortie OBLIGATOIRE est: ${input.currentLanguage}. Ne narre JAMAIS les actions ou pensées du joueur (nommé "${input.playerName}"). Commence ta narration directement par les conséquences de son action.`;
 
-    // Add JSON schema if structured response is enforced
-    if (input.aiConfig?.openRouter?.enforceStructuredResponse) {
+    if (isCompatibilityMode) {
+        // Simplified prompt for compatibility mode
+        mainInstruction += `\nRéponds DIRECTEMENT avec le texte narratif. N'ajoute AUCUN formatage JSON. Juste le texte de l'histoire.`;
+    } else {
+        // Full structured prompt
+        mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant. N'ajoute AUCUN texte, explication, ou formatage (comme \`\`\`json) en dehors de l'objet JSON lui-même. Ne pas utiliser de guillemets pour encadrer l'objet JSON.`;
         const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
         promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
     }
+    
+    promptSections.unshift(mainInstruction);
 
     return promptSections.join('\n\n');
 }
+
 
 async function commonAdventureProcessing(input: GenerateAdventureInput): Promise<z.infer<typeof GenerateAdventureInputSchema>> {
     const processedCharacters: z.infer<typeof GenerateAdventureInputSchema>['characters'] = input.characters.map(char => {
@@ -229,12 +188,28 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
             return { error: `Erreur de l'API OpenRouter: ${response.status} ${errorBody}`, narrative: "" };
         }
 
-        const jsonResponse = await response.json();
-        const content = jsonResponse.choices[0]?.message?.content;
+        const rawText = await response.text();
+        let content = rawText;
 
-        if (!content) {
-            return { error: "La réponse de l'API OpenRouter est vide.", narrative: "" };
+        try {
+            // Handle cases where the response is a double-encoded JSON string
+            const parsedOnce = JSON.parse(content);
+            if (typeof parsedOnce === 'string') {
+                content = parsedOnce; // It was double-encoded, use the inner string
+            }
+        } catch (e) {
+            // Not a JSON object, might be plain text (compatibility mode) or malformed
         }
+        
+        if (aiConfig.openRouter.compatibilityMode) {
+            // In compatibility mode, we expect plain text.
+            return {
+                narrative: content,
+                sceneDescriptionForImage: content.substring(0, 200), // Best-effort scene description
+                error: undefined,
+            };
+        }
+
 
         try {
             const parsedJson = JSON.parse(content);

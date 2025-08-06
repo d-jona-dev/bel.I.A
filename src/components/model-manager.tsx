@@ -64,7 +64,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     onConfigChange({
         ...config,
         openRouter: {
-            ...(config.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false }),
+            ...(config.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
             [field]: value
         }
     });
@@ -78,7 +78,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
     if (selected.source === 'openrouter') {
         newConfig.openRouter = {
-            ...(config.openRouter || { apiKey: '', enforceStructuredResponse: false }),
+            ...(config.openRouter || { apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
             model: selected.modelName || '',
         };
     }
@@ -158,6 +158,14 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             onCheckedChange={(checked) => handleOpenRouterConfigChange('enforceStructuredResponse', checked)}
                         />
                         <Label htmlFor="structured-response-switch">Forcer la réponse structurée (JSON)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="compatibility-mode-switch"
+                            checked={config.openRouter?.compatibilityMode || false}
+                            onCheckedChange={(checked) => handleOpenRouterConfigChange('compatibilityMode', checked)}
+                        />
+                        <Label htmlFor="compatibility-mode-switch">Mode de compatibilité (pour Mistral, etc.)</Label>
                     </div>
                 </div>
             )}
