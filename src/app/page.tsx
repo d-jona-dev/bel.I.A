@@ -3,11 +3,11 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -363,6 +363,7 @@ export default function Home() {
      { id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }
   ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
+  const [aiConfig, setAiConfig] = React.useState<AiConfig>({ source: 'gemini' });
 
   // Staged state (for form edits before applying)
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
@@ -1076,6 +1077,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         playerLocationId: settingsForThisTurn.playerLocationId,
         mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
+        aiConfig: aiConfig,
     };
 
     try {
@@ -1152,7 +1154,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       currentLanguage, narrativeMessages, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar
+      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig
   ]);
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
@@ -1742,6 +1744,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  playerLocationId: currentTurnSettings.playerLocationId,
                  mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
                  playerLocation: currentPlayerLocation,
+                 aiConfig: aiConfig,
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
@@ -1832,7 +1835,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
          handleNewFamiliar,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
          handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
-         adventureSettings, characters, activeCombat
+         adventureSettings, characters, activeCombat, aiConfig
      ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -2012,6 +2015,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             activeCombat: activeCombat,
             saveFormatVersion: 2.6,
             timestamp: new Date().toISOString(),
+            aiConfig: aiConfig,
         };
         const jsonString = JSON.stringify(saveData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -2026,7 +2030,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         setTimeout(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
         }, 0);
-    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat]);
+    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -2246,6 +2250,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                   setNarrativeMessages(loadedData.narrative as Message[]);
                   setActiveCombat(loadedData.activeCombat);
                   setCurrentLanguage(loadedData.currentLanguage || "fr");
+                  setAiConfig(loadedData.aiConfig || { source: 'gemini' });
                   setFormPropKey(k => k + 1);
                    setTimeout(() => {
                     toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
@@ -3184,6 +3189,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     if(event.target) event.target.value = '';
   }, [toast]);
     
+  const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
+    setAiConfig(newConfig);
+    toast({ title: "Configuration IA mise à jour", description: `La source de l'IA est maintenant ${newConfig.source}.` });
+  }, [toast]);
+    
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3275,9 +3285,12 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       onToggleStrategyMode={handleToggleStrategyMode}
       onToggleRpgMode={handleToggleRpgMode}
       onToggleRelationsMode={handleToggleRelationsMode}
+      aiConfig={aiConfig}
+      onAiConfigChange={handleAiConfigChange}
     />
   );
 }
+
 
 
 
