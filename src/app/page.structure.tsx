@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin } from 'lucide-react'; // Added MapPin & PawPrint
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar } from "@/types"; // Added Familiar
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig } from "@/types"; // Added Familiar & AiConfig
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from '@/ai/flows/generate-scene-image';
 import {
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
 import { CharacterSidebar } from '@/components/character-sidebar';
-import { ModelLoader } from '@/components/model-loader';
+import { ModelManager } from '@/components/model-manager';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { LanguageSelector } from '@/components/language-selector';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
@@ -120,6 +120,8 @@ interface PageStructureProps {
   onToggleRpgMode: () => void;
   onToggleRelationsMode: () => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+  aiConfig: AiConfig;
+  onAiConfigChange: (newConfig: AiConfig) => void;
 }
 
 export function PageStructure({
@@ -191,6 +193,8 @@ export function PageStructure({
   onToggleStrategyMode,
   onToggleRpgMode,
   onToggleRelationsMode,
+  aiConfig,
+  onAiConfigChange,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -783,7 +787,10 @@ export function PageStructure({
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2">
-                                <ModelLoader />
+                                <ModelManager
+                                   config={aiConfig}
+                                   onConfigChange={onAiConfigChange}
+                                />
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>

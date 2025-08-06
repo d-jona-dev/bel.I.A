@@ -180,6 +180,27 @@ export interface Familiar {
     _lastSaved?: number;
 }
 
+export interface ModelDefinition {
+    id: string;
+    name: string;
+    source: 'gemini' | 'openrouter';
+    apiUrl?: string;
+    apiKey?: string;
+    modelName?: string;
+    enforceStructuredResponse?: boolean;
+    iconUrl?: string; // Optional: URL for an icon
+}
+
+export interface AiConfig {
+    source: 'gemini' | 'openrouter';
+    openRouter?: {
+        model: string;
+        apiKey: string;
+        baseUrl?: string;
+        enforceStructuredResponse: boolean;
+    }
+}
+
 
 export interface AdventureSettings {
     world: string;
@@ -228,4 +249,5 @@ export interface SaveData {
     activeCombat?: ActiveCombat;
     saveFormatVersion: number;
     timestamp: string;
+    aiConfig?: AiConfig;
 }
