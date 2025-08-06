@@ -40,6 +40,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -859,13 +862,21 @@ export function AdventureDisplay({
                                         </Button>
                                     </DialogTrigger>
                                 </div>
-                                <DialogContent className="max-w-4xl h-[90vh]">
-                                    <Image
-                                        src={imageUrl}
-                                        alt="Generated Scene in Fullscreen"
-                                        layout="fill"
-                                        objectFit="contain"
-                                    />
+                                <DialogContent className="max-w-4xl h-[90vh] p-2">
+                                    <DialogHeader>
+                                        <DialogTitle className="sr-only">Image de la Scène Agrandie</DialogTitle>
+                                        <DialogDescription className="sr-only">
+                                            Version agrandie de l'image de la scène générée par l'IA.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={imageUrl}
+                                            alt="Generated Scene in Fullscreen"
+                                            layout="fill"
+                                            objectFit="contain"
+                                        />
+                                    </div>
                                 </DialogContent>
                             </Dialog>
                         ) : (
