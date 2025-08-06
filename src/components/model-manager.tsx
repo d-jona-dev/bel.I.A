@@ -17,6 +17,12 @@ import { Switch } from "@/components/ui/switch";
 import { PlusCircle, Trash2, Edit2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AiConfig, ModelDefinition } from "@/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const DEFAULT_MODELS: ModelDefinition[] = [
     { id: 'gemini-default', name: 'Gemini (Google)', source: 'gemini' },
@@ -193,5 +199,3 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     </Card>
   );
 }
-
-    
