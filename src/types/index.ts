@@ -25,6 +25,22 @@ export const LootedItemSchema = z.object({
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
+export const FamiliarPassiveBonusSchema = z.object({
+    type: z.enum(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'gold_find', 'exp_gain', 'armor_class', 'attack_bonus']).describe("The type of passive bonus the familiar provides."),
+    value: z.number().describe("The base value of the bonus per level (e.g., if value is 1, at level 3 the bonus is +3)."),
+    description: z.string().describe("A template for the bonus description, using 'X' as a placeholder for the calculated value (e.g., '+X en Force'). MUST be in {{currentLanguage}}."),
+});
+export type FamiliarPassiveBonus = z.infer<typeof FamiliarPassiveBonusSchema>;
+
+
+export const NewFamiliarSchema = z.object({
+    name: z.string().describe("Name of the new familiar."),
+    description: z.string().describe("A brief description of the familiar, including its appearance and context of acquisition. MUST be in {{currentLanguage}}."),
+    rarity: z.enum(['common', 'uncommon', 'rare', 'epic', 'legendary']).describe("Rarity of the familiar."),
+    passiveBonus: FamiliarPassiveBonusSchema.describe("The passive bonus this familiar provides."),
+});
+export type NewFamiliarSchema = z.infer<typeof NewFamiliarSchema>;
+
 export interface Message {
   id: string;
   type: 'user' | 'ai' | 'system';
@@ -35,42 +51,37 @@ export interface Message {
   lootTaken?: boolean;
 }
 
-export interface StatusEffect {
-  name: string;
-  description: string;
-  duration: number;
-}
+export const StatusEffectSchema = z.object({
+  name: z.string().describe("Name of the status effect (e.g., 'Poisoned', 'Stunned')."),
+  description: z.string().describe("Brief description of the effect (e.g., 'Takes 1d4 damage per turn', 'Cannot act')."),
+  duration: z.number().int().describe("Remaining duration in turns. -1 for permanent or until cured."),
+});
+export type StatusEffect = z.infer<typeof StatusEffectSchema>;
 
-export interface CombatAction {
-  actorId: string;
-  actionType: 'attack' | 'spell' | 'skill' | 'defend' | 'flee' | 'dialogue';
-  targetId?: string;
-  description: string;
-  outcome: string;
-  damageDealt?: number;
-  healingDone?: number;
-}
+export const CombatantSchema = z.object({
+    characterId: z.string().describe("ID of the character or 'player'."),
+    name: z.string().describe("Name of the combatant."),
+    currentHp: z.number().describe("Current HP of the combatant."),
+    maxHp: z.number().describe("Maximum HP of the combatant."),
+    currentMp: z.number().optional().describe("Current MP of the combatant if applicable."),
+    maxMp: z.number().optional().describe("Maximum MP of the combatant if applicable."),
+    team: z.enum(['player', 'enemy', 'neutral']).describe("Team alignment. 'player' team includes the main player and any allied NPCs."),
+    isDefeated: z.boolean().default(false).describe("Is this combatant defeated?"),
+    statusEffects: z.array(StatusEffectSchema).optional().describe("Active status effects on the combatant."),
+});
+export type Combatant = z.infer<typeof CombatantSchema>;
 
-export interface Combatant {
-  characterId: string;
-  name: string;
-  currentHp: number;
-  maxHp: number;
-  currentMp?: number;
-  maxMp?: number;
-  team: 'player' | 'enemy' | 'neutral';
-  isDefeated: boolean;
-  statusEffects?: StatusEffect[];
-}
 
-export interface ActiveCombat {
-  isActive: boolean;
-  combatants: Combatant[];
-  environmentDescription?: string;
-  turnLog?: string[];
-  playerAttemptedDeescalation?: boolean;
-  contestedPoiId?: string; // ID of the POI being fought over
-}
+export const ActiveCombatSchema = z.object({
+    isActive: z.boolean().describe("Is combat currently active?"),
+    combatants: z.array(CombatantSchema).describe("List of all characters involved in combat, including player, allies, and enemies."),
+    environmentDescription: z.string().optional().describe("Brief description of the combat environment (e.g., 'a narrow corridor', 'an open field')."),
+    turnLog: z.array(z.string()).optional().describe("Summary of major events from previous combat turns."),
+    playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
+    contestedPoiId: z.string().optional().describe("The ID of the Point of Interest being fought over, if this is a territory combat. This is CRUCIAL for determining conquest rewards.")
+});
+export type ActiveCombat = z.infer<typeof ActiveCombatSchema>;
+
 
 export interface GeneratedResource {
   type: 'item' | 'currency';
@@ -126,6 +137,7 @@ export interface Character {
   expToNextLevel?: number; // For NPC progression
   factionColor?: string; // e.g. '#FF0000' for a faction's color
   locationId?: string | null; // ID of the MapPointOfInterest where the character is currently located.
+  statusEffects?: StatusEffect[];
   _lastSaved?: number; // Timestamp of last global save
 }
 
@@ -158,12 +170,6 @@ export interface PlayerSkill {
   description: string;
   category?: 'class' | 'social' | 'utility' | 'combat'; // 'combat' pour les compétences de combat de classe
   // Ajout potentiel : type: 'passive' | 'active', cost: number, cooldown: number, etc.
-}
-
-export interface FamiliarPassiveBonus {
-    type: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma' | 'gold_find' | 'exp_gain' | 'armor_class' | 'attack_bonus';
-    value: number; // The base value of the bonus at level 1.
-    description: string; // e.g., "+X en Force par niveau"
 }
 
 export interface Familiar {
@@ -251,3 +257,242 @@ export interface SaveData {
     timestamp: string;
     aiConfig?: AiConfig;
 }
+
+// ZOD SCHEMAS FOR GENKIT FLOW
+
+export const RpgContextSchema = z.object({
+    playerStats: z.object({
+        Name: z.string().optional(),
+        Class: z.string().optional(),
+        Level: z.number().optional(),
+        HP: z.string().optional().describe("Player HP, e.g., '15/20'"),
+        MP: z.string().optional().describe("Player MP, e.g., '10/10' or 'N/A'"),
+        EXP: z.string().optional().describe("Player EXP, e.g., '50/100'"),
+    }).optional().describe("Player character's statistics (e.g., HP, MP, STR)."),
+    characterDetails: z.array(z.object({
+        name: z.string(),
+        details: z.string().optional().describe("Brief description of the character for context."),
+        stats: z.record(z.union([z.string(), z.number()])).optional().describe("Character's statistics."),
+        relations: z.string().optional().describe("Summary of relations towards player and others.")
+    })).optional().describe("Details of relevant secondary characters already known."),
+    mode: z.enum(["exploration", "dialogue", "combat"]).optional().describe("Current game mode."),
+}).optional();
+
+const BaseCharacterSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  details: z.string(),
+  biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character. Provides deep context for personality and motivations. MUST be in the specified language if provided from user input in that language."),
+  affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion. This score dictates the character's baseline behavior and responses toward the player. Small, gradual changes for typical interactions (+/- 1-2), larger changes (+/- 5+) for major events."),
+  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, attempt to define it based on new interactions."),
+  hitPoints: z.number().optional().describe("Current Hit Points. If undefined in RPG mode, assume a default like 10."),
+  maxHitPoints: z.number().optional().describe("Maximum Hit Points. If undefined in RPG mode, assume a default like 10."),
+  manaPoints: z.number().optional().describe("Current Mana Points. If undefined in RPG mode for a spellcaster, assume a default like 10 if applicable, or 0."),
+  maxManaPoints: z.number().optional().describe("Maximum Mana Points. If undefined in RPG mode for a spellcaster, assume a default like 10 if applicable, or 0."),
+  armorClass: z.number().optional().describe("Armor Class. If undefined in RPG mode, assume a default like 10."),
+  attackBonus: z.number().optional().describe("Bonus to attack rolls. If undefined, assume 0."),
+  damageBonus: z.string().optional().describe("Damage bonus, e.g., '+2' or '1d4'. If undefined, assume basic unarmed damage (e.g., 1d3 or 1)."),
+  characterClass: z.string().optional().describe("Character's class, e.g., 'Warrior', 'Mage', 'Marchand'."),
+  level: z.number().optional().describe("Character's level."),
+  isHostile: z.boolean().optional().default(false).describe("Is the character currently hostile to the player?"),
+  isAlly: z.boolean().optional().default(false).describe("Is this character currently an ally of the player in combat?"),
+  spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
+  locationId: z.string().optional().describe("The ID of the POI where the character is currently located. This is the source of truth for location."),
+}).passthrough();
+
+
+const ContextSummarySchema = z.object({
+    historySummary: z.string().optional().describe('A brief summary of the last few history entries.'),
+    relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relationship statuses for prompt context. MUST be in the specified language.'),
+});
+
+export const CharacterWithContextSummarySchema = z.intersection(
+    BaseCharacterSchema,
+    ContextSummarySchema
+);
+
+const InventoryItemForAISchema = z.object({
+    itemName: z.string().describe("Name of the item. DO NOT include currency here."),
+    quantity: z.number().int().min(1).describe("Quantity of the item.")
+});
+
+const PlayerSkillSchemaForAI = z.object({
+    name: z.string(),
+    description: z.string(),
+    category: z.enum(['class', 'social', 'utility', 'combat']).optional(),
+});
+
+const PointOfInterestSchemaForAI = z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    level: z.number().optional().default(1),
+    ownerId: z.string().optional().describe("The ID of the character who owns this POI, or 'player'."),
+    ownerName: z.string().optional().describe("The name of the current owner of this POI."),
+    buildings: z.array(z.string()).optional().describe("A list of building IDs that exist at this location, e.g., ['forgeron', 'auberge']."),
+});
+
+const AiConfigSchema = z.object({
+    source: z.enum(['gemini', 'openrouter']),
+    openRouter: z.object({
+        model: z.string(),
+        apiKey: z.string(),
+        baseUrl: z.string().optional(),
+        enforceStructuredResponse: z.boolean(),
+    }).optional(),
+}).optional();
+
+
+export const GenerateAdventureInputSchema = z.object({
+  world: z.string().describe('Detailed description of the game world.'),
+  initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
+  characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters who are PRESENT at the player\'s location, with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include isAlly status.'),
+  userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
+  currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
+  playerName: z.string().describe('The name of the player character.'),
+  relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
+  rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP, Gold) are active. If true, combat rules apply."),
+  activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing. If combat is active, ensure combatants includes the player, all their active allies (characters with isAlly: true), and all active enemies/neutrals."),
+  playerGold: z.number().int().optional().describe("Player's current amount of Gold Pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
+  promptConfig: z.object({
+      rpgContext: RpgContextSchema.optional()
+  }).optional(),
+  playerClass: z.string().optional().describe("Player's character class if RPG mode is active."),
+  playerLevel: z.number().optional().describe("Player's current level if RPG mode is active."),
+  playerCurrentHp: z.number().optional().describe("Player's current HP if RPG mode is active."),
+  playerMaxHp: z.number().optional().describe("Player's maximum HP if RPG mode is active."),
+  playerCurrentMp: z.number().optional().describe("Player's current MP if RPG mode is active and applicable."),
+  playerMaxMp: z.number().optional().describe("Player's maximum MP if RPG mode is active and applicable."),
+  playerCurrentExp: z.number().optional().describe("Player's current EXP if RPG mode is active."),
+  playerExpToNextLevel: z.number().optional().describe("EXP needed for player's next level if RPG mode is active."),
+  playerStrength: z.number().optional(),
+  playerDexterity: z.number().optional(),
+  playerConstitution: z.number().optional(),
+  playerIntelligence: z.number().optional(),
+  playerWisdom: z.number().optional(),
+  playerCharisma: z.number().optional(),
+  playerArmorClass: z.number().optional().describe("Player's effective Armor Class including equipment."),
+  playerAttackBonus: z.number().optional().describe("Player's effective Attack Bonus including equipment."),
+  playerDamageBonus: z.string().optional().describe("Player's effective Damage (e.g. '1d8+3') including equipment."),
+  equippedWeaponName: z.string().optional().describe("Name of the player's equipped weapon, if any."),
+  equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
+  equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
+  playerSkills: z.array(PlayerSkillSchemaForAI).optional().describe("List of skills the player possesses. The AI should consider these if the userAction indicates skill use."),
+  playerLocationId: z.string().optional().describe("The ID of the POI where the player is currently located. This is the source of truth for location."),
+  mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
+  playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
+  aiConfig: AiConfigSchema,
+});
+
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig'> & {
+    characters: Character[];
+    activeCombat?: z.infer<typeof ActiveCombatSchema>;
+    playerSkills?: PlayerSkill[];
+    mapPointsOfInterest?: MapPointOfInterest[];
+    aiConfig?: AiConfig;
+};
+
+
+export const NewCharacterSchema = z.object({
+    name: z.string().describe("The name of the newly introduced character."),
+    details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper', 'Marchand'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
+    biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
+    initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
+    initialRelations: z.array(
+        z.object({
+            targetName: z.string().describe("Name of the known character or the player's name."),
+            description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
+        })
+    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\"targetName\": \"PLAYER_NAME_EXAMPLE\", \"description\": \"Curieux\"}, {\"targetName\": \"Rina\", \"description\": \"Indifférent\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
+    isHostile: z.boolean().optional().default(false).describe("Is this new character initially hostile to the player? Relevant if rpgModeActive is true."),
+    hitPoints: z.number().optional().describe("Initial HP for the new character if introduced as a combatant in RPG mode."),
+    maxHitPoints: z.number().optional().describe("Max HP, same as initial HP for new characters."),
+    manaPoints: z.number().optional().describe("Initial MP for the new character if a spellcaster and introduced in RPG mode."),
+    maxManaPoints: z.number().optional().describe("Max MP, same as initial MP for new spellcasters."),
+    armorClass: z.number().optional().describe("AC for new combatant."),
+    attackBonus: z.number().optional().describe("Attack bonus for new combatant."),
+    damageBonus: z.string().optional().describe("Damage bonus (e.g. '+1', '1d6') for new combatant."),
+    characterClass: z.string().optional().describe("Class if relevant (e.g. 'Bandit Thug', 'School Bully', 'Sorcerer Apprentice', 'Marchand d'armes')."),
+    level: z.number().optional().describe("Level if relevant."),
+    isAlly: z.boolean().optional().default(false).describe("Is this new character initially an ally of the player? This MUST be set to true if the character is purchased at a slave market."),
+});
+export type NewCharacterSchema = z.infer<typeof NewCharacterSchema>;
+
+export const CharacterUpdateSchema = z.object({
+    characterName: z.string().describe("The name of the known character involved."),
+    historyEntry: z.string().describe("A concise summary (in the specified language) of a significant action or quote by this character in the current narrative segment. MUST be in the specified language. Include location context if relevant and known (e.g. 'Au marché: A proposé une affaire douteuse à {{playerName}}.', 'Dans le couloir: A semblé troublée par la question de {{playerName}}.' )."),
+});
+export type CharacterUpdateSchema = z.infer<typeof CharacterUpdateSchema>;
+
+
+export const AffinityUpdateSchema = z.object({
+    characterName: z.string().describe("The name of the known character whose affinity **towards the player** changed."),
+    change: z.number().int().min(-10).max(10).describe("The integer change in affinity towards the player (+/-). Keep changes **very small and gradual** for typical interactions (e.g., +1 for a kind word, -1 or -2 for a minor disagreement/misstep, 0 for neutral). Reserve larger changes (+/- 3 to +/-5) for significant events. Extreme changes (+/- 6 to +/-10) for major betrayals/heroic acts. Affinity is 0 (hate) to 100 (love/devotion), 50 is neutral."),
+    reason: z.string().optional().describe("Brief justification for the affinity change based on the interaction.")
+});
+export type AffinityUpdateSchema = z.infer<typeof AffinityUpdateSchema>;
+
+
+export const RelationUpdateSchema = z.object({
+    characterName: z.string().describe("The name of the character whose relation is updated (the source)."),
+    targetName: z.string().describe("The name of the target character OR the player's name."),
+    newRelation: z.string().describe("The new *status* of the relationship from the source's perspective (e.g., 'Ennemi juré', 'Ami proche', 'Ex-petite amie', 'Rivale', 'Amant secret', 'Confidente', 'Collègue'). Be specific and clear. If an existing relation was 'Inconnu' (or equivalent), provide a more specific relation status if the narrative now allows it. MUST be in the specified language."),
+    reason: z.string().optional().describe("Brief justification for the relation change based on the narrative interaction or event.")
+});
+export type RelationUpdateSchema = z.infer<typeof RelationUpdateSchema>;
+
+const CombatOutcomeSchema = z.object({
+    combatantId: z.string().describe("ID of the combatant (character.id or 'player')."),
+    newHp: z.number().describe("The combatant's HP after this turn's actions."),
+    newMp: z.number().optional().describe("The combatant's MP after this turn's actions, if applicable."),
+    isDefeated: z.boolean().default(false).describe("True if the combatant was defeated this turn (HP <= 0)."),
+    newStatusEffects: z.array(StatusEffectSchema).optional().describe("Updated list of status effects for this combatant."),
+});
+
+
+export const CombatUpdatesSchema = z.object({
+    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn. THIS IS MANDATORY if combat took place."),
+    expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
+    itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+    currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces looted by the player if combat is won. IF NO CURRENCY CHANGE, PROVIDE 0."),
+    combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
+    turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. THIS IS MANDATORY if combat took place. This will be part of the main narrative output as well."),
+    nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false. Ensure this state includes all active combatants: player, allies, and all active enemies."),
+});
+export type CombatUpdatesSchema = z.infer<typeof CombatUpdatesSchema>;
+
+
+const PoiOwnershipChangeSchema = z.object({
+    poiId: z.string().describe("The ID of the Point of Interest whose ownership is changing (e.g., 'poi-grotte')."),
+    newOwnerId: z.string().describe("The ID of the new owner (e.g., 'player', 'frak-1')."),
+});
+
+export const GenerateAdventureOutputSchema = z.object({
+  narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game client will display the loot separately based on the structured data provided in other fields.**'),
+  sceneDescriptionForImage: z
+    .string()
+    .optional()
+    .describe('A concise visual description of the current scene, suitable for an image generation prompt. Describe characters using their physical appearance, not their names. Include key actions or mood if relevant.'),
+  newCharacters: z
+    .array(NewCharacterSchema)
+    .optional()
+    .describe('List of characters newly introduced in this narrative segment. All textual fields (details, history, relations) MUST be in the specified language. If rpgModeActive, include combat stats for new hostiles.'),
+  characterUpdates: z
+    .array(CharacterUpdateSchema)
+    .optional()
+    .describe('List of significant events or quotes involving known characters in this narrative segment, for logging in their history. MUST be in the specified language.'),
+  affinityUpdates: z
+    .array(AffinityUpdateSchema)
+    .optional()
+    .describe("List of affinity changes for known characters **towards the player** based on the user's action and the resulting narrative. Only if relationsModeActive."),
+  relationUpdates: z
+    .array(RelationUpdateSchema)
+    .optional()
+    .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
+  combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn through NON-COMBAT means (e.g., finding, gifts, or PURCHASE). **If items are obtained from combat loot, they MUST be returned inside the `combatUpdates` object, not here.** IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+  currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
+  poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
+  newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
+});
+export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;

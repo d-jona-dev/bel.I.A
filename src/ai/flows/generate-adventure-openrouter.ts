@@ -1,8 +1,8 @@
 
 'use server';
 
-import type { GenerateAdventureInput, GenerateAdventureOutput, GenerateAdventureFlowOutput } from './generate-adventure-genkit';
-import { GenerateAdventureInputSchema, GenerateAdventureOutputSchema } from './generate-adventure-genkit';
+import type { GenerateAdventureInput, GenerateAdventureOutput, GenerateAdventureFlowOutput } from '@/types';
+import { GenerateAdventureInputSchema, GenerateAdventureOutputSchema } from '@/types';
 import { z } from 'zod';
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -87,6 +87,116 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
     return promptSections.join('\n\n');
 }
 
+async function commonAdventureProcessing(input: GenerateAdventureInput): Promise<z.infer<typeof GenerateAdventureInputSchema>> {
+    const processedCharacters: z.infer<typeof GenerateAdventureInputSchema>['characters'] = input.characters.map(char => {
+        const history = char.history || [];
+        const lastThreeEntries = history.slice(-3);
+        const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (input.currentLanguage === 'fr' ? 'Aucun historique notable.' : 'No notable history.');
+
+        let relationsSummaryText = input.currentLanguage === 'fr' ? "Mode relations désactivé." : "Relations mode disabled.";
+        if (input.relationsModeActive && char.relations) {
+             relationsSummaryText = Object.entries(char.relations)
+                      .map(([targetId, description]) => {
+                          const targetName = targetId === 'player'
+                              ? input.playerName
+                              : input.characters.find(c => c.id === targetId)?.name || targetId;
+                          return `${targetName}: ${description}`;
+                      })
+                      .join('; ') || (input.currentLanguage === 'fr' ? 'Aucune relation définie.' : 'No relations defined.');
+        }
+
+        return {
+            id: char.id,
+            name: char.name,
+            details: char.details || (input.currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
+            biographyNotes: char.biographyNotes || (input.currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
+            affinity: input.relationsModeActive ? (char.affinity ?? 50) : 50,
+            relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
+            historySummary: historySummary,
+            relationsSummary: relationsSummaryText,
+            hitPoints: input.rpgModeActive ? (char.hitPoints ?? char.maxHitPoints ?? 10) : undefined,
+            maxHitPoints: input.rpgModeActive ? (char.maxHitPoints ?? 10) : undefined,
+            manaPoints: input.rpgModeActive ? (char.manaPoints ?? char.maxManaPoints ?? (char.characterClass?.toLowerCase().includes('mage') || char.characterClass?.toLowerCase().includes('sorcerer') ? 10 : 0)) : undefined,
+            maxManaPoints: input.rpgModeActive ? (char.maxManaPoints ?? (char.characterClass?.toLowerCase().includes('mage') || char.characterClass?.toLowerCase().includes('sorcerer') ? 10 : 0)) : undefined,
+            armorClass: input.rpgModeActive ? (char.armorClass ?? 10) : undefined,
+            attackBonus: input.rpgModeActive ? (char.attackBonus ?? 0) : undefined,
+            damageBonus: input.rpgModeActive ? (char.damageBonus ?? "1") : undefined,
+            characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
+            level: input.rpgModeActive ? (char.level ?? 1) : undefined,
+            isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
+            isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
+            spells: char.spells, // Pass spells,
+            locationId: char.locationId,
+        };
+    });
+
+    const processedPlayerSkills = input.playerSkills?.map(skill => ({
+        name: skill.name,
+        description: skill.description,
+        category: skill.category,
+    }));
+    
+    const currentPlayerLocation = input.playerLocationId
+        ? input.mapPointsOfInterest?.find(poi => poi.id === input.playerLocationId)
+        : undefined;
+
+    let ownerNameForPrompt = "Inconnu";
+    if (currentPlayerLocation?.ownerId) {
+        if (currentPlayerLocation.ownerId === 'player') {
+            ownerNameForPrompt = input.playerName;
+        } else {
+            const ownerChar = input.characters.find(c => c.id === currentPlayerLocation.ownerId);
+            if (ownerChar) {
+                ownerNameForPrompt = ownerChar.name;
+            }
+        }
+    }
+    
+    const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
+        ...input,
+        characters: processedCharacters,
+        rpgModeActive: input.rpgModeActive ?? false,
+        relationsModeActive: input.relationsModeActive ?? true,
+        activeCombat: input.activeCombat,
+        playerSkills: processedPlayerSkills,
+        playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
+        playerLevel: input.rpgModeActive ? (input.playerLevel || 1) : undefined,
+        playerCurrentHp: input.rpgModeActive ? (input.playerCurrentHp) : undefined,
+        playerMaxHp: input.rpgModeActive ? (input.playerMaxHp) : undefined,
+        playerCurrentMp: input.rpgModeActive ? (input.playerCurrentMp) : undefined,
+        playerMaxMp: input.rpgModeActive ? (input.playerMaxMp) : undefined,
+        playerCurrentExp: input.rpgModeActive ? (input.playerCurrentExp || 0) : undefined,
+        playerExpToNextLevel: input.rpgModeActive ? (input.playerExpToNextLevel || 100) : undefined,
+        playerGold: input.rpgModeActive ? (input.playerGold || 0) : undefined,
+        playerStrength: input.rpgModeActive ? input.playerStrength : undefined,
+        playerDexterity: input.rpgModeActive ? input.playerDexterity : undefined,
+        playerConstitution: input.rpgModeActive ? input.playerConstitution : undefined,
+        playerIntelligence: input.rpgModeActive ? input.playerIntelligence : undefined,
+        playerWisdom: input.rpgModeActive ? input.playerWisdom : undefined,
+        playerCharisma: input.rpgModeActive ? input.playerCharisma : undefined,
+        playerArmorClass: input.rpgModeActive ? input.playerArmorClass : undefined,
+        playerAttackBonus: input.rpgModeActive ? input.playerAttackBonus : undefined,
+        playerDamageBonus: input.rpgModeActive ? input.playerDamageBonus : undefined,
+        equippedWeaponName: input.equippedWeaponName,
+        equippedArmorName: input.equippedArmorName,
+        equippedJewelryName: input.equippedJewelryName,
+        playerLocationId: input.playerLocationId,
+        mapPointsOfInterest: input.mapPointsOfInterest?.map(poi => ({
+            id: poi.id,
+            name: poi.name,
+            description: poi.description,
+            level: poi.level,
+            ownerId: poi.ownerId,
+            ownerName: poi.ownerId === 'player' ? input.playerName : input.characters.find(c => c.id === poi.ownerId)?.name,
+            buildings: poi.buildings,
+        })),
+        playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
+        aiConfig: input.aiConfig,
+    };
+    return flowInput;
+}
+
+
 export async function generateAdventureWithOpenRouter(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
     const { aiConfig } = input;
 
@@ -95,7 +205,7 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
     }
 
     try {
-        const processedInput = await (global as any).commonAdventureProcessing(input);
+        const processedInput = await commonAdventureProcessing(input);
         const prompt = buildOpenRouterPrompt(processedInput);
         
         const response = await fetch(OPENROUTER_API_URL, {
