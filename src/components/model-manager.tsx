@@ -59,16 +59,30 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     setModels(updatedModels);
     localStorage.setItem('llm_models', JSON.stringify(updatedModels));
   };
-  
+
   const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['openRouter']>, value: string | boolean) => {
-    onConfigChange({
-        ...config,
-        openRouter: {
-            ...(config.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
-            [field]: value
-        }
-    });
+    const newConfig: AiConfig = {
+      ...config,
+      openRouter: {
+        ...(config.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
+        [field]: value
+      }
+    };
+    onConfigChange(newConfig);
+
+    // Also update the currently selected model in the models list to persist the setting
+    const selectedModel = models.find(m => m.source === 'openrouter' && m.modelName === config.openRouter?.model);
+    if (selectedModel) {
+        const updatedModels = models.map(m => {
+            if (m.id === selectedModel.id) {
+                return { ...m, [field]: value };
+            }
+            return m;
+        });
+        saveModels(updatedModels);
+    }
   };
+
 
   const handleSelectModel = (modelId: string) => {
     const selected = models.find(m => m.id === modelId);
@@ -78,8 +92,10 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
     if (selected.source === 'openrouter') {
         newConfig.openRouter = {
-            ...(config.openRouter || { apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
+            apiKey: selected.apiKey || config.openRouter?.apiKey || '',
             model: selected.modelName || '',
+            enforceStructuredResponse: selected.enforceStructuredResponse ?? false,
+            compatibilityMode: selected.compatibilityMode ?? false,
         };
     }
     
@@ -149,7 +165,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     <Input
                         placeholder="Nom du modèle (ex: mistralai/mistral-7b-instruct)"
                         value={config.openRouter?.model || ''}
-                        onChange={(e) => handleOpenRouterConfigChange('model', e.target.value)}
+                        readOnly
+                        className="bg-muted text-muted-foreground"
                     />
                     <div className="flex items-center space-x-2">
                         <Switch

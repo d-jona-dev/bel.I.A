@@ -190,11 +190,11 @@ export interface ModelDefinition {
     id: string;
     name: string;
     source: 'gemini' | 'openrouter';
-    apiUrl?: string;
-    apiKey?: string;
     modelName?: string;
+    apiKey?: string;
     enforceStructuredResponse?: boolean;
-    iconUrl?: string; // Optional: URL for an icon
+    compatibilityMode?: boolean;
+    iconUrl?: string;
 }
 
 export interface AiConfig {
