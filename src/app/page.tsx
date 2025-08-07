@@ -7,7 +7,7 @@ import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, Pla
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
+import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -2343,6 +2343,22 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerGold: newSettingsFromForm.playerGold,
         };
 
+        if (!(newSettingsFromForm.enableRpgMode ?? false)) {
+            // Explicitly nullify player RPG stats if RPG mode is off
+            const fieldsToNullify: (keyof AdventureSettings)[] = [
+                'playerClass', 'playerLevel', 'playerMaxHp', 'playerCurrentHp', 
+                'playerMaxMp', 'playerCurrentMp', 'playerCurrentExp', 
+                'playerExpToNextLevel', 'playerInventory', 'playerGold', 
+                'playerInitialAttributePoints', 'playerStrength', 'playerDexterity', 
+                'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma', 
+                'playerArmorClass', 'playerAttackBonus', 'playerDamageBonus', 'equippedItemIds', 'playerSkills'
+            ];
+            fieldsToNullify.forEach(field => {
+                (tempSettingsForCalc as any)[field] = undefined;
+            });
+            return tempSettingsForCalc;
+        }
+
         const effectiveStats = calculateEffectiveStats(tempSettingsForCalc);
 
         const newSettingsCandidate: AdventureSettings = {
@@ -3290,6 +3306,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 
 
 
