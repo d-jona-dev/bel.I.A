@@ -2487,75 +2487,39 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setAdventureSettings(prevLiveSettings => {
         initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
         playerNameChanged = stagedAdventureSettings.playerName !== prevLivePlayerName;
+        
         let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
 
-        const effectiveStats = calculateEffectiveStats(newLiveSettings);
-        newLiveSettings.playerMaxHp = effectiveStats.playerMaxHp;
-        newLiveSettings.playerMaxMp = effectiveStats.playerMaxMp;
-        newLiveSettings.playerArmorClass = effectiveStats.playerArmorClass;
-        newLiveSettings.playerAttackBonus = effectiveStats.playerAttackBonus;
-        newLiveSettings.playerDamageBonus = effectiveStats.playerDamageBonus;
-
-
+        // If RPG mode is live, ensure stats are calculated, otherwise ensure they are null
         if (newLiveSettings.rpgMode) {
-            if (initialSituationChanged || (!prevLiveRpgMode && newLiveSettings.rpgMode) ) {
-                newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
-                newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
-                newLiveSettings.playerCurrentExp = 0;
-                newLiveSettings.playerInventory = newLiveSettings.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [];
-                newLiveSettings.equippedItemIds = { weapon: null, armor: null, jewelry: null };
-                newLiveSettings.playerSkills = [];
-            } else {
-                newLiveSettings.playerCurrentHp = Math.min(prevLiveSettings.playerCurrentHp ?? newLiveSettings.playerMaxHp ?? 0, newLiveSettings.playerMaxHp ?? 0);
-                newLiveSettings.playerCurrentMp = Math.min(prevLiveSettings.playerCurrentMp ?? newLiveSettings.playerMaxMp ?? 0, newLiveSettings.playerMaxMp ?? 0);
-                newLiveSettings.playerCurrentExp = prevLiveSettings.playerCurrentExp ?? 0;
-                newLiveSettings.playerInventory = newLiveSettings.playerInventory || prevLiveSettings.playerInventory || [];
-                newLiveSettings.equippedItemIds = newLiveSettings.equippedItemIds || prevLiveSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null };
-                newLiveSettings.playerSkills = newLiveSettings.playerSkills || prevLiveSettings.playerSkills || [];
-            }
-             if (newLiveSettings.playerCurrentHp !== undefined && newLiveSettings.playerMaxHp !== undefined) {
-                 newLiveSettings.playerCurrentHp = Math.min(newLiveSettings.playerCurrentHp, newLiveSettings.playerMaxHp);
-            }
-             if (newLiveSettings.playerCurrentMp !== undefined && newLiveSettings.playerMaxMp !== undefined) {
-                newLiveSettings.playerCurrentMp = Math.min(newLiveSettings.playerCurrentMp, newLiveSettings.playerMaxMp);
-            }
+            const effectiveStats = calculateEffectiveStats(newLiveSettings);
+            newLiveSettings = { ...newLiveSettings, ...effectiveStats };
         } else {
-            newLiveSettings.playerClass = undefined; newLiveSettings.playerLevel = undefined;
-            newLiveSettings.playerMaxHp = undefined; newLiveSettings.playerCurrentHp = undefined;
-            newLiveSettings.playerMaxMp = undefined; newLiveSettings.playerCurrentMp = undefined;
-            newLiveSettings.playerExpToNextLevel = undefined; newLiveSettings.playerCurrentExp = undefined;
-            newLiveSettings.playerInventory = undefined;
-            newLiveSettings.playerInitialAttributePoints = undefined;
-            newLiveSettings.playerStrength = undefined; newLiveSettings.playerDexterity = undefined; newLiveSettings.playerConstitution = undefined;
-            newLiveSettings.playerIntelligence = undefined; newLiveSettings.playerWisdom = undefined;
-            newLiveSettings.playerCharisma = undefined;
-            newLiveSettings.playerArmorClass = undefined;
-            newLiveSettings.playerAttackBonus = undefined;
-            newLiveSettings.playerDamageBonus = undefined;
-            newLiveSettings.equippedItemIds = undefined;
-            newLiveSettings.playerSkills = undefined;
+             const fieldsToNullify: (keyof AdventureSettings)[] = [
+                'playerClass', 'playerLevel', 'playerMaxHp', 'playerCurrentHp', 
+                'playerMaxMp', 'playerCurrentMp', 'playerCurrentExp', 
+                'playerExpToNextLevel', 'playerInventory', 'playerGold', 
+                'playerInitialAttributePoints', 'playerStrength', 'playerDexterity', 
+                'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma', 
+                'playerArmorClass', 'playerAttackBonus', 'playerDamageBonus', 'equippedItemIds', 'playerSkills'
+            ];
+            fieldsToNullify.forEach(field => {
+                (newLiveSettings as any)[field] = undefined;
+            });
         }
         
-        newLiveSettings.playerGold = stagedAdventureSettings.playerGold ?? newLiveSettings.playerGold ?? 0;
+        // Reset player state if situation changes or RPG mode was just turned on
+        if (newLiveSettings.rpgMode && (initialSituationChanged || (!prevLiveRpgMode && newLiveSettings.rpgMode))) {
+            newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
+            newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
+            newLiveSettings.playerCurrentExp = 0;
+        }
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
         return newLiveSettings;
     });
 
-    setCharacters(prevLiveChars => {
-        const newLiveChars = JSON.parse(JSON.stringify(stagedCharacters));
-        // If RPG mode was just enabled, or initial situation changed, reset relevant NPC combat stats
-        if ((!prevLiveRpgMode && stagedAdventureSettings.rpgMode) || initialSituationChanged) {
-            return newLiveChars.map((char: Character) => ({
-                ...char,
-                hitPoints: stagedAdventureSettings.rpgMode ? (char.maxHitPoints ?? char.hitPoints) : undefined,
-                manaPoints: stagedAdventureSettings.rpgMode ? (char.maxManaPoints ?? char.manaPoints) : undefined,
-                statusEffects: stagedAdventureSettings.rpgMode ? [] : undefined,
-            }));
-        }
-        return newLiveChars;
-    });
-
+    setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
     setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters))); 
 
     if (playerNameChanged && activeCombat) {
@@ -2583,35 +2547,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }, 0);
   }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings, activeCombat]);
 
-  const handleToggleStrategyMode = React.useCallback(() => {
-    const newMode = !adventureSettings.strategyMode;
-    const newSettings = { ...adventureSettings, strategyMode: newMode };
-    setAdventureSettings(newSettings);
-    setStagedAdventureSettings(s => ({ ...s, enableStrategyMode: newMode }));
-    setTimeout(() => {
-        toast({ title: "Mode Stratégie", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
-    }, 0);
-  }, [adventureSettings, toast]);
+  const handleToggleStrategyMode = () => {};
+  const handleToggleRpgMode = () => {};
+  const handleToggleRelationsMode = () => {};
 
-  const handleToggleRpgMode = React.useCallback(() => {
-    const newMode = !adventureSettings.rpgMode;
-    const newSettings = { ...adventureSettings, rpgMode: newMode };
-    setAdventureSettings(newSettings);
-    setStagedAdventureSettings(s => ({ ...s, enableRpgMode: newMode }));
-    setTimeout(() => {
-        toast({ title: "Mode Jeu de Rôle", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
-    }, 0);
-  }, [adventureSettings, toast]);
-
-  const handleToggleRelationsMode = React.useCallback(() => {
-    const newMode = !adventureSettings.relationsMode;
-    const newSettings = { ...adventureSettings, relationsMode: newMode };
-    setAdventureSettings(newSettings);
-    setStagedAdventureSettings(s => ({ ...s, enableRelationsMode: newMode }));
-    setTimeout(() => {
-        toast({ title: "Mode Relations", description: `Le mode a été ${newMode ? "activé" : "désactivé"}.` });
-    }, 0);
-  }, [adventureSettings, toast]);
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     let userActionText = '';
@@ -3306,6 +3245,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
 
 
 

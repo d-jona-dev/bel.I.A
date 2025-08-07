@@ -15,7 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin } from 'lucide-react'; // Added MapPin & PawPrint
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig } from "@/types"; // Added Familiar & AiConfig
-import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from '@/ai/flows/generate-scene-image';
 import {
   AlertDialog,
@@ -116,9 +116,6 @@ interface PageStructureProps {
   handleSaveFamiliar: (familiar: Familiar) => void;
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onToggleStrategyMode: () => void;
-  onToggleRpgMode: () => void;
-  onToggleRelationsMode: () => void;
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
@@ -190,9 +187,6 @@ export function PageStructure({
   handleSaveFamiliar,
   handleAddStagedFamiliar,
   onMapImageUpload,
-  onToggleStrategyMode,
-  onToggleRpgMode,
-  onToggleRelationsMode,
   aiConfig,
   onAiConfigChange,
 }: PageStructureProps) {
@@ -425,9 +419,6 @@ export function PageStructure({
                                     formPropKey={formPropKey}
                                     initialValues={stagedAdventureSettings}
                                     onSettingsChange={handleSettingsUpdate}
-                                    onToggleStrategyMode={onToggleStrategyMode}
-                                    onToggleRpgMode={onToggleRpgMode}
-                                    onToggleRelationsMode={onToggleRelationsMode}
                                 />
                              </AccordionContent>
                          </AccordionItem>

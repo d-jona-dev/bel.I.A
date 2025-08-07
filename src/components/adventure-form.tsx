@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -91,12 +90,9 @@ interface AdventureFormProps {
     formPropKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange: (values: AdventureFormValues) => void;
-    onToggleStrategyMode: () => void;
-    onToggleRpgMode: () => void;
-    onToggleRelationsMode: () => void;
 }
 
-export function AdventureForm({ formPropKey, initialValues, onSettingsChange, onToggleStrategyMode, onToggleRpgMode, onToggleRelationsMode }: AdventureFormProps) {
+export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: AdventureFormProps) {
   const { toast } = useToast();
   
   const form = useForm<AdventureFormValues>({
@@ -111,11 +107,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
   });
 
   React.useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-        if (name !== 'enableStrategyMode' && name !== 'enableRpgMode' && name !== 'enableRelationsMode' && type !== 'change') {
-            onSettingsChange(value as AdventureFormValues);
-        } else if (name === 'enableStrategyMode' || name === 'enableRpgMode' || name === 'enableRelationsMode') {
-        }
+    const subscription = form.watch((value) => {
+      onSettingsChange(value as AdventureFormValues);
     });
     return () => subscription.unsubscribe();
   }, [form, onSettingsChange]);
@@ -256,10 +249,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        onToggleStrategyMode();
-                      }}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -280,10 +270,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        onToggleRelationsMode();
-                      }}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -304,10 +291,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange, on
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        onToggleRpgMode();
-                      }}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
