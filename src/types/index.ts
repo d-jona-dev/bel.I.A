@@ -1,9 +1,7 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
 // Déplacé depuis generate-adventure.ts pour éviter les problèmes avec 'use server'
-// Schéma pour les objets obtenus (loot, trouvés, donnés)
 export const LootedItemSchema = z.object({
   itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée'. CRITICAL: DO NOT include currency (gold, coins, etc.) here; use currencyGained instead."),
   quantity: z.number().int().min(1).describe("Quantity of the item."),
@@ -189,7 +187,7 @@ export interface Familiar {
 export interface ModelDefinition {
     id: string;
     name: string;
-    source: 'gemini' | 'openrouter';
+    source: 'gemini' | 'openrouter' | 'local';
     modelName?: string;
     apiKey?: string;
     enforceStructuredResponse?: boolean;
@@ -198,13 +196,16 @@ export interface ModelDefinition {
 }
 
 export interface AiConfig {
-    source: 'gemini' | 'openrouter';
+    source: 'gemini' | 'openrouter' | 'local';
     openRouter?: {
         model: string;
         apiKey: string;
         baseUrl?: string;
         enforceStructuredResponse: boolean;
-        compatibilityMode?: boolean; // Added for compatibility mode
+        compatibilityMode?: boolean; 
+    };
+    local?: {
+        model: string;
     }
 }
 
@@ -334,7 +335,7 @@ const PointOfInterestSchemaForAI = z.object({
 });
 
 const AiConfigSchema = z.object({
-    source: z.enum(['gemini', 'openrouter']),
+    source: z.enum(['gemini', 'openrouter', 'local']),
     openRouter: z.object({
         model: z.string(),
         apiKey: z.string(),
@@ -342,7 +343,10 @@ const AiConfigSchema = z.object({
         enforceStructuredResponse: z.boolean(),
         compatibilityMode: z.boolean().optional(),
     }).optional(),
-}).optional();
+    local: z.object({
+        model: z.string(),
+    }).optional(),
+}).passthrough();
 
 
 export const GenerateAdventureInputSchema = z.object({
@@ -501,3 +505,5 @@ export const GenerateAdventureOutputSchema = z.object({
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
+
+    

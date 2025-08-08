@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { PlusCircle, Trash2, Edit2, Check, X } from "lucide-react";
+import { PlusCircle, Trash2, Edit2, Check, X, Loader2, Server, Folder, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AiConfig, ModelDefinition } from "@/types";
 import {
@@ -23,6 +23,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
+
 
 const DEFAULT_MODELS: ModelDefinition[] = [
     { id: 'gemini-default', name: 'Gemini (Google)', source: 'gemini' },
@@ -40,6 +42,9 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   const { toast } = useToast();
   const [models, setModels] = React.useState<ModelDefinition[]>([]);
   const [editingModel, setEditingModel] = React.useState<ModelDefinition | null>(null);
+  const [localModels, setLocalModels] = React.useState<string[]>([]);
+  const [isLocalServerLoading, setIsLocalServerLoading] = React.useState(true);
+  const [localServerError, setLocalServerError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     try {
@@ -53,6 +58,26 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
         console.error("Failed to load models from localStorage", error);
         setModels(DEFAULT_MODELS);
     }
+
+    // Fetch local models
+    const fetchLocalModels = async () => {
+        try {
+            const response = await fetch('http://localhost:9000/api/local-llm/models');
+            if (!response.ok) {
+                throw new Error("Le serveur LLM local ne répond pas. Veuillez le démarrer.");
+            }
+            const data = await response.json();
+            setLocalModels(data.models || []);
+            setLocalServerError(null);
+        } catch (error) {
+            console.warn("Could not fetch local models:", error);
+            setLocalServerError(error instanceof Error ? error.message : "Erreur inconnue");
+        } finally {
+            setIsLocalServerLoading(false);
+        }
+    };
+    fetchLocalModels();
+
   }, []);
 
   const saveModels = (updatedModels: ModelDefinition[]) => {
@@ -70,7 +95,6 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     };
     onConfigChange(newConfig);
 
-    // Also update the currently selected model in the models list to persist the setting
     const selectedModel = models.find(m => m.source === 'openrouter' && m.modelName === config.openRouter?.model);
     if (selectedModel) {
         const updatedModels = models.map(m => {
@@ -84,23 +108,35 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   };
 
 
-  const handleSelectModel = (modelId: string) => {
-    const selected = models.find(m => m.id === modelId);
-    if (!selected) return;
+  const handleSelectModelSource = (source: 'gemini' | 'openrouter' | 'local') => {
+    let newConfig: AiConfig = { ...config, source };
 
-    let newConfig: AiConfig = { ...config, source: selected.source };
-
-    if (selected.source === 'openrouter') {
+    if (source === 'gemini') {
+        onConfigChange(newConfig);
+    } else if (source === 'openrouter') {
+        const firstOpenRouterModel = models.find(m => m.source === 'openrouter');
         newConfig.openRouter = {
-            apiKey: selected.apiKey || config.openRouter?.apiKey || '',
-            model: selected.modelName || '',
-            enforceStructuredResponse: selected.enforceStructuredResponse ?? false,
-            compatibilityMode: selected.compatibilityMode ?? false,
+            apiKey: firstOpenRouterModel?.apiKey || config.openRouter?.apiKey || '',
+            model: firstOpenRouterModel?.modelName || '',
+            enforceStructuredResponse: firstOpenRouterModel?.enforceStructuredResponse ?? false,
+            compatibilityMode: firstOpenRouterModel?.compatibilityMode ?? false,
         };
+        onConfigChange(newConfig);
+    } else if (source === 'local') {
+        newConfig.local = {
+            model: localModels[0] || ''
+        };
+        onConfigChange(newConfig);
     }
-    
-    onConfigChange(newConfig);
   };
+  
+  const handleSelectLocalModel = (modelName: string) => {
+      onConfigChange({
+          ...config,
+          source: 'local',
+          local: { model: modelName }
+      });
+  }
 
 
   const handleAddNewModel = () => {
@@ -138,17 +174,15 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     <Card className="bg-muted/20 border-dashed">
         <CardContent className="p-4 space-y-4">
             <div>
-              <Label htmlFor="model-select">Modèle de langage (LLM)</Label>
-              <Select value={selectedModelId} onValueChange={handleSelectModel}>
-                  <SelectTrigger id="model-select">
-                      <SelectValue placeholder="Choisir un modèle..." />
+              <Label htmlFor="model-source-select">Source du Modèle</Label>
+              <Select value={config.source} onValueChange={(value) => handleSelectModelSource(value as any)}>
+                  <SelectTrigger id="model-source-select">
+                      <SelectValue placeholder="Choisir une source..." />
                   </SelectTrigger>
                   <SelectContent>
-                      {models.map(model => (
-                          <SelectItem key={model.id} value={model.id}>
-                              {model.name}
-                          </SelectItem>
-                      ))}
+                      <SelectItem value="gemini">Gemini (Google)</SelectItem>
+                      <SelectItem value="openrouter">OpenRouter (API Externe)</SelectItem>
+                      <SelectItem value="local">Local (llama.cpp)</SelectItem>
                   </SelectContent>
               </Select>
             </div>
@@ -156,17 +190,34 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             {config.source === 'openrouter' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
                     <Label>Configuration OpenRouter</Label>
+                     <Select value={selectedModelId} onValueChange={(modelId) => {
+                        const selected = models.find(m => m.id === modelId);
+                        if (selected && selected.source === 'openrouter') {
+                            onConfigChange({
+                                source: 'openrouter',
+                                openRouter: {
+                                    apiKey: selected.apiKey || config.openRouter?.apiKey || '',
+                                    model: selected.modelName || '',
+                                    enforceStructuredResponse: selected.enforceStructuredResponse ?? false,
+                                    compatibilityMode: selected.compatibilityMode ?? false,
+                                }
+                            });
+                        }
+                    }}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Choisir un modèle OpenRouter..."/>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {models.filter(m => m.source === 'openrouter').map(model => (
+                                <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Input
                         type="password"
                         placeholder="Clé API OpenRouter"
                         value={config.openRouter?.apiKey || ''}
                         onChange={(e) => handleOpenRouterConfigChange('apiKey', e.target.value)}
-                    />
-                    <Input
-                        placeholder="Nom du modèle (ex: mistralai/mistral-7b-instruct)"
-                        value={config.openRouter?.model || ''}
-                        readOnly
-                        className="bg-muted text-muted-foreground"
                     />
                     <div className="flex items-center space-x-2">
                         <Switch
@@ -186,13 +237,50 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     </div>
                 </div>
             )}
+            
+            {config.source === 'local' && (
+                 <div className="space-y-3 p-3 border bg-background rounded-md">
+                     <Label>Configuration Locale (llama.cpp)</Label>
+                      {isLocalServerLoading ? (
+                          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> Recherche de modèles locaux...</div>
+                      ) : localServerError ? (
+                          <div className="p-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
+                              <AlertTriangle className="h-4 w-4 mt-0.5"/>
+                              <div>
+                                 <p className="font-semibold">Erreur du serveur local</p>
+                                 <p>{localServerError}</p>
+                                 <p className="text-xs mt-1">Assurez-vous que le serveur est lancé via `npm run local-llm`.</p>
+                              </div>
+                          </div>
+                      ) : localModels.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground bg-muted/50 border rounded-md flex items-start gap-2">
+                                <Folder className="h-4 w-4 mt-0.5"/>
+                                <div>
+                                    <p className="font-semibold">Aucun modèle local trouvé.</p>
+                                    <p>Veuillez placer vos modèles `.gguf` dans le dossier <code className="font-mono text-xs bg-muted p-0.5 rounded-sm">models</code> à la racine du projet.</p>
+                                </div>
+                            </div>
+                      ) : (
+                        <Select value={config.local?.model || ''} onValueChange={handleSelectLocalModel}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Choisir un modèle local..."/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {localModels.map(modelName => (
+                                    <SelectItem key={modelName} value={modelName}>{modelName}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                      )}
+                 </div>
+            )}
 
             <Accordion type="single" collapsible>
                 <AccordionItem value="manage-models">
-                    <AccordionTrigger className="text-sm">Gérer la liste des modèles</AccordionTrigger>
+                    <AccordionTrigger className="text-sm">Gérer la liste des modèles OpenRouter</AccordionTrigger>
                     <AccordionContent className="space-y-2">
                         {models.filter(m => m.source === 'openrouter').map(model => (
-                            <div key={model.id} className="flex items-center gap-2 p-2 border rounded-md bg-background">
+                            <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                 {editingModel?.id === model.id ? (
                                     <>
                                         <Input value={editingModel.name} onChange={e => setEditingModel({...editingModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
@@ -210,7 +298,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             </div>
                         ))}
                          {editingModel && editingModel.id.startsWith('new-') && (
-                                <div className="flex items-center gap-2 p-2 border rounded-md bg-background">
+                                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
                                     <Input value={editingModel.name} onChange={e => setEditingModel({...editingModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                     <Input value={editingModel.modelName} onChange={e => setEditingModel({...editingModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveModel}><Check className="h-4 w-4"/></Button>
@@ -227,3 +315,5 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     </Card>
   );
 }
+
+    
