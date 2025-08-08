@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -39,12 +40,20 @@ export const NewFamiliarSchema = z.object({
 });
 export type NewFamiliarSchema = z.infer<typeof NewFamiliarSchema>;
 
+export interface ImageTransform {
+  scale: number;
+  translateX: number;
+  translateY: number;
+}
+
 export interface Message {
   id: string;
   type: 'user' | 'ai' | 'system';
   content: string;
   timestamp: number;
   sceneDescription?: string;
+  imageUrl?: string | null;
+  imageTransform?: ImageTransform;
   loot?: PlayerInventoryItem[];
   lootTaken?: boolean;
 }

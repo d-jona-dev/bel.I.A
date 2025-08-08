@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -465,7 +465,7 @@ export default function Home() {
   }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage]);
 
 
-  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[]) => {
+  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItemsFromAI?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
            name: item.itemName,
@@ -485,6 +485,8 @@ export default function Home() {
             content: content,
             timestamp: Date.now(),
             sceneDescription: type === 'ai' ? sceneDesc : undefined,
+            imageUrl: type === 'ai' ? imageUrl : undefined,
+            imageTransform: type === 'ai' ? imageTransform : undefined,
             loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
             lootTaken: false,
        };
@@ -1571,10 +1573,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         setTimeout(() => {toast({ title: "Objets Laissés", description: "Vous avez décidé de ne pas prendre ces objets." });},0);
     }, [toast]);
 
-   const handleEditMessage = React.useCallback((messageId: string, newContent: string) => {
+   const handleEditMessage = React.useCallback((messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => {
        React.startTransition(() => {
            setNarrativeMessages(prev => prev.map(msg =>
-               msg.id === messageId ? { ...msg, content: newContent, timestamp: Date.now() } : msg
+               msg.id === messageId ? { 
+                   ...msg, 
+                   content: newContent, 
+                   timestamp: Date.now(),
+                   imageUrl: newImageUrl !== undefined ? newImageUrl : msg.imageUrl,
+                   imageTransform: newImageTransform || msg.imageTransform,
+                } : msg
            ));
        });
         setTimeout(() => {

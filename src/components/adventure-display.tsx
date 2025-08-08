@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,12 +60,12 @@ interface AdventureDisplayProps {
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => void;
     onNewCharacters: (newChars: NewCharacterSchema[]) => void;
     onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
     onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
     onRelationUpdates: (updates: RelationUpdateSchema[]) => void;
-    onEditMessage: (messageId: string, newContent: string) => void;
+    onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     activeCombat?: ActiveCombat;
@@ -123,13 +123,12 @@ export function AdventureDisplay({
   const [userAction, setUserAction] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
-  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
-  const [currentSceneDescription, setCurrentSceneDescription] = React.useState<string | null>(null);
   const [imageStyle, setImageStyle] = React.useState<string>("");
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
+  const [editImageTransform, setEditImageTransform] = React.useState<ImageTransform>({ scale: 1, translateX: 0, translateY: 0 });
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef(messages);
@@ -146,9 +145,6 @@ export function AdventureDisplay({
     React.useEffect(() => {
         setMessages(initialMessages);
         messagesRef.current = initialMessages;
-        const latestAiMessage = [...initialMessages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
-        setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
-        setImageUrl(null);
 
         if (scrollAreaRef.current) {
           const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
@@ -162,8 +158,6 @@ export function AdventureDisplay({
 
     React.useEffect(() => {
         messagesRef.current = messages;
-        const latestAiMessage = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
-        setCurrentSceneDescription(latestAiMessage?.sceneDescription || null);
          if (scrollAreaRef.current) {
             const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
             if(scrollElement) {
@@ -209,8 +203,8 @@ export function AdventureDisplay({
   };
 
 
-  const handleGenerateImage = async () => {
-     const descriptionForImage = currentSceneDescription;
+  const handleGenerateImage = async (message: Message) => {
+     const descriptionForImage = message.sceneDescription;
 
      if (isImageLoading || !descriptionForImage || isLoading) {
          if (!descriptionForImage) {
@@ -225,7 +219,6 @@ export function AdventureDisplay({
          return;
      };
      setIsImageLoading(true);
-     setImageUrl(null);
 
     try {
         const result = await generateSceneImageAction({ 
@@ -233,10 +226,11 @@ export function AdventureDisplay({
             style: imageStyle,
         });
         if (result.error) { 
-            setImageUrl(null);
             return;
         }
-        setImageUrl(result.imageUrl);
+
+        onEditMessage(message.id, message.content, undefined, result.imageUrl);
+        
         React.startTransition(() => {
             toast({
                 title: "Image Générée",
@@ -269,11 +263,12 @@ export function AdventureDisplay({
     const openEditDialog = (message: Message) => {
         setEditingMessage(message);
         setEditContent(message.content);
+        setEditImageTransform(message.imageTransform || { scale: 1, translateX: 0, translateY: 0 });
     };
 
     const handleSaveChanges = () => {
-        if (editingMessage && editContent.trim()) {
-            onEditMessage(editingMessage.id, editContent.trim());
+        if (editingMessage) {
+            onEditMessage(editingMessage.id, editContent, editImageTransform);
             setEditingMessage(null);
         }
     };
@@ -449,38 +444,62 @@ export function AdventureDisplay({
 
                                                   {message.type !== 'system' && !isFirstMessage && (
                                                       <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
-                                                          <AlertDialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
+                                                        <Dialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <TooltipProvider>
                                                               <Tooltip>
                                                                   <TooltipTrigger asChild>
-                                                                    <AlertDialogTrigger asChild>
+                                                                    <DialogTrigger asChild>
                                                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => openEditDialog(message)}>
                                                                           <Edit className="h-4 w-4" />
                                                                       </Button>
-                                                                    </AlertDialogTrigger>
+                                                                    </DialogTrigger>
                                                                   </TooltipTrigger>
                                                                   <TooltipContent side="top">Modifier</TooltipContent>
                                                               </Tooltip>
                                                             </TooltipProvider>
-                                                              <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>Modifier le Message</AlertDialogTitle>
-                                                                  <AlertDialogDescription>
-                                                                  Modifiez le contenu du message ci-dessous.
-                                                                  </AlertDialogDescription>
-                                                              </AlertDialogHeader>
+                                                              <DialogContent>
+                                                              <DialogHeader>
+                                                                  <DialogTitle>Modifier le Message</DialogTitle>
+                                                                  <DialogDescription>
+                                                                  Modifiez le contenu du message et l'image ci-dessous.
+                                                                  </DialogDescription>
+                                                              </DialogHeader>
                                                               <Textarea
                                                                       value={editContent}
                                                                       onChange={(e) => setEditContent(e.target.value)}
                                                                       rows={10}
                                                                       className="my-4"
                                                                   />
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel onClick={() => setEditingMessage(null)}>Annuler</AlertDialogCancel>
-                                                                  <AlertDialogAction onClick={handleSaveChanges}>Enregistrer</AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                              </AlertDialogContent>
-                                                          </AlertDialog>
+                                                              {editingMessage?.imageUrl && (
+                                                                  <div className="space-y-2">
+                                                                      <Label>Ajuster l'image</Label>
+                                                                      <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                                                                          <Image 
+                                                                              src={editingMessage.imageUrl} 
+                                                                              alt="Ajustement de l'image"
+                                                                              layout="fill"
+                                                                              objectFit="cover"
+                                                                              style={{
+                                                                                transform: `scale(${editImageTransform.scale}) translateX(${editImageTransform.translateX}px) translateY(${editImageTransform.translateY}px)`
+                                                                              }}
+                                                                          />
+                                                                      </div>
+                                                                      <div className="flex justify-center items-center gap-2">
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, scale: t.scale * 1.1}))}><ZoomIn className="h-4 w-4"/></Button>
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, scale: t.scale / 1.1}))}><ZoomOut className="h-4 w-4"/></Button>
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateX: t.translateX - 10}))}><ArrowLeft className="h-4 w-4"/></Button>
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateX: t.translateX + 10}))}><ArrowRight className="h-4 w-4"/></Button>
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateY: t.translateY - 10}))}><ArrowUp className="h-4 w-4"/></Button>
+                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateY: t.translateY + 10}))}><ArrowDown className="h-4 w-4"/></Button>
+                                                                      </div>
+                                                                  </div>
+                                                              )}
+                                                              <DialogFooter>
+                                                                  <Button variant="outline" onClick={() => setEditingMessage(null)}>Annuler</Button>
+                                                                  <Button onClick={handleSaveChanges}>Enregistrer</Button>
+                                                              </DialogFooter>
+                                                              </DialogContent>
+                                                          </Dialog>
                                                           <TooltipProvider>
                                                               <Tooltip>
                                                                   <TooltipTrigger asChild>
@@ -840,16 +859,11 @@ export function AdventureDisplay({
             <div className="w-1/3 lg:w-1/4 hidden md:flex flex-col gap-4 overflow-y-auto">
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-                        {isImageLoading ? (
-                            <div className="flex flex-col items-center justify-center text-muted-foreground">
-                                <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                                <p>Génération de l'image...</p>
-                            </div>
-                        ) : imageUrl ? (
+                        {messages.find(m=>m.imageUrl) ? (
                             <Dialog>
                                 <div className="relative w-full aspect-square group">
                                     <Image
-                                        src={imageUrl}
+                                        src={messages.find(m=>m.imageUrl)!.imageUrl!}
                                         alt="Generated Scene"
                                         fill
                                         style={{ objectFit: 'contain' }}
@@ -871,7 +885,7 @@ export function AdventureDisplay({
                                     </DialogHeader>
                                     <div className="relative w-full h-full">
                                         <Image
-                                            src={imageUrl}
+                                            src={messages.find(m=>m.imageUrl)!.imageUrl!}
                                             alt="Generated Scene in Fullscreen"
                                             layout="fill"
                                             objectFit="contain"
@@ -915,7 +929,14 @@ export function AdventureDisplay({
                             <TooltipProvider>
                                 <Tooltip>
                                      <TooltipTrigger asChild>
-                                        <Button className="w-full" onClick={handleGenerateImage} disabled={isImageLoading || isLoading || !currentSceneDescription}>
+                                        <Button className="w-full" onClick={() => {
+                                            const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
+                                            if (lastAiMessage) {
+                                                handleGenerateImage(lastAiMessage);
+                                            } else {
+                                                toast({title: "Description Manquante", description: "Impossible de trouver une description de scène à générer.", variant: "destructive"});
+                                            }
+                                        }} disabled={isImageLoading || isLoading || ![...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription)}>
                                             <Wand2 className="mr-2 h-4 w-4" />
                                             <span>Générer Image {imageStyle ? `(${imageStyle.split(' ')[0]})` : ''}</span>
                                         </Button>
