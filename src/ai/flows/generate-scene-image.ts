@@ -36,6 +36,22 @@ const getDefaultOutput = (errorMsg?: string): GenerateSceneImageFlowOutput => ({
     error: errorMsg,
 });
 
+const getStyleEnhancedPrompt = (description: string, style?: string): string => {
+  if (!style) {
+    return description;
+  }
+
+  const stylePrompts: Record<string, string> = {
+    'Realistic': `A photorealistic, highly detailed image. Keywords: realistic, photorealism, 8k, sharp focus. Scene: ${description}`,
+    'Manga / Anime': `A high-quality, detailed image in a vibrant Manga/Anime style. Keywords: anime aesthetic, clean lines, cel shading, by Studio Ghibli and Makoto Shinkai. Scene: ${description}`,
+    'Epic Fantasy Art': `A dramatic and epic digital fantasy painting. Keywords: fantasy art, epic, detailed, D&D, ArtStation, dramatic lighting, by Greg Rutkowski. Scene: ${description}`,
+    'Oil Painting': `An image in the style of a classical oil painting. Keywords: oil on canvas, classical, detailed brushstrokes, masterpiece. Scene: ${description}`,
+    'Comic Book': `An image in a bold, American comic book style. Keywords: comic book art, bold lines, ink, vibrant colors, halftone dots. Scene: ${description}`,
+  };
+
+  return stylePrompts[style] || `${description}. Art style: ${style}`;
+};
+
 
 export async function generateSceneImage(input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput>
 {
@@ -56,7 +72,7 @@ const generateSceneImageFlow = ai.defineFlow<
   },
   async (input): Promise<GenerateSceneImageFlowOutput> => { // Explicitly type the Promise return
     let fullResponse;
-    const finalPrompt = `${input.sceneDescription}${input.style ? `. Art style: ${input.style}` : ''}`;
+    const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
     
     try {
       fullResponse = await ai.generate({
