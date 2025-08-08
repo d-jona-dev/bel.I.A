@@ -8,6 +8,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast"; // Import useToast
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Define a type for your avatar data
 interface PlayerAvatar {
@@ -19,44 +30,97 @@ interface PlayerAvatar {
   level: number;
 }
 
-export default function AvatarsPage() {
-  const { toast } = useToast(); // Initialize toast
-  const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([
-    { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: 'https://placehold.co/128x128.png', class: 'Guerrier', level: 5 },
-    { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, class: 'Mage', level: 3 },
-    { id: 'avatar3', name: 'Kael le Furtif', details: 'Assassin agile et discret.', portraitUrl: 'https://placehold.co/128x128.png', class: 'Voleur', level: 7 },
-  ]);
+const AVATARS_STORAGE_KEY = 'playerAvatars';
+const CURRENT_AVATAR_ID_KEY = 'currentAvatarId';
 
-  // Placeholder for the currently selected avatar ID
-  // In a real app, this would likely come from global state or localStorage
-  const [currentAvatarId, setCurrentAvatarId] = React.useState<string | null>('avatar1');
+export default function AvatarsPage() {
+  const { toast } = useToast();
+  const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([]);
+  const [currentAvatarId, setCurrentAvatarId] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [avatarToDelete, setAvatarToDelete] = React.useState<PlayerAvatar | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const savedAvatars = localStorage.getItem(AVATARS_STORAGE_KEY);
+      const savedCurrentId = localStorage.getItem(CURRENT_AVATAR_ID_KEY);
+      if (savedAvatars) {
+        setAvatars(JSON.parse(savedAvatars));
+      } else {
+        // Set default avatars if none are saved
+        const defaultAvatars = [
+          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, class: 'Guerrier', level: 5 },
+          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, class: 'Mage', level: 3 },
+        ];
+        setAvatars(defaultAvatars);
+        localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(defaultAvatars));
+      }
+      if (savedCurrentId) {
+        setCurrentAvatarId(JSON.parse(savedCurrentId));
+      } else if (avatars.length > 0) {
+        setCurrentAvatarId(avatars[0].id);
+      }
+    } catch (error) {
+      console.error("Failed to load avatars from localStorage:", error);
+      toast({ title: "Erreur de chargement", description: "Impossible de charger les avatars.", variant: "destructive" });
+    }
+    setIsLoading(false);
+  }, [toast]);
+
+  const saveAvatars = (updatedAvatars: PlayerAvatar[]) => {
+    setAvatars(updatedAvatars);
+    localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(updatedAvatars));
+  };
 
   const handleUploadAvatarPortrait = (avatarId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
-      setAvatars(prevAvatars =>
-        prevAvatars.map(avatar =>
-          avatar.id === avatarId ? { ...avatar, portraitUrl: reader.result as string } : avatar
-        )
+      const updatedAvatars = avatars.map(avatar =>
+        avatar.id === avatarId ? { ...avatar, portraitUrl: reader.result as string } : avatar
       );
+      saveAvatars(updatedAvatars);
       toast({ title: "Portrait Téléchargé", description: "Le portrait de l'avatar a été mis à jour." });
     };
     reader.readAsDataURL(file);
     if(event.target) event.target.value = ''; // Reset file input to allow re-uploading the same file
   };
+  
+  const handleSelectAvatar = (avatarId: string) => {
+    setCurrentAvatarId(avatarId);
+    localStorage.setItem(CURRENT_AVATAR_ID_KEY, JSON.stringify(avatarId));
+    toast({title: "Avatar Sélectionné", description: `Vous jouerez maintenant en tant que ${avatars.find(a => a.id === avatarId)?.name}.`});
+  }
 
+  const confirmDelete = () => {
+    if (avatarToDelete) {
+      const updatedAvatars = avatars.filter(a => a.id !== avatarToDelete.id);
+      saveAvatars(updatedAvatars);
+      if(currentAvatarId === avatarToDelete.id) {
+        const newCurrent = updatedAvatars.length > 0 ? updatedAvatars[0].id : null;
+        setCurrentAvatarId(newCurrent);
+        localStorage.setItem(CURRENT_AVATAR_ID_KEY, JSON.stringify(newCurrent));
+      }
+      toast({ title: "Avatar Supprimé", description: `L'avatar "${avatarToDelete.name}" a été supprimé.` });
+      setAvatarToDelete(null);
+    }
+  };
+
+
+  if (isLoading) {
+    return <div className="text-center p-10">Chargement des avatars...</div>;
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Avatars Joueur</h1>
         <div className="flex gap-2">
-           <Button variant="outline" disabled> {/* TODO: Implement JSON import/export for avatars */}
+           <Button variant="outline" disabled>
             <Upload className="mr-2 h-4 w-4" /> Importer un Avatar
           </Button>
-          <Button disabled> {/* TODO: Implement create avatar functionality */}
+          <Button disabled>
             <UserPlus className="mr-2 h-4 w-4" /> Créer un Avatar
           </Button>
         </div>
@@ -66,13 +130,13 @@ export default function AvatarsPage() {
         Sélectionnez l'avatar que vous souhaitez incarner dans vos aventures.
       </p>
 
-      <ScrollArea className="h-[calc(100vh-240px)]"> {/* Adjust height as needed */}
+      <ScrollArea className="h-[calc(100vh-240px)]">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {avatars.length > 0 ? (
             avatars.map((avatar) => (
               <Card key={avatar.id} className={avatar.id === currentAvatarId ? 'border-primary' : ''}>
-                <CardHeader className="flex flex-row items-start gap-4"> {/* Changed to items-start for better alignment with upload button */}
-                   <Avatar className="h-20 w-20"> {/* Increased size */}
+                <CardHeader className="flex flex-row items-start gap-4">
+                   <Avatar className="h-20 w-20">
                       {avatar.portraitUrl ? (
                         <AvatarImage src={avatar.portraitUrl} alt={avatar.name} data-ai-hint={`${avatar.class} portrait`} />
                       ) : (
@@ -106,14 +170,32 @@ export default function AvatarsPage() {
                     </Button>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" disabled> {/* TODO: Implement edit */}
+                  <Button variant="ghost" size="sm" disabled>
                     <Edit className="mr-2 h-4 w-4" /> Modifier
                   </Button>
-                  <Button variant="destructive" size="sm" disabled> {/* TODO: Implement delete */}
-                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" onClick={() => setAvatarToDelete(avatar)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                      </Button>
+                    </AlertDialogTrigger>
+                    {avatarToDelete?.id === avatar.id && (
+                       <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Êtes-vous sûr de vouloir supprimer l'avatar "{avatarToDelete.name}" ?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setAvatarToDelete(null)}>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete}>Supprimer</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                    )}
+                  </AlertDialog>
                    {avatar.id !== currentAvatarId && (
-                    <Button variant="outline" size="sm" onClick={() => setCurrentAvatarId(avatar.id)} disabled> {/* TODO: Implement select logic (e.g. save to global state) */}
+                    <Button variant="outline" size="sm" onClick={() => handleSelectAvatar(avatar.id)}>
                         Sélectionner
                     </Button>
                    )}

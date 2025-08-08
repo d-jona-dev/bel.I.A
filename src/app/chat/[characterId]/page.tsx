@@ -12,7 +12,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Loader2, ArrowLeft, User as UserIcon, Bot, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, Message } from "@/types";
+import type { Character, Message, AdventureSettings } from "@/types";
 import { simpleChat } from "@/ai/flows/simple-chat"; // Import the simple chat flow
 import type { SimpleChatInput, SimpleChatOutput, ChatMessage } from "@/ai/flows/simple-chat";
 import {
@@ -48,13 +48,12 @@ export default function CharacterChatPage() {
     if (characterId) {
       try {
         const charactersFromStorage = localStorage.getItem('globalCharacters');
-        const adventureSettingsFromStorage = localStorage.getItem('adventureSettings'); // Assuming you save adventure settings
+        const adventureSettingsFromStorage = localStorage.getItem('adventureSettings');
 
         if (adventureSettingsFromStorage) {
-            const advSettings: Partial<Pick<Character, "name">> = JSON.parse(adventureSettingsFromStorage); // Use Character name type
-            if (advSettings.name) setPlayerName(advSettings.name); // AdventureSettings has playerName, not name
+            const advSettings: Partial<AdventureSettings> = JSON.parse(adventureSettingsFromStorage);
+            if (advSettings.playerName) setPlayerName(advSettings.playerName);
         }
-
 
         if (charactersFromStorage) {
           const allCharacters: Character[] = JSON.parse(charactersFromStorage);
@@ -77,16 +76,16 @@ export default function CharacterChatPage() {
 
           } else {
             toast({ title: "Personnage non trouvé", description: "Le personnage que vous essayez de contacter n'existe pas.", variant: "destructive" });
-            router.push('/histoires'); 
+            router.push('/personnages'); 
           }
         } else {
             toast({ title: "Aucun personnage", description: "Aucun personnage sauvegardé localement.", variant: "destructive" });
-            router.push('/histoires');
+            router.push('/personnages');
         }
       } catch (error) {
         console.error("Failed to load character:", error);
         toast({ title: "Erreur", description: "Impossible de charger les détails du personnage.", variant: "destructive" });
-        router.push('/histoires');
+        router.push('/personnages');
       } finally {
         setIsLoadingCharacter(false);
       }
@@ -192,7 +191,7 @@ export default function CharacterChatPage() {
   return (
     <div className="flex flex-col h-screen p-4 bg-background">
       <header className="flex items-center mb-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2">
+        <Button variant="ghost" size="icon" onClick={() => router.push('/personnages')} className="mr-2">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Avatar className="h-10 w-10 mr-3 border">
@@ -290,4 +289,3 @@ export default function CharacterChatPage() {
     </div>
   );
 }
-

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, PawPrint, Badge } from 'lucide-react';
+import { Upload, Trash2, PawPrint } from 'lucide-react';
 import type { Familiar } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
