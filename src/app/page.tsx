@@ -3249,9 +3249,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       handleAddStagedFamiliar={handleAddStagedFamiliar}
       onMapImageUpload={handleMapImageUpload}
       isLoading={isUiLocked}
-      onToggleStrategyMode={handleToggleStrategyMode}
-      onToggleRpgMode={handleToggleRpgMode}
-      onToggleRelationsMode={handleToggleRelationsMode}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
     />
