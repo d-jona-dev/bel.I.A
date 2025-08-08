@@ -106,12 +106,15 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     name: "characters",
   });
 
-  React.useEffect(() => {
-    const subscription = form.watch((value) => {
-      onSettingsChange(value as AdventureFormValues);
-    });
-    return () => subscription.unsubscribe();
-  }, [form, onSettingsChange]);
+  const handleSettingsBlur = () => {
+    onSettingsChange(form.getValues());
+  };
+
+  const handleSettingsChange = () => {
+      // This function will be used for controls like switches that update immediately.
+      onSettingsChange(form.getValues());
+  }
+
 
   const handleLoadPrompt = () => {
     const loadedData: AdventureFormValues = {
@@ -199,7 +202,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     }
 
     form.setValue(fieldName, newAttributeValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    onSettingsChange(form.getValues());
+    handleSettingsBlur();
   };
 
 
@@ -226,7 +229,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       {...field}
                       value={field.value || ""}
                       className="bg-background border"
-                      onBlur={field.onBlur}
+                      onBlur={handleSettingsBlur}
                     />
                   </FormControl>
                    <FormDescription>Le nom que le joueur portera dans l'aventure.</FormDescription>
@@ -249,7 +252,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        handleSettingsChange();
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -270,7 +276,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        handleSettingsChange();
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -291,7 +300,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        handleSettingsChange();
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -308,7 +320,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <FormItem>
                       <FormLabel>Classe du Joueur</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Guerrier, Mage, Étudiant..." {...field} value={field.value || ""} className="bg-background border" onBlur={field.onBlur}/>
+                        <Input placeholder="Ex: Guerrier, Mage, Étudiant..." {...field} value={field.value || ""} className="bg-background border" onBlur={handleSettingsBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -321,7 +333,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <FormItem>
                       <FormLabel>Niveau Joueur</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={field.onBlur}/>
+                        <Input type="number" placeholder="1" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={handleSettingsBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -344,7 +356,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                             {...field}
                             value={field.value || 0}
                             onChange={e => field.onChange(parseInt(e.target.value,10) || 0)}
-                            onBlur={field.onBlur}
+                            onBlur={handleSettingsBlur}
                             className="bg-background border"
                         />
                       </FormControl>
@@ -445,7 +457,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <FormItem>
                       <FormLabel>EXP pour Niveau Suivant</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="100" {...field} value={field.value || 100} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={field.onBlur}/>
+                        <Input type="number" placeholder="100" {...field} value={field.value || 100} onChange={e => field.onChange(parseInt(e.target.value,10) || 1)} className="bg-background border" onBlur={handleSettingsBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -458,7 +470,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <FormItem>
                         <FormLabel className="flex items-center gap-1"><Coins className="h-4 w-4"/> Or Initial</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border" onBlur={field.onBlur}/>
+                        <Input type="number" placeholder="0" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} className="bg-background border" onBlur={handleSettingsBlur}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -479,7 +491,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       {...field}
                       rows={4}
                       className="bg-background border"
-                      onBlur={field.onBlur}
+                      onBlur={handleSettingsBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -499,7 +511,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       {...field}
                       rows={3}
                       className="bg-background border"
-                      onBlur={field.onBlur}
+                      onBlur={handleSettingsBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -532,7 +544,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nom" {...field} className="bg-background border" onBlur={field.onBlur}/>
+                                <Input placeholder="Nom" {...field} className="bg-background border" onBlur={handleSettingsBlur}/>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -550,7 +562,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                   {...field}
                                   rows={3}
                                   className="bg-background border"
-                                  onBlur={field.onBlur}
+                                  onBlur={handleSettingsBlur}
                                 />
                               </FormControl>
                               <FormMessage />
