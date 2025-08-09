@@ -1,3 +1,4 @@
+
 // src/server/local-llm-server.ts
 import express from 'express';
 import { spawn, ChildProcess } from 'child_process';
@@ -137,6 +138,10 @@ app.post('/api/local-llm/generate', async (req, res) => {
                 stream: stream || false,
                 json_schema: req.body.json_schema // Pass schema if provided
             }),
+        }).catch((fetchError) => {
+            // This catch block handles network errors, e.g., if the llama.cpp server is not running
+            console.error('Fetch to llama.cpp server failed:', fetchError);
+            throw new Error('Le serveur llama.cpp est inaccessible. Veuillez vous assurer qu\'il est bien lancé via `npm run local-llm`.');
         });
 
         if (!llamaResponse.ok) {
