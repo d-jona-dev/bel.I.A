@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { generateSceneImage } from '@/ai/flows/generate-scene-image';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 // Define a type for your avatar data
@@ -376,5 +377,3 @@ export default function AvatarsPage() {
     </div>
   );
 }
-
-    
