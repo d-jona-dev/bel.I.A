@@ -37,8 +37,10 @@ const getDefaultOutput = (errorMsg?: string): GenerateSceneImageFlowOutput => ({
 });
 
 const getStyleEnhancedPrompt = (description: string, style?: string): string => {
+  const negativePrompt = "Image only, no text, no letters, no numbers, no words, no captions, no signatures, no watermarks.";
+  
   if (!style) {
-    return description;
+    return `${negativePrompt} ${description}`;
   }
 
   const stylePrompts: Record<string, string> = {
@@ -49,7 +51,8 @@ const getStyleEnhancedPrompt = (description: string, style?: string): string => 
     'Comic Book': `An image in a bold, American comic book style. Keywords: comic book art, bold lines, ink, vibrant colors, halftone dots. Scene: ${description}`,
   };
 
-  return stylePrompts[style] || `${description}. Art style: ${style}`;
+  const styledDescription = stylePrompts[style] || `${description}. Art style: ${style}`;
+  return `${negativePrompt} ${styledDescription}`;
 };
 
 
