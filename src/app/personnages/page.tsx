@@ -50,7 +50,6 @@ export default function PersonnagesPage() {
 
   // State for modals
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [editingCharacter, setEditingCharacter] = React.useState<Character | null>(null);
   const [newCharacterData, setNewCharacterData] = React.useState({ name: '', details: '', history: '', affinity: 50 });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
@@ -76,7 +75,7 @@ export default function PersonnagesPage() {
 
   React.useEffect(() => {
     loadCharactersFromStorage();
-  }, [toast]);
+  }, []);
 
   const saveCharactersToStorage = (characters: Character[]) => {
     localStorage.setItem('globalCharacters', JSON.stringify(characters));
@@ -171,8 +170,7 @@ export default function PersonnagesPage() {
       const updatedChars = savedNPCs.map(c => c.id === editingCharacter.id ? editingCharacter : c);
       saveCharactersToStorage(updatedChars);
       toast({ title: "Personnage Mis à Jour", description: `Les informations de "${editingCharacter.name}" ont été sauvegardées.` });
-      setIsEditModalOpen(false);
-      setEditingCharacter(null);
+      setEditingCharacter(null); // This will close the dialog
   }
 
   const handleGeneratePortraitForEditor = async () => {
@@ -280,16 +278,14 @@ export default function PersonnagesPage() {
                     Affinité&nbsp;: {npc.affinity ?? 'N/A'}
                   </p>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                  <Dialog open={isEditModalOpen && editingCharacter?.id === npc.id} onOpenChange={(open) => {
-                      if(!open) { setIsEditModalOpen(false); setEditingCharacter(null); }
-                  }}>
+                <CardFooter className="flex flex-wrap justify-end gap-2">
+                  <Dialog open={editingCharacter?.id === npc.id} onOpenChange={(open) => !open && setEditingCharacter(null)}>
                     <DialogTrigger asChild>
-                       <Button variant="ghost" size="sm" onClick={() => { setEditingCharacter(JSON.parse(JSON.stringify(npc))); setIsEditModalOpen(true); }}>
+                       <Button variant="ghost" size="sm" onClick={() => setEditingCharacter(JSON.parse(JSON.stringify(npc)))}>
                         <Edit className="mr-2 h-4 w-4" /> Modifier
                       </Button>
                     </DialogTrigger>
-                    {editingCharacter && (
+                    {editingCharacter?.id === npc.id && (
                        <DialogContent className="max-w-3xl">
                           <DialogHeader>
                               <DialogTitle>Modifier {editingCharacter.name}</DialogTitle>
@@ -308,32 +304,32 @@ export default function PersonnagesPage() {
                              </div>
                              <div className="space-y-2">
                                 <Label>Nom</Label>
-                                <Input value={editingCharacter.name} onChange={e => setEditingCharacter({...editingCharacter, name: e.target.value})} />
+                                <Input value={editingCharacter.name} onChange={e => setEditingCharacter({...editingCharacter!, name: e.target.value})} />
                              </div>
                              <div className="space-y-2">
                                 <Label>Détails</Label>
-                                <Textarea value={editingCharacter.details} onChange={e => setEditingCharacter({...editingCharacter, details: e.target.value})} rows={4}/>
+                                <Textarea value={editingCharacter.details} onChange={e => setEditingCharacter({...editingCharacter!, details: e.target.value})} rows={4}/>
                              </div>
                               <div className="space-y-2">
                                 <Label>Historique</Label>
                                  <ScrollArea className="h-24 border rounded-md p-2">
                                  {editingCharacter.history && editingCharacter.history.map((entry, index) => (
                                       <Textarea key={index} value={entry} className="mb-2" onChange={e => {
-                                          const newHistory = [...(editingCharacter.history || [])];
+                                          const newHistory = [...(editingCharacter!.history || [])];
                                           newHistory[index] = e.target.value;
-                                          setEditingCharacter({...editingCharacter, history: newHistory});
+                                          setEditingCharacter({...editingCharacter!, history: newHistory});
                                       }}/>
                                   ))}
                                   </ScrollArea>
-                                   <Button variant="outline" size="sm" onClick={() => setEditingCharacter({...editingCharacter, history: [...(editingCharacter.history || []), ""]})}>Ajouter entrée</Button>
+                                   <Button variant="outline" size="sm" onClick={() => setEditingCharacter({...editingCharacter!, history: [...(editingCharacter!.history || []), ""]})}>Ajouter entrée</Button>
                              </div>
                               <div className="space-y-2">
                                 <Label>Affinité (avec le joueur) : {editingCharacter.affinity}</Label>
-                                <Slider min={0} max={100} step={1} value={[editingCharacter.affinity || 50]} onValueChange={value => setEditingCharacter({...editingCharacter, affinity: value[0]})}/>
+                                <Slider min={0} max={100} step={1} value={[editingCharacter.affinity || 50]} onValueChange={value => setEditingCharacter({...editingCharacter!, affinity: value[0]})}/>
                              </div>
                           </div>
                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Annuler</Button>
+                              <Button variant="outline" onClick={() => setEditingCharacter(null)}>Annuler</Button>
                               <Button onClick={handleUpdateCharacter}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
                            </DialogFooter>
                        </DialogContent>
@@ -345,7 +341,7 @@ export default function PersonnagesPage() {
                         <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                       </Button>
                     </AlertDialogTrigger>
-                    {characterToDelete && characterToDelete.id === npc.id && (
+                    {characterToDelete?.id === npc.id && (
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
