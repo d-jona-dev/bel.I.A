@@ -8,7 +8,7 @@ import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -353,7 +353,7 @@ SidebarInput.displayName = "SidebarInput"
 
 const SidebarHeader = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div">
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   return (
     <div
@@ -368,7 +368,7 @@ SidebarHeader.displayName = "SidebarHeader"
 
 const SidebarFooter = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div">
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   return (
     <div
@@ -691,7 +691,7 @@ const SidebarMenuSub = React.forwardRef<
     ref={ref}
     data-sidebar="menu-sub"
     className={cn(
-      "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5",
+      "mx-3.5 flex min-w-0 -translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5",
       "group-data-[collapsible=icon]:hidden",
       className
     )}

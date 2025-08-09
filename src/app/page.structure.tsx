@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard, BookImage, RefreshCw } from 'lucide-react'; // Added RefreshCw
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard, BookImage, RefreshCw, Download } from 'lucide-react'; // Added Download
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
@@ -319,6 +319,14 @@ export function PageStructure({
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+            <a
+              href="/downloads/app-local.zip"
+              download
+              className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start group-data-[collapsible=icon]:justify-center")}
+            >
+              <Download className="h-5 w-5" />
+              <span className="ml-2 group-data-[collapsible=icon]:hidden">Version Locale</span>
+            </a>
             <TooltipProvider>
                  <Tooltip>
                     <TooltipTrigger asChild>
