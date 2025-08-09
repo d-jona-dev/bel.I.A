@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { ComicPage, Bubble, Panel } from "@/types";
+import Image from "next/image";
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
@@ -114,30 +115,43 @@ export default function ComicPageEditor({
 
   const exportPage = async (scale = 2) => {
     toast({ title: "Exportation en cours...", description: "Génération de votre planche en haute résolution." });
+    
+    const gutterWidth = 10; // La largeur de la bande blanche entre les panneaux
     const rows = Math.ceil(currentPage.panels.length / currentPage.gridCols);
-    const panelW = Math.floor(pageWidth / currentPage.gridCols);
-    const panelH = Math.floor(pageHeight / rows);
+    
+    // La largeur/hauteur totale disponible pour les panneaux (sans les gouttières)
+    const totalGutterWidth = (currentPage.gridCols - 1) * gutterWidth;
+    const totalGutterHeight = (rows - 1) * gutterWidth;
+
+    const panelW = Math.floor((pageWidth - totalGutterWidth) / currentPage.gridCols);
+    const panelH = Math.floor((pageHeight - totalGutterHeight) / rows);
 
     const outCanvas = document.createElement("canvas");
     outCanvas.width = pageWidth * scale;
     outCanvas.height = pageHeight * scale;
     const outCtx = outCanvas.getContext("2d")!;
     outCtx.scale(scale, scale);
-    outCtx.fillStyle = "#fff";
+    outCtx.fillStyle = "#fff"; // Le fond est blanc, ce qui créera les gouttières
     outCtx.fillRect(0, 0, pageWidth, pageHeight);
 
     for (let i = 0; i < currentPage.panels.length; i++) {
       const panel = currentPage.panels[i];
       const r = Math.floor(i / currentPage.gridCols);
       const c = i % currentPage.gridCols;
-      const x = c * panelW;
-      const y = r * panelH;
+      
+      // Calculer la position avec les gouttières
+      const x = c * (panelW + gutterWidth);
+      const y = r * (panelH + gutterWidth);
+      
       try {
         const panelCanvas = await renderPanelToCanvas(panel, panelW, panelH);
         outCtx.drawImage(panelCanvas, x, y, panelW, panelH);
+        
+        // La bordure noire autour de chaque panneau
         outCtx.strokeStyle = "#222";
-        outCtx.lineWidth = 2;
-        outCtx.strokeRect(x + 1, y + 1, panelW - 2, panelH - 2);
+        outCtx.lineWidth = 2; // Une bordure de 2px
+        outCtx.strokeRect(x, y, panelW, panelH);
+        
       } catch (e) {
         console.error(`Error rendering panel ${i}`, e);
         outCtx.fillStyle = "red";
@@ -153,6 +167,7 @@ export default function ComicPageEditor({
     link.click();
     toast({ title: "Exportation terminée", description: `La planche ${currentPageIndex + 1} a été téléchargée.` });
   };
+
 
   /* UI handlers */
   const handleFileForPanel = (panelId: string, file: File | null) => {
@@ -277,9 +292,10 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
   }
   return (
     <div className="w-full h-full relative">
-        <img 
+        <Image 
             src={panel.imageUrl} 
             alt="Aperçu du panneau" 
+            fill
             className="w-full h-full object-cover rounded-sm"
         />
     </div>
