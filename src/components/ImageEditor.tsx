@@ -2,8 +2,33 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+
+// Définition des styles de bulles
+const bubbleTypes = {
+  parole: {
+    label: "Parole",
+    border: "2px solid black",
+    lineDash: [],
+  },
+  pensee: {
+    label: "Pensée",
+    border: "2px dashed gray",
+    lineDash: [6, 3],
+  },
+  cri: {
+    label: "Cri",
+    border: "3px solid red",
+    lineDash: [],
+  },
+  chuchotement: {
+    label: "Chuchotement",
+    border: "2px dotted blue",
+    lineDash: [2, 2],
+  },
+};
+
+type BubbleType = keyof typeof bubbleTypes;
 
 interface Bubble {
   x: number;
@@ -11,6 +36,7 @@ interface Bubble {
   width: number;
   height: number;
   text: string;
+  type: BubbleType;
 }
 
 export default function ImageEditor({
@@ -20,17 +46,16 @@ export default function ImageEditor({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [selectedBubbleIndex, setSelectedBubbleIndex] = useState<number | null>(
-    null
-  );
+  const [selectedBubbleIndex, setSelectedBubbleIndex] = useState<number | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [currentBubbleType, setCurrentBubbleType] = useState<BubbleType>("parole");
 
   // 1. Charger l'image
   useEffect(() => {
     const image = new Image();
-    image.crossOrigin = "anonymous"; // Important pour les images provenant d'autres domaines
+    image.crossOrigin = "anonymous";
     image.src = imageUrl;
     image.onload = () => setImg(image);
     image.onerror = () => console.error("Failed to load image");
@@ -43,54 +68,55 @@ export default function ImageEditor({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Adapte la taille du canvas à celle de l'image
     canvas.width = img.width;
     canvas.height = img.height;
 
-    // Dessine l'image de fond
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
 
-    // Dessine chaque bulle
     bubbles.forEach((bubble, index) => {
+      const style = bubbleTypes[bubble.type];
+      
       ctx.fillStyle = "white";
-      ctx.strokeStyle = "black";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = style.border.split(' ')[2];
+      ctx.lineWidth = parseInt(style.border.split(' ')[0], 10);
+      ctx.setLineDash(style.lineDash);
 
-      // Dessine la bulle
       ctx.beginPath();
-      ctx.roundRect(bubble.x, bubble.y, bubble.width, bubble.height, 10);
+      ctx.roundRect(bubble.x, bubble.y, bubble.width, bubble.height, 15);
       ctx.fill();
       ctx.stroke();
 
-      // Dessine le texte
+      ctx.setLineDash([]); // Reset line dash for text
+      
       ctx.fillStyle = "black";
       ctx.font = "16px Arial";
       ctx.textBaseline = "top";
-      // Gère le retour à la ligne
+      
       const words = bubble.text.split(' ');
       let line = '';
       let textY = bubble.y + 10;
+      const lineHeight = 20;
+      const padding = 10;
+
       for(let n = 0; n < words.length; n++) {
         const testLine = line + words[n] + ' ';
         const metrics = ctx.measureText(testLine);
         const testWidth = metrics.width;
-        if (testWidth > bubble.width - 20 && n > 0) {
-          ctx.fillText(line, bubble.x + 10, textY);
+        if (testWidth > bubble.width - padding * 2 && n > 0) {
+          ctx.fillText(line, bubble.x + padding, textY);
           line = words[n] + ' ';
-          textY += 20; // Hauteur de ligne
+          textY += lineHeight;
         } else {
           line = testLine;
         }
       }
-      ctx.fillText(line, bubble.x + 10, textY);
+      ctx.fillText(line, bubble.x + padding, textY);
 
-
-      // Dessine un contour si la bulle est sélectionnée
       if (index === selectedBubbleIndex) {
-        ctx.strokeStyle = "blue";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 3]);
+        ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
         ctx.strokeRect(bubble.x, bubble.y, bubble.width, bubble.height);
         ctx.setLineDash([]);
       }
@@ -105,6 +131,7 @@ export default function ImageEditor({
       width: 200,
       height: 80,
       text: "Nouveau texte...",
+      type: currentBubbleType,
     };
     setBubbles([...bubbles, newBubble]);
     setSelectedBubbleIndex(bubbles.length);
@@ -188,19 +215,33 @@ export default function ImageEditor({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ cursor: dragging ? "grabbing" : "default" }}
+            style={{ cursor: dragging ? "grabbing" : (selectedBubbleIndex !== null ? "move" : "default") }}
         />
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={addBubble}>➕ Ajouter une bulle</Button>
-        <Button onClick={exportImage} variant="default">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Style de bulle :</span>
+            <select
+                value={currentBubbleType}
+                onChange={(e) => setCurrentBubbleType(e.target.value as BubbleType)}
+                className="border p-1 rounded-md bg-background"
+            >
+                {Object.entries(bubbleTypes).map(([key, { label }]) => (
+                <option key={key} value={key}>
+                    {label}
+                </option>
+                ))}
+            </select>
+        </div>
+        <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
+        <Button onClick={exportImage} variant="default" size="sm">
           💾 Exporter en PNG
         </Button>
       </div>
 
       {selectedBubble && (
         <div className="w-full p-3 border rounded-md bg-background space-y-3">
-            <h3 className="font-semibold">Éditer la bulle sélectionnée</h3>
+            <h3 className="font-semibold">Éditer la bulle sélectionnée ({bubbleTypes[selectedBubble.type].label})</h3>
             <Textarea
               value={selectedBubble.text}
               onChange={(e) => updateText(e.target.value)}
