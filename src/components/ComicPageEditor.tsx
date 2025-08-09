@@ -271,7 +271,10 @@ export default function ComicPageEditor({
 
 /* PanelPreview: lightweight canvas drawing in a small canvas */
 function PanelPreview({ panel, width, height }: { panel: Panel; width: number; height: number }) {
-  if (!panel.imageUrl) {
+  // A valid URL is required for next/image, otherwise show placeholder.
+  const isValidUrl = panel.imageUrl && (panel.imageUrl.startsWith('/') || panel.imageUrl.startsWith('http') || panel.imageUrl.startsWith('data:image'));
+
+  if (!isValidUrl) {
     return <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">Aucune image</div>;
   }
   return (
@@ -452,7 +455,9 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: num
         ctx.fillText(line, x, y);
         line = words[n] + " ";
         y += lineHeight;
-      } else { line = testLine; }
+      } else {
+        line = testLine;
+      }
     }
     ctx.fillText(line, x, y);
 };

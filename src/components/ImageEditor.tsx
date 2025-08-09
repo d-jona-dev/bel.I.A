@@ -215,14 +215,13 @@ export default function ImageEditor({
     link.click();
   };
   
-  const addToComicPage = () => {
+const addToComicPage = () => {
     if (!imageUrl) {
         toast({ title: "Erreur", description: "URL de l'image source manquante.", variant: "destructive" });
         return;
     }
     try {
         const savedComicBook = localStorage.getItem("comic_book_v1");
-        
         let comicBook: ComicPage[] = savedComicBook ? JSON.parse(savedComicBook) : [];
         let panelFound = false;
 
@@ -231,28 +230,25 @@ export default function ImageEditor({
             const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
 
             if (firstEmptyPanelIndex !== -1) {
-                // IMPORTANT: Do NOT save the image data URI. This will exceed localStorage quota.
-                // We save the original imageUrl (which might be a data URI from the adventure display, but we'll handle that)
-                // and the bubbles separately. The ComicPageEditor will be responsible for rendering.
-                
-                // For now, let's just mark the panel as having content, but without the image data itself
-                // to prevent quota errors. A better approach is needed.
-                page.panels[firstEmptyPanelIndex].imageUrl = "placeholder"; // Use a placeholder to indicate it's filled
+                // We now store the original image URL and the bubbles separately.
+                // This avoids storing a large flattened data URI in localStorage.
+                page.panels[firstEmptyPanelIndex].imageUrl = imageUrl;
                 page.panels[firstEmptyPanelIndex].bubbles = bubbles;
                 panelFound = true;
                 
-                // This will still fail if bubbles are too large, but it avoids the image data issue.
                 try {
                   localStorage.setItem("comic_book_v1", JSON.stringify(comicBook));
                   toast({
-                      title: "Image Ajoutée (Métadonnées)!",
-                      description: `Les bulles ont été ajoutées au panneau ${firstEmptyPanelIndex + 1} de la planche ${i + 1}. Vous devez exporter et importer l'image manuellement.`,
+                      title: "Image et Bulles Ajoutées !",
+                      description: `Le contenu a été ajouté au panneau n°${firstEmptyPanelIndex + 1} de la planche ${i + 1}.`,
                   });
+                   // Dispatch a storage event so other components (like the preview) can update
+                  window.dispatchEvent(new Event("storage"));
                 } catch (e: any) {
                   if (e.name === 'QuotaExceededError') {
                      toast({
                         title: "Erreur de Quota",
-                        description: "Le stockage local est plein. Impossible de sauvegarder la nouvelle planche.",
+                        description: "Le stockage local est plein. Impossible de sauvegarder. Essayez de supprimer des planches ou des panneaux.",
                         variant: "destructive"
                      });
                   } else {
@@ -272,9 +268,9 @@ export default function ImageEditor({
         }
     } catch (error) {
         console.error("Failed to add to comic page:", error);
-        toast({ title: "Erreur de Sauvegarde", description: "Impossible d'ajouter les bulles à la planche.", variant: "destructive" });
+        toast({ title: "Erreur de Sauvegarde", description: "Impossible d'ajouter à la planche.", variant: "destructive" });
     }
-  };
+};
 
 
   const selectedBubble =
