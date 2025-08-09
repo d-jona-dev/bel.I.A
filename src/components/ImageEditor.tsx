@@ -3,8 +3,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
-// Définition des styles de bulles
+// Définition des types de bulles et de la structure d'une planche
 const bubbleTypes = {
   parole: {
     label: "Parole",
@@ -39,6 +40,13 @@ interface Bubble {
   type: BubbleType;
 }
 
+// Structure d'un panneau de BD (utilisée pour la sauvegarde)
+interface ComicPanel {
+  id: string;
+  imageUrl?: string | null;
+  bubbles: Bubble[];
+}
+
 export default function ImageEditor({
   imageUrl,
 }: {
@@ -51,6 +59,7 @@ export default function ImageEditor({
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentBubbleType, setCurrentBubbleType] = useState<BubbleType>("parole");
+  const { toast } = useToast();
 
   // 1. Charger l'image
   useEffect(() => {
@@ -203,6 +212,43 @@ export default function ImageEditor({
     link.click();
   };
 
+  // 10. Ajouter à la planche de BD
+  const addToComicPage = () => {
+    if (!canvasRef.current) {
+        toast({ title: "Erreur", description: "Le canvas n'est pas prêt.", variant: "destructive" });
+        return;
+    }
+    try {
+        const comicPageDataUrl = canvasRef.current.toDataURL("image/png");
+        const savedComicJson = localStorage.getItem("comic_page_v1");
+        
+        let comicPanels: ComicPanel[] = savedComicJson ? JSON.parse(savedComicJson) : [];
+
+        const firstEmptyPanelIndex = comicPanels.findIndex(p => !p.imageUrl);
+
+        if (firstEmptyPanelIndex !== -1) {
+            comicPanels[firstEmptyPanelIndex].imageUrl = comicPageDataUrl;
+            // Optionnel : on pourrait aussi sauvegarder les bulles, mais pour l'instant on aplatit l'image.
+            comicPanels[firstEmptyPanelIndex].bubbles = []; 
+
+            localStorage.setItem("comic_page_v1", JSON.stringify(comicPanels));
+            toast({
+                title: "Image Ajoutée !",
+                description: `L'image a été ajoutée au panneau n°${firstEmptyPanelIndex + 1} de votre planche.`,
+            });
+        } else {
+            toast({
+                title: "Planche Complète",
+                description: "Aucun panneau vide trouvé. Veuillez en ajouter un sur la page BD.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+        console.error("Failed to add to comic page:", error);
+        toast({ title: "Erreur de Sauvegarde", description: "Impossible d'ajouter l'image à la planche.", variant: "destructive" });
+    }
+  };
+
   const selectedBubble =
     selectedBubbleIndex !== null ? bubbles[selectedBubbleIndex] : null;
 
@@ -234,8 +280,11 @@ export default function ImageEditor({
             </select>
         </div>
         <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
-        <Button onClick={exportImage} variant="default" size="sm">
+        <Button onClick={exportImage} variant="secondary" size="sm">
           💾 Exporter en PNG
+        </Button>
+         <Button onClick={addToComicPage} variant="default" size="sm">
+          📖 Ajouter à la planche BD
         </Button>
       </div>
 
