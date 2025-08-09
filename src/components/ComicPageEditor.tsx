@@ -18,30 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-/* Types */
-type Bubble = {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  text: string;
-  type?: "parole" | "pensée" | "cri" | "chuchotement";
-};
-
-type Panel = {
-  id: string;
-  imageUrl?: string | null;
-  bubbles: Bubble[];
-};
-
-type ComicPage = {
-    id: string;
-    panels: Panel[];
-    gridCols: number;
-}
-
+import type { ComicPage, Bubble, Panel } from "@/types";
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
@@ -100,21 +77,7 @@ export default function ComicPageEditor({
   const setPanelImage = (panelId: string, url: string | null) => {
     updateCurrentPage(page => ({
         ...page,
-        panels: page.panels.map((x) => (x.id === panelId ? { ...x, imageUrl: url } : x))
-    }));
-  };
-
-  const addBubble = (panelId: string) => {
-    updateCurrentPage(page => ({
-        ...page,
-        panels: page.panels.map((pl) =>
-            pl.id === panelId
-            ? {
-                ...pl,
-                bubbles: [ ...pl.bubbles, { id: uid(), x: 20, y: 20, w: 160, h: 60, text: "Texte...", type: "parole" }],
-                }
-            : pl
-        )
+        panels: page.panels.map((x) => (x.id === panelId ? { ...x, imageUrl: url, bubbles: [] } : x))
     }));
   };
 
@@ -195,8 +158,13 @@ export default function ComicPageEditor({
   /* UI handlers */
   const handleFileForPanel = (panelId: string, file: File | null) => {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPanelImage(panelId, url);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setPanelImage(panelId, e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
   
   const selectedPanelData = currentPage?.panels.find((p) => p.id === selectedPanelId);
@@ -312,7 +280,7 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
             src={panel.imageUrl} 
             alt="Aperçu du panneau" 
             layout="fill"
-            objectFit="cover" // This will crop the image to fit the container
+            objectFit="cover"
             className="rounded-sm"
         />
     </div>
@@ -348,7 +316,7 @@ function PanelEditor({ panel, onClose, onChange }: { panel: Panel; onClose: () =
       if (workingPanel.imageUrl) {
         try {
           const img = await loadImage(workingPanel.imageUrl);
-          const scale = Math.min(w / img.width, h / img.height);
+          const scale = Math.max(w / img.width, h / img.height);
           ctx.drawImage(img, 0,0, img.width, img.height, (w-img.width*scale)/2, (h-img.height*scale)/2, img.width*scale, img.height*scale);
         } catch { ctx.fillStyle = "#eee"; ctx.fillRect(0, 0, w, h); }
       } else { ctx.fillStyle = "#eee"; ctx.fillRect(0, 0, w, h); }

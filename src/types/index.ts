@@ -218,55 +218,25 @@ export interface AiConfig {
     }
 }
 
+export type Bubble = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  type?: "parole" | "pensée" | "cri" | "chuchotement";
+};
 
-export interface AdventureSettings {
-    world: string;
-    initialSituation: string;
-    rpgMode: boolean;
-    relationsMode?: boolean;
-    strategyMode?: boolean;
-    playerName?: string;
-    playerClass?: string;
-    playerLevel?: number;
-    playerCurrentHp?: number;
-    playerMaxHp?: number;
-    playerCurrentMp?: number;
-    playerMaxMp?: number;
-    playerCurrentExp?: number;
-    playerExpToNextLevel?: number;
-    playerInventory?: PlayerInventoryItem[];
-    playerGold?: number;
-    playerInitialAttributePoints?: number;
-    playerStrength?: number;
-    playerDexterity?: number;
-    playerConstitution?: number;
-    playerIntelligence?: number;
-    playerWisdom?: number;
-    playerCharisma?: number;
-    playerArmorClass?: number;
-    playerAttackBonus?: number;
-    playerDamageBonus?: string;
-    equippedItemIds?: {
-        weapon: string | null;
-        armor: string | null;
-        jewelry: string | null;
-    };
-    playerSkills?: PlayerSkill[];
-    familiars?: Familiar[];
-    mapPointsOfInterest?: MapPointOfInterest[];
-    mapImageUrl?: string | null;
-    playerLocationId?: string;
-}
-
-export interface ComicPanel {
+export type Panel = {
   id: string;
   imageUrl?: string | null;
-  bubbles: any[]; // Kept simple for now
-}
+  bubbles: Bubble[];
+};
 
 export interface ComicPage {
   id: string;
-  panels: ComicPanel[];
+  panels: Panel[];
   gridCols: number;
 }
 
