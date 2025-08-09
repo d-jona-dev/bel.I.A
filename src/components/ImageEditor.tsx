@@ -5,35 +5,17 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ComicPage } from "@/types";
 
-// Définition des types de bulles et de la structure d'une planche
 const bubbleTypes = {
-  parole: {
-    label: "Parole",
-    border: "2px solid black",
-    lineDash: [],
-  },
-  pensée: {
-    label: "Pensée",
-    border: "2px dashed gray",
-    lineDash: [6, 3],
-  },
-  cri: {
-    label: "Cri",
-    border: "3px solid red",
-    lineDash: [],
-  },
-  chuchotement: {
-    label: "Chuchotement",
-    border: "2px dotted blue",
-    lineDash: [2, 2],
-  },
+  parole: { label: "Parole", border: "2px solid black", lineDash: [] },
+  pensée: { label: "Pensée", border: "2px dashed gray", lineDash: [6, 3] },
+  cri: { label: "Cri", border: "3px solid red", lineDash: [] },
+  chuchotement: { label: "Chuchotement", border: "2px dotted blue", lineDash: [2, 2] },
 };
-
 type BubbleType = keyof typeof bubbleTypes;
-
 interface Bubble {
-  id: string; // Add ID for better state management
+  id: string;
   x: number;
   y: number;
   width: number;
@@ -42,12 +24,27 @@ interface Bubble {
   type: BubbleType;
 }
 
+const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    img.src = src;
+});
 
-export default function ImageEditor({
-  imageUrl,
-}: {
-  imageUrl: string;
-}) {
+const compressImage = async (dataUrl: string, quality = 0.8): Promise<string> => {
+    const img = await loadImage(dataUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Could not get canvas context");
+    ctx.drawImage(img, 0, 0);
+    return canvas.toDataURL('image/jpeg', quality);
+};
+
+
+export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [selectedBubbleId, setSelectedBubbleId] = useState<string | null>(null);
@@ -57,55 +54,38 @@ export default function ImageEditor({
   const [currentBubbleType, setCurrentBubbleType] = useState<BubbleType>("parole");
   const { toast } = useToast();
 
-  // 1. Charger l'image
   useEffect(() => {
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.src = imageUrl;
-    image.onload = () => setImg(image);
-    image.onerror = () => console.error("Failed to load image");
+    loadImage(imageUrl).then(setImg).catch(() => console.error("Failed to load image"));
   }, [imageUrl]);
 
-  // 2. Dessiner le canvas
   useEffect(() => {
     if (!canvasRef.current || !img) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // Set canvas dimensions based on image to avoid distortion
     canvas.width = img.width;
     canvas.height = img.height;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
-
     bubbles.forEach((bubble) => {
       const style = bubbleTypes[bubble.type];
-      
       ctx.fillStyle = "white";
       ctx.strokeStyle = style.border.split(' ')[2];
       ctx.lineWidth = parseInt(style.border.split(' ')[0], 10);
       ctx.setLineDash(style.lineDash);
-
       ctx.beginPath();
-      // Simple rect for this editor, roundRect is in the ComicPageEditor
       ctx.rect(bubble.x, bubble.y, bubble.width, bubble.height);
       ctx.fill();
       ctx.stroke();
-
-      ctx.setLineDash([]); // Reset line dash for text
-      
+      ctx.setLineDash([]);
       ctx.fillStyle = "black";
       ctx.font = "16px Arial";
       ctx.textBaseline = "top";
-      
       const words = bubble.text.split(' ');
       let line = '';
       let textY = bubble.y + 10;
       const lineHeight = 20;
       const padding = 10;
-
       for(let n = 0; n < words.length; n++) {
         const testLine = line + words[n] + ' ';
         const metrics = ctx.measureText(testLine);
@@ -119,7 +99,6 @@ export default function ImageEditor({
         }
       }
       ctx.fillText(line, bubble.x + padding, textY);
-
       if (bubble.id === selectedBubbleId) {
         ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
         ctx.lineWidth = 3;
@@ -130,7 +109,6 @@ export default function ImageEditor({
     });
   }, [img, bubbles, selectedBubbleId]);
 
-  // 3. Ajouter une bulle
   const addBubble = () => {
     const newBubble: Bubble = {
       id: `bubble-${Date.now()}`,
@@ -145,85 +123,126 @@ export default function ImageEditor({
     setSelectedBubbleId(newBubble.id);
   };
 
-  // 4. Gérer le clic de la souris
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
-    // Scale click coordinates to canvas coordinates
     const canvasX = (x / rect.width) * canvasRef.current.width;
     const canvasY = (y / rect.height) * canvasRef.current.height;
-
     const clickedBubble = bubbles.slice().reverse().find(
       (b) => canvasX >= b.x && canvasX <= b.x + b.width && canvasY >= b.y && canvasY <= b.y + b.height
     );
-
     if (clickedBubble) {
       setSelectedBubbleId(clickedBubble.id);
       setDragging(true);
-      setDragOffset({
-        x: canvasX - clickedBubble.x,
-        y: canvasY - clickedBubble.y,
-      });
+      setDragOffset({ x: canvasX - clickedBubble.x, y: canvasY - clickedBubble.y });
     } else {
       setSelectedBubbleId(null);
     }
   };
 
-  // 5. Gérer le déplacement
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragging || selectedBubbleId === null || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
-    // Scale click coordinates to canvas coordinates
     const canvasX = (x / rect.width) * canvasRef.current.width;
     const canvasY = (y / rect.height) * canvasRef.current.height;
-
-
-    setBubbles(currentBubbles => currentBubbles.map(b => 
-        b.id === selectedBubbleId ? {...b, x: canvasX - dragOffset.x, y: canvasY - dragOffset.y} : b
+    setBubbles(currentBubbles => currentBubbles.map(b =>
+      b.id === selectedBubbleId ? {...b, x: canvasX - dragOffset.x, y: canvasY - dragOffset.y} : b
     ));
   };
 
-  // 6. Gérer le relâchement du clic
-  const handleMouseUp = () => {
-    setDragging(false);
-  };
+  const handleMouseUp = () => setDragging(false);
 
-  // 7. Mettre à jour le texte
   const updateText = (text: string) => {
     if (selectedBubbleId === null) return;
     setBubbles(currentBubbles => currentBubbles.map(b =>
-        b.id === selectedBubbleId ? { ...b, text } : b
+      b.id === selectedBubbleId ? { ...b, text } : b
     ));
   };
-  
-  // 8. Supprimer la bulle
-  const deleteBubble = () => {
-      if (selectedBubbleId === null) return;
-      setBubbles(bubbles.filter((b) => b.id !== selectedBubbleId));
-      setSelectedBubbleId(null);
-  }
 
-  // 9. Exporter l'image
-  const exportImage = () => {
-    if (!canvasRef.current) return;
-    const link = document.createElement("a");
-    link.download = "panneau_bd.png";
-    link.href = canvasRef.current.toDataURL("image/png");
-    link.click();
-    toast({
-        title: "Image Exportée",
-        description: "Votre panneau a été sauvegardé. Vous pouvez maintenant l'importer sur la page BD."
-    })
+  const deleteBubble = () => {
+    if (selectedBubbleId === null) return;
+    setBubbles(bubbles.filter((b) => b.id !== selectedBubbleId));
+    setSelectedBubbleId(null);
   };
 
-  const selectedBubble =
-    selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
+  const addToComicPage = async () => {
+    if (!canvasRef.current) return;
+    try {
+        // Draw the current state to the canvas to get the full image with bubbles
+        const canvasWithBubbles = canvasRef.current;
+        const dataUrlWithBubbles = canvasWithBubbles.toDataURL('image/png');
+        
+        // Compress the image
+        const compressedDataUrl = await compressImage(dataUrlWithBubbles, 0.8);
+
+        const savedComicStr = localStorage.getItem("comic_book_v1");
+        let comicBook: ComicPage[] = savedComicStr ? JSON.parse(savedComicStr) : [];
+        let panelFound = false;
+
+        for (let i = 0; i < comicBook.length; i++) {
+            const page = comicBook[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
+            if (firstEmptyPanelIndex !== -1) {
+                page.panels[firstEmptyPanelIndex].imageUrl = compressedDataUrl;
+                page.panels[firstEmptyPanelIndex].bubbles = []; // Bubbles are now part of the image
+                panelFound = true;
+                
+                // Save the updated structure back to localStorage
+                localStorage.setItem("comic_book_v1", JSON.stringify(comicBook));
+                
+                toast({
+                    title: "Image Ajoutée !",
+                    description: `L'image a été ajoutée au panneau n°${firstEmptyPanelIndex + 1} de la planche ${i + 1}.`,
+                });
+
+                // Dispatch a storage event to notify other components (like page.tsx)
+                window.dispatchEvent(new Event('storage'));
+                break;
+            }
+        }
+        if (!panelFound) {
+            toast({
+                title: "Aucun panneau vide",
+                description: "Aucun panneau vide trouvé. Veuillez en ajouter un sur la page BD.",
+                variant: "destructive"
+            });
+        }
+    } catch (e) {
+        if (e instanceof Error && e.message.toLowerCase().includes('quota')) {
+            toast({
+                title: "Erreur de Stockage",
+                description: "Le stockage local est plein. La compression n'a pas suffi. Essayez de supprimer des planches.",
+                variant: "destructive",
+            });
+        } else {
+            console.error("Failed to add to comic page:", e);
+            toast({ title: "Erreur", description: "Impossible d'ajouter l'image à la planche.", variant: "destructive" });
+        }
+    }
+  };
+  
+    const exportImage = async () => {
+        if (!canvasRef.current) return;
+        
+        // Use the compressed image for export as well for consistency and smaller file size
+        const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
+
+        const link = document.createElement("a");
+        link.download = "panneau_bd.jpg"; // Export as JPG
+        link.href = compressedUrl;
+        link.click();
+        toast({
+            title: "Image Exportée",
+            description: "Votre panneau compressé a été sauvegardé."
+        })
+    };
+
+
+  const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
 
   return (
     <div className="flex flex-col gap-4 items-center p-4 bg-muted/50 rounded-lg">
@@ -234,9 +253,9 @@ export default function ImageEditor({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ 
+            style={{
                 cursor: dragging ? "grabbing" : (selectedBubbleId !== null ? "move" : "default"),
-                width: "100%", // Let CSS handle display size
+                width: "100%",
                 height: "auto"
             }}
         />
@@ -244,26 +263,20 @@ export default function ImageEditor({
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Style de bulle :</span>
-             <Select
-                value={currentBubbleType}
-                onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}
-            >
+             <Select value={currentBubbleType} onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}>
                 <SelectTrigger className="w-[180px] bg-background">
                     <SelectValue placeholder="Style" />
                 </SelectTrigger>
                 <SelectContent>
                     {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                        <SelectItem key={key} value={key}>
-                            {label}
-                        </SelectItem>
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>
         </div>
         <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
-        <Button onClick={exportImage} variant="secondary" size="sm">
-          💾 Exporter en PNG
-        </Button>
+        <Button onClick={addToComicPage} variant="default" size="sm">🖼️ Ajouter à la Planche BD</Button>
+        <Button onClick={exportImage} variant="secondary" size="sm">💾 Exporter en JPG</Button>
       </div>
 
       {selectedBubble && (
@@ -290,9 +303,7 @@ export default function ImageEditor({
                     </SelectTrigger>
                     <SelectContent>
                         {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                            <SelectItem key={key} value={key}>
-                                {label}
-                            </SelectItem>
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
