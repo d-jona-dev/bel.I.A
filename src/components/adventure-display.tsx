@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -50,6 +50,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MapDisplay } from "./map-display";
+import ImageEditor from "@/components/ImageEditor";
 
 
 interface AdventureDisplayProps {
@@ -130,6 +131,8 @@ export function AdventureDisplay({
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
   const [editImageTransform, setEditImageTransform] = React.useState<ImageTransform>({ scale: 1, translateX: 0, translateY: 0 });
+  const [imageEditorOpen, setImageEditorOpen] = React.useState(false);
+  const [imageToEditUrl, setImageToEditUrl] = React.useState<string | null>(null);
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef(messages);
@@ -478,20 +481,9 @@ export function AdventureDisplay({
                                                                           <Image 
                                                                               src={editingMessage.imageUrl} 
                                                                               alt="Ajustement de l'image"
-                                                                              layout="fill"
-                                                                              objectFit="cover"
-                                                                              style={{
-                                                                                transform: `scale(${editImageTransform.scale}) translateX(${editImageTransform.translateX}px) translateY(${editImageTransform.translateY}px)`
-                                                                              }}
+                                                                              fill
+                                                                              style={{ objectFit: 'cover' }}
                                                                           />
-                                                                      </div>
-                                                                      <div className="flex justify-center items-center gap-2">
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, scale: t.scale * 1.1}))}><ZoomIn className="h-4 w-4"/></Button>
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, scale: t.scale / 1.1}))}><ZoomOut className="h-4 w-4"/></Button>
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateX: t.translateX - 10}))}><ArrowLeft className="h-4 w-4"/></Button>
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateX: t.translateX + 10}))}><ArrowRight className="h-4 w-4"/></Button>
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateY: t.translateY - 10}))}><ArrowUp className="h-4 w-4"/></Button>
-                                                                            <Button size="icon" variant="outline" onClick={() => setEditImageTransform(t => ({...t, translateY: t.translateY + 10}))}><ArrowDown className="h-4 w-4"/></Button>
                                                                       </div>
                                                                   </div>
                                                               )}
@@ -858,6 +850,19 @@ export function AdventureDisplay({
             </Card>
 
             <div className="w-1/3 lg:w-1/4 hidden md:flex flex-col gap-4 overflow-y-auto">
+                 <Dialog open={imageEditorOpen} onOpenChange={setImageEditorOpen}>
+                    <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>Éditeur d'Image</DialogTitle>
+                            <DialogDescription>
+                                Ajoutez des bulles de dialogue à votre image et exportez le résultat.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-auto">
+                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} />}
+                        </div>
+                    </DialogContent>
+                </Dialog>
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
                         {messages.find(m=>m.imageUrl) ? (
@@ -871,11 +876,16 @@ export function AdventureDisplay({
                                         data-ai-hint="adventure scene visual"
                                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
                                     />
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" size="icon" className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/50 hover:bg-background/80">
-                                            <Expand className="h-4 w-4" />
+                                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80">
+                                                <Expand className="h-4 w-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { setImageToEditUrl(messages.find(m=>m.imageUrl)!.imageUrl!); setImageEditorOpen(true); }}>
+                                            <Edit3 className="h-4 w-4" />
                                         </Button>
-                                    </DialogTrigger>
+                                    </div>
                                 </div>
                                 <DialogContent className="max-w-4xl h-[90vh] p-2">
                                     <DialogHeader>
