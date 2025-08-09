@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
 import Link from 'next/link';
 import type { Character } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface SavedStory {
   id: string;
@@ -32,7 +44,6 @@ interface SavedStory {
 export default function HistoiresPage() {
   const { toast } = useToast();
   
-  // Initial stories - in a real app, this would come from localStorage or a backend
   const initialStories: SavedStory[] = [
     { id: 'story1', title: 'Aventure à Hight School of Future', date: '2024-05-01', description: 'Le début de l\'intrigue avec Rina et Kentaro...' },
     { id: 'story2', title: 'Exploration de la Forêt Interdite', date: '2024-04-25', description: 'Une quête parallèle dans un monde fantastique...' },
@@ -42,6 +53,7 @@ export default function HistoiresPage() {
   const [savedCharacters, setSavedCharacters] = React.useState<Character[]>([]);
   const [isLoadingCharacters, setIsLoadingCharacters] = React.useState(true);
   const [storyToDelete, setStoryToDelete] = React.useState<SavedStory | null>(null);
+  const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
 
   React.useEffect(() => {
     try {
@@ -61,10 +73,6 @@ export default function HistoiresPage() {
   }, [toast]);
 
   const handleContinueStory = (storyId: string) => {
-    // TODO: Implement logic to load the selected story and redirect to the adventure page.
-    // This will likely involve:
-    // 1. Storing full adventure save data (narrative, settings, characters, combat state) for each story.
-    // 2. A global state management or passing data to src/app/page.tsx to initialize with this story.
     toast({
       title: "Fonctionnalité en cours",
       description: `Continuer l'histoire "${savedStories.find(s => s.id === storyId)?.title}" n'est pas encore implémenté.`,
@@ -78,16 +86,38 @@ export default function HistoiresPage() {
         title: "Histoire Supprimée",
         description: `L'histoire "${storyToDelete.title}" a été supprimée. (Actualisez pour réinitialiser)`,
       });
-      setStoryToDelete(null); // Close dialog
+      setStoryToDelete(null);
     }
   };
+
+  const handleDownloadStory = (story: SavedStory) => {
+    const jsonString = JSON.stringify(story, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${story.title.toLowerCase().replace(/\s/g, '_')}_story.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  const handleUpdateStory = () => {
+      if (!editingStory) return;
+      const updatedStories = savedStories.map(s => s.id === editingStory.id ? editingStory : s);
+      setSavedStories(updatedStories);
+      toast({ title: "Histoire Mise à Jour", description: "Les informations de l'histoire ont été sauvegardées." });
+      setEditingStory(null);
+  };
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Histoires & Personnages</h1>
         <div className="flex gap-2">
-          <Button variant="outline" disabled> {/* TODO: Implement import */}
+          <Button variant="outline" disabled>
             <Upload className="mr-2 h-4 w-4" /> Importer
           </Button>
           <Link href="/">
@@ -98,10 +128,9 @@ export default function HistoiresPage() {
         </div>
       </div>
 
-      {/* Saved Stories Section */}
       <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-4">Mes Histoires Sauvegardées</h2>
-        <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]"> {/* Adjust height */}
+        <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
           {savedStories.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {savedStories.map((story) => (
@@ -113,18 +142,45 @@ export default function HistoiresPage() {
                   <CardContent>
                     <p className="text-sm text-muted-foreground line-clamp-3">{story.description}</p>
                   </CardContent>
-                  <CardFooter className="flex justify-end gap-2">
+                  <CardFooter className="flex flex-wrap justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleContinueStory(story.id)}>
                       <Play className="mr-2 h-4 w-4" /> Continuer
                     </Button>
+                     <Dialog open={editingStory?.id === story.id} onOpenChange={(open) => !open && setEditingStory(null)}>
+                        <DialogTrigger asChild>
+                           <Button variant="ghost" size="sm">
+                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                            </Button>
+                        </DialogTrigger>
+                        {editingStory?.id === story.id && (
+                           <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Modifier l'Histoire</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                     <div className="space-y-2">
+                                        <Label htmlFor="edit-story-title">Titre</Label>
+                                        <Input id="edit-story-title" value={editingStory.title} onChange={e => setEditingStory({...editingStory!, title: e.target.value})} />
+                                     </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="edit-story-desc">Description</Label>
+                                        <Textarea id="edit-story-desc" value={editingStory.description} onChange={e => setEditingStory({...editingStory!, description: e.target.value})} rows={4}/>
+                                     </div>
+                                </div>
+                               <DialogFooter>
+                                  <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
+                                  <Button onClick={handleUpdateStory}>Enregistrer</Button>
+                               </DialogFooter>
+                           </DialogContent>
+                        )}
+                    </Dialog>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" onClick={() => setStoryToDelete(story)}>
                           <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                         </Button>
                       </AlertDialogTrigger>
-                      {/* AlertDialogContent will only render if storyToDelete matches the current story for this trigger */}
-                      {storyToDelete && storyToDelete.id === story.id && (
+                      {storyToDelete?.id === story.id && (
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center">
@@ -144,6 +200,9 @@ export default function HistoiresPage() {
                         </AlertDialogContent>
                       )}
                     </AlertDialog>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadStory(story)}>
+                        <Download className="mr-2 h-4 w-4"/> Télécharger
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -156,10 +215,9 @@ export default function HistoiresPage() {
         </ScrollArea>
       </section>
 
-      {/* Saved Characters for Chat Section */}
       <section>
         <h2 className="text-2xl font-semibold mb-4">Chatter avec un Personnage</h2>
-        <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]"> {/* Adjust height */}
+        <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
           {isLoadingCharacters ? (
             <p className="text-muted-foreground text-center py-10">Chargement des personnages...</p>
           ) : savedCharacters.length > 0 ? (
