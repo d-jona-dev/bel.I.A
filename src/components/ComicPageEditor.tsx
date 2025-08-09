@@ -18,7 +18,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { ComicPage, Bubble, Panel } from "@/types";
-import Image from "next/image";
+// Retire l'importation de `next/image` car il n'est plus utilisé directement ici, mais le rendu final le sera
+// import Image from "next/image";
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
@@ -292,11 +293,10 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
   }
   return (
     <div className="w-full h-full relative">
-        <Image 
+        <img 
             src={panel.imageUrl} 
             alt="Aperçu du panneau" 
-            fill
-            className="w-full h-full object-cover rounded-sm"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '2px' }}
         />
     </div>
   );
