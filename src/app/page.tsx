@@ -395,25 +395,24 @@ export default function Home() {
     });
   }, [useAestheticFont, toast]);
 
-  React.useEffect(() => {
+  const handleRefreshComicPreview = React.useCallback(() => {
     try {
       const savedPages = localStorage.getItem("comic_book_v1");
       if (savedPages) {
         setComicPages(JSON.parse(savedPages));
+        toast({ title: "Aperçu de la BD actualisé" });
       }
-    } catch (e) { console.error("Could not load comic pages from localStorage", e); }
+    } catch (e) {
+      console.error("Could not load comic pages from localStorage", e);
+      toast({ title: "Erreur", description: "Impossible de charger les planches de BD.", variant: "destructive" });
+    }
+  }, [toast]);
 
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "comic_book_v1" && event.newValue) {
-        try {
-          setComicPages(JSON.parse(event.newValue));
-          console.log("Comic pages updated from storage event.");
-        } catch (e) { console.error("Could not parse updated comic pages", e); }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+
+  React.useEffect(() => {
+    // Initial load
+    handleRefreshComicPreview();
+  }, [handleRefreshComicPreview]);
 
   React.useEffect(() => {
     const fetchInitialSkill = async () => {
@@ -3263,7 +3262,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
       comicPages={comicPages}
+      onRefreshComicPreview={handleRefreshComicPreview}
     />
   );
 }
-
