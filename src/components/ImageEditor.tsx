@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ComicPage } from "@/types";
 
 // Définition des types de bulles et de la structure d'une planche
 const bubbleTypes = {
@@ -43,12 +42,6 @@ interface Bubble {
   type: BubbleType;
 }
 
-// Structure d'un panneau de BD (utilisée pour la sauvegarde)
-interface ComicPanel {
-  id: string;
-  imageUrl?: string | null;
-  bubbles: Bubble[];
-}
 
 export default function ImageEditor({
   imageUrl,
@@ -80,6 +73,7 @@ export default function ImageEditor({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Set canvas dimensions based on image to avoid distortion
     canvas.width = img.width;
     canvas.height = img.height;
 
@@ -157,17 +151,21 @@ export default function ImageEditor({
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // Scale click coordinates to canvas coordinates
+    const canvasX = (x / rect.width) * canvasRef.current.width;
+    const canvasY = (y / rect.height) * canvasRef.current.height;
 
     const clickedBubble = bubbles.slice().reverse().find(
-      (b) => x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height
+      (b) => canvasX >= b.x && canvasX <= b.x + b.width && canvasY >= b.y && canvasY <= b.y + b.height
     );
 
     if (clickedBubble) {
       setSelectedBubbleId(clickedBubble.id);
       setDragging(true);
       setDragOffset({
-        x: x - clickedBubble.x,
-        y: y - clickedBubble.y,
+        x: canvasX - clickedBubble.x,
+        y: canvasY - clickedBubble.y,
       });
     } else {
       setSelectedBubbleId(null);
@@ -180,9 +178,14 @@ export default function ImageEditor({
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // Scale click coordinates to canvas coordinates
+    const canvasX = (x / rect.width) * canvasRef.current.width;
+    const canvasY = (y / rect.height) * canvasRef.current.height;
+
 
     setBubbles(currentBubbles => currentBubbles.map(b => 
-        b.id === selectedBubbleId ? {...b, x: x - dragOffset.x, y: y - dragOffset.y} : b
+        b.id === selectedBubbleId ? {...b, x: canvasX - dragOffset.x, y: canvasY - dragOffset.y} : b
     ));
   };
 
@@ -210,68 +213,14 @@ export default function ImageEditor({
   const exportImage = () => {
     if (!canvasRef.current) return;
     const link = document.createElement("a");
-    link.download = "image_avec_bulles.png";
+    link.download = "panneau_bd.png";
     link.href = canvasRef.current.toDataURL("image/png");
     link.click();
+    toast({
+        title: "Image Exportée",
+        description: "Votre panneau a été sauvegardé. Vous pouvez maintenant l'importer sur la page BD."
+    })
   };
-  
-const addToComicPage = () => {
-    if (!imageUrl) {
-        toast({ title: "Erreur", description: "URL de l'image source manquante.", variant: "destructive" });
-        return;
-    }
-    try {
-        const savedComicBook = localStorage.getItem("comic_book_v1");
-        let comicBook: ComicPage[] = savedComicBook ? JSON.parse(savedComicBook) : [];
-        let panelFound = false;
-
-        for (let i = 0; i < comicBook.length; i++) {
-            const page = comicBook[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-
-            if (firstEmptyPanelIndex !== -1) {
-                // We now store the original image URL and the bubbles separately.
-                // This avoids storing a large flattened data URI in localStorage.
-                page.panels[firstEmptyPanelIndex].imageUrl = imageUrl;
-                page.panels[firstEmptyPanelIndex].bubbles = bubbles;
-                panelFound = true;
-                
-                try {
-                  localStorage.setItem("comic_book_v1", JSON.stringify(comicBook));
-                  toast({
-                      title: "Image et Bulles Ajoutées !",
-                      description: `Le contenu a été ajouté au panneau n°${firstEmptyPanelIndex + 1} de la planche ${i + 1}.`,
-                  });
-                   // Dispatch a storage event so other components (like the preview) can update
-                  window.dispatchEvent(new Event("storage"));
-                } catch (e: any) {
-                  if (e.name === 'QuotaExceededError') {
-                     toast({
-                        title: "Erreur de Quota",
-                        description: "Le stockage local est plein. Impossible de sauvegarder. Essayez de supprimer des planches ou des panneaux.",
-                        variant: "destructive"
-                     });
-                  } else {
-                     throw e;
-                  }
-                }
-                break; 
-            }
-        }
-
-        if (!panelFound) {
-            toast({
-                title: "Planches Complètes",
-                description: "Aucun panneau vide trouvé. Veuillez ajouter une nouvelle planche sur la page BD.",
-                variant: "destructive",
-            });
-        }
-    } catch (error) {
-        console.error("Failed to add to comic page:", error);
-        toast({ title: "Erreur de Sauvegarde", description: "Impossible d'ajouter à la planche.", variant: "destructive" });
-    }
-};
-
 
   const selectedBubble =
     selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
@@ -285,7 +234,11 @@ const addToComicPage = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ cursor: dragging ? "grabbing" : (selectedBubbleId !== null ? "move" : "default") }}
+            style={{ 
+                cursor: dragging ? "grabbing" : (selectedBubbleId !== null ? "move" : "default"),
+                width: "100%", // Let CSS handle display size
+                height: "auto"
+            }}
         />
       </div>
       <div className="flex flex-wrap items-center gap-4">
@@ -311,9 +264,6 @@ const addToComicPage = () => {
         <Button onClick={exportImage} variant="secondary" size="sm">
           💾 Exporter en PNG
         </Button>
-         <Button onClick={addToComicPage} variant="default" size="sm">
-          📖 Ajouter à la planche BD
-        </Button>
       </div>
 
       {selectedBubble && (
@@ -326,7 +276,7 @@ const addToComicPage = () => {
               rows={3}
             />
              <div className="flex items-center gap-2">
-                <Label htmlFor="bubble-type-editor">Style:</Label>
+                <label htmlFor="bubble-type-editor">Style:</label>
                 <Select
                     value={selectedBubble.type}
                     onValueChange={(value) => {
