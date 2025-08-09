@@ -8,7 +8,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint } from 'lucide-react';
+import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard } from 'lucide-react';
 
 export default function FamiliersLayout({
   children,
@@ -57,6 +57,19 @@ export default function FamiliersLayout({
                           </Link>
                        </TooltipTrigger>
                         <TooltipContent side="right" align="center">Gérer les Histoires</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/bd">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Éditeur BD">
+                                <Clapperboard className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">BD</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Éditeur de BD</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                  <TooltipProvider>

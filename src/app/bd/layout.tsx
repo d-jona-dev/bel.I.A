@@ -1,6 +1,6 @@
 
-// src/app/personnages/layout.tsx
-"use client"; // Add 'use client' directive
+// src/app/bd/layout.tsx
+"use client";
 
 import * as React from 'react';
 import Link from 'next/link';
@@ -10,31 +10,25 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard } from 'lucide-react';
 
-export default function PersonnagesLayout({
+export default function BdLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Ref for file input (can be null if not needed on this specific layout)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Placeholder handlers if needed, otherwise pass null or undefined
   const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Load triggered from personnages layout", event.target.files);
-     // TODO: Implement actual load logic if needed here, or manage globally
+    console.log("Load triggered from bd layout", event.target.files);
   };
-
 
   return (
     <>
-      {/* Left Sidebar: Global Actions & Navigation */}
-       <Sidebar side="left" variant="sidebar" collapsible="icon">
+      <Sidebar side="left" variant="sidebar" collapsible="icon">
          <SidebarHeader className="p-4 border-b border-sidebar-border">
            <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
          </SidebarHeader>
          <ScrollArea className="flex-1">
             <SidebarContent className="p-4 space-y-4">
-               {/* Navigation Links */}
                <nav className="space-y-2">
                   <TooltipProvider>
                      <Tooltip>
@@ -62,11 +56,11 @@ export default function PersonnagesLayout({
                         <TooltipContent side="right" align="center">Gérer les Histoires</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
-                   <TooltipProvider>
+                  <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/bd">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Éditeur BD">
+                            <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Éditeur BD">
                                 <Clapperboard className="h-5 w-5" />
                                 <span className="ml-2 group-data-[collapsible=icon]:hidden">BD</span>
                             </Button>
@@ -92,7 +86,7 @@ export default function PersonnagesLayout({
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/personnages">
-                            <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires"> {/* Active style */}
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires">
                                 <Users2 className="h-5 w-5" />
                                 <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
                             </Button>
@@ -119,7 +113,6 @@ export default function PersonnagesLayout({
            </SidebarContent>
          </ScrollArea>
          <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
-             {/* Load Button */}
              <TooltipProvider>
                   <Tooltip>
                      <TooltipTrigger asChild>
@@ -131,7 +124,6 @@ export default function PersonnagesLayout({
                      <TooltipContent side="right" align="center">Charger une Aventure/Personnage (JSON)</TooltipContent>
                   </Tooltip>
              </TooltipProvider>
-             {/* Hidden file input */}
              <input
                  type="file"
                  ref={fileInputRef}
@@ -139,7 +131,6 @@ export default function PersonnagesLayout({
                  onChange={handleLoad}
                  className="hidden"
              />
-            {/* Settings Button (placeholder) */}
             <TooltipProvider>
              <Tooltip>
                <TooltipTrigger asChild>
@@ -154,21 +145,17 @@ export default function PersonnagesLayout({
          </SidebarFooter>
        </Sidebar>
 
-       {/* Main Content Area */}
        <SidebarInset className="flex flex-col h-screen">
          <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
             <div className="flex items-center space-x-2">
-              <SidebarTrigger /> {/* Trigger for Left Sidebar */}
-              <span className="font-semibold">Personnages</span> {/* Updated title */}
+              <SidebarTrigger />
+              <span className="font-semibold">Éditeur de Bande Dessinée</span>
             </div>
-           {/* Add header actions if needed */}
          </header>
-         <main className="flex-1 overflow-auto"> {/* Changed to overflow-auto */}
-             {children} {/* The content of /personnages/page.tsx will be rendered here */}
+         <main className="flex-1 overflow-auto">
+             {children}
          </main>
        </SidebarInset>
-
-       {/* No right sidebar needed for this layout, or add if necessary */}
      </>
   );
 }
