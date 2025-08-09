@@ -27,8 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
@@ -414,21 +414,23 @@ export function PageStructure({
              />
              <Accordion type="single" collapsible className="w-full border rounded-lg p-2" defaultValue="comic-preview-accordion">
                 <AccordionItem value="comic-preview-accordion" className="border-b-0">
-                    <AccordionTrigger>
-                        <div className="flex items-center gap-2">
-                            <BookImage className="h-5 w-5" /> Aperçu de la BD
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={(e) => { e.stopPropagation(); onRefreshComicPreview(); }}>
-                                            <RefreshCw className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Actualiser l'aperçu</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                    </AccordionTrigger>
+                    <div className="flex items-center justify-between py-4 font-medium">
+                        <AccordionTrigger className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <BookImage className="h-5 w-5" /> Aperçu de la BD
+                            </div>
+                        </AccordionTrigger>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRefreshComicPreview}>
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Actualiser l'aperçu</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                     <AccordionContent>
                         <ScrollArea className="h-48 w-full">
                             <div className="flex gap-4 p-2">
