@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, MessageSquare } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, MessageSquare, Download, Save, Wand2 } from 'lucide-react';
 import type { Character } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -20,7 +20,26 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Link from 'next/link';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { generateSceneImage } from '@/ai/flows/generate-scene-image';
+
+
+// Helper to generate a unique ID
+const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
+
 
 export default function PersonnagesPage() {
   const { toast } = useToast();
@@ -29,8 +48,17 @@ export default function PersonnagesPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [characterToDelete, setCharacterToDelete] = React.useState<Character | null>(null);
 
-  React.useEffect(() => {
-    try {
+  // State for modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [editingCharacter, setEditingCharacter] = React.useState<Character | null>(null);
+  const [newCharacterData, setNewCharacterData] = React.useState({ name: '', details: '', history: '', affinity: 50 });
+  const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
+  const importFileRef = React.useRef<HTMLInputElement>(null);
+
+
+  const loadCharactersFromStorage = () => {
+     try {
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
         setSavedNPCs(JSON.parse(charactersFromStorage));
@@ -44,13 +72,21 @@ export default function PersonnagesPage() {
       });
     }
     setIsLoading(false);
+  }
+
+  React.useEffect(() => {
+    loadCharactersFromStorage();
   }, [toast]);
+
+  const saveCharactersToStorage = (characters: Character[]) => {
+    localStorage.setItem('globalCharacters', JSON.stringify(characters));
+    setSavedNPCs(characters);
+  };
 
   const confirmDelete = () => {
     if (characterToDelete) {
       const updatedCharacters = savedNPCs.filter(c => c.id !== characterToDelete.id);
-      setSavedNPCs(updatedCharacters);
-      localStorage.setItem('globalCharacters', JSON.stringify(updatedCharacters));
+      saveCharactersToStorage(updatedCharacters);
       toast({
         title: "Personnage Supprimé",
         description: `Le personnage "${characterToDelete.name}" a été supprimé de la sauvegarde globale.`,
@@ -58,18 +94,158 @@ export default function PersonnagesPage() {
       setCharacterToDelete(null);
     }
   };
+  
+  const handleDownloadCharacter = (character: Character) => {
+    const jsonString = JSON.stringify(character, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${character.name.toLowerCase().replace(/\s/g, '_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  
+  const handleImportCharacter = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const jsonString = e.target?.result as string;
+            const newChar = JSON.parse(jsonString) as Character;
+
+            if (!newChar.id || !newChar.name || !newChar.details) {
+                throw new Error("Fichier JSON invalide ou manquant de champs obligatoires.");
+            }
+            
+            const isDuplicate = savedNPCs.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase());
+            if (isDuplicate) {
+                 toast({ title: "Importation échouée", description: `Un personnage avec le nom ou l'ID "${newChar.name}" existe déjà.`, variant: "destructive" });
+                 return;
+            }
+
+            const updatedChars = [...savedNPCs, { ...newChar, _lastSaved: Date.now() }];
+            saveCharactersToStorage(updatedChars);
+            toast({ title: "Personnage Importé", description: `"${newChar.name}" a été ajouté à votre liste.` });
+
+        } catch (error) {
+            console.error("Error loading character from JSON:", error);
+            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+        }
+    };
+    reader.readAsText(file);
+    if(event.target) event.target.value = ''; // Reset for next upload
+  }
+
+
+  const handleCreateCharacter = () => {
+    if (!newCharacterData.name.trim() || !newCharacterData.details.trim()) {
+        toast({ title: "Champs requis manquants", description: "Le nom et les détails du personnage sont obligatoires.", variant: "destructive" });
+        return;
+    }
+
+    const newChar: Character = {
+        id: uid(),
+        name: newCharacterData.name,
+        details: newCharacterData.details,
+        history: newCharacterData.history ? [newCharacterData.history] : [],
+        affinity: newCharacterData.affinity,
+        portraitUrl: null,
+        relations: {},
+        isAlly: false,
+    };
+    
+    const updatedChars = [...savedNPCs, newChar];
+    saveCharactersToStorage(updatedChars);
+    toast({ title: "Personnage Créé", description: `"${newChar.name}" est maintenant prêt !` });
+    setIsCreateModalOpen(false);
+    setNewCharacterData({ name: '', details: '', history: '', affinity: 50 }); // Reset form
+  }
+
+  const handleUpdateCharacter = () => {
+      if (!editingCharacter) return;
+      const updatedChars = savedNPCs.map(c => c.id === editingCharacter.id ? editingCharacter : c);
+      saveCharactersToStorage(updatedChars);
+      toast({ title: "Personnage Mis à Jour", description: `Les informations de "${editingCharacter.name}" ont été sauvegardées.` });
+      setIsEditModalOpen(false);
+      setEditingCharacter(null);
+  }
+
+  const handleGeneratePortraitForEditor = async () => {
+    if (!editingCharacter) return;
+    setIsGeneratingPortrait(true);
+    
+    const prompt = `Generate a portrait of ${editingCharacter.name}. Description: ${editingCharacter.details}. ${editingCharacter.characterClass ? `Class: ${editingCharacter.characterClass}.` : ''}`;
+
+    try {
+        const result = await generateSceneImage({ sceneDescription: prompt });
+        if (result.imageUrl) {
+            setEditingCharacter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
+            toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
+        } else {
+            throw new Error(result.error || "La génération d'image a échoué.");
+        }
+    } catch (error) {
+         toast({ title: "Erreur de Génération", description: `Impossible de générer le portrait : ${error instanceof Error ? error.message : 'Erreur inconnue'}.`, variant: "destructive" });
+    } finally {
+        setIsGeneratingPortrait(false);
+    }
+  }
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Personnages Secondaires</h1>
         <div className="flex gap-2">
-           <Button variant="outline" disabled>
+          <input type="file" ref={importFileRef} onChange={handleImportCharacter} accept=".json" className="hidden" />
+          <Button variant="outline" onClick={() => importFileRef.current?.click()}>
             <Upload className="mr-2 h-4 w-4" /> Importer un Personnage
           </Button>
-          <Button disabled>
-            <UserPlus className="mr-2 h-4 w-4" /> Créer un Personnage
-          </Button>
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" /> Créer un Personnage
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Créer un Nouveau Personnage</DialogTitle>
+                    <DialogDescription>
+                        Remplissez les informations de base de votre personnage.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="new-char-name">Nom</Label>
+                        <Input id="new-char-name" value={newCharacterData.name} onChange={e => setNewCharacterData({...newCharacterData, name: e.target.value})} placeholder="Ex: Rina, Kentaro..."/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="new-char-details">Détails (Description)</Label>
+                        <Textarea id="new-char-details" value={newCharacterData.details} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder="Description physique, personnalité, rôle..."/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="new-char-history">Historique Initial (Optionnel)</Label>
+                        <Textarea id="new-char-history" value={newCharacterData.history} onChange={e => setNewCharacterData({...newCharacterData, history: e.target.value})} placeholder="Comment le joueur l'a-t-il rencontré ?"/>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="new-char-affinity">Affinité (avec le joueur)</Label>
+                        <div className="flex items-center gap-4">
+                            <Slider id="new-char-affinity" min={0} max={100} step={1} value={[newCharacterData.affinity]} onValueChange={value => setNewCharacterData({...newCharacterData, affinity: value[0]})}/>
+                            <span className="text-sm font-medium w-8 text-center">{newCharacterData.affinity}</span>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
+                    <Button onClick={handleCreateCharacter}>Créer le Personnage</Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -105,9 +281,64 @@ export default function PersonnagesPage() {
                   </p>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" disabled>
-                    <Edit className="mr-2 h-4 w-4" /> Modifier
-                  </Button>
+                  <Dialog open={isEditModalOpen && editingCharacter?.id === npc.id} onOpenChange={(open) => {
+                      if(!open) { setIsEditModalOpen(false); setEditingCharacter(null); }
+                  }}>
+                    <DialogTrigger asChild>
+                       <Button variant="ghost" size="sm" onClick={() => { setEditingCharacter(JSON.parse(JSON.stringify(npc))); setIsEditModalOpen(true); }}>
+                        <Edit className="mr-2 h-4 w-4" /> Modifier
+                      </Button>
+                    </DialogTrigger>
+                    {editingCharacter && (
+                       <DialogContent className="max-w-3xl">
+                          <DialogHeader>
+                              <DialogTitle>Modifier {editingCharacter.name}</DialogTitle>
+                          </DialogHeader>
+                          <div className="max-h-[70vh] overflow-y-auto p-1 space-y-4">
+                             <div className="flex items-center gap-4">
+                                <Avatar className="h-24 w-24">
+                                    {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div> :
+                                    editingCharacter.portraitUrl ? <AvatarImage src={editingCharacter.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingCharacter.name.substring(0,2)}</AvatarFallback>}
+                                </Avatar>
+                                <div className="flex-1 space-y-2">
+                                    <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
+                                        <Wand2 className="mr-2 h-4 w-4" /> Générer un Portrait IA
+                                    </Button>
+                                </div>
+                             </div>
+                             <div className="space-y-2">
+                                <Label>Nom</Label>
+                                <Input value={editingCharacter.name} onChange={e => setEditingCharacter({...editingCharacter, name: e.target.value})} />
+                             </div>
+                             <div className="space-y-2">
+                                <Label>Détails</Label>
+                                <Textarea value={editingCharacter.details} onChange={e => setEditingCharacter({...editingCharacter, details: e.target.value})} rows={4}/>
+                             </div>
+                              <div className="space-y-2">
+                                <Label>Historique</Label>
+                                 <ScrollArea className="h-24 border rounded-md p-2">
+                                 {editingCharacter.history && editingCharacter.history.map((entry, index) => (
+                                      <Textarea key={index} value={entry} className="mb-2" onChange={e => {
+                                          const newHistory = [...(editingCharacter.history || [])];
+                                          newHistory[index] = e.target.value;
+                                          setEditingCharacter({...editingCharacter, history: newHistory});
+                                      }}/>
+                                  ))}
+                                  </ScrollArea>
+                                   <Button variant="outline" size="sm" onClick={() => setEditingCharacter({...editingCharacter, history: [...(editingCharacter.history || []), ""]})}>Ajouter entrée</Button>
+                             </div>
+                              <div className="space-y-2">
+                                <Label>Affinité (avec le joueur) : {editingCharacter.affinity}</Label>
+                                <Slider min={0} max={100} step={1} value={[editingCharacter.affinity || 50]} onValueChange={value => setEditingCharacter({...editingCharacter, affinity: value[0]})}/>
+                             </div>
+                          </div>
+                           <DialogFooter>
+                              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Annuler</Button>
+                              <Button onClick={handleUpdateCharacter}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
+                           </DialogFooter>
+                       </DialogContent>
+                    )}
+                  </Dialog>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" onClick={() => setCharacterToDelete(npc)}>
@@ -131,6 +362,9 @@ export default function PersonnagesPage() {
                       </AlertDialogContent>
                     )}
                   </AlertDialog>
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadCharacter(npc)}>
+                    <Download className="mr-2 h-4 w-4" />
+                  </Button>
                   <Link href={`/chat/${npc.id}`}>
                       <Button variant="default" size="sm">
                         <MessageSquare className="mr-2 h-4 w-4" /> Chatter
