@@ -257,7 +257,6 @@ export default function Home() {
         { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
     ],
     mapImageUrl: null,
-    playerLocationId: 'poi-bourgenval',
   });
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
       {
@@ -408,6 +407,7 @@ export default function Home() {
       if (event.key === "comic_book_v1" && event.newValue) {
         try {
           setComicPages(JSON.parse(event.newValue));
+          console.log("Comic pages updated from storage event.");
         } catch (e) { console.error("Could not parse updated comic pages", e); }
       }
     };
@@ -1759,7 +1759,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  playerCurrentMp: currentTurnSettings.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
-                 playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
+                 playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
                  playerDexterity: effectiveStatsThisTurn.playerDexterity,
                  playerConstitution: effectiveStatsThisTurn.playerConstitution,
@@ -1986,22 +1986,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         expToNextLevel: newCharExpToNext,
         locationId: stagedAdventureSettings.playerLocationId, // Add character at player's location
         ...(newCharRPGMode ? {
-            level: newCharLevel,
-            characterClass: globalCharToAdd.characterClass ?? '',
-            hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10,
-            maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
-            manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0,
-            maxManaPoints: globalCharToAdd.maxManaPoints ?? 0,
-            armorClass: globalCharToAdd.armorClass ?? 10,
-            attackBonus: globalCharToAdd.attackBonus ?? 0,
-            damageBonus: globalCharToAdd.damageBonus ?? "1",
+            level: newCharLevel, characterClass: globalCharToAdd.characterClass ?? '', 
+            hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10, maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
+            manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0, maxManaPoints: globalCharToAdd.maxManaPoints ?? 0,
+            armorClass: globalCharToAdd.armorClass ?? 10, attackBonus: globalCharToAdd.attackBonus ?? 0, damageBonus: globalCharToAdd.damageBonus ?? "1",
             isHostile: globalCharToAdd.isHostile ?? false,
-            strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE,
-            dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE,
-            constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE,
-            intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE,
-            wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE,
-            charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
+            strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE,
+            intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
 
         } : {
             level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
@@ -2208,7 +2199,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 const defaultRelation = loadedLang === 'fr' ? "Inconnu" : "Unknown";
 
                 const validatedCharacters = loadedData.characters.map((c: any) => {
-                    const charId = c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                    const charId = c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
                     let relations = relationsModeActive && typeof c.relations === 'object' && c.relations !== null ? c.relations : (relationsModeActive ? { [PLAYER_ID]: defaultRelation } : undefined);
 
                     if (relationsModeActive && relations && !relations[PLAYER_ID]) {
@@ -2481,7 +2472,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 level: charLevel, characterClass: existingChar.characterClass || '', 
                 hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10,
                 manaPoints: existingChar.manaPoints ?? existingChar.maxManaPoints ?? 0, maxManaPoints: existingChar.maxManaPoints ?? 0,
-                armorClass: existingChar.armorClass ?? 10, attackBonus: existingChar.attackBonus ?? 0, damageBonus: existingChar.damageBonus ?? "1",
+                armorClass: existingChar.armorClass ?? 10, attackBonus: existingChar.attackBonus ?? 0, damageBonus: "1",
                 isHostile: existingChar.isHostile ?? false,
                 strength: existingChar.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: existingChar.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: existingChar.constitution ?? BASE_ATTRIBUTE_VALUE,
                 intelligence: existingChar.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: existingChar.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: existingChar.charisma ?? BASE_ATTRIBUTE_VALUE,
@@ -3275,3 +3266,5 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
+    
