@@ -258,6 +258,19 @@ export interface AdventureSettings {
     playerLocationId?: string;
 }
 
+export interface ComicPanel {
+  id: string;
+  imageUrl?: string | null;
+  bubbles: any[]; // Kept simple for now
+}
+
+export interface ComicPage {
+  id: string;
+  panels: ComicPanel[];
+  gridCols: number;
+}
+
+
 export interface SaveData {
     adventureSettings: AdventureSettings;
     characters: Character[];
@@ -514,5 +527,3 @@ export const GenerateAdventureOutputSchema = z.object({
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
-
-    

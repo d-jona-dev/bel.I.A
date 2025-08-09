@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusCircle, Download, X, Edit, Trash2, ArrowLeft, ArrowRight, BookPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -129,7 +130,7 @@ export default function ComicPageEditor({
     if (panel.imageUrl) {
       try {
         const img = await loadImage(panel.imageUrl);
-        const scale = Math.min(width / img.width, height / img.height);
+        const scale = Math.max(width / img.width, height / img.height);
         const w = img.width * scale;
         const h = img.height * scale;
         ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
@@ -302,32 +303,22 @@ export default function ComicPageEditor({
 
 /* PanelPreview: lightweight canvas drawing in a small canvas */
 function PanelPreview({ panel, width, height }: { panel: Panel; width: number; height: number }) {
-  const ref = useRef<HTMLCanvasElement | null>(null);
-  useEffect(() => {
-    (async () => {
-      if (!ref.current) return;
-      const ctx = ref.current.getContext("2d")!;
-      ref.current.width = width;
-      ref.current.height = height;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, width, height);
-      if (panel.imageUrl) {
-        try {
-          const img = await loadImage(panel.imageUrl);
-          const scale = Math.min(width / img.width, height / img.height);
-          ctx.drawImage(img, 0, 0, img.width, img.height, (width - img.width * scale) / 2, (height - img.height * scale) / 2, img.width * scale, img.height * scale);
-        } catch {
-          ctx.fillStyle = "#eee"; ctx.fillRect(0, 0, width, height);
-        }
-      } else {
-        ctx.fillStyle = "#eee"; ctx.fillRect(0, 0, width, height);
-      }
-      panel.bubbles.forEach((b) => drawBubble(ctx, b, width/900));
-    })();
-  }, [panel, width, height]);
-
-  return <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block" }} />;
+  if (!panel.imageUrl) {
+    return <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">Aucune image</div>;
+  }
+  return (
+    <div className="w-full h-full relative">
+        <Image 
+            src={panel.imageUrl} 
+            alt="Aperçu du panneau" 
+            layout="fill"
+            objectFit="cover" // This will crop the image to fit the container
+            className="rounded-sm"
+        />
+    </div>
+  );
 }
+
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {

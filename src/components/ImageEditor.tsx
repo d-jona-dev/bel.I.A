@@ -47,6 +47,13 @@ interface ComicPanel {
   bubbles: Bubble[];
 }
 
+interface ComicPage {
+    id: string;
+    panels: ComicPanel[];
+    gridCols: number;
+}
+
+
 export default function ImageEditor({
   imageUrl,
 }: {
@@ -220,26 +227,32 @@ export default function ImageEditor({
     }
     try {
         const comicPageDataUrl = canvasRef.current.toDataURL("image/png");
-        const savedComicJson = localStorage.getItem("comic_page_v1");
+        const savedComicBook = localStorage.getItem("comic_book_v1");
         
-        let comicPanels: ComicPanel[] = savedComicJson ? JSON.parse(savedComicJson) : [];
+        let comicBook: ComicPage[] = savedComicBook ? JSON.parse(savedComicBook) : [];
+        let panelFound = false;
 
-        const firstEmptyPanelIndex = comicPanels.findIndex(p => !p.imageUrl);
+        for (let i = 0; i < comicBook.length; i++) {
+            const page = comicBook[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
 
-        if (firstEmptyPanelIndex !== -1) {
-            comicPanels[firstEmptyPanelIndex].imageUrl = comicPageDataUrl;
-            // Optionnel : on pourrait aussi sauvegarder les bulles, mais pour l'instant on aplatit l'image.
-            comicPanels[firstEmptyPanelIndex].bubbles = []; 
+            if (firstEmptyPanelIndex !== -1) {
+                page.panels[firstEmptyPanelIndex].imageUrl = comicPageDataUrl;
+                page.panels[firstEmptyPanelIndex].bubbles = []; // Reset bubbles, as they are now part of the image
+                panelFound = true;
+                localStorage.setItem("comic_book_v1", JSON.stringify(comicBook));
+                toast({
+                    title: "Image Ajoutée !",
+                    description: `L'image a été ajoutée au panneau n°${firstEmptyPanelIndex + 1} de la planche ${i + 1}.`,
+                });
+                break; 
+            }
+        }
 
-            localStorage.setItem("comic_page_v1", JSON.stringify(comicPanels));
+        if (!panelFound) {
             toast({
-                title: "Image Ajoutée !",
-                description: `L'image a été ajoutée au panneau n°${firstEmptyPanelIndex + 1} de votre planche.`,
-            });
-        } else {
-            toast({
-                title: "Planche Complète",
-                description: "Aucun panneau vide trouvé. Veuillez en ajouter un sur la page BD.",
+                title: "Planches Complètes",
+                description: "Aucun panneau vide trouvé dans toute la BD. Veuillez ajouter une nouvelle planche.",
                 variant: "destructive",
             });
         }

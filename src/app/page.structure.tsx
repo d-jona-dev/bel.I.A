@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard } from 'lucide-react'; // Added MapPin & PawPrint
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard, BookImage } from 'lucide-react'; // Added MapPin & PawPrint
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig } from "@/types"; // Added Familiar & AiConfig
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from '@/ai/flows/generate-scene-image';
 import {
@@ -119,6 +119,7 @@ interface PageStructureProps {
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
+  comicPages: ComicPage[];
 }
 
 export function PageStructure({
@@ -189,6 +190,7 @@ export function PageStructure({
   onMapImageUpload,
   aiConfig,
   onAiConfigChange,
+  comicPages,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -378,7 +380,7 @@ export function PageStructure({
              </SidebarTrigger>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden p-4">
+        <main className="flex-1 overflow-auto p-4 flex flex-col gap-4">
              <AdventureDisplay
                 playerId={playerId}
                 generateAdventureAction={generateAdventureAction}
@@ -410,6 +412,40 @@ export function PageStructure({
                 onCreatePoi={onCreatePoi}
                 onMapImageUpload={onMapImageUpload}
              />
+             <Accordion type="single" collapsible className="w-full border rounded-lg p-2" defaultValue="comic-preview-accordion">
+                <AccordionItem value="comic-preview-accordion" className="border-b-0">
+                    <AccordionTrigger>
+                        <div className="flex items-center gap-2">
+                            <BookImage className="h-5 w-5" /> Aperçu de la BD
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <ScrollArea className="h-48 w-full">
+                            <div className="flex gap-4 p-2">
+                            {comicPages.length === 0 ? (
+                                <p className="text-sm text-muted-foreground italic">Aucune planche de BD sauvegardée.</p>
+                            ) : (
+                                comicPages.map((page, pageIndex) => (
+                                    <div key={page.id} className="flex-shrink-0 w-32">
+                                        <p className="text-xs text-center mb-1">Planche {pageIndex + 1}</p>
+                                        <div className="aspect-[12/17] border bg-muted rounded-md overflow-hidden">
+                                            {/* Simplified preview */}
+                                            <div className="grid h-full w-full" style={{ gridTemplateColumns: `repeat(${page.gridCols}, 1fr)`}}>
+                                                {page.panels.map(panel => (
+                                                    <div key={panel.id} className="border border-muted-foreground/20">
+                                                        {panel.imageUrl && <Image src={panel.imageUrl} alt="panel preview" width={30} height={42} className="w-full h-full object-cover" />}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            </div>
+                        </ScrollArea>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
         </main>
       </SidebarInset>
 

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -367,6 +367,7 @@ export default function Home() {
   ]);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
   const [aiConfig, setAiConfig] = React.useState<AiConfig>({ source: 'gemini' });
+  const [comicPages, setComicPages] = React.useState<ComicPage[]>([]);
 
   // Staged state (for form edits before applying)
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
@@ -394,6 +395,25 @@ export default function Home() {
         description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
     });
   }, [useAestheticFont, toast]);
+
+  React.useEffect(() => {
+    try {
+      const savedPages = localStorage.getItem("comic_book_v1");
+      if (savedPages) {
+        setComicPages(JSON.parse(savedPages));
+      }
+    } catch (e) { console.error("Could not load comic pages from localStorage", e); }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "comic_book_v1" && event.newValue) {
+        try {
+          setComicPages(JSON.parse(event.newValue));
+        } catch (e) { console.error("Could not parse updated comic pages", e); }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   React.useEffect(() => {
     const fetchInitialSkill = async () => {
@@ -3251,6 +3271,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       isLoading={isUiLocked}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
+      comicPages={comicPages}
     />
   );
 }
