@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2 } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -17,16 +17,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +58,7 @@ export default function AvatarsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newAvatarData, setNewAvatarData] = React.useState({ name: '', details: '', class: 'Aventurier', level: 1 });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
+  const importFileRef = React.useRef<HTMLInputElement>(null);
 
 
   React.useEffect(() => {
@@ -95,22 +92,54 @@ export default function AvatarsPage() {
     setAvatars(updatedAvatars);
     localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(updatedAvatars));
   };
+  
+  const handleDownloadAvatar = (avatar: PlayerAvatar) => {
+    const jsonString = JSON.stringify(avatar, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${avatar.name.toLowerCase().replace(/\s/g, '_')}_avatar.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
-  const handleUploadAvatarPortrait = (avatarId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportAvatar = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const updatedAvatars = avatars.map(avatar =>
-        avatar.id === avatarId ? { ...avatar, portraitUrl: reader.result as string } : avatar
-      );
-      saveAvatars(updatedAvatars);
-      toast({ title: "Portrait Téléchargé", description: "Le portrait de l'avatar a été mis à jour." });
+    reader.onload = (e) => {
+        try {
+            const jsonString = e.target?.result as string;
+            const newAvatar = JSON.parse(jsonString) as PlayerAvatar;
+
+            if (!newAvatar.id || !newAvatar.name || !newAvatar.class || !newAvatar.level) {
+                throw new Error("Fichier JSON invalide ou manquant de champs obligatoires.");
+            }
+            
+            const isDuplicate = avatars.some(c => c.id === newAvatar.id || c.name.toLowerCase() === newAvatar.name.toLowerCase());
+            if (isDuplicate) {
+                 toast({ title: "Importation échouée", description: `Un avatar avec le nom ou l'ID "${newAvatar.name}" existe déjà.`, variant: "destructive" });
+                 return;
+            }
+
+            const updatedAvatars = [...avatars, newAvatar];
+            saveAvatars(updatedAvatars);
+            toast({ title: "Avatar Importé", description: `"${newAvatar.name}" a été ajouté à votre liste.` });
+
+        } catch (error) {
+            console.error("Error loading avatar from JSON:", error);
+            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+        }
     };
-    reader.readAsDataURL(file);
+    reader.readAsText(file);
     if(event.target) event.target.value = '';
-  };
-  
+  }
+
+
   const handleSelectCurrentAvatar = (avatarId: string) => {
     setCurrentAvatarId(avatarId);
     localStorage.setItem(CURRENT_AVATAR_ID_KEY, JSON.stringify(avatarId));
@@ -195,7 +224,8 @@ export default function AvatarsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Avatars Joueur</h1>
         <div className="flex gap-2">
-           <Button variant="outline" disabled>
+            <input type="file" ref={importFileRef} onChange={handleImportAvatar} accept=".json" className="hidden" />
+           <Button variant="outline" onClick={() => importFileRef.current?.click()}>
             <Upload className="mr-2 h-4 w-4" /> Importer un Avatar
           </Button>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -356,6 +386,9 @@ export default function AvatarsPage() {
                         </AlertDialogContent>
                     )}
                   </AlertDialog>
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadAvatar(avatar)}>
+                    <Download className="mr-2 h-4 w-4" /> Télécharger
+                  </Button>
                   <Button
                     variant="default"
                     size="sm"
