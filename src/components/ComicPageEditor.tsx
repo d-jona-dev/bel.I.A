@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusCircle, Download, X, Edit, Trash2, ArrowLeft, ArrowRight, BookPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -271,7 +270,6 @@ export default function ComicPageEditor({
 
 /* PanelPreview: lightweight canvas drawing in a small canvas */
 function PanelPreview({ panel, width, height }: { panel: Panel; width: number; height: number }) {
-  // A valid URL is required for next/image, otherwise show placeholder.
   const isValidUrl = panel.imageUrl && (panel.imageUrl.startsWith('/') || panel.imageUrl.startsWith('http') || panel.imageUrl.startsWith('data:image'));
 
   if (!isValidUrl) {
@@ -279,12 +277,10 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
   }
   return (
     <div className="w-full h-full relative">
-        <Image 
+        <img 
             src={panel.imageUrl} 
             alt="Aperçu du panneau" 
-            layout="fill"
-            objectFit="cover"
-            className="rounded-sm"
+            className="w-full h-full object-cover rounded-sm"
         />
     </div>
   );
