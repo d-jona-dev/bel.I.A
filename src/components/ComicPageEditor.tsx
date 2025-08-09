@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { PlusCircle, Download, X, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Download, X, Edit, Trash2, ArrowLeft, ArrowRight, BookPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -35,65 +35,86 @@ type Panel = {
   bubbles: Bubble[];
 };
 
+type ComicPage = {
+    id: string;
+    panels: Panel[];
+    gridCols: number;
+}
+
+
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
+const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
+    id: uid(),
+    gridCols: cols,
+    panels: Array.from({ length: numPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] }))
+});
+
+
 /* Component */
 export default function ComicPageEditor({
-  initialPanels = 4,
   pageWidth = 1200,
   pageHeight = 1700,
 }: {
-  initialPanels?: number;
   pageWidth?: number;
   pageHeight?: number;
 }) {
   const { toast } = useToast();
-  const [panels, setPanels] = useState<Panel[]>([]);
+  const [pages, setPages] = useState<ComicPage[]>([createNewPage()]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
-  const [gridCols, setGridCols] = useState(2);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
 
   /* Persistence */
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("comic_page_v1");
+      const saved = localStorage.getItem("comic_book_v1");
       if (saved) {
         const data = JSON.parse(saved);
-        if (Array.isArray(data) && data.length) {
-            setPanels(data.map((p: any) => ({ ...p, id: p.id || uid() })));
+        if (Array.isArray(data) && data.length > 0) {
+            setPages(data.map((p: any) => ({ ...p, id: p.id || uid() })));
         }
-      } else {
-         setPanels(Array.from({ length: initialPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] })));
       }
     } catch {
-       setPanels(Array.from({ length: initialPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] })));
+       setPages([createNewPage()]);
     }
-  }, [initialPanels]);
+  }, []);
 
   useEffect(() => {
-    if (panels.length > 0) {
-        localStorage.setItem("comic_page_v1", JSON.stringify(panels));
+    if (pages.length > 0) {
+        localStorage.setItem("comic_book_v1", JSON.stringify(pages));
     }
-  }, [panels]);
+  }, [pages]);
 
+  const currentPage = pages[currentPageIndex];
+
+  const updateCurrentPage = (updater: (page: ComicPage) => ComicPage) => {
+    setPages(currentPages => currentPages.map((page, index) => 
+        index === currentPageIndex ? updater(page) : page
+    ));
+  }
 
   const setPanelImage = (panelId: string, url: string | null) => {
-    setPanels((p) => p.map((x) => (x.id === panelId ? { ...x, imageUrl: url } : x)));
+    updateCurrentPage(page => ({
+        ...page,
+        panels: page.panels.map((x) => (x.id === panelId ? { ...x, imageUrl: url } : x))
+    }));
   };
 
   const addBubble = (panelId: string) => {
-    setPanels((p) =>
-      p.map((pl) =>
-        pl.id === panelId
-          ? {
-              ...pl,
-              bubbles: [ ...pl.bubbles, { id: uid(), x: 20, y: 20, w: 160, h: 60, text: "Texte...", type: "parole" }],
-            }
-          : pl
-      )
-    );
+    updateCurrentPage(page => ({
+        ...page,
+        panels: page.panels.map((pl) =>
+            pl.id === panelId
+            ? {
+                ...pl,
+                bubbles: [ ...pl.bubbles, { id: uid(), x: 20, y: 20, w: 160, h: 60, text: "Texte...", type: "parole" }],
+                }
+            : pl
+        )
+    }));
   };
 
   /* Drawing logic */
@@ -130,8 +151,8 @@ export default function ComicPageEditor({
 
   const exportPage = async (scale = 2) => {
     toast({ title: "Exportation en cours...", description: "Génération de votre planche en haute résolution." });
-    const rows = Math.ceil(panels.length / gridCols);
-    const panelW = Math.floor(pageWidth / gridCols);
+    const rows = Math.ceil(currentPage.panels.length / currentPage.gridCols);
+    const panelW = Math.floor(pageWidth / currentPage.gridCols);
     const panelH = Math.floor(pageHeight / rows);
 
     const outCanvas = document.createElement("canvas");
@@ -142,10 +163,10 @@ export default function ComicPageEditor({
     outCtx.fillStyle = "#fff";
     outCtx.fillRect(0, 0, pageWidth, pageHeight);
 
-    for (let i = 0; i < panels.length; i++) {
-      const panel = panels[i];
-      const r = Math.floor(i / gridCols);
-      const c = i % gridCols;
+    for (let i = 0; i < currentPage.panels.length; i++) {
+      const panel = currentPage.panels[i];
+      const r = Math.floor(i / currentPage.gridCols);
+      const c = i % currentPage.gridCols;
       const x = c * panelW;
       const y = r * panelH;
       try {
@@ -164,10 +185,10 @@ export default function ComicPageEditor({
     }
 
     const link = document.createElement("a");
-    link.download = "planche_bd.png";
+    link.download = `planche_bd_${currentPageIndex + 1}.png`;
     link.href = outCanvas.toDataURL("image/png");
     link.click();
-    toast({ title: "Exportation terminée", description: "Votre planche a été téléchargée." });
+    toast({ title: "Exportation terminée", description: `La planche ${currentPageIndex + 1} a été téléchargée.` });
   };
 
   /* UI handlers */
@@ -177,38 +198,57 @@ export default function ComicPageEditor({
     setPanelImage(panelId, url);
   };
   
-  const selectedPanelData = panels.find((p) => p.id === selectedPanelId);
+  const selectedPanelData = currentPage?.panels.find((p) => p.id === selectedPanelId);
 
-  const rows = Math.ceil(panels.length / gridCols);
-  const previewW = Math.floor(600 / gridCols);
+  if (!currentPage) {
+    return (
+        <div className="flex flex-col items-center justify-center h-full">
+            <p className="text-muted-foreground">Aucune planche à afficher.</p>
+            <Button onClick={() => setPages([createNewPage()])} className="mt-4">
+                <PlusCircle className="mr-2 h-4 w-4" /> Créer la première planche
+            </Button>
+        </div>
+    );
+  }
+
+  const rows = Math.ceil(currentPage.panels.length / currentPage.gridCols);
+  const previewW = Math.floor(600 / currentPage.gridCols);
   const previewH = Math.floor(850 / rows);
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="p-4 flex items-center gap-4">
+        <CardContent className="p-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.max(0, p-1))} disabled={currentPageIndex === 0}><ArrowLeft className="h-4 w-4"/></Button>
+            <span className="text-sm font-medium w-24 text-center">Planche {currentPageIndex+1} / {pages.length}</span>
+            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pages.length-1, p+1))} disabled={currentPageIndex === pages.length - 1}><ArrowRight className="h-4 w-4"/></Button>
+          </div>
+           <div className="flex items-center gap-2">
             <Label htmlFor="grid-cols-input">Colonnes :</Label>
             <Input
               id="grid-cols-input"
               type="number"
               min={1} max={4}
-              value={gridCols}
-              onChange={(e) => setGridCols(Math.max(1, Math.min(4, Number(e.target.value))))}
+              value={currentPage.gridCols}
+              onChange={(e) => updateCurrentPage(p => ({...p, gridCols: Math.max(1, Math.min(4, Number(e.target.value)))}))}
               className="w-20"
             />
           </div>
-          <Button onClick={() => setPanels([...panels, { id: uid(), imageUrl: null, bubbles: [] }])}>
+          <Button onClick={() => updateCurrentPage(p => ({...p, panels: [...p.panels, { id: uid(), imageUrl: null, bubbles: [] }] }))}>
             <PlusCircle className="mr-2 h-4 w-4" /> Ajouter panneau
           </Button>
+           <Button onClick={() => setPages(p => [...p, createNewPage(p[p.length-1]?.gridCols || 2)])}>
+            <BookPlus className="mr-2 h-4 w-4" /> Ajouter planche vierge
+          </Button>
           <Button onClick={() => exportPage(2)} variant="secondary">
-            <Download className="mr-2 h-4 w-4" /> Exporter (PNG HD)
+            <Download className="mr-2 h-4 w-4" /> Exporter Planche (PNG)
           </Button>
         </CardContent>
       </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${gridCols}, 1fr)`, gap: 16 }}>
-        {panels.map((panel, index) => (
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${currentPage.gridCols}, 1fr)`, gap: 16 }}>
+        {currentPage.panels.map((panel, index) => (
           <Card key={panel.id} className="overflow-hidden">
             <CardContent className="p-2 space-y-2">
               <div style={{ height: previewH, position: "relative", background: "#f8f8f8", borderRadius: '4px' }}>
@@ -228,7 +268,7 @@ export default function ComicPageEditor({
                 <Button variant="secondary" size="sm" onClick={() => { setSelectedPanelId(panel.id); setIsEditorOpen(true); }}>
                     <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => setPanels((p) => p.filter((x) => x.id !== panel.id))}>
+                <Button variant="destructive" size="sm" onClick={() => updateCurrentPage(p => ({...p, panels: p.panels.filter((x) => x.id !== panel.id)}))}>
                     <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -250,7 +290,7 @@ export default function ComicPageEditor({
               panel={selectedPanelData}
               onClose={() => setIsEditorOpen(false)}
               onChange={(updated) =>
-                setPanels((p) => p.map((pl) => (pl.id === updated.id ? updated : pl)))
+                updateCurrentPage(p => ({...p, panels: p.panels.map((pl) => (pl.id === updated.id ? updated : pl))}))
               }
             />
           )}
