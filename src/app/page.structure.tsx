@@ -766,58 +766,60 @@ export function PageStructure({
                         </Accordion>
                     )}
 
+                     {adventureSettings.relationsMode && (
+                        <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="characters-accordion">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <Users2 className="h-5 w-5" /> Personnages Secondaires
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                    <CharacterSidebar
+                                        characters={stagedCharacters}
+                                        onCharacterUpdate={handleCharacterUpdate}
+                                        onSaveNewCharacter={handleSaveNewCharacter}
+                                        onAddStagedCharacter={handleAddStagedCharacter}
+                                        onRelationUpdate={handleRelationUpdate}
+                                        generateImageAction={generateSceneImageAction}
+                                        rpgMode={adventureSettings.rpgMode ?? false}
+                                        relationsMode={adventureSettings.relationsMode ?? true}
+                                        strategyMode={adventureSettings.strategyMode ?? false}
+                                        playerId={playerId}
+                                        playerName={stagedAdventureSettings.playerName || "Player"}
+                                        currentLanguage={currentLanguage}
+                                        pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                     )}
+                      
                      {adventureSettings.strategyMode && (
-                     <Accordion type="single" collapsible className="w-full" defaultValue="poi-accordion">
-                         <AccordionItem value="poi-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <MapIconLucide className="h-5 w-5" /> Points d'Intérêt
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2">
-                                <PoiSidebar
-                                    playerId={playerId}
-                                    playerName={playerName}
-                                    pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
-                                    characters={characters}
-                                    onMapAction={handleMapAction}
-                                    currentTurn={currentTurn}
-                                    isLoading={isLoading}
-                                    playerGold={adventureSettings.playerGold}
-                                    onBuildInPoi={onBuildInPoi}
-                                 />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
+                        <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="poi-accordion">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <MapIconLucide className="h-5 w-5" /> Points d'Intérêt
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2">
+                                   <PoiSidebar
+                                       playerId={playerId}
+                                       playerName={playerName}
+                                       pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                       characters={characters}
+                                       onMapAction={handleMapAction}
+                                       currentTurn={currentTurn}
+                                       isLoading={isLoading}
+                                       playerGold={adventureSettings.playerGold}
+                                       onBuildInPoi={onBuildInPoi}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
                      )}
 
-                     <Accordion type="single" collapsible className="w-full">
-                         <AccordionItem value="characters-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <Users2 className="h-5 w-5" /> Personnages Secondaires
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2">
-                                 <CharacterSidebar
-                                     characters={stagedCharacters}
-                                     onCharacterUpdate={handleCharacterUpdate}
-                                     onSaveNewCharacter={handleSaveNewCharacter}
-                                     onAddStagedCharacter={handleAddStagedCharacter}
-                                     onRelationUpdate={handleRelationUpdate}
-                                     generateImageAction={generateSceneImageAction}
-                                     rpgMode={adventureSettings.rpgMode ?? false}
-                                     relationsMode={adventureSettings.relationsMode ?? true}
-                                     strategyMode={adventureSettings.strategyMode ?? false}
-                                     playerId={playerId}
-                                     playerName={stagedAdventureSettings.playerName || "Player"}
-                                     currentLanguage={currentLanguage}
-                                     pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
-                                 />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
-                      
                      {adventureSettings.rpgMode && (
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="familiars-accordion">
