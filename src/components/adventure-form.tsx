@@ -91,21 +91,21 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     mode: "onBlur",
   });
   
-  const initialValuesRef = React.useRef(JSON.stringify(initialValues));
+  const initialValuesRef = React.useRef(initialValues);
   
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        onSettingsChange(value as AdventureFormValues);
+        if (JSON.stringify(value) !== JSON.stringify(initialValuesRef.current)) {
+          onSettingsChange(value as AdventureFormValues);
+          initialValuesRef.current = value as AdventureFormValues;
+        }
     });
     return () => subscription.unsubscribe();
   }, [form.watch, onSettingsChange]);
 
   React.useEffect(() => {
-    const currentInitialValues = JSON.stringify(initialValues);
-    if (initialValuesRef.current !== currentInitialValues) {
-        form.reset(initialValues);
-        initialValuesRef.current = currentInitialValues;
-    }
+    form.reset(initialValues);
+    initialValuesRef.current = initialValues;
   }, [formPropKey, initialValues, form]);
 
 
