@@ -445,7 +445,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             )}
             
             {pointsOfInterest.map((poi, index) => {
-                if (!poi.position) return null; // Safety check
+                if (!poi.position) return null; // Do not render POI if it has no position
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
@@ -477,6 +477,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                             top: `${poi.position.y}%`,
                             transform: 'translate(-50%, -50%)',
                         }}
+                        onMouseDown={(e) => handleMouseDown(e, poi.id)}
                     >
                         <DropdownMenu>
                             <TooltipProvider>
@@ -492,7 +493,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                                 style={{
                                                     boxShadow: haloColor ? `0 0 12px 4px ${haloColor}` : undefined,
                                                 }}
-                                                onMouseDown={(e) => handleMouseDown(e, poi.id)}
                                             >
                                                 <IconComponent className="h-6 w-6 text-foreground/80 pointer-events-none" />
                                             </button>

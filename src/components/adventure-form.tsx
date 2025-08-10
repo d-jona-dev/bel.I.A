@@ -53,6 +53,15 @@ const characterSchema = z.object({
   details: z.string().min(1, "Les détails sont requis"),
 });
 
+const mapPointOfInterestSchema = z.object({
+    id: z.string().optional(),
+    name: z.string().min(1, "Le nom est requis"),
+    description: z.string().optional(),
+    icon: z.enum(['Castle', 'Mountain', 'Trees', 'Village', 'Shield', 'Landmark']),
+    ownerId: z.string().optional(),
+});
+
+
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const POINTS_PER_LEVEL_GAIN_FORM = 5;
 
@@ -76,7 +85,7 @@ const adventureFormSchema = z.object({
   playerWisdom: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerCharisma: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerGold: z.number().int().min(0).optional().default(0),
-  mapPointsOfInterest: z.array(z.any()).optional(),
+  mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
 });
 
 
@@ -359,7 +368,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                     <SelectContent>
                                                         <SelectItem value="player">{watchedValues.playerName || 'Joueur'}</SelectItem>
-                                                        {fields.map(char => (
+                                                        {watchedValues.characters?.map(char => (
                                                             <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -371,7 +380,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                             ))}
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: 'player' })}>
+                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player' })}>
                             <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                         </Button>
                     </Card>

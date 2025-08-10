@@ -180,7 +180,7 @@ export default function HistoiresPage() {
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
                   ...formValues,
-                  mapPointsOfInterest: formValues.mapPointsOfInterest as MapPointOfInterest[] || [], // Ensure POIs are saved
+                  mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})), // Ensure POIs are saved with ID
               },
               characters: (formValues.characters || []).map(c => ({
                   ...c, 
@@ -190,8 +190,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: formValues.world.substring(0, 30),
-              description: formValues.initialSituation.substring(0, 100),
+              title: formValues.world?.substring(0, 30) || editingStory.title,
+              description: formValues.initialSituation?.substring(0, 100) || editingStory.description,
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
@@ -211,13 +211,13 @@ export default function HistoiresPage() {
       const newId = uid();
       const newAdventureState = createNewAdventureState();
       
-      newAdventureState.adventureSettings.world = formValues.world;
-      newAdventureState.adventureSettings.initialSituation = formValues.initialSituation;
+      newAdventureState.adventureSettings.world = formValues.world || "";
+      newAdventureState.adventureSettings.initialSituation = formValues.initialSituation || "";
       newAdventureState.adventureSettings.playerName = formValues.playerName;
       newAdventureState.adventureSettings.rpgMode = formValues.rpgMode ?? true;
       newAdventureState.adventureSettings.relationsMode = formValues.relationsMode ?? true;
       newAdventureState.adventureSettings.strategyMode = formValues.strategyMode ?? true;
-      newAdventureState.adventureSettings.mapPointsOfInterest = formValues.mapPointsOfInterest as MapPointOfInterest[] || [];
+      newAdventureState.adventureSettings.mapPointsOfInterest = (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()}));
       newAdventureState.characters = (formValues.characters || []).map(c => ({
           ...c, id: c.id || uid(),
       } as Character));
