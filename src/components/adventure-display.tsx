@@ -63,10 +63,6 @@ interface AdventureDisplayProps {
     initialMessages: Message[];
     currentLanguage: string;
     onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => void;
-    onNewCharacters: (newChars: NewCharacterSchema[]) => void;
-    onCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
-    onAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
-    onRelationUpdates: (updates: RelationUpdateSchema[]) => void;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
@@ -85,7 +81,7 @@ interface AdventureDisplayProps {
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 

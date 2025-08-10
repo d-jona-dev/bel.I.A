@@ -11,11 +11,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard, BookImage, RefreshCw, Download } from 'lucide-react'; // Added Download
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, MapPin, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon } from 'lucide-react'; // Added Download
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from '@/ai/flows/generate-scene-image';
+import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,13 +41,14 @@ import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
 import { Avatar, AvatarFallback, AvatarImage as UIAvatarImage } from '@/components/ui/avatar'; 
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter } from '@/components/ui/card'; 
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; 
 import { cn } from "@/lib/utils";
 import { Separator } from '@/components/ui/separator';
 import type { SellingItemDetails } from './page'; 
 import { Input } from '@/components/ui/input'; 
 import { PoiSidebar } from '@/components/poi-sidebar';
 import { FamiliarSidebar } from '@/components/familiar-sidebar';
+import { Switch } from '@/components/ui/switch';
 
 
 interface PageStructureProps {
@@ -61,6 +62,9 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
+  handleToggleRpgMode: () => void;
+  handleToggleRelationsMode: () => void;
+  handleToggleStrategyMode: () => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -133,6 +137,9 @@ export function PageStructure({
   currentLanguage,
   fileInputRef,
   handleSettingsUpdate,
+  handleToggleRpgMode,
+  handleToggleRelationsMode,
+  handleToggleStrategyMode,
   handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters,
@@ -477,6 +484,34 @@ export function PageStructure({
              </SidebarHeader>
              <ScrollArea className="flex-1">
                  <SidebarContent className="p-4 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Modes de Jeu</CardTitle>
+                            <CardDescription className="text-xs">Activez ou désactivez les systèmes de jeu.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <Label className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</Label>
+                                </div>
+                                <Switch checked={adventureSettings.rpgMode} onCheckedChange={handleToggleRpgMode} />
+                            </div>
+                             <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <Label className="flex items-center gap-2 text-sm"><LinkIcon className="h-4 w-4"/> Mode Relations</Label>
+                                </div>
+                                <Switch checked={adventureSettings.relationsMode} onCheckedChange={handleToggleRelationsMode} />
+                            </div>
+                             <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <Label className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</Label>
+                                </div>
+                                <Switch checked={adventureSettings.strategyMode} onCheckedChange={handleToggleStrategyMode} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+
                      <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
                          <AccordionItem value="adventure-config-accordion">
                              <AccordionTrigger>
@@ -540,7 +575,7 @@ export function PageStructure({
                                                 <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                                             </div>
                                             
-                                            {adventureSettings.rpgMode && adventureSettings.playerGold !== undefined && (
+                                            {adventureSettings.playerGold !== undefined && (
                                                 <div className="mt-2 pt-2 border-t">
                                                     <Label className="text-sm font-medium flex items-center">
                                                         <Coins className="h-4 w-4 mr-1 text-amber-600"/>
@@ -766,34 +801,32 @@ export function PageStructure({
                         </Accordion>
                     )}
 
-                     {adventureSettings.relationsMode && (
-                        <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="characters-accordion">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <Users2 className="h-5 w-5" /> Personnages Secondaires
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-2">
-                                    <CharacterSidebar
-                                        characters={stagedCharacters}
-                                        onCharacterUpdate={handleCharacterUpdate}
-                                        onSaveNewCharacter={handleSaveNewCharacter}
-                                        onAddStagedCharacter={handleAddStagedCharacter}
-                                        onRelationUpdate={handleRelationUpdate}
-                                        generateImageAction={generateSceneImageAction}
-                                        rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
-                                        relationsMode={stagedAdventureSettings.enableRelationsMode ?? true}
-                                        strategyMode={stagedAdventureSettings.enableStrategyMode ?? false}
-                                        playerId={playerId}
-                                        playerName={stagedAdventureSettings.playerName || "Player"}
-                                        currentLanguage={currentLanguage}
-                                        pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                     )}
+                    <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="characters-accordion">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                    <UsersIcon className="h-5 w-5" /> Personnages Secondaires
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2">
+                                <CharacterSidebar
+                                    characters={stagedCharacters}
+                                    onCharacterUpdate={handleCharacterUpdate}
+                                    onSaveNewCharacter={handleSaveNewCharacter}
+                                    onAddStagedCharacter={handleAddStagedCharacter}
+                                    onRelationUpdate={handleRelationUpdate}
+                                    generateImageAction={generateSceneImageAction}
+                                    rpgMode={adventureSettings.rpgMode}
+                                    relationsMode={adventureSettings.relationsMode}
+                                    strategyMode={adventureSettings.strategyMode}
+                                    playerId={playerId}
+                                    playerName={stagedAdventureSettings.playerName || "Player"}
+                                    currentLanguage={currentLanguage}
+                                    pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                       
                      {adventureSettings.strategyMode && (
                         <Accordion type="single" collapsible className="w-full">
@@ -835,7 +868,7 @@ export function PageStructure({
                                         onSaveFamiliar={handleSaveFamiliar}
                                         onAddStagedFamiliar={handleAddStagedFamiliar}
                                         generateImageAction={generateSceneImageAction}
-                                        rpgMode={adventureSettings.rpgMode ?? false}
+                                        rpgMode={adventureSettings.rpgMode}
                                     />
                                 </AccordionContent>
                             </AccordionItem>

@@ -27,27 +27,12 @@ const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
-export type AdventureFormValues = {
-  world: string;
-  initialSituation: string;
-  characters: FormCharacterDefinition[];
-  enableRpgMode?: boolean;
-  enableRelationsMode?: boolean;
-  enableStrategyMode?: boolean;
-  playerName?: string;
-  playerClass?: string;
-  playerLevel?: number;
-  playerInitialAttributePoints?: number;
-  totalDistributableAttributePoints?: number;
-  playerStrength?: number;
-  playerDexterity?: number;
-  playerConstitution?: number;
-  playerIntelligence?: number;
-  playerWisdom?: number;
-  playerCharisma?: number;
-  playerGold?: number;
-  familiars?: Familiar[];
+export type AdventureFormValues = Partial<AdventureSettings> & {
+    characters: FormCharacterDefinition[];
+    usePlayerAvatar?: boolean;
+    // Les enable... sont maintenant pour la configuration, pas pour le live state
 };
+
 
 // Calculates base stats derived from attributes, before equipment
 const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Character>) => {
@@ -234,6 +219,7 @@ export default function Home() {
     rpgMode: true,
     relationsMode: true,
     strategyMode: true,
+    usePlayerAvatar: false,
     playerName: "Héros",
     playerClass: "Guerrier",
     playerLevel: 1,
@@ -369,7 +355,10 @@ export default function Home() {
   const [comicPages, setComicPages] = React.useState<ComicPage[]>([]);
 
   // Staged state (for form edits before applying)
-  const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
+  const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => ({
+      ...JSON.parse(JSON.stringify(baseAdventureSettings)),
+      characters: JSON.parse(JSON.stringify(baseCharacters.map(c => ({ id: c.id, name: c.name, details: c.details }))))
+  }));
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
   const [formPropKey, setFormPropKey] = React.useState(0);
 
@@ -1873,7 +1862,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
            return prev.map(c => {
                if (c.id === updatedCharacter.id) {
                    let charToUpdate = {...updatedCharacter};
-                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && stagedAdventureSettings.rpgMode) { 
+                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && adventureSettings.rpgMode) { 
                        if (charToUpdate.level === undefined) charToUpdate.level = 1;
                        if (charToUpdate.currentExp === undefined) charToUpdate.currentExp = 0;
                        if (charToUpdate.expToNextLevel === undefined || charToUpdate.expToNextLevel <= 0) {
@@ -1908,7 +1897,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                return c;
            });
        });
-   }, [stagedAdventureSettings.rpgMode]);
+   }, [adventureSettings.rpgMode]);
 
 
   const handleSaveNewCharacter = React.useCallback((character: Character) => {
@@ -1953,7 +1942,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         });
 
         setAdventureSettings(updater);
-        setStagedAdventureSettings(updater);
+        setStagedAdventureSettings(prev => ({...prev, familiars: updater(prev as AdventureSettings).familiars }));
 
         setTimeout(() => {
             toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
@@ -1970,7 +1959,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
 
     const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-    const newCharRPGMode = stagedAdventureSettings.rpgMode;
+    const newCharRPGMode = adventureSettings.rpgMode;
     const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
     const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
     const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
@@ -1983,7 +1972,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         initialAttributePoints: newCharInitialPoints,
         currentExp: newCharCurrentExp,
         expToNextLevel: newCharExpToNext,
-        locationId: stagedAdventureSettings.playerLocationId, // Add character at player's location
+        locationId: adventureSettings.playerLocationId, // Add character at player's location
         ...(newCharRPGMode ? {
             level: newCharLevel, characterClass: globalCharToAdd.characterClass ?? '', 
             hitPoints: globalCharToAdd.hitPoints ?? globalCharToAdd.maxHitPoints ?? 10, maxHitPoints: globalCharToAdd.maxHitPoints ?? 10,
@@ -1999,19 +1988,19 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
             initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
             }),
-            ...(stagedAdventureSettings.relationsMode ?? true ? {
+            ...(adventureSettings.relationsMode ?? true ? {
             affinity: globalCharToAdd.affinity ?? 50,
             relations: globalCharToAdd.relations || { [PLAYER_ID]: defaultRelation },
             } : { affinity: undefined, relations: undefined, })
     };
 
-    if ((stagedAdventureSettings.relationsMode ?? true) && newChar.relations && !newChar.relations[PLAYER_ID]) {
+    if ((adventureSettings.relationsMode ?? true) && newChar.relations && !newChar.relations[PLAYER_ID]) {
         newChar.relations[PLAYER_ID] = defaultRelation;
     }
     
     setStagedCharacters(prevStagedChars => {
         const updatedPrevChars = prevStagedChars.map(existingChar => {
-            if (stagedAdventureSettings.relationsMode ?? true) {
+            if (adventureSettings.relationsMode ?? true) {
                 const updatedRelations = { ...(existingChar.relations || {}), [newChar.id]: defaultRelation };
                 if (newChar.relations && !newChar.relations[existingChar.id]) {
                     newChar.relations[existingChar.id] = defaultRelation;
@@ -2266,7 +2255,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                   setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
                   setAdventureSettings(finalAdventureSettings);
                   setCharacters(validatedCharacters);
-                  setStagedAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
+                  setStagedAdventureSettings({
+                      ...JSON.parse(JSON.stringify(finalAdventureSettings)),
+                      characters: validatedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details }))
+                  });
                   setStagedCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
                   setNarrativeMessages(loadedData.narrative as Message[]);
                   setActiveCombat(loadedData.activeCombat);
@@ -2316,7 +2308,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             manaPoints: char.maxManaPoints, // Reset MP for allies on restart
             statusEffects: [], // Clear status effects
         })));
-        setStagedAdventureSettings(JSON.parse(JSON.stringify(newLiveAdventureSettings)));
+        setStagedAdventureSettings({
+            ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
+            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details }))
+        });
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
             currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
@@ -2346,59 +2341,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
               world: newSettingsFromForm.world,
               initialSituation: newSettingsFromForm.initialSituation,
               playerName: newSettingsFromForm.playerName,
-              relationsMode: newSettingsFromForm.enableRelationsMode,
+              usePlayerAvatar: newSettingsFromForm.usePlayerAvatar,
           };
           
-          const newRpgMode = newSettingsFromForm.enableRpgMode ?? false;
-          if (newRpgMode && !prevStagedSettings.rpgMode) { // RPG mode just enabled
-              Object.assign(newSettingsCandidate, rpgStateCache.current || {
-                  rpgMode: true,
-                  playerClass: newSettingsFromForm.playerClass || "Aventurier",
-                  playerLevel: newSettingsFromForm.playerLevel || 1,
-                  playerInitialAttributePoints: newSettingsFromForm.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
-                  playerStrength: newSettingsFromForm.playerStrength,
-                  playerDexterity: newSettingsFromForm.playerDexterity,
-                  playerConstitution: newSettingsFromForm.playerConstitution,
-                  playerIntelligence: newSettingsFromForm.playerIntelligence,
-                  playerWisdom: newSettingsFromForm.playerWisdom,
-                  playerCharisma: newSettingsFromForm.playerCharisma,
-                  playerGold: newSettingsFromForm.playerGold,
-              });
-          } else if (!newRpgMode && prevStagedSettings.rpgMode) { // RPG mode just disabled
-              rpgStateCache.current = {
-                  rpgMode: true,
-                  playerClass: prevStagedSettings.playerClass,
-                  playerLevel: prevStagedSettings.playerLevel,
-                  playerCurrentHp: prevStagedSettings.playerCurrentHp,
-                  playerMaxHp: prevStagedSettings.playerMaxHp,
-                  playerCurrentMp: prevStagedSettings.playerCurrentMp,
-                  playerMaxMp: prevStagedSettings.playerMaxMp,
-                  playerCurrentExp: prevStagedSettings.playerCurrentExp,
-                  playerExpToNextLevel: prevStagedSettings.playerExpToNextLevel,
-                  playerInventory: prevStagedSettings.playerInventory,
-                  playerGold: prevStagedSettings.playerGold,
-                  playerInitialAttributePoints: prevStagedSettings.playerInitialAttributePoints,
-                  playerStrength: prevStagedSettings.playerStrength,
-                  playerDexterity: prevStagedSettings.playerDexterity,
-                  playerConstitution: prevStagedSettings.playerConstitution,
-                  playerIntelligence: prevStagedSettings.playerIntelligence,
-                  playerWisdom: prevStagedSettings.playerWisdom,
-                  playerCharisma: prevStagedSettings.playerCharisma,
-                  playerArmorClass: prevStagedSettings.playerArmorClass,
-                  playerAttackBonus: prevStagedSettings.playerAttackBonus,
-                  playerDamageBonus: prevStagedSettings.playerDamageBonus,
-                  equippedItemIds: prevStagedSettings.equippedItemIds,
-                  playerSkills: prevStagedSettings.playerSkills,
-                  familiars: prevStagedSettings.familiars,
-              };
-               const fieldsToNullify: (keyof AdventureSettings)[] = Object.keys(rpgStateCache.current) as (keyof AdventureSettings)[];
-               fieldsToNullify.forEach(field => {
-                   (newSettingsCandidate as any)[field] = undefined;
-               });
-               newSettingsCandidate.rpgMode = false;
-          } else if (newRpgMode) { // RPG mode remains on, update values
+          if (newSettingsFromForm.rpgMode) {
               Object.assign(newSettingsCandidate, {
-                  rpgMode: true,
                   playerClass: newSettingsFromForm.playerClass,
                   playerLevel: newSettingsFromForm.playerLevel,
                   playerInitialAttributePoints: newSettingsFromForm.playerInitialAttributePoints,
@@ -2412,27 +2359,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
               });
           }
   
-          const newStrategyMode = newSettingsFromForm.enableStrategyMode ?? false;
-          if (newStrategyMode && !prevStagedSettings.strategyMode) { // Strategy just enabled
-               Object.assign(newSettingsCandidate, strategyStateCache.current || {
-                  strategyMode: true,
-                  mapPointsOfInterest: baseAdventureSettings.mapPointsOfInterest,
-                  mapImageUrl: baseAdventureSettings.mapImageUrl,
-                  playerLocationId: baseAdventureSettings.playerLocationId,
-              });
-          } else if (!newStrategyMode && prevStagedSettings.strategyMode) { // Strategy just disabled
-              strategyStateCache.current = {
-                  strategyMode: true,
-                  mapPointsOfInterest: prevStagedSettings.mapPointsOfInterest,
-                  mapImageUrl: prevStagedSettings.mapImageUrl,
-                  playerLocationId: prevStagedSettings.playerLocationId,
-              };
-              newSettingsCandidate.strategyMode = false;
-              newSettingsCandidate.mapPointsOfInterest = undefined;
-              newSettingsCandidate.mapImageUrl = undefined;
-              newSettingsCandidate.playerLocationId = undefined;
-          } else {
-               newSettingsCandidate.strategyMode = newStrategyMode;
+          if(newSettingsFromForm.mapPointsOfInterest) {
+              newSettingsCandidate.mapPointsOfInterest = newSettingsFromForm.mapPointsOfInterest;
           }
 
           if (newSettingsCandidate.rpgMode) {
@@ -2440,13 +2368,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             Object.assign(newSettingsCandidate, effectiveStats);
           }
           
-          return newSettingsCandidate as AdventureSettings;
+          return newSettingsCandidate as AdventureFormValues;
       });
 
     setStagedCharacters(prevStagedChars => {
       const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-      const newRPGMode = newSettingsFromForm.enableRpgMode ?? false;
-      const newRelationsMode = newSettingsFromForm.enableRelationsMode ?? true;
+      const newRPGMode = stagedAdventureSettings.rpgMode;
+      const newRelationsMode = stagedAdventureSettings.relationsMode;
       const existingCharsMap = new Map(prevStagedChars.map(sc => [sc.id, sc]));
 
       let updatedCharsList: Character[] = newSettingsFromForm.characters.map(formDef => {
@@ -2520,32 +2448,34 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       if (JSON.stringify(prevStagedChars) !== JSON.stringify(updatedCharsList)) { return updatedCharsList; }
       return prevStagedChars;
     });
-  }, [currentLanguage, stagedAdventureSettings.playerLocationId, baseAdventureSettings.mapPointsOfInterest, baseAdventureSettings.mapImageUrl, baseAdventureSettings.playerLocationId]);
+  }, [currentLanguage, stagedAdventureSettings.playerLocationId, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode]);
 
   const handleApplyStagedChanges = React.useCallback(() => {
-    setAdventureSettings(prevLiveSettings => {
-        const initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
-        
-        let newLiveSettings = {
-            ...prevLiveSettings, // Start with current live settings to preserve mode switches
-            ...JSON.parse(JSON.stringify(stagedAdventureSettings)) // Overwrite with form data
-        };
+    // Preserve the live state of the mode switches
+    const liveModes = {
+        rpgMode: adventureSettings.rpgMode,
+        relationsMode: adventureSettings.relationsMode,
+        strategyMode: adventureSettings.strategyMode,
+    };
 
-        // Explicitly preserve the mode switches from the live state
-        newLiveSettings.rpgMode = prevLiveSettings.rpgMode;
-        newLiveSettings.relationsMode = prevLiveSettings.relationsMode;
-        newLiveSettings.strategyMode = prevLiveSettings.strategyMode;
+    let newLiveSettings = {
+        ...adventureSettings, // Start with current live settings
+        ...JSON.parse(JSON.stringify(stagedAdventureSettings)), // Overwrite with form data
+        ...liveModes // Restore the live mode switch states
+    };
 
-        if (newLiveSettings.rpgMode && initialSituationChanged) {
+    if (newLiveSettings.rpgMode) {
+        const effectiveStats = calculateEffectiveStats(newLiveSettings);
+        Object.assign(newLiveSettings, effectiveStats);
+        if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
             newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
             newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
             newLiveSettings.playerCurrentExp = 0;
         }
-
-        setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
-        return newLiveSettings;
-    });
-
+    }
+    
+    setAdventureSettings(newLiveSettings);
+    setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
     setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
     setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters))); 
 
@@ -2555,6 +2485,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             const newCombatants = prevCombat.combatants.map(c => {
                 if (c.characterId === PLAYER_ID) {
                     return { ...c, name: stagedAdventureSettings.playerName || "Player" };
+                }
+                const stagedChar = stagedCharacters.find(sc => sc.id === c.characterId);
+                if (stagedChar) {
+                    return { ...c, name: stagedChar.name };
                 }
                 return c;
             });
@@ -2572,12 +2506,18 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setTimeout(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
     }, 0);
-  }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings.initialSituation, adventureSettings.rpgMode, activeCombat]);
+  }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings, activeCombat]);
 
 
-  const handleToggleStrategyMode = () => {};
-  const handleToggleRpgMode = () => {};
-  const handleToggleRelationsMode = () => {};
+  const handleToggleStrategyMode = () => {
+      setAdventureSettings(prev => ({ ...prev, strategyMode: !prev.strategyMode }));
+  };
+  const handleToggleRpgMode = () => {
+      setAdventureSettings(prev => ({ ...prev, rpgMode: !prev.rpgMode }));
+  };
+  const handleToggleRelationsMode = () => {
+      setAdventureSettings(prev => ({ ...prev, relationsMode: !prev.relationsMode }));
+  };
 
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
@@ -2830,30 +2770,32 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? (stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM
-                        : 0;
+                        ? ((stagedAdventureSettings.playerLevel - 1) * POINTS_PER_LEVEL_GAIN_FORM) + 5
+                        : 5;
     const totalDistributable = creationPoints + levelPoints;
 
 
     return {
       world: stagedAdventureSettings.world,
       initialSituation: stagedAdventureSettings.initialSituation,
-      playerName: stagedAdventureSettings.playerName,
-      enableRpgMode: stagedAdventureSettings.rpgMode,
-      enableRelationsMode: stagedAdventureSettings.relationsMode ?? true,
-      enableStrategyMode: stagedAdventureSettings.strategyMode ?? true,
       characters: formCharacters,
-      playerClass: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerClass : undefined,
-      playerLevel: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerLevel : undefined,
-      playerInitialAttributePoints: stagedAdventureSettings.rpgMode ? creationPoints : undefined,
-      totalDistributableAttributePoints: stagedAdventureSettings.rpgMode ? totalDistributable : undefined,
-      playerStrength: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerDexterity: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerConstitution: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerIntelligence: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerWisdom: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerCharisma: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE : undefined,
-      playerGold: stagedAdventureSettings.rpgMode ? stagedAdventureSettings.playerGold : undefined,
+      usePlayerAvatar: stagedAdventureSettings.usePlayerAvatar,
+      rpgMode: stagedAdventureSettings.rpgMode,
+      relationsMode: stagedAdventureSettings.relationsMode,
+      strategyMode: stagedAdventureSettings.strategyMode,
+      mapPointsOfInterest: stagedAdventureSettings.mapPointsOfInterest,
+      playerName: stagedAdventureSettings.playerName,
+      playerClass: stagedAdventureSettings.playerClass,
+      playerLevel: stagedAdventureSettings.playerLevel,
+      playerInitialAttributePoints: creationPoints,
+      totalDistributableAttributePoints: totalDistributable,
+      playerStrength: stagedAdventureSettings.playerStrength,
+      playerDexterity: stagedAdventureSettings.playerDexterity,
+      playerConstitution: stagedAdventureSettings.playerConstitution,
+      playerIntelligence: stagedAdventureSettings.playerIntelligence,
+      playerWisdom: stagedAdventureSettings.playerWisdom,
+      playerCharisma: stagedAdventureSettings.playerCharisma,
+      playerGold: stagedAdventureSettings.playerGold,
       familiars: stagedAdventureSettings.familiars || [],
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
@@ -3191,13 +3133,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       currentLanguage={currentLanguage}
       fileInputRef={fileInputRef}
       handleSettingsUpdate={handleSettingsUpdate}
+      handleToggleRpgMode={handleToggleRpgMode}
+      handleToggleRelationsMode={handleToggleRelationsMode}
+      handleToggleStrategyMode={handleToggleStrategyMode}
       handleNarrativeUpdate={handleNarrativeUpdate}
       handleCharacterUpdate={handleCharacterUpdate}
       handleNewCharacters={handleNewCharacters}
       handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
       handleAffinityUpdates={handleAffinityUpdates}
       handleRelationUpdate={(charId, targetId, newRelation) => {
-           const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+           const currentRelationsMode = adventureSettings.relationsMode ?? true;
            if (!currentRelationsMode) return;
            setStagedCharacters(prevChars =>
              prevChars.map(char => {

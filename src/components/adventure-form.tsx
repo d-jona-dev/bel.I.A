@@ -17,24 +17,27 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings } from '@/types';
+import type { AdventureSettings, MapPointOfInterest } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
-export type AdventureFormValues = Partial<AdventureSettings> & {
+export type AdventureFormValues = Partial<Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'strategyMode'>> & {
     characters: FormCharacterDefinition[];
-    enableRpgMode?: boolean;
-    enableRelationsMode?: boolean;
-    enableStrategyMode?: boolean;
+    usePlayerAvatar?: boolean;
+    // These are for form control only
+    rpgMode?: boolean;
+    relationsMode?: boolean;
+    strategyMode?: boolean;
 };
 
 
@@ -51,9 +54,10 @@ const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0),
-  enableRpgMode: z.boolean().default(false).optional(),
-  enableRelationsMode: z.boolean().default(true).optional(),
-  enableStrategyMode: z.boolean().default(true).optional(),
+  rpgMode: z.boolean().default(false).optional(),
+  relationsMode: z.boolean().default(true).optional(),
+  strategyMode: z.boolean().default(true).optional(),
+  usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
@@ -66,6 +70,7 @@ const adventureFormSchema = z.object({
   playerWisdom: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerCharisma: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerGold: z.number().int().min(0).optional().default(0),
+  mapPointsOfInterest: z.array(z.any()).optional(),
 });
 
 
@@ -80,9 +85,21 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   
   const form = useForm<AdventureFormValues>({
     resolver: zodResolver(adventureFormSchema),
-    values: initialValues,
+    defaultValues: initialValues,
     mode: "onBlur",
   });
+  
+  const formRef = React.useRef(form);
+  formRef.current = form;
+  
+  React.useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+        if(type === 'change') {
+            onSettingsChange(value as AdventureFormValues);
+        }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, onSettingsChange]);
 
   React.useEffect(() => {
     form.reset(initialValues);
@@ -93,16 +110,11 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     control: form.control,
     name: "characters",
   });
-
-  const handleSettingsBlur = () => {
-    form.handleSubmit(onSettingsChange)();
-  };
-
-  const handleSwitchChange = (field: keyof AdventureFormValues, checked: boolean) => {
-    form.setValue(field, checked, { shouldDirty: true });
-    // Directly trigger the update on parent for immediate UI change
-    onSettingsChange(form.getValues());
-  }
+  
+  const { fields: poiFields, append: appendPoi, remove: removePoi } = useFieldArray({
+    control: form.control,
+    name: "mapPointsOfInterest"
+  });
 
 
   const handleLoadPrompt = () => {
@@ -115,9 +127,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             { name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
             { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
-        enableRpgMode: true,
-        enableRelationsMode: true,
-        enableStrategyMode: true,
+        rpgMode: true,
+        relationsMode: true,
+        strategyMode: true,
         playerName: "Héros",
         playerClass: "Étudiant Combattant",
         playerLevel: 1,
@@ -130,16 +142,27 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         playerCharisma: 8,
         playerGold: 50,
     };
+    form.reset(loadedData);
     onSettingsChange(loadedData);
     toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
   };
   
   const watchedValues = form.watch();
-  const isRpgModeEnabled = watchedValues.enableRpgMode;
-  const isRelationsModeEnabled = watchedValues.enableRelationsMode;
-  const isStrategyModeEnabled = watchedValues.enableStrategyMode;
+  const isRpgModeEnabled = watchedValues.rpgMode;
+  const isRelationsModeEnabled = watchedValues.relationsMode;
+  const isStrategyModeEnabled = watchedValues.strategyMode;
+  const usePlayerAvatar = watchedValues.usePlayerAvatar;
 
   const ATTRIBUTES: (keyof AdventureFormValues)[] = ['playerStrength', 'playerDexterity', 'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma'];
+  
+  React.useEffect(() => {
+    const level = form.getValues('playerLevel') || 1;
+    const initialPoints = form.getValues('playerInitialAttributePoints') || 10;
+    const levelPoints = (level > 1) ? ((level - 1) * POINTS_PER_LEVEL_GAIN_FORM) : 0;
+    const totalPoints = initialPoints + levelPoints + (level === 1 ? 5 : 0);
+    form.setValue('totalDistributableAttributePoints', totalPoints);
+  }, [watchedValues.playerLevel, watchedValues.playerInitialAttributePoints, form]);
+  
   const spentPoints = ATTRIBUTES.reduce((acc, attr) => {
     const value = watchedValues[attr] as number | undefined;
     return acc + ((value || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
@@ -152,12 +175,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     const change = value - oldValue;
     
     if (change > 0 && change > remainingPoints) {
-      // Trying to spend more points than available
       value = oldValue + remainingPoints;
     }
     
     form.setValue(field, value);
-    // No blur needed here, change will be registered. The validation happens on blur.
   }
 
   const handleAttributeBlur = (field: keyof AdventureFormValues) => {
@@ -166,7 +187,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
           value = BASE_ATTRIBUTE_VALUE_FORM;
           form.setValue(field, value);
       }
-      handleSettingsBlur();
   }
 
 
@@ -180,31 +200,10 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
                 </Button>
             </div>
-
-            <FormField
-              control={form.control}
-              name="playerName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2"><User className="h-4 w-4"/> Nom du Joueur</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Nom du héros"
-                      {...field}
-                      value={field.value || ""}
-                      className="bg-background border"
-                      onBlur={handleSettingsBlur}
-                    />
-                  </FormControl>
-                   <FormDescription>Le nom que le joueur portera dans l'aventure.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             
             <FormField
               control={form.control}
-              name="enableStrategyMode"
+              name="strategyMode"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
                   <div className="space-y-0.5">
@@ -216,7 +215,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => handleSwitchChange('enableStrategyMode', checked)}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -224,14 +223,44 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             />
 
             {isStrategyModeEnabled && (
-                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
-                     <p className="text-sm text-muted-foreground">La gestion détaillée des points d'intérêt sera bientôt disponible ici.</p>
-                 </Card>
+                <Card className="p-4 space-y-3 border-dashed bg-muted/20">
+                     <FormDescription>Configurez les points d'intérêt de votre aventure.</FormDescription>
+                    <ScrollArea className="h-48 pr-3">
+                        {poiFields.map((item, index) => (
+                           <Card key={item.id} className="relative pt-6 bg-background border mb-2">
+                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePoi(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                               <CardContent className="space-y-2 p-3">
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
+                                     <FormItem>
+                                       <FormLabel>Type</FormLabel>
+                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                         <SelectContent>
+                                           <SelectItem value="Village">Ville</SelectItem>
+                                           <SelectItem value="Trees">Forêt</SelectItem>
+                                           <SelectItem value="Shield">Mine</SelectItem>
+                                           <SelectItem value="Mountain">Montagne</SelectItem>
+                                           <SelectItem value="Castle">Château</SelectItem>
+                                           <SelectItem value="Landmark">Point d'intérêt</SelectItem>
+                                         </SelectContent>
+                                       </Select>
+                                     </FormItem>
+                                   )} />
+                               </CardContent>
+                           </Card>
+                        ))}
+                    </ScrollArea>
+                    <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village' })}>
+                        <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
+                    </Button>
+                </Card>
             )}
 
             <FormField
               control={form.control}
-              name="enableRelationsMode"
+              name="relationsMode"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
                   <div className="space-y-0.5">
@@ -243,7 +272,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                      <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => handleSwitchChange('enableRelationsMode', checked)}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -258,7 +287,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
              <FormField
               control={form.control}
-              name="enableRpgMode"
+              name="rpgMode"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
                   <div className="space-y-0.5">
@@ -270,7 +299,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                   <FormControl>
                      <Switch
                       checked={field.value}
-                      onCheckedChange={(checked) => handleSwitchChange('enableRpgMode', checked)}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -280,33 +309,40 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             {isRpgModeEnabled && (
               <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                  <FormDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</FormDescription>
+                 <FormField
+                    control={form.control}
+                    name="usePlayerAvatar"
+                    render={({ field }) => (
+                        <FormItem className="space-y-3">
+                            <FormLabel>Personnage Joueur</FormLabel>
+                            <FormControl>
+                                <RadioGroup
+                                onValueChange={(value) => field.onChange(value === 'true')}
+                                defaultValue={String(field.value)}
+                                className="flex flex-col space-y-1"
+                                >
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl><RadioGroupItem value="false" /></FormControl>
+                                    <FormLabel className="font-normal">Créer un héros prédéfini pour cette histoire</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl><RadioGroupItem value="true" /></FormControl>
+                                    <FormLabel className="font-normal">Laisser le joueur utiliser son propre avatar</FormLabel>
+                                </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                        </FormItem>
+                    )}
+                 />
+
+                {!usePlayerAvatar && (
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                        <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Joueur</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={form.control} name="playerClass" render={({ field }) => (<FormItem><FormLabel>Classe du Joueur</FormLabel><FormControl><Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
+                    </div>
+                )}
                  <div className="grid grid-cols-2 gap-4">
-                     <FormField
-                      control={form.control}
-                      name="playerClass"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Classe du Joueur</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} className="bg-background border" onBlur={handleSettingsBlur}/>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="playerLevel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Niveau de départ</FormLabel>
-                          <FormControl>
-                            <Input type="number" min="1" {...field} value={field.value || 1} className="bg-background border" onChange={e => field.onChange(Number(e.target.value))} onBlur={handleSettingsBlur}/>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                     <FormField control={form.control} name="playerLevel" render={({ field }) => (<FormItem><FormLabel>Niveau de départ</FormLabel><FormControl><Input type="number" min="1" {...field} value={field.value || 1} onChange={e => field.onChange(Number(e.target.value))} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
                  </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Dices className="h-4 w-4"/> Attributs du Joueur</Label>
@@ -333,11 +369,16 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                     <FormControl>
                                         <Input 
                                             type="number" 
-                                            min={BASE_ATTRIBUTE_VALUE_FORM}
                                             {...field}
                                             value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
-                                            onChange={e => handleAttributeChange(attr as any, Number(e.target.value))}
-                                            onBlur={() => handleAttributeBlur(attr as any)}
+                                            onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                            onBlur={(e) => {
+                                                let value = parseInt(e.target.value, 10);
+                                                if (isNaN(value) || value < BASE_ATTRIBUTE_VALUE_FORM) {
+                                                    value = BASE_ATTRIBUTE_VALUE_FORM;
+                                                }
+                                                handleAttributeChange(attr as any, value);
+                                            }}
                                             className="h-8"
                                         />
                                     </FormControl>
@@ -362,7 +403,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       {...field}
                       rows={4}
                       className="bg-background border"
-                      onBlur={handleSettingsBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -382,7 +422,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       {...field}
                       rows={3}
                       className="bg-background border"
-                      onBlur={handleSettingsBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -415,7 +454,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                             <FormItem>
                               <FormLabel>Nom du Personnage</FormLabel>
                               <FormControl>
-                                <Input placeholder="Nom" {...field} className="bg-background border" onBlur={handleSettingsBlur}/>
+                                <Input placeholder="Nom" {...field} className="bg-background border"/>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -433,7 +472,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                   {...field}
                                   rows={3}
                                   className="bg-background border"
-                                  onBlur={handleSettingsBlur}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -447,7 +485,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => append({ name: "", details: "" })}
+                      onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "" })}
                       className="mt-2 w-full"
                     >
                       <PlusCircle className="mr-2 h-4 w-4" />

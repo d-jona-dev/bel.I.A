@@ -193,6 +193,43 @@ export interface Familiar {
     _lastSaved?: number;
 }
 
+export interface AdventureSettings {
+  world: string;
+  initialSituation: string;
+  rpgMode: boolean;
+  relationsMode: boolean;
+  strategyMode: boolean;
+  usePlayerAvatar?: boolean; // New setting
+  playerName?: string;
+  playerClass?: string;
+  playerLevel?: number;
+  playerInitialAttributePoints?: number;
+  playerStrength?: number;
+  playerDexterity?: number;
+  playerConstitution?: number;
+  playerIntelligence?: number;
+  playerWisdom?: number;
+  playerCharisma?: number;
+  playerCurrentHp?: number;
+  playerMaxHp?: number;
+  playerCurrentMp?: number;
+  playerMaxMp?: number;
+  playerCurrentExp?: number;
+  playerExpToNextLevel?: number;
+  playerGold?: number;
+  playerInventory?: PlayerInventoryItem[];
+  playerSkills?: PlayerSkill[];
+  equippedItemIds?: {
+    weapon: string | null;
+    armor: string | null;
+    jewelry: string | null;
+  };
+  familiars?: Familiar[];
+  mapPointsOfInterest?: MapPointOfInterest[];
+  mapImageUrl?: string | null;
+  playerLocationId?: string;
+}
+
 export interface ModelDefinition {
     id: string;
     name: string;
