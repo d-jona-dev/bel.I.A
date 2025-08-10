@@ -101,6 +101,11 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     mode: "onBlur",
   });
 
+  React.useEffect(() => {
+    form.reset(initialValues);
+  }, [formPropKey, initialValues, form]);
+
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "characters",

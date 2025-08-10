@@ -54,6 +54,7 @@ export default function HistoiresPage() {
   const [isLoadingCharacters, setIsLoadingCharacters] = React.useState(true);
   const [storyToDelete, setStoryToDelete] = React.useState<SavedStory | null>(null);
   const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -120,11 +121,27 @@ export default function HistoiresPage() {
           <Button variant="outline" disabled>
             <Upload className="mr-2 h-4 w-4" /> Importer
           </Button>
-          <Link href="/">
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
-            </Button>
-          </Link>
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[80vw] lg:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Créer une Nouvelle Aventure</DialogTitle>
+                    <DialogDescription>
+                        Configurez tous les aspects de votre nouvelle histoire.
+                    </DialogDescription>
+                </DialogHeader>
+                {/* Future: Add AdventureForm for creation here */}
+                <p className="py-8 text-center text-muted-foreground">Le formulaire de création d'aventure sera bientôt disponible ici.</p>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
+                    <Button disabled>Créer l'Histoire</Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -148,16 +165,20 @@ export default function HistoiresPage() {
                     </Button>
                      <Dialog open={editingStory?.id === story.id} onOpenChange={(open) => !open && setEditingStory(null)}>
                         <DialogTrigger asChild>
-                           <Button variant="ghost" size="sm">
+                           <Button variant="ghost" size="sm" onClick={() => setEditingStory(story)}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifier
                             </Button>
                         </DialogTrigger>
-                        {editingStory?.id === story.id && (
-                           <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Modifier l'Histoire</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
+                        <DialogContent className="max-w-[80vw] lg:max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle>Modifier l'Histoire</DialogTitle>
+                                <DialogDescription>
+                                    Ajustez les détails de votre aventure.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 max-h-[60vh] overflow-y-auto">
+                            {editingStory?.id === story.id && (
+                                <div className="space-y-4">
                                      <div className="space-y-2">
                                         <Label htmlFor="edit-story-title">Titre</Label>
                                         <Input id="edit-story-title" value={editingStory.title} onChange={e => setEditingStory({...editingStory!, title: e.target.value})} />
@@ -166,13 +187,15 @@ export default function HistoiresPage() {
                                         <Label htmlFor="edit-story-desc">Description</Label>
                                         <Textarea id="edit-story-desc" value={editingStory.description} onChange={e => setEditingStory({...editingStory!, description: e.target.value})} rows={4}/>
                                      </div>
+                                      <p className="text-center text-muted-foreground py-4">Le formulaire complet d'édition d'aventure sera ici.</p>
                                 </div>
-                               <DialogFooter>
-                                  <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
-                                  <Button onClick={handleUpdateStory}>Enregistrer</Button>
-                               </DialogFooter>
-                           </DialogContent>
-                        )}
+                            )}
+                            </div>
+                           <DialogFooter>
+                              <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
+                              <Button onClick={handleUpdateStory}>Enregistrer</Button>
+                           </DialogFooter>
+                        </DialogContent>
                     </Dialog>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
