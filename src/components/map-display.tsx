@@ -444,7 +444,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 </TooltipProvider>
             )}
             
-            {pointsOfInterest.map((poi, index) => {
+            {pointsOfInterest.map((poi) => {
                 if (!poi.position) return null;
                 
                 const IconComponent = getIconForPoi(poi);
@@ -459,7 +459,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 }
 
                 const hasResources = (poi.resources?.length ?? 0) > 0;
-                const canCollect = isPlayerOwned && hasResources;
+                const canCollectNow = isPlayerOwned && hasResources;
                 const isAttackable = !isPlayerOwned && poi.actions?.includes('attack');
                 
                 const level = poi.level || 1;
@@ -471,7 +471,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
                 return (
                     <div
-                        key={poi.id ?? `map-poi-${index}`}
+                        key={poi.id ?? `map-poi-${poi.name}`}
                         className="absolute z-20"
                         style={{
                             left: `${poi.position.x}%`,
@@ -536,7 +536,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     </DropdownMenuItem>
                                 )}
                                 {poi.actions?.includes('collect') && (
-                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollect}>
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollectNow}>
                                         <Briefcase className="mr-2 h-4 w-4" />
                                         <span>Collecter les ressources</span>
                                     </DropdownMenuItem>
