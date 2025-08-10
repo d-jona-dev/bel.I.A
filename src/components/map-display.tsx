@@ -388,7 +388,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             </div>
 
             {/* Render Player Avatar */}
-            {playerCurrentPoi && (
+            {playerCurrentPoi && playerCurrentPoi.position && (
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -417,7 +417,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
-                const owner = characters.find(c => c.id === poi.ownerId);
+                const owner = isPlayerOwned ? { name: playerName, factionColor: '#FFD700' } : characters.find(c => c.id === poi.ownerId);
                 let haloColor: string | undefined = '#808080'; // Default grey
                 if (isPlayerOwned) {
                     haloColor = '#FFD700'; // Gold for player
