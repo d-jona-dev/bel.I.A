@@ -91,11 +91,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     mode: "onBlur",
   });
   
-  const formRef = React.useRef(form);
-  formRef.current = form;
+  const initialValuesRef = React.useRef(JSON.stringify(initialValues));
   
-  // This useEffect will now only re-subscribe to watch when onSettingsChange changes.
-  // It won't cause a loop because the function reference from the parent should be stable.
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
         onSettingsChange(value as AdventureFormValues);
@@ -103,12 +100,13 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     return () => subscription.unsubscribe();
   }, [form.watch, onSettingsChange]);
 
-  // This useEffect resets the form only when the key or initial values *actually* change.
-  // Using JSON.stringify for a deep comparison to prevent unnecessary resets.
-  const initialValuesString = JSON.stringify(initialValues);
   React.useEffect(() => {
-    form.reset(initialValues);
-  }, [formPropKey, initialValuesString, form]);
+    const currentInitialValues = JSON.stringify(initialValues);
+    if (initialValuesRef.current !== currentInitialValues) {
+        form.reset(initialValues);
+        initialValuesRef.current = currentInitialValues;
+    }
+  }, [formPropKey, initialValues, form]);
 
 
   const { fields, append, remove } = useFieldArray({
@@ -123,8 +121,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
 
 
   const handleLoadPrompt = () => {
-    // This is a placeholder for a more complex implementation.
-    // In a real scenario, this would likely fetch from an API or a predefined list.
     const loadedData: AdventureFormValues = {
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
@@ -174,23 +170,21 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   const totalPoints = watchedValues.totalDistributableAttributePoints || 0;
   const remainingPoints = totalPoints - spentPoints;
   
-  const handleAttributeChange = (field: keyof AdventureFormValues, value: number) => {
-    const oldValue = form.getValues(field) as number || BASE_ATTRIBUTE_VALUE_FORM;
-    const change = value - oldValue;
-    
-    if (change > 0 && change > remainingPoints) {
-      value = oldValue + remainingPoints;
-    }
-    
-    form.setValue(field, value, { shouldDirty: true });
-  }
-
   const handleAttributeBlur = (field: keyof AdventureFormValues) => {
       let value = form.getValues(field) as number;
       if (isNaN(value) || value < BASE_ATTRIBUTE_VALUE_FORM) {
           value = BASE_ATTRIBUTE_VALUE_FORM;
       }
-      handleAttributeChange(field, value);
+      
+      const oldValue = initialValues[field] !== undefined ? (initialValues[field] as number) : BASE_ATTRIBUTE_VALUE_FORM;
+      const change = value - oldValue;
+      const currentSpentExcludingThis = spentPoints - (oldValue - BASE_ATTRIBUTE_VALUE_FORM);
+      
+      if (currentSpentExcludingThis + (value - BASE_ATTRIBUTE_VALUE_FORM) > totalPoints) {
+        value = totalPoints - currentSpentExcludingThis + BASE_ATTRIBUTE_VALUE_FORM;
+      }
+      
+      form.setValue(field, value, { shouldDirty: true });
   }
 
 
@@ -202,7 +196,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             <Card className="p-4">
                 <CardHeader className="p-0 pb-4">
                      <CardTitle className="text-base">Modes de Jeu</CardTitle>
-                     <FormDescription>Activez ou désactivez les systèmes de jeu.</FormDescription>
+                     <FormDescription>Activez ou désactivez les systèmes de jeu pour la configuration initiale de l'aventure.</FormDescription>
                 </CardHeader>
                 <CardContent className="p-0 space-y-4">
                     <FormField
@@ -250,59 +244,43 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                 </Button>
             </div>
             
-            {isStrategyModeEnabled && (
-                <Card className="p-4 space-y-3 border-dashed bg-muted/20">
-                     <FormDescription>Configurez les points d'intérêt de votre aventure.</FormDescription>
-                    <ScrollArea className="h-48 pr-3">
-                        {poiFields.map((item, index) => (
-                           <Card key={item.id} className="relative pt-6 bg-background border mb-2">
-                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePoi(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                               <CardContent className="space-y-2 p-3">
-                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
-                                     <FormItem>
-                                       <FormLabel>Type</FormLabel>
-                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                         <SelectContent>
-                                           <SelectItem value="Village">Ville</SelectItem>
-                                           <SelectItem value="Trees">Forêt</SelectItem>
-                                           <SelectItem value="Shield">Mine</SelectItem>
-                                           <SelectItem value="Mountain">Montagne</SelectItem>
-                                           <SelectItem value="Castle">Château</SelectItem>
-                                           <SelectItem value="Landmark">Point d'intérêt</SelectItem>
-                                         </SelectContent>
-                                       </Select>
-                                     </FormItem>
-                                   )} />
-                                   <FormField
-                                    control={form.control}
-                                    name={`mapPointsOfInterest.${index}.ownerId`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Propriétaire</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value={initialValues.playerName || 'player'}>{initialValues.playerName || 'Joueur'}</SelectItem>
-                                                    {fields.map(char => (
-                                                        <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </FormItem>
-                                    )}
-                                />
-                               </CardContent>
-                           </Card>
-                        ))}
-                    </ScrollArea>
-                    <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: initialValues.playerName || 'player' })}>
-                        <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
-                    </Button>
-                </Card>
-            )}
+            <FormField
+              control={form.control}
+              name="world"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monde</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Décrivez l'univers de votre aventure..."
+                      {...field}
+                      rows={4}
+                      className="bg-background border"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="initialSituation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Situation Initiale</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Comment commence l'aventure pour le héros ?"
+                      {...field}
+                      rows={3}
+                      className="bg-background border"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {isRpgModeEnabled && (
               <Card className="p-4 space-y-3 border-dashed bg-muted/20">
@@ -383,43 +361,59 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
               </Card>
             )}
 
-            <FormField
-              control={form.control}
-              name="world"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monde</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Décrivez l'univers de votre aventure..."
-                      {...field}
-                      rows={4}
-                      className="bg-background border"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="initialSituation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Situation Initiale</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Comment commence l'aventure pour le héros ?"
-                      {...field}
-                      rows={3}
-                      className="bg-background border"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isStrategyModeEnabled && (
+                <Card className="p-4 space-y-3 border-dashed bg-muted/20">
+                     <FormDescription>Configurez les points d'intérêt de votre aventure.</FormDescription>
+                    <ScrollArea className="h-48 pr-3">
+                        {poiFields.map((item, index) => (
+                           <Card key={item.id} className="relative pt-6 bg-background border mb-2">
+                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePoi(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                               <CardContent className="space-y-2 p-3">
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                                   <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
+                                     <FormItem>
+                                       <FormLabel>Type</FormLabel>
+                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                         <SelectContent>
+                                           <SelectItem value="Village">Ville</SelectItem>
+                                           <SelectItem value="Trees">Forêt</SelectItem>
+                                           <SelectItem value="Shield">Mine</SelectItem>
+                                           <SelectItem value="Mountain">Montagne</SelectItem>
+                                           <SelectItem value="Castle">Château</SelectItem>
+                                           <SelectItem value="Landmark">Point d'intérêt</SelectItem>
+                                         </SelectContent>
+                                       </Select>
+                                     </FormItem>
+                                   )} />
+                                   <FormField
+                                    control={form.control}
+                                    name={`mapPointsOfInterest.${index}.ownerId`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Propriétaire</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value={initialValues.playerName || 'player'}>{initialValues.playerName || 'Joueur'}</SelectItem>
+                                                    {fields.map(char => (
+                                                        <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                               </CardContent>
+                           </Card>
+                        ))}
+                    </ScrollArea>
+                    <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: initialValues.playerName || 'player' })}>
+                        <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
+                    </Button>
+                </Card>
+            )}
 
              <Accordion type="single" collapsible className="w-full border-t pt-4" defaultValue="character-definitions">
                <AccordionItem value="character-definitions">
