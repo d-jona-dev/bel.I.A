@@ -30,7 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
+import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 
 
 // Helper to generate a unique ID
@@ -93,11 +93,13 @@ export default function HistoiresPage() {
   
   const [storyToDelete, setStoryToDelete] = React.useState<SavedStory | null>(null);
   const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
-  const [newStoryFormValues, setNewStoryFormValues] = React.useState<AdventureFormValues>(getAdventureFormValues(null));
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [formPropKey, setFormPropKey] = React.useState(0);
   const importFileRef = React.useRef<HTMLInputElement>(null);
-  const [stagedEditFormValues, setStagedEditFormValues] = React.useState<AdventureFormValues | null>(null);
+  
+  const editFormRef = React.useRef<AdventureFormHandle>(null);
+  const createFormRef = React.useRef<AdventureFormHandle>(null);
 
 
   React.useEffect(() => {
@@ -168,15 +170,18 @@ export default function HistoiresPage() {
     URL.revokeObjectURL(url);
   };
   
-  const handleSaveChanges = () => {
-      if (editingStory && stagedEditFormValues) {
+  const handleSaveChanges = async () => {
+      if (editingStory && editFormRef.current) {
+          const formValues = await editFormRef.current.getFormData();
+          if (!formValues) return;
+
           const updatedState: SaveData = {
               ...editingStory.adventureState,
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
-                  ...stagedEditFormValues
+                  ...formValues
               },
-              characters: stagedEditFormValues.characters.map(c => ({
+              characters: formValues.characters.map(c => ({
                   ...c, 
                   id: c.id || uid(),
               } as Character))
@@ -184,8 +189,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: stagedEditFormValues.world.substring(0, 30),
-              description: stagedEditFormValues.initialSituation.substring(0, 100),
+              title: formValues.world.substring(0, 30),
+              description: formValues.initialSituation.substring(0, 100),
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
@@ -194,28 +199,31 @@ export default function HistoiresPage() {
           saveStories(updatedStories);
           toast({ title: "Histoire Mise à Jour", description: "Les modifications ont été sauvegardées." });
           setEditingStory(null);
-          setStagedEditFormValues(null);
       }
   };
   
-  const handleCreateNewStory = () => {
+  const handleCreateNewStory = async () => {
+      if (!createFormRef.current) return;
+      const formValues = await createFormRef.current.getFormData();
+      if (!formValues) return;
+      
       const newId = uid();
       const newAdventureState = createNewAdventureState();
       
-      newAdventureState.adventureSettings.world = newStoryFormValues.world;
-      newAdventureState.adventureSettings.initialSituation = newStoryFormValues.initialSituation;
-      newAdventureState.adventureSettings.playerName = newStoryFormValues.playerName;
-      newAdventureState.adventureSettings.rpgMode = newStoryFormValues.enableRpgMode;
-      newAdventureState.adventureSettings.relationsMode = newStoryFormValues.enableRelationsMode;
-      newAdventureState.adventureSettings.strategyMode = newStoryFormValues.enableStrategyMode;
-      newAdventureState.characters = (newStoryFormValues.characters || []).map(c => ({
+      newAdventureState.adventureSettings.world = formValues.world;
+      newAdventureState.adventureSettings.initialSituation = formValues.initialSituation;
+      newAdventureState.adventureSettings.playerName = formValues.playerName;
+      newAdventureState.adventureSettings.rpgMode = formValues.rpgMode ?? true;
+      newAdventureState.adventureSettings.relationsMode = formValues.relationsMode ?? true;
+      newAdventureState.adventureSettings.strategyMode = formValues.strategyMode ?? true;
+      newAdventureState.characters = (formValues.characters || []).map(c => ({
           ...c, id: c.id || uid(),
       } as Character));
 
       const newStory: SavedStory = {
           id: newId,
-          title: newStoryFormValues.world?.substring(0, 40) || "Nouvelle Histoire",
-          description: newStoryFormValues.initialSituation?.substring(0, 100) || "...",
+          title: formValues.world?.substring(0, 40) || "Nouvelle Histoire",
+          description: formValues.initialSituation?.substring(0, 100) || "...",
           date: new Date().toISOString().split('T')[0],
           adventureState: newAdventureState,
       };
@@ -290,13 +298,11 @@ export default function HistoiresPage() {
 
   const openEditDialog = (story: SavedStory) => {
     setFormPropKey(prev => prev + 1); 
-    setStagedEditFormValues(getAdventureFormValues(story));
     setEditingStory(story);
   }
   
   const openCreateDialog = () => {
     setFormPropKey(prev => prev + 1); 
-    setNewStoryFormValues(getAdventureFormValues(null));
     setIsCreateModalOpen(true);
   }
 
@@ -433,15 +439,15 @@ export default function HistoiresPage() {
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                   <AdventureForm
-                      key={formPropKey}
-                      initialValues={newStoryFormValues}
-                      onSettingsChange={setNewStoryFormValues}
+                      key={`create-${formPropKey}`}
+                      ref={createFormRef}
+                      initialValues={getAdventureFormValues(null)}
                   />
                 </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
                     <Button onClick={handleCreateNewStory}>Créer l'Histoire</Button>
-                </DialogFooter>
+                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
@@ -454,11 +460,11 @@ export default function HistoiresPage() {
                     </DialogDescription>
                 </DialogHeader>
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                    {editingStory && stagedEditFormValues && (
+                    {editingStory && (
                         <AdventureForm
-                           key={formPropKey}
-                           initialValues={stagedEditFormValues}
-                           onSettingsChange={(values) => setStagedEditFormValues(values)}
+                           key={`edit-${editingStory.id}-${formPropKey}`}
+                           ref={editFormRef}
+                           initialValues={getAdventureFormValues(editingStory)}
                         />
                     )}
                  </div>
