@@ -23,7 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -148,6 +148,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             playerWisdom: 8,
             playerCharisma: 8,
             playerGold: 50,
+            mapPointsOfInterest: [],
         };
         form.reset(loadedData);
         toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
@@ -357,7 +358,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value={initialValues.playerName || 'player'}>{initialValues.playerName || 'Joueur'}</SelectItem>
+                                                        <SelectItem value={watchedValues.playerName || 'player'}>{watchedValues.playerName || 'Joueur'}</SelectItem>
                                                         {fields.map(char => (
                                                             <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
                                                         ))}
@@ -370,7 +371,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                             ))}
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: initialValues.playerName || 'player' })}>
+                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: watchedValues.playerName || 'player' })}>
                             <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                         </Button>
                     </Card>

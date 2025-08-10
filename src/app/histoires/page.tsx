@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -179,9 +179,10 @@ export default function HistoiresPage() {
               ...editingStory.adventureState,
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
-                  ...formValues
+                  ...formValues,
+                  mapPointsOfInterest: formValues.mapPointsOfInterest as MapPointOfInterest[] || [], // Ensure POIs are saved
               },
-              characters: formValues.characters.map(c => ({
+              characters: (formValues.characters || []).map(c => ({
                   ...c, 
                   id: c.id || uid(),
               } as Character))
@@ -216,6 +217,7 @@ export default function HistoiresPage() {
       newAdventureState.adventureSettings.rpgMode = formValues.rpgMode ?? true;
       newAdventureState.adventureSettings.relationsMode = formValues.relationsMode ?? true;
       newAdventureState.adventureSettings.strategyMode = formValues.strategyMode ?? true;
+      newAdventureState.adventureSettings.mapPointsOfInterest = formValues.mapPointsOfInterest as MapPointOfInterest[] || [];
       newAdventureState.characters = (formValues.characters || []).map(c => ({
           ...c, id: c.id || uid(),
       } as Character));
@@ -280,6 +282,7 @@ export default function HistoiresPage() {
               strategyMode: true,
               playerName: 'Héros',
               playerClass: 'Aventurier',
+              mapPointsOfInterest: [],
           };
       }
       
@@ -293,6 +296,7 @@ export default function HistoiresPage() {
           strategyMode: settings.strategyMode,
           playerName: settings.playerName,
           playerClass: settings.playerClass,
+          mapPointsOfInterest: settings.mapPointsOfInterest,
       }
   }
 
