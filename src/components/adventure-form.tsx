@@ -31,7 +31,8 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
-export type FormCharacterDefinition = { id?: string; name: string; details: string };
+export type FormCharacterDefinition = Partial<Character> & { id?: string; name: string; details: string };
+
 
 export type AdventureFormValues = Partial<Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'strategyMode'>> & {
     characters: FormCharacterDefinition[];
@@ -51,6 +52,7 @@ const characterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
+  factionColor: z.string().optional(),
 });
 
 const mapPointOfInterestSchema = z.object({
@@ -140,8 +142,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             world: "Grande université populaire nommée \"hight scoole of futur\".",
             initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", factionColor: '#FF69B4' },
+                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", factionColor: '#4682B4' }
             ],
             rpgMode: true,
             relationsMode: true,
@@ -438,6 +440,22 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 </FormItem>
                             )}
                             />
+                             <FormField
+                                control={form.control}
+                                name={`characters.${index}.factionColor`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Couleur de Faction</FormLabel>
+                                        <FormControl>
+                                            <div className="flex items-center gap-2">
+                                                <Input type="color" {...field} className="w-10 h-10 p-1"/>
+                                                <Input placeholder="#RRGGBB" {...field} className="bg-background border"/>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </CardContent>
                         </Card>
                     ))}
@@ -445,7 +463,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "" })}
+                        onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
                         className="mt-2 w-full"
                         >
                         <PlusCircle className="mr-2 h-4 w-4" />

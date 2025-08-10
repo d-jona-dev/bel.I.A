@@ -290,7 +290,7 @@ export default function HistoiresPage() {
       return {
           world: settings.world,
           initialSituation: settings.initialSituation,
-          characters: story.adventureState.characters.map(c => ({ id: c.id, name: c.name, details: c.details })),
+          characters: story.adventureState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor })),
           rpgMode: settings.rpgMode,
           relationsMode: settings.relationsMode,
           strategyMode: settings.strategyMode,
