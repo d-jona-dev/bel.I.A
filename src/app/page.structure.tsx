@@ -15,7 +15,7 @@ import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
-import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,7 +110,6 @@ interface PageStructureProps {
   onGenerateMap: () => Promise<void>;
   isGeneratingMap: boolean;
   onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
-  isLoading: boolean;
   onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
   onBuildInPoi: (poiId: string, buildingId: string) => void;
   currentTurn: number;
