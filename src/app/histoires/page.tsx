@@ -31,7 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
-import { initial } from 'lodash';
+
 
 // Helper to generate a unique ID
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
@@ -93,6 +93,7 @@ export default function HistoiresPage() {
   
   const [storyToDelete, setStoryToDelete] = React.useState<SavedStory | null>(null);
   const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
+  const [newStoryFormValues, setNewStoryFormValues] = React.useState<AdventureFormValues>(getAdventureFormValues(null));
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [formPropKey, setFormPropKey] = React.useState(0);
   const importFileRef = React.useRef<HTMLInputElement>(null);
@@ -124,13 +125,10 @@ export default function HistoiresPage() {
     localStorage.setItem('adventureStories', JSON.stringify(stories));
   }
   
-
   const handleContinueStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
     if (storyToLoad) {
         localStorage.setItem('currentAdventureState', JSON.stringify(storyToLoad.adventureState));
-        // Redirect to the main adventure page. Using a simple redirect for now.
-        // A more robust solution might use Next.js router.
         window.location.href = '/';
     } else {
         toast({
@@ -168,7 +166,6 @@ export default function HistoiresPage() {
   
   const handleSaveChanges = (updatedFormValues: AdventureFormValues) => {
       if (editingStory) {
-          // Logic for updating an existing story
           const updatedState: SaveData = {
               ...editingStory.adventureState,
               adventureSettings: {
@@ -178,12 +175,12 @@ export default function HistoiresPage() {
               characters: updatedFormValues.characters.map(c => ({
                   ...c, 
                   id: c.id || uid(),
-              }))
+              } as Character))
           };
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: updatedFormValues.world.substring(0, 30), // Example title
+              title: updatedFormValues.world.substring(0, 30),
               description: updatedFormValues.initialSituation.substring(0, 100),
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
@@ -193,30 +190,35 @@ export default function HistoiresPage() {
           saveStories(updatedStories);
           toast({ title: "Histoire Mise à Jour", description: "Les modifications ont été sauvegardées." });
           setEditingStory(null);
-      } else {
-         // Logic for creating a new story
-         const newId = uid();
-         const newAdventureState: SaveData = createNewAdventureState();
-         // TODO: Map AdventureFormValues to SaveData more comprehensively
-         newAdventureState.adventureSettings.world = updatedFormValues.world;
-         newAdventureState.adventureSettings.initialSituation = updatedFormValues.initialSituation;
-         newAdventureState.adventureSettings.playerName = updatedFormValues.playerName;
-         newAdventureState.adventureSettings.rpgMode = updatedFormValues.enableRpgMode;
-         newAdventureState.adventureSettings.relationsMode = updatedFormValues.enableRelationsMode;
-         newAdventureState.adventureSettings.strategyMode = updatedFormValues.enableStrategyMode;
-
-         const newStory: SavedStory = {
-             id: newId,
-             title: updatedFormValues.world.substring(0, 40) || "Nouvelle Histoire",
-             description: updatedFormValues.initialSituation.substring(0, 100) || "...",
-             date: new Date().toISOString().split('T')[0],
-             adventureState: newAdventureState,
-         };
-         saveStories([...savedStories, newStory]);
-         toast({ title: "Nouvelle Aventure Créée!", description: "Elle a été ajoutée à votre liste." });
-         setIsCreateModalOpen(false);
       }
   };
+  
+  const handleCreateNewStory = () => {
+      const newId = uid();
+      const newAdventureState = createNewAdventureState();
+      
+      newAdventureState.adventureSettings.world = newStoryFormValues.world;
+      newAdventureState.adventureSettings.initialSituation = newStoryFormValues.initialSituation;
+      newAdventureState.adventureSettings.playerName = newStoryFormValues.playerName;
+      newAdventureState.adventureSettings.rpgMode = newStoryFormValues.enableRpgMode;
+      newAdventureState.adventureSettings.relationsMode = newStoryFormValues.enableRelationsMode;
+      newAdventureState.adventureSettings.strategyMode = newStoryFormValues.enableStrategyMode;
+      newAdventureState.characters = (newStoryFormValues.characters || []).map(c => ({
+          ...c, id: c.id || uid(),
+      } as Character));
+
+      const newStory: SavedStory = {
+          id: newId,
+          title: newStoryFormValues.world?.substring(0, 40) || "Nouvelle Histoire",
+          description: newStoryFormValues.initialSituation?.substring(0, 100) || "...",
+          date: new Date().toISOString().split('T')[0],
+          adventureState: newAdventureState,
+      };
+      saveStories([...savedStories, newStory]);
+      toast({ title: "Nouvelle Aventure Créée!", description: "Elle a été ajoutée à votre liste." });
+      setIsCreateModalOpen(false);
+  }
+
   
   const handleImportStory = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -228,7 +230,6 @@ export default function HistoiresPage() {
             const jsonString = e.target?.result as string;
             const importedState = JSON.parse(jsonString) as SaveData;
             
-            // Basic validation
             if (!importedState.adventureSettings || !importedState.characters || !importedState.narrative) {
                 throw new Error("Fichier de sauvegarde invalide.");
             }
@@ -254,20 +255,8 @@ export default function HistoiresPage() {
     if(event.target) event.target.value = ''; // Reset for next upload
   }
 
-  const openEditDialog = (story: SavedStory) => {
-    setFormPropKey(prev => prev + 1); // Force re-mount of form with new initial values
-    setEditingStory(story);
-  }
-  
-  const openCreateDialog = () => {
-    setFormPropKey(prev => prev + 1); // Force re-mount of form with new initial values
-    setEditingStory(null);
-    setIsCreateModalOpen(true);
-  }
-
-  const getAdventureFormValues = (story: SavedStory | null): AdventureFormValues => {
+  function getAdventureFormValues(story: SavedStory | null): AdventureFormValues {
       if (!story) {
-          // Default values for a new story
           const defaultState = createNewAdventureState();
           return {
               world: '',
@@ -278,7 +267,6 @@ export default function HistoiresPage() {
               enableStrategyMode: true,
               playerName: 'Héros',
               playerClass: 'Aventurier',
-              // ... and other defaults
           };
       }
       
@@ -292,8 +280,18 @@ export default function HistoiresPage() {
           enableStrategyMode: settings.strategyMode,
           playerName: settings.playerName,
           playerClass: settings.playerClass,
-          // ... map other settings
       }
+  }
+
+  const openEditDialog = (story: SavedStory) => {
+    setFormPropKey(prev => prev + 1); 
+    setEditingStory(story);
+  }
+  
+  const openCreateDialog = () => {
+    setFormPropKey(prev => prev + 1); 
+    setNewStoryFormValues(getAdventureFormValues(null));
+    setIsCreateModalOpen(true);
   }
 
 
@@ -419,7 +417,6 @@ export default function HistoiresPage() {
         </ScrollArea>
       </section>
 
-       {/* Dialog for Creating a new adventure */}
        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
@@ -431,18 +428,17 @@ export default function HistoiresPage() {
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                   <AdventureForm
                       formPropKey={formPropKey}
-                      initialValues={getAdventureFormValues(null)}
-                      onSettingsChange={handleSaveChanges}
+                      initialValues={newStoryFormValues}
+                      onSettingsChange={setNewStoryFormValues}
                   />
                 </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button onClick={() => { /* The form's onSettingsChange will handle it */ }}>Créer l'Histoire</Button>
+                    <Button onClick={handleCreateNewStory}>Créer l'Histoire</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
 
-        {/* Dialog for Editing an existing adventure */}
         <Dialog open={!!editingStory} onOpenChange={(open) => !open && setEditingStory(null)}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
@@ -469,4 +465,3 @@ export default function HistoiresPage() {
     </div>
   );
 }
-
