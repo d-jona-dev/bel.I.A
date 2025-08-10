@@ -3096,8 +3096,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     toast({ title: "Bâtiment Construit !", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
   }, [adventureSettings, toast]);
-
-    const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
+    
+  const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
         setAdventureSettings(prevSettings => {
             let newSettings = { ...prevSettings };
             const familiars = newSettings.familiars || [];
