@@ -41,7 +41,7 @@ interface MapDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
     characters: Character[];
     playerName: string;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     playerLocationId?: string;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onAddPoiToMap: (poiId: string) => void; // New prop
@@ -147,8 +147,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             description: newPoiDescription,
             type: newPoiType,
             ownerId: newPoiOwnerId,
-            level: newPoiLevel,
-            buildings: newPoiBuildings,
         });
         setIsCreateDialogOpen(false);
         resetCreateForm();
@@ -184,7 +182,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
         if (newPoiBuildings.length > buildingSlotsForLevel) {
             setNewPoiBuildings(prev => prev.slice(0, buildingSlotsForLevel));
         }
-    }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings.length]);
+    }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings]);
 
 
     return (
@@ -242,8 +240,8 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                              </Tooltip>
                          </TooltipProvider>
                          <DropdownMenuContent>
-                             {availablePoisToAdd.map(poi => (
-                                 <DropdownMenuItem key={poi.id} onSelect={() => onAddPoiToMap(poi.id)}>
+                             {availablePoisToAdd.map((poi, index) => (
+                                 <DropdownMenuItem key={poi.id ?? `poi-to-add-${index}`} onSelect={() => onAddPoiToMap(poi.id)}>
                                      {poi.name}
                                  </DropdownMenuItem>
                              ))}
@@ -449,6 +447,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             )}
             
             {poisOnMap.map((poi) => {
+                if (!poi.position) return null; // Safety check
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
