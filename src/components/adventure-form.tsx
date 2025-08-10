@@ -28,6 +28,8 @@ import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
@@ -185,8 +187,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       let value = form.getValues(field) as number;
       if (isNaN(value) || value < BASE_ATTRIBUTE_VALUE_FORM) {
           value = BASE_ATTRIBUTE_VALUE_FORM;
-          form.setValue(field, value);
       }
+      handleAttributeChange(field, value);
   }
 
 
@@ -372,13 +374,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                             {...field}
                                             value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
                                             onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                                            onBlur={(e) => {
-                                                let value = parseInt(e.target.value, 10);
-                                                if (isNaN(value) || value < BASE_ATTRIBUTE_VALUE_FORM) {
-                                                    value = BASE_ATTRIBUTE_VALUE_FORM;
-                                                }
-                                                handleAttributeChange(attr as any, value);
-                                            }}
+                                            onBlur={() => handleAttributeBlur(attr as any)}
                                             className="h-8"
                                         />
                                     </FormControl>
