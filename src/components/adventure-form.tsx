@@ -45,6 +45,7 @@ const characterSchema = z.object({
 });
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
+const POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
@@ -155,12 +156,17 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       value = oldValue + remainingPoints;
     }
     
-    if (value < BASE_ATTRIBUTE_VALUE_FORM) {
-      value = BASE_ATTRIBUTE_VALUE_FORM;
-    }
-    
     form.setValue(field, value);
-    handleSettingsBlur();
+    // No blur needed here, change will be registered. The validation happens on blur.
+  }
+
+  const handleAttributeBlur = (field: keyof AdventureFormValues) => {
+      let value = form.getValues(field) as number;
+      if (isNaN(value) || value < BASE_ATTRIBUTE_VALUE_FORM) {
+          value = BASE_ATTRIBUTE_VALUE_FORM;
+          form.setValue(field, value);
+      }
+      handleSettingsBlur();
   }
 
 
@@ -331,7 +337,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                             {...field}
                                             value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
                                             onChange={e => handleAttributeChange(attr as any, Number(e.target.value))}
-                                            onBlur={handleSettingsBlur}
+                                            onBlur={() => handleAttributeBlur(attr as any)}
                                             className="h-8"
                                         />
                                     </FormControl>

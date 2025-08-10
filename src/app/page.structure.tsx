@@ -782,9 +782,9 @@ export function PageStructure({
                                         onAddStagedCharacter={handleAddStagedCharacter}
                                         onRelationUpdate={handleRelationUpdate}
                                         generateImageAction={generateSceneImageAction}
-                                        rpgMode={adventureSettings.rpgMode ?? false}
-                                        relationsMode={adventureSettings.relationsMode ?? true}
-                                        strategyMode={adventureSettings.strategyMode ?? false}
+                                        rpgMode={stagedAdventureSettings.enableRpgMode ?? false}
+                                        relationsMode={stagedAdventureSettings.enableRelationsMode ?? true}
+                                        strategyMode={stagedAdventureSettings.enableStrategyMode ?? false}
                                         playerId={playerId}
                                         playerName={stagedAdventureSettings.playerName || "Player"}
                                         currentLanguage={currentLanguage}
@@ -830,12 +830,12 @@ export function PageStructure({
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2">
                                     <FamiliarSidebar
-                                        familiars={stagedAdventureSettings.familiars || []}
+                                        familiars={adventureSettings.familiars || []}
                                         onFamiliarUpdate={handleFamiliarUpdate}
                                         onSaveFamiliar={handleSaveFamiliar}
                                         onAddStagedFamiliar={handleAddStagedFamiliar}
                                         generateImageAction={generateSceneImageAction}
-                                        rpgMode={stagedAdventureSettings.rpgMode ?? false}
+                                        rpgMode={adventureSettings.rpgMode ?? false}
                                     />
                                 </AccordionContent>
                             </AccordionItem>
