@@ -126,7 +126,7 @@ export default function HistoiresPage() {
     localStorage.setItem('adventureStories', JSON.stringify(stories));
   }
   
-  const handleContinueStory = (storyId: string) => {
+  const handleLaunchStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
     if (storyToLoad) {
         // Save the specific story state to be loaded by the main page
@@ -331,8 +331,8 @@ export default function HistoiresPage() {
                     <p className="text-sm text-muted-foreground line-clamp-3">{story.description}</p>
                   </CardContent>
                   <CardFooter className="flex flex-wrap justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleContinueStory(story.id)}>
-                      <Play className="mr-2 h-4 w-4" /> Continuer
+                    <Button variant="outline" size="sm" onClick={() => handleLaunchStory(story.id)}>
+                      <Play className="mr-2 h-4 w-4" /> Lancer
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => openEditDialog(story)}>
                         <Edit className="mr-2 h-4 w-4" /> Modifier
@@ -433,7 +433,7 @@ export default function HistoiresPage() {
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                   <AdventureForm
-                      formPropKey={formPropKey}
+                      key={formPropKey}
                       initialValues={newStoryFormValues}
                       onSettingsChange={setNewStoryFormValues}
                   />
@@ -456,9 +456,9 @@ export default function HistoiresPage() {
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {editingStory && stagedEditFormValues && (
                         <AdventureForm
-                           formPropKey={formPropKey}
+                           key={formPropKey}
                            initialValues={stagedEditFormValues}
-                           onSettingsChange={setStagedEditFormValues}
+                           onSettingsChange={(values) => setStagedEditFormValues(values)}
                         />
                     )}
                  </div>

@@ -187,181 +187,193 @@ export interface SellingItemDetails {
   sellPricePerUnit: number;
 }
 
+// Function to create a clean, default state
+const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[] } => {
+    const initialPlayerAttributes = {
+      playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
+      playerStrength: BASE_ATTRIBUTE_VALUE,
+      playerDexterity: BASE_ATTRIBUTE_VALUE,
+      playerConstitution: BASE_ATTRIBUTE_VALUE,
+      playerIntelligence: BASE_ATTRIBUTE_VALUE,
+      playerWisdom: BASE_ATTRIBUTE_VALUE,
+      playerCharisma: BASE_ATTRIBUTE_VALUE,
+    };
+  
+    const initialBaseDerivedStats = calculateEffectiveStats({
+      ...initialPlayerAttributes,
+      playerName: "Héros",
+      playerClass: "Guerrier",
+      playerLevel: 1,
+      playerExpToNextLevel: 100,
+      playerGold: 15,
+    } as AdventureSettings);
+  
+    const initialSettings: AdventureSettings = {
+      world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
+      initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
+      rpgMode: true,
+      relationsMode: true,
+      strategyMode: true,
+      usePlayerAvatar: false,
+      playerName: "Héros",
+      playerClass: "Guerrier",
+      playerLevel: 1,
+      ...initialPlayerAttributes,
+      ...initialBaseDerivedStats,
+      playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
+      playerCurrentMp: initialBaseDerivedStats.playerMaxMp,
+      playerCurrentExp: 0,
+      playerExpToNextLevel: 100,
+      playerGold: 15,
+      playerInventory: [
+          {id: "potion-soin-initial-1", name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable", goldValue: 10, generatedImageUrl: null, isEquipped: false, statBonuses: {}},
+          {id: "dague-rouillee-initial-1", name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base.", type: "weapon", goldValue: 2, generatedImageUrl: null, isEquipped: false, statBonuses: { damage: "1d4" }}
+      ],
+      equippedItemIds: { weapon: null, armor: null, jewelry: null },
+      playerSkills: [],
+      familiars: [],
+      mapPointsOfInterest: [
+          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
+      ],
+      mapImageUrl: null,
+    };
+  
+    const initialCharacters: Character[] = [
+        {
+          id: 'yumi-1',
+          name: "Impératrice Yumi",
+          details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
+          biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
+          history: ["A demandé de l'aide au joueur pour les gobelins."],
+          portraitUrl: null,
+          affinity: 60,
+          relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
+          isAlly: false, 
+          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          level: 5, currentExp: 0, expToNextLevel: 800,
+          characterClass: "Impératrice", isHostile: false,
+          strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
+          hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
+          spells: ["Soin Léger", "Lumière", "Protection contre le Mal"],
+          factionColor: '#8A2BE2', // BlueViolet
+          locationId: 'poi-bourgenval',
+        },
+        {
+          id: 'elara-1',
+          name: "Elara",
+          details: "Une jeune aventurière talentueuse et énergique, spécialisée dans la magie de protection. Elle vous a rejoint pour vous aider dans votre quête à la demande de l'Impératrice.",
+          biographyNotes: "Elara cherche à prouver sa valeur et à protéger les innocents. Elle est loyale mais peut être un peu impulsive.",
+          history: ["S'est jointe à l'équipe du joueur."],
+          portraitUrl: null,
+          affinity: 70,
+          relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
+          isAlly: true,
+          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          level: 1, currentExp: 0, expToNextLevel: 100,
+          characterClass: "Mage de Bataille", isHostile: false,
+          strength: 10, dexterity: 12, constitution: 12, intelligence: 15, wisdom: 13, charisma: 11,
+          hitPoints: 12, maxHitPoints: 12,
+          manaPoints: 15, maxManaPoints: 15,
+          armorClass: 11,
+          attackBonus: 2,
+          damageBonus: "1d6",
+          spells: ["Projectile Magique", "Armure de Mage"],
+          factionColor: '#00FFFF', // Cyan
+          locationId: 'poi-bourgenval',
+        },
+        {
+          id: 'duc-asdrubael',
+          name: "Duc Asdrubael",
+          details: "Un noble énigmatique et puissant qui contrôle la Forêt Murmurante. Ses intentions sont obscures.",
+          biographyNotes: "Le Duc Asdrubael est un reclus qui communique rarement avec le monde extérieur. Il est très protecteur de ses terres.",
+          history: ["Possède la Forêt Murmurante."],
+          portraitUrl: null,
+          affinity: 40,
+          relations: { [PLAYER_ID]: "Inconnu" },
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          level: 5, currentExp: 0, expToNextLevel: 800,
+          characterClass: "Noble Reclus", isHostile: false,
+          strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
+          hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
+          
+          factionColor: '#0000FF', // Blue
+          locationId: 'poi-foret',
+        },
+        {
+          id: 'frak-1',
+          name: "Frak, Chef Gobelin",
+          details: "Un gobelin particulièrement grand et méchant, avec une cicatrice en travers du museau et armé d'une hache rouillée. Il dirige la tribu de la Grotte Grinçante.",
+          biographyNotes: "Frak est devenu plus agressif récemment, poussé par une force mystérieuse ou un besoin désespéré.",
+          history: ["Dirige les raids contre Bourgenval."],
+          portraitUrl: null,
+          affinity: 5,
+          relations: { [PLAYER_ID]: "Intrus à tuer" },
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          level: 2, currentExp: 0, expToNextLevel: 150,
+          characterClass: "Chef Gobelin", isHostile: true,
+          strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
+          hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
+          
+          factionColor: '#FF0000', // Red
+          locationId: 'poi-grotte',
+        },
+        {
+          id: 'snirf-1',
+          name: "Snirf, Gobelin Fureteur",
+          details: "Un petit gobelin agile et sournois, armé d'une courte dague. Sert d'éclaireur pour sa tribu.",
+          biographyNotes: "Snirf est plus couard que méchant, mais loyal à Frak par peur.",
+          history: ["A été aperçu rôdant près de Bourgenval."],
+          portraitUrl: null,
+          affinity: 10,
+          relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          level: 1, currentExp: 0, expToNextLevel: 100,
+          characterClass: "Fureteur Gobelin", isHostile: true,
+          strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
+          hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
+          
+          factionColor: '#DC143C', // Crimson
+          locationId: 'poi-grotte',
+        }
+    ];
+
+    const initialNarrative: Message[] = [
+        { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }
+    ];
+  
+    return { settings: initialSettings, characters: initialCharacters, narrative: initialNarrative };
+};
+
+
 export default function Home() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const rpgStateCache = React.useRef<Partial<AdventureSettings> | null>(null);
-  const strategyStateCache = React.useRef<Partial<AdventureSettings> | null>(null);
-
-  const initialPlayerAttributes = {
-    playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
-    playerStrength: BASE_ATTRIBUTE_VALUE,
-    playerDexterity: BASE_ATTRIBUTE_VALUE,
-    playerConstitution: BASE_ATTRIBUTE_VALUE,
-    playerIntelligence: BASE_ATTRIBUTE_VALUE,
-    playerWisdom: BASE_ATTRIBUTE_VALUE,
-    playerCharisma: BASE_ATTRIBUTE_VALUE,
-  };
-
-  const initialBaseDerivedStats = calculateEffectiveStats({
-    ...initialPlayerAttributes,
-    playerName: "Héros",
-    playerClass: "Guerrier",
-    playerLevel: 1,
-    playerExpToNextLevel: 100,
-    playerGold: 15,
-  } as AdventureSettings);
-
-
-  const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>({
-    world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
-    initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
-    rpgMode: true,
-    relationsMode: true,
-    strategyMode: true,
-    usePlayerAvatar: false,
-    playerName: "Héros",
-    playerClass: "Guerrier",
-    playerLevel: 1,
-    ...initialPlayerAttributes,
-    ...initialBaseDerivedStats,
-    playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
-    playerCurrentMp: initialBaseDerivedStats.playerMaxMp,
-    playerCurrentExp: 0,
-    playerExpToNextLevel: 100,
-    playerGold: 15,
-    playerInventory: [
-        {id: "potion-soin-initial-1", name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable", goldValue: 10, generatedImageUrl: null, isEquipped: false, statBonuses: {}},
-        {id: "dague-rouillee-initial-1", name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base.", type: "weapon", goldValue: 2, generatedImageUrl: null, isEquipped: false, statBonuses: { damage: "1d4" }}
-    ],
-    equippedItemIds: { weapon: null, armor: null, jewelry: null },
-    playerSkills: [],
-    familiars: [],
-    mapPointsOfInterest: [
-        { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
-        { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
-        { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
-    ],
-    mapImageUrl: null,
-  });
-  const [baseCharacters, setBaseCharacters] = React.useState<Character[]>([
-      {
-        id: 'yumi-1',
-        name: "Impératrice Yumi",
-        details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
-        biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
-        history: ["A demandé de l'aide au joueur pour les gobelins."],
-        portraitUrl: null,
-        affinity: 60,
-        relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
-        isAlly: false, 
-        initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 5, currentExp: 0, expToNextLevel: 800,
-        characterClass: "Impératrice", isHostile: false,
-        strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
-        hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        spells: ["Soin Léger", "Lumière", "Protection contre le Mal"],
-        factionColor: '#8A2BE2', // BlueViolet
-        locationId: 'poi-bourgenval',
-      },
-      {
-        id: 'elara-1',
-        name: "Elara",
-        details: "Une jeune aventurière talentueuse et énergique, spécialisée dans la magie de protection. Elle vous a rejoint pour vous aider dans votre quête à la demande de l'Impératrice.",
-        biographyNotes: "Elara cherche à prouver sa valeur et à protéger les innocents. Elle est loyale mais peut être un peu impulsive.",
-        history: ["S'est jointe à l'équipe du joueur."],
-        portraitUrl: null,
-        affinity: 70,
-        relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
-        isAlly: true,
-        initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 1, currentExp: 0, expToNextLevel: 100,
-        characterClass: "Mage de Bataille", isHostile: false,
-        strength: 10, dexterity: 12, constitution: 12, intelligence: 15, wisdom: 13, charisma: 11,
-        hitPoints: 12, maxHitPoints: 12,
-        manaPoints: 15, maxManaPoints: 15,
-        armorClass: 11,
-        attackBonus: 2,
-        damageBonus: "1d6",
-        spells: ["Projectile Magique", "Armure de Mage"],
-        factionColor: '#00FFFF', // Cyan
-        locationId: 'poi-bourgenval',
-      },
-      {
-        id: 'duc-asdrubael',
-        name: "Duc Asdrubael",
-        details: "Un noble énigmatique et puissant qui contrôle la Forêt Murmurante. Ses intentions sont obscures.",
-        biographyNotes: "Le Duc Asdrubael est un reclus qui communique rarement avec le monde extérieur. Il est très protecteur de ses terres.",
-        history: ["Possède la Forêt Murmurante."],
-        portraitUrl: null,
-        affinity: 40,
-        relations: { [PLAYER_ID]: "Inconnu" },
-        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 5, currentExp: 0, expToNextLevel: 800,
-        characterClass: "Noble Reclus", isHostile: false,
-        strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
-        hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
-        
-        factionColor: '#0000FF', // Blue
-        locationId: 'poi-foret',
-      },
-      {
-        id: 'frak-1',
-        name: "Frak, Chef Gobelin",
-        details: "Un gobelin particulièrement grand et méchant, avec une cicatrice en travers du museau et armé d'une hache rouillée. Il dirige la tribu de la Grotte Grinçante.",
-        biographyNotes: "Frak est devenu plus agressif récemment, poussé par une force mystérieuse ou un besoin désespéré.",
-        history: ["Dirige les raids contre Bourgenval."],
-        portraitUrl: null,
-        affinity: 5,
-        relations: { [PLAYER_ID]: "Intrus à tuer" },
-        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 2, currentExp: 0, expToNextLevel: 150,
-        characterClass: "Chef Gobelin", isHostile: true,
-        strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
-        hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
-        
-        factionColor: '#FF0000', // Red
-        locationId: 'poi-grotte',
-      },
-      {
-        id: 'snirf-1',
-        name: "Snirf, Gobelin Fureteur",
-        details: "Un petit gobelin agile et sournois, armé d'une courte dague. Sert d'éclaireur pour sa tribu.",
-        biographyNotes: "Snirf est plus couard que méchant, mais loyal à Frak par peur.",
-        history: ["A été aperçu rôdant près de Bourgenval."],
-        portraitUrl: null,
-        affinity: 10,
-        relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
-        isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-        level: 1, currentExp: 0, expToNextLevel: 100,
-        characterClass: "Fureteur Gobelin", isHostile: true,
-        strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
-        hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-        
-        factionColor: '#DC143C', // Crimson
-        locationId: 'poi-grotte',
-      }
-  ]);
-
-  // Live state
-  const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(baseAdventureSettings)));
-  const [characters, setCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
+  const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(() => createInitialState().settings);
+  const [characters, setCharacters] = React.useState<Character[]>(() => createInitialState().characters);
   const [activeCombat, setActiveCombat] = React.useState<ActiveCombat | undefined>(undefined);
-  const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>([
-     { id: `msg-${Date.now()}`, type: 'system', content: baseAdventureSettings.initialSituation, timestamp: Date.now() }
-  ]);
+  const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
   const [aiConfig, setAiConfig] = React.useState<AiConfig>({ source: 'gemini' });
   const [comicPages, setComicPages] = React.useState<ComicPage[]>([]);
 
-  // Staged state (for form edits before applying)
-  const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => ({
-      ...JSON.parse(JSON.stringify(baseAdventureSettings)),
-      characters: JSON.parse(JSON.stringify(baseCharacters.map(c => ({ id: c.id, name: c.name, details: c.details }))))
-  }));
-  const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(baseCharacters)));
+  // Base state for resets
+  const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
+  const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
+  
+  // Staged state for form edits
+  const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => {
+    const initialState = createInitialState();
+    return {
+      ...JSON.parse(JSON.stringify(initialState.settings)),
+      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details }))))
+    };
+  });
+  const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
+  
   const [formPropKey, setFormPropKey] = React.useState(0);
-
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
   const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
@@ -373,7 +385,6 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
-  const { toast } = useToast();
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -397,11 +408,56 @@ export default function Home() {
     }
   }, [toast]);
 
+  const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
+    if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative) {
+        toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
+        return;
+    }
+    React.startTransition(() => {
+        const effectiveStats = calculateEffectiveStats(stateToLoad.adventureSettings);
+        const finalSettings = { ...stateToLoad.adventureSettings, ...effectiveStats };
+
+        setAdventureSettings(finalSettings);
+        setCharacters(stateToLoad.characters);
+        setNarrativeMessages(stateToLoad.narrative);
+        setActiveCombat(stateToLoad.activeCombat);
+        setCurrentLanguage(stateToLoad.currentLanguage || "fr");
+        setAiConfig(stateToLoad.aiConfig || { source: 'gemini' });
+
+        setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
+        setBaseCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
+
+        setStagedAdventureSettings({
+            ...JSON.parse(JSON.stringify(finalSettings)),
+            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details }))
+        });
+        setStagedCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
+        
+        setFormPropKey(k => k + 1);
+        toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
+    });
+  }, [toast]);
 
   React.useEffect(() => {
-    // Initial load
+    const shouldLoad = localStorage.getItem('loadStoryOnMount');
+    if (shouldLoad === 'true') {
+        const stateString = localStorage.getItem('currentAdventureState');
+        if (stateString) {
+            try {
+                const loadedState: SaveData = JSON.parse(stateString);
+                loadAdventureState(loadedState);
+            } catch (e) {
+                console.error("Failed to parse adventure state from localStorage", e);
+                toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
+            }
+        }
+        localStorage.removeItem('loadStoryOnMount');
+        localStorage.removeItem('currentAdventureState');
+    }
+
+    // Initial load comic preview
     handleRefreshComicPreview();
-  }, [handleRefreshComicPreview]);
+  }, [loadAdventureState, handleRefreshComicPreview, toast]);
 
   React.useEffect(() => {
     const fetchInitialSkill = async () => {
@@ -2055,221 +2111,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
                     throw new Error("Structure de fichier de sauvegarde invalide ou manquante.");
                 }
-
-                const isValidNarrative = loadedData.narrative.every(msg =>
-                    typeof msg === 'object' && msg !== null && typeof msg.id === 'string' &&
-                    ['user', 'ai', 'system'].includes(msg.type) && typeof msg.content === 'string' &&
-                    typeof msg.timestamp === 'number'
-                );
-                if (!isValidNarrative) {
-                    if (typeof loadedData.narrative === 'string') {
-                        loadedData.narrative = [{ id: `migrated-${Date.now()}`, type: 'system', content: loadedData.narrative as unknown as string, timestamp: Date.now() }];
-                    } else {
-                        throw new Error("Structure des messages narratifs invalide.");
-                    }
-                }
-
-                 if (loadedData.saveFormatVersion === undefined || loadedData.saveFormatVersion < 1.4) {
-                     loadedData.characters = loadedData.characters.map(c => ({ ...c, history: Array.isArray(c.history) ? c.history : [], affinity: c.affinity ?? 50, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
-                     loadedData.adventureSettings.playerName = loadedData.adventureSettings.playerName || "Player";
-                 }
-                 if (loadedData.saveFormatVersion < 1.5) {
-                       loadedData.adventureSettings.relationsMode = loadedData.adventureSettings.relationsMode ?? true;
-                       loadedData.characters = loadedData.characters.map(c => ({ ...c, relations: c.relations || { [PLAYER_ID]: loadedData.currentLanguage === 'fr' ? "Inconnu" : "Unknown" }, }));
-                 }
-                 if (loadedData.saveFormatVersion < 1.8) {
-                    if ((loadedData.adventureSettings as any).playerCurrencyTiers) {
-                        const oldTiers = (loadedData.adventureSettings as any).playerCurrencyTiers as any[];
-                        let totalBaseGold = 0;
-                        oldTiers.forEach(tier => {
-                            totalBaseGold += (tier.amount || 0) * (tier.valueInBaseTier || 0);
-                        });
-                        loadedData.adventureSettings.playerGold = totalBaseGold;
-                        delete (loadedData.adventureSettings as any).playerCurrencyTiers;
-                        delete (loadedData.adventureSettings as any).currencyLabel;
-                    }
-                    loadedData.adventureSettings.playerGold = loadedData.adventureSettings.playerGold ?? 0;
-                    if (!loadedData.adventureSettings.playerInventory) {
-                        loadedData.adventureSettings.playerInventory = [];
-                    }
-                     loadedData.adventureSettings.playerInventory = loadedData.adventureSettings.playerInventory.map(item => ({
-                        ...item,
-                        id: item.id || item.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-                        goldValue: item.goldValue ?? 0,
-                        generatedImageUrl: item.generatedImageUrl ?? null,
-                        isEquipped: item.isEquipped ?? false,
-                        statBonuses: item.statBonuses ?? {},
-                    }));
-                 }
-                 if (loadedData.saveFormatVersion < 1.9) {
-                    loadedData.adventureSettings.playerInitialAttributePoints = loadedData.adventureSettings.playerInitialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
-                    loadedData.adventureSettings.playerStrength = loadedData.adventureSettings.playerStrength ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerDexterity = loadedData.adventureSettings.playerDexterity ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerConstitution = loadedData.adventureSettings.playerConstitution ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerIntelligence = loadedData.adventureSettings.playerIntelligence ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerWisdom = loadedData.adventureSettings.playerWisdom ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerCharisma = loadedData.adventureSettings.playerCharisma ?? BASE_ATTRIBUTE_VALUE;
-                    loadedData.adventureSettings.playerAttackBonus = loadedData.adventureSettings.playerAttackBonus ?? 0;
-                    loadedData.adventureSettings.playerDamageBonus = loadedData.adventureSettings.playerDamageBonus ?? "1";
-                 }
-                 if (loadedData.saveFormatVersion < 2.0) {
-                    loadedData.adventureSettings.equippedItemIds = loadedData.adventureSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null };
-                    loadedData.adventureSettings.playerInventory = (loadedData.adventureSettings.playerInventory || []).map(item => ({
-                        ...item,
-                        id: item.id || `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
-                        isEquipped: item.isEquipped ?? false,
-                        statBonuses: item.statBonuses ?? {},
-                    }));
-                 }
-                 if (loadedData.saveFormatVersion < 2.1) {
-                     loadedData.adventureSettings.playerSkills = loadedData.adventureSettings.playerSkills || [];
-                 }
-                 if (loadedData.saveFormatVersion < 2.2) {
-                     loadedData.characters = loadedData.characters.map(c => ({
-                         ...c,
-                         isAlly: c.isAlly ?? false,
-                         initialAttributePoints: c.initialAttributePoints ?? (loadedData.adventureSettings?.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined),
-                         level: loadedData.adventureSettings?.rpgMode ? (c.level ?? 1) : undefined,
-                         characterClass: loadedData.adventureSettings?.rpgMode ? (c.characterClass ?? "PNJ") : undefined,
-                         strength: loadedData.adventureSettings?.rpgMode ? (c.strength ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         dexterity: loadedData.adventureSettings?.rpgMode ? (c.dexterity ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         constitution: loadedData.adventureSettings?.rpgMode ? (c.constitution ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         intelligence: loadedData.adventureSettings?.rpgMode ? (c.intelligence ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         wisdom: loadedData.adventureSettings?.rpgMode ? (c.wisdom ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         charisma: loadedData.adventureSettings?.rpgMode ? (c.charisma ?? BASE_ATTRIBUTE_VALUE) : undefined,
-                         hitPoints: loadedData.adventureSettings?.rpgMode ? (c.hitPoints ?? c.maxHitPoints ?? 10) : undefined,
-                         maxHitPoints: loadedData.adventureSettings?.rpgMode ? (c.maxHitPoints ?? 10) : undefined,
-                         manaPoints: loadedData.adventureSettings?.rpgMode ? (c.manaPoints ?? c.maxManaPoints ?? 0) : undefined,
-                         maxManaPoints: loadedData.adventureSettings?.rpgMode ? (c.maxManaPoints ?? 0) : undefined,
-                         armorClass: loadedData.adventureSettings?.rpgMode ? (c.armorClass ?? 10) : undefined,
-                         attackBonus: loadedData.adventureSettings?.rpgMode ? (c.attackBonus ?? 0) : undefined,
-                         damageBonus: loadedData.adventureSettings?.rpgMode ? (c.damageBonus ?? "1") : undefined,
-                         isHostile: loadedData.adventureSettings?.rpgMode ? (c.isHostile ?? false) : undefined,
-                     }));
-                 }
-                  if (loadedData.saveFormatVersion < 2.3) {
-                     loadedData.characters = loadedData.characters.map(c => ({
-                         ...c,
-                         currentExp: loadedData.adventureSettings?.rpgMode ? (c.currentExp ?? 0) : undefined,
-                         expToNextLevel: loadedData.adventureSettings?.rpgMode ? (c.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, ((c.level ?? 1) || 1) -1))) : undefined,
-                     }));
-                 }
-                 if (loadedData.saveFormatVersion < 2.4) {
-                    loadedData.adventureSettings.mapPointsOfInterest = loadedData.adventureSettings.mapPointsOfInterest || [];
-                 }
-                 if (loadedData.saveFormatVersion < 2.5) {
-                    if (loadedData.adventureSettings.mapPointsOfInterest) {
-                        loadedData.adventureSettings.mapPointsOfInterest.forEach(poi => {
-                            if (!('lastCollectedTurn' in poi)) {
-                                (poi as any).lastCollectedTurn = undefined;
-                            }
-                            if (!('level' in poi)) {
-                                poi.level = 1;
-                            }
-                        });
-                    }
-                }
-                if (loadedData.saveFormatVersion < 2.6) {
-                    if(loadedData.adventureSettings.mapPointsOfInterest) {
-                        loadedData.adventureSettings.mapPointsOfInterest.forEach(poi => {
-                            if (!('buildings' in poi)) {
-                                poi.buildings = [];
-                            }
-                        })
-                    }
-                     loadedData.adventureSettings.familiars = loadedData.adventureSettings.familiars || [];
-                }
-
-
-                const rpgModeActive = loadedData.adventureSettings.rpgMode;
-                const relationsModeActive = loadedData.adventureSettings.relationsMode ?? true;
-                const loadedLang = loadedData.currentLanguage || "fr";
-                const defaultRelation = loadedLang === 'fr' ? "Inconnu" : "Unknown";
-
-                const validatedCharacters = loadedData.characters.map((c: any) => {
-                    const charId = c.id || `${c.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
-                    let relations = relationsModeActive && typeof c.relations === 'object' && c.relations !== null ? c.relations : (relationsModeActive ? { [PLAYER_ID]: defaultRelation } : undefined);
-
-                    if (relationsModeActive && relations && !relations[PLAYER_ID]) {
-                        relations[PLAYER_ID] = defaultRelation;
-                    }
-                    if (relationsModeActive && relations && loadedData.characters) {
-                        loadedData.characters.forEach(otherC => {
-                            if (otherC.id !== charId && !relations![otherC.id]) {
-                                relations![otherC.id] = defaultRelation;
-                            }
-                        });
-                    }
-                    const charLevel = rpgModeActive ? (c.level ?? 1) : undefined;
-
-                    return {
-                        id: charId, name: c.name || "Inconnu", details: c.details || "", biographyNotes: c.biographyNotes,
-                        history: Array.isArray(c.history) ? c.history : [], portraitUrl: c.portraitUrl || null,
-                        affinity: relationsModeActive ? (c.affinity ?? 50) : undefined, relations: relations, _lastSaved: c._lastSaved,
-                        isAlly: c.isAlly ?? false,
-                        initialAttributePoints: rpgModeActive ? (c.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined,
-                        currentExp: rpgModeActive ? (c.currentExp ?? 0) : undefined,
-                        expToNextLevel: rpgModeActive ? (c.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, ((charLevel ?? 1) || 1) -1))) : undefined,
-                        locationId: c.locationId,
-                        ...(rpgModeActive ? {
-                            level: charLevel, characterClass: c.characterClass ?? '', 
-                            hitPoints: c.hitPoints ?? c.maxHitPoints ?? 10, maxHitPoints: c.maxHitPoints ?? 10,
-                            manaPoints: c.manaPoints ?? c.maxManaPoints ?? 0, maxManaPoints: c.maxManaPoints ?? 0,
-                            armorClass: c.armorClass ?? 10, attackBonus: c.attackBonus ?? 0, damageBonus: c.damageBonus ?? "1",
-                            isHostile: c.isHostile ?? false,
-                            strength: c.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: c.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: c.constitution ?? BASE_ATTRIBUTE_VALUE,
-                            intelligence: c.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: c.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: c.charisma ?? BASE_ATTRIBUTE_VALUE,
-                            experience: c.experience ?? 0,
-                            spells: Array.isArray(c.spells) ? c.spells : [],
-                        } : {}),
-                    } as Character;
-                });
-
-                const settingsWithDefaults = { ...baseAdventureSettings, ...loadedData.adventureSettings };
-                const effectiveStats = calculateEffectiveStats(settingsWithDefaults);
-
-                const finalAdventureSettings: AdventureSettings = {
-                    ...settingsWithDefaults,
-                    ...effectiveStats,
-                    relationsMode: relationsModeActive,
-                    rpgMode: rpgModeActive,
-                    strategyMode: loadedData.adventureSettings.strategyMode ?? true,
-                    playerCurrentHp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp) : undefined,
-                    playerCurrentMp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp) : undefined,
-                    playerCurrentExp: rpgModeActive ? (loadedData.adventureSettings.playerCurrentExp ?? 0) : undefined,
-                    playerInventory: (loadedData.adventureSettings.playerInventory || []).map(item => ({
-                        ...item,
-                        id: item.id || `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
-                        generatedImageUrl: item.generatedImageUrl ?? null,
-                        isEquipped: item.isEquipped ?? false,
-                        statBonuses: item.statBonuses ?? {},
-                    })),
-                    playerGold: loadedData.adventureSettings.playerGold ?? 0,
-                    equippedItemIds: loadedData.adventureSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null },
-                    playerSkills: loadedData.adventureSettings.playerSkills || [],
-                };
-
-
-                React.startTransition(() => {
-                  setBaseAdventureSettings(JSON.parse(JSON.stringify(finalAdventureSettings)));
-                  setBaseCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
-                  setAdventureSettings(finalAdventureSettings);
-                  setCharacters(validatedCharacters);
-                  setStagedAdventureSettings({
-                      ...JSON.parse(JSON.stringify(finalAdventureSettings)),
-                      characters: validatedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details }))
-                  });
-                  setStagedCharacters(JSON.parse(JSON.stringify(validatedCharacters)));
-                  setNarrativeMessages(loadedData.narrative as Message[]);
-                  setActiveCombat(loadedData.activeCombat);
-                  setCurrentLanguage(loadedData.currentLanguage || "fr");
-                  setAiConfig(loadedData.aiConfig || { source: 'gemini' });
-                  setFormPropKey(k => k + 1);
-                   setTimeout(() => {
-                    toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
-                  }, 0);
-                });
-
+                loadAdventureState(loadedData as SaveData);
 
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
@@ -2280,7 +2122,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         };
         reader.readAsText(file);
         if(event.target) event.target.value = '';
-    }, [toast, baseAdventureSettings]);
+    }, [toast, loadAdventureState]);
 
 
   const confirmRestartAdventure = React.useCallback(() => {
