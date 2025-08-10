@@ -444,7 +444,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 </TooltipProvider>
             )}
             
-            {pointsOfInterest.map((poi) => {
+            {pointsOfInterest.map((poi, index) => {
                 if (!poi.position) return null;
                 
                 const IconComponent = getIconForPoi(poi);
@@ -460,7 +460,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
                 const hasResources = (poi.resources?.length ?? 0) > 0;
                 const canCollectNow = isPlayerOwned && hasResources;
-                const isAttackable = !isPlayerOwned && poi.actions?.includes('attack');
+                const isAttackable = !isPlayerOwned;
                 
                 const level = poi.level || 1;
                 const levelName = (poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap] && poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]])
@@ -471,13 +471,14 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
                 return (
                     <div
-                        key={poi.id ?? `map-poi-${poi.name}`}
+                        key={poi.id ?? `map-poi-${index}`}
                         className="absolute z-20"
                         style={{
                             left: `${poi.position.x}%`,
                             top: `${poi.position.y}%`,
                             transform: 'translate(-50%, -50%)',
                         }}
+                        onMouseDown={(e) => handleMouseDown(e, poi.id)}
                     >
                         <DropdownMenu>
                             <TooltipProvider>
@@ -485,7 +486,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     <TooltipTrigger asChild>
                                         <DropdownMenuTrigger asChild>
                                             <button
-                                                onMouseDown={(e) => handleMouseDown(e, poi.id)}
                                                 className={cn(
                                                     "p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110",
                                                     "cursor-grab active:cursor-grabbing",
@@ -523,20 +523,16 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                 </Tooltip>
                             </TooltipProvider>
                             <DropdownMenuContent className="z-30">
-                                {poi.actions?.includes('travel') && (
-                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')}>
-                                        <MoveRight className="mr-2 h-4 w-4" />
-                                        <span>Se déplacer vers {poi.name}</span>
-                                    </DropdownMenuItem>
-                                )}
-                                {poi.actions?.includes('examine') && (
-                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
-                                        <Search className="mr-2 h-4 w-4" />
-                                        <span>Examiner les environs</span>
-                                    </DropdownMenuItem>
-                                )}
-                                {poi.actions?.includes('collect') && (
-                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollectNow}>
+                                <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')}>
+                                    <MoveRight className="mr-2 h-4 w-4" />
+                                    <span>Se déplacer vers {poi.name}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
+                                    <Search className="mr-2 h-4 w-4" />
+                                    <span>Examiner les environs</span>
+                                </DropdownMenuItem>
+                                {canCollectNow && (
+                                    <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')}>
                                         <Briefcase className="mr-2 h-4 w-4" />
                                         <span>Collecter les ressources</span>
                                     </DropdownMenuItem>
