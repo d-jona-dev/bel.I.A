@@ -445,7 +445,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             )}
             
             {pointsOfInterest.map((poi, index) => {
-                if (!poi.position) return null; // Do not render POI if it has no position
+                if (!poi.position) return null;
                 
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
@@ -478,7 +478,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                             top: `${poi.position.y}%`,
                             transform: 'translate(-50%, -50%)',
                         }}
-                        onMouseDown={(e) => handleMouseDown(e, poi.id)}
                     >
                         <DropdownMenu>
                             <TooltipProvider>
@@ -486,6 +485,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                     <TooltipTrigger asChild>
                                         <DropdownMenuTrigger asChild>
                                             <button
+                                                onMouseDown={(e) => handleMouseDown(e, poi.id)}
                                                 className={cn(
                                                     "p-2 rounded-full bg-background/80 hover:bg-accent/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110",
                                                     "cursor-grab active:cursor-grabbing",
