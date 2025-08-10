@@ -358,7 +358,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value={watchedValues.playerName || 'player'}>{watchedValues.playerName || 'Joueur'}</SelectItem>
+                                                        <SelectItem value="player">{watchedValues.playerName || 'Joueur'}</SelectItem>
                                                         {fields.map(char => (
                                                             <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
                                                         ))}
@@ -371,7 +371,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                             ))}
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: watchedValues.playerName || 'player' })}>
+                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: 'player' })}>
                             <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                         </Button>
                     </Card>

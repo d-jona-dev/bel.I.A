@@ -2601,6 +2601,27 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return { ...prev, mapPointsOfInterest: newPois };
     });
   }, []);
+  
+  const handleAddPoiToMap = React.useCallback((poiId: string) => {
+    setAdventureSettings(prev => {
+        const pois = prev.mapPointsOfInterest || [];
+        const poiExists = pois.some(p => p.id === poiId && p.position);
+        if (poiExists) {
+            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            return prev;
+        }
+
+        const newPois = pois.map(p => {
+            if (p.id === poiId) {
+                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+            }
+            return p;
+        });
+
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+  }, [toast]);
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })));
@@ -2612,7 +2633,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? ((stagedAdventureSettings.playerLevel - 1) * POINTS_PER_LEVEL_GAIN_FORM) + 5
+                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM) + 5
                         : 5;
     const totalDistributable = creationPoints + levelPoints;
 
@@ -3056,6 +3077,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       onAiConfigChange={handleAiConfigChange}
       comicPages={comicPages}
       onRefreshComicPreview={handleRefreshComicPreview}
+      onAddPoiToMap={handleAddPoiToMap}
     />
   );
 }

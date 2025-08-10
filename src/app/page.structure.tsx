@@ -123,6 +123,7 @@ interface PageStructureProps {
   onAiConfigChange: (newConfig: AiConfig) => void;
   comicPages: ComicPage[];
   onRefreshComicPreview: () => void; // Added prop for refresh handler
+  onAddPoiToMap: (poiId: string) => void; // Added prop
 }
 
 export function PageStructure({
@@ -198,6 +199,7 @@ export function PageStructure({
   onAiConfigChange,
   comicPages,
   onRefreshComicPreview, // Destructure new prop
+  onAddPoiToMap,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -426,6 +428,7 @@ export function PageStructure({
                 onPoiPositionChange={onPoiPositionChange}
                 onCreatePoi={onCreatePoi}
                 onMapImageUpload={onMapImageUpload}
+                onAddPoiToMap={onAddPoiToMap}
              />
              <Accordion type="single" collapsible className="w-full border rounded-lg p-2" defaultValue="comic-preview-accordion">
                 <AccordionItem value="comic-preview-accordion" className="border-b-0">
