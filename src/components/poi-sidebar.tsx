@@ -82,7 +82,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
     return (
         <ScrollArea className="h-72">
             <div className="space-y-3 pr-3">
-                {pointsOfInterest.map(poi => {
+                {pointsOfInterest.map((poi, index) => {
                     const IconComponent = getIconForPoi(poi);
                     const isPlayerOwned = poi.ownerId === playerId;
                     const owner = isPlayerOwned ? { name: playerName, factionColor: '#FFD700' } : characters.find(c => c.id === poi.ownerId);
@@ -121,7 +121,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
 
 
                     return (
-                        <Card key={poi.id} className="bg-muted/30 border">
+                        <Card key={poi.id ?? `poi-${index}`} className="bg-muted/30 border">
                             <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <IconComponent className="h-5 w-5" style={{ color: owner?.factionColor || '#808080' }} />
@@ -188,12 +188,11 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                     <div className="mt-3 pt-3 border-t border-dashed">
                                         <h4 className="text-xs font-semibold mb-2">Aménagements ({builtBuildings.length}/{maxSlots})</h4>
                                         <div className="space-y-2">
-                                            {builtBuildings.map(buildingId => {
-                                                const def = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
-                                                return <p key={`${poi.id}-${buildingId}`} className="text-xs p-1.5 bg-background rounded-md shadow-sm border">{def?.name || buildingId}</p>
-                                            })}
-                                            {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, index) => (
-                                                <div key={`slot-${poi.id}-${index}`} className="p-1.5 bg-background/50 rounded-md border border-dashed">
+                                            {builtBuildings.map(buildingId => (
+                                                <p key={`${poi.id}-${buildingId}`} className="text-xs p-1.5 bg-background rounded-md shadow-sm border">{BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId}</p>
+                                            ))}
+                                            {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, slotIndex) => (
+                                                <div key={`slot-${poi.id}-${slotIndex}`} className="p-1.5 bg-background/50 rounded-md border border-dashed">
                                                     <Select onValueChange={(buildingId) => onBuildInPoi(poi.id, buildingId)} disabled={isLoading || !canAffordBuilding}>
                                                         <SelectTrigger className="h-8 text-xs" disabled={isLoading || !canAffordBuilding}>
                                                             <SelectValue placeholder={`Construire (Coût: ${nextBuildingCost} PO)`} />
