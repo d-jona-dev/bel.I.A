@@ -61,6 +61,7 @@ const mapPointOfInterestSchema = z.object({
     description: z.string().optional(),
     icon: z.enum(['Castle', 'Mountain', 'Trees', 'Village', 'Shield', 'Landmark']),
     ownerId: z.string().optional(),
+    actions: z.array(z.string()).optional(),
 });
 
 
@@ -382,7 +383,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                             ))}
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player' })}>
+                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player', actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'] })}>
                             <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                         </Button>
                     </Card>
@@ -449,7 +450,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         <FormControl>
                                             <div className="flex items-center gap-2">
                                                 <Input type="color" {...field} className="w-10 h-10 p-1"/>
-                                                <Input placeholder="#RRGGBB" {...field} className="bg-background border"/>
+                                                <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
                                             </div>
                                         </FormControl>
                                         <FormMessage />
