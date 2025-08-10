@@ -97,6 +97,7 @@ export default function HistoiresPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [formPropKey, setFormPropKey] = React.useState(0);
   const importFileRef = React.useRef<HTMLInputElement>(null);
+  const [stagedEditFormValues, setStagedEditFormValues] = React.useState<AdventureFormValues | null>(null);
 
 
   React.useEffect(() => {
@@ -167,15 +168,15 @@ export default function HistoiresPage() {
     URL.revokeObjectURL(url);
   };
   
-  const handleSaveChanges = (updatedFormValues: AdventureFormValues) => {
-      if (editingStory) {
+  const handleSaveChanges = () => {
+      if (editingStory && stagedEditFormValues) {
           const updatedState: SaveData = {
               ...editingStory.adventureState,
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
-                  ...updatedFormValues
+                  ...stagedEditFormValues
               },
-              characters: updatedFormValues.characters.map(c => ({
+              characters: stagedEditFormValues.characters.map(c => ({
                   ...c, 
                   id: c.id || uid(),
               } as Character))
@@ -183,8 +184,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: updatedFormValues.world.substring(0, 30),
-              description: updatedFormValues.initialSituation.substring(0, 100),
+              title: stagedEditFormValues.world.substring(0, 30),
+              description: stagedEditFormValues.initialSituation.substring(0, 100),
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
@@ -193,6 +194,7 @@ export default function HistoiresPage() {
           saveStories(updatedStories);
           toast({ title: "Histoire Mise à Jour", description: "Les modifications ont été sauvegardées." });
           setEditingStory(null);
+          setStagedEditFormValues(null);
       }
   };
   
@@ -265,9 +267,9 @@ export default function HistoiresPage() {
               world: '',
               initialSituation: '',
               characters: [],
-              enableRpgMode: true,
-              enableRelationsMode: true,
-              enableStrategyMode: true,
+              rpgMode: true,
+              relationsMode: true,
+              strategyMode: true,
               playerName: 'Héros',
               playerClass: 'Aventurier',
           };
@@ -278,9 +280,9 @@ export default function HistoiresPage() {
           world: settings.world,
           initialSituation: settings.initialSituation,
           characters: story.adventureState.characters.map(c => ({ id: c.id, name: c.name, details: c.details })),
-          enableRpgMode: settings.rpgMode,
-          enableRelationsMode: settings.relationsMode,
-          enableStrategyMode: settings.strategyMode,
+          rpgMode: settings.rpgMode,
+          relationsMode: settings.relationsMode,
+          strategyMode: settings.strategyMode,
           playerName: settings.playerName,
           playerClass: settings.playerClass,
       }
@@ -288,6 +290,7 @@ export default function HistoiresPage() {
 
   const openEditDialog = (story: SavedStory) => {
     setFormPropKey(prev => prev + 1); 
+    setStagedEditFormValues(getAdventureFormValues(story));
     setEditingStory(story);
   }
   
@@ -442,7 +445,7 @@ export default function HistoiresPage() {
             </DialogContent>
         </Dialog>
 
-        <Dialog open={!!editingStory} onOpenChange={(open) => !open && setEditingStory(null)}>
+        <Dialog open={!!editingStory} onOpenChange={(open) => { if(!open) setEditingStory(null) }}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>Modifier l'Histoire : {editingStory?.title}</DialogTitle>
@@ -451,18 +454,18 @@ export default function HistoiresPage() {
                     </DialogDescription>
                 </DialogHeader>
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                    {editingStory && (
+                    {editingStory && stagedEditFormValues && (
                         <AdventureForm
                            formPropKey={formPropKey}
-                           initialValues={getAdventureFormValues(editingStory)}
-                           onSettingsChange={handleSaveChanges}
+                           initialValues={stagedEditFormValues}
+                           onSettingsChange={setStagedEditFormValues}
                         />
                     )}
                  </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
-                    <Button onClick={() => { /* The form's onSettingsChange will handle it */ }}>Enregistrer les Modifications</Button>
-                </DialogFooter>
+                    <Button onClick={handleSaveChanges}>Enregistrer les Modifications</Button>
+                 </DialogFooter>
             </DialogContent>
         </Dialog>
     </div>
