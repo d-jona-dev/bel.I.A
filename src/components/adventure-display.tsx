@@ -83,6 +83,7 @@ interface AdventureDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+    onAddPoiToMap: (poiId: string) => void;
 }
 
 
@@ -116,6 +117,7 @@ export function AdventureDisplay({
     onPoiPositionChange,
     onCreatePoi,
     onMapImageUpload,
+    onAddPoiToMap,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -282,6 +284,10 @@ export function AdventureDisplay({
 
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
+  
+  const handleAddPoiToMap = (poiId: string) => {
+      onAddPoiToMap(poiId);
+  }
   
   const PlayerStatusCard = () => {
     if (!adventureSettings.rpgMode) return null;
@@ -595,6 +601,7 @@ export function AdventureDisplay({
                             onCreatePoi={onCreatePoi}
                             playerLocationId={adventureSettings.playerLocationId}
                             onMapImageUpload={onMapImageUpload}
+                            onAddPoiToMap={handleAddPoiToMap}
                         />
                     </TabsContent>
                   </Tabs>
