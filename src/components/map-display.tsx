@@ -427,7 +427,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
                 const hasResources = (poi.resources?.length ?? 0) > 0;
                 const canCollect = isPlayerOwned && hasResources;
-                const isAttackable = !isPlayerOwned && poi.actions.includes('attack');
+                const isAttackable = !isPlayerOwned && poi.actions?.includes('attack');
                 
                 const level = poi.level || 1;
                 const levelName = (poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap] && poiLevelNameMap[poi.icon as keyof typeof poiLevelNameMap][level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]])
@@ -490,19 +490,19 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                 </Tooltip>
                             </TooltipProvider>
                             <DropdownMenuContent className="z-30">
-                                {poi.actions.includes('travel') && (
+                                {poi.actions?.includes('travel') && (
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'travel')}>
                                         <MoveRight className="mr-2 h-4 w-4" />
                                         <span>Se déplacer vers {poi.name}</span>
                                     </DropdownMenuItem>
                                 )}
-                                {poi.actions.includes('examine') && (
+                                {poi.actions?.includes('examine') && (
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'examine')}>
                                         <Search className="mr-2 h-4 w-4" />
                                         <span>Examiner les environs</span>
                                     </DropdownMenuItem>
                                 )}
-                                {poi.actions.includes('collect') && (
+                                {poi.actions?.includes('collect') && (
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'collect')} disabled={!canCollect}>
                                         <Briefcase className="mr-2 h-4 w-4" />
                                         <span>Collecter les ressources</span>
