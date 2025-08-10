@@ -44,7 +44,7 @@ interface MapDisplayProps {
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     playerLocationId?: string;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-    onAddPoiToMap: (poiId: string) => void; // New prop
+    onAddPoiToMap: (poiId: string) => void; 
 }
 
 const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
@@ -102,8 +102,6 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
     const playerCurrentPoi = pointsOfInterest.find(p => p.id === playerLocationId);
     
-    // Filter out POIs that are defined but don't have a position yet
-    const poisOnMap = pointsOfInterest.filter(p => p.position);
     const availablePoisToAdd = pointsOfInterest.filter(p => !p.position);
 
     const handleMouseDown = (e: React.MouseEvent, poiId: string) => {
@@ -446,7 +444,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                 </TooltipProvider>
             )}
             
-            {poisOnMap.map((poi) => {
+            {pointsOfInterest.map((poi, index) => {
                 if (!poi.position) return null; // Safety check
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
@@ -472,7 +470,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
 
                 return (
                     <div
-                        key={poi.id}
+                        key={poi.id ?? `map-poi-${index}`}
                         className="absolute z-20"
                         style={{
                             left: `${poi.position.x}%`,
