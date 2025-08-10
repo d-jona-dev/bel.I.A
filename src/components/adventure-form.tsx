@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
@@ -94,6 +94,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   const formRef = React.useRef(form);
   formRef.current = form;
   
+  // This useEffect will now only re-subscribe to watch when onSettingsChange changes.
+  // It won't cause a loop because the function reference from the parent should be stable.
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
         onSettingsChange(value as AdventureFormValues);
@@ -101,9 +103,12 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     return () => subscription.unsubscribe();
   }, [form.watch, onSettingsChange]);
 
+  // This useEffect resets the form only when the key or initial values *actually* change.
+  // Using JSON.stringify for a deep comparison to prevent unnecessary resets.
+  const initialValuesString = JSON.stringify(initialValues);
   React.useEffect(() => {
     form.reset(initialValues);
-  }, [formPropKey, initialValues, form]);
+  }, [formPropKey, initialValuesString, form]);
 
 
   const { fields, append, remove } = useFieldArray({
@@ -149,7 +154,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   
   const watchedValues = form.watch();
   const isRpgModeEnabled = watchedValues.rpgMode;
-  const isRelationsModeEnabled = watchedValues.relationsMode;
   const isStrategyModeEnabled = watchedValues.strategyMode;
   const usePlayerAvatar = watchedValues.usePlayerAvatar;
 
@@ -195,6 +199,51 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
 
         <div className="space-y-4">
+            <Card className="p-4">
+                <CardHeader className="p-0 pb-4">
+                     <CardTitle className="text-base">Modes de Jeu</CardTitle>
+                     <FormDescription>Activez ou désactivez les systèmes de jeu.</FormDescription>
+                </CardHeader>
+                <CardContent className="p-0 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="rpgMode"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
+                            </div>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="relationsMode"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel className="flex items-center gap-2 text-sm"><Users className="h-4 w-4"/> Mode Relations</FormLabel>
+                            </div>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="strategyMode"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
+                            </div>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+                </CardContent>
+            </Card>
+
             <div className="flex justify-end">
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
@@ -253,12 +302,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                         <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                     </Button>
                 </Card>
-            )}
-
-             {isRelationsModeEnabled && (
-                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
-                     <p className="text-sm text-muted-foreground">La gestion détaillée des relations et affinités sera bientôt disponible ici.</p>
-                 </Card>
             )}
 
             {isRpgModeEnabled && (
