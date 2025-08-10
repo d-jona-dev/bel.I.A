@@ -96,8 +96,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
         const valueCopy = JSON.parse(JSON.stringify(value))
-        const initialCopy = JSON.parse(JSON.stringify(initialValuesRef.current))
-        if (JSON.stringify(valueCopy) !== JSON.stringify(initialCopy)) {
+        if (JSON.stringify(valueCopy) !== JSON.stringify(initialValuesRef.current)) {
           onSettingsChange(value as AdventureFormValues);
           initialValuesRef.current = value as AdventureFormValues;
         }
@@ -178,15 +177,16 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
           value = BASE_ATTRIBUTE_VALUE_FORM;
       }
       
-      const oldValue = initialValues[field] !== undefined ? (initialValues[field] as number) : BASE_ATTRIBUTE_VALUE_FORM;
-      const change = value - oldValue;
-      const currentSpentExcludingThis = spentPoints - (oldValue - BASE_ATTRIBUTE_VALUE_FORM);
+      const currentSpentExcludingThis = ATTRIBUTES.reduce((acc, attr) => {
+          if (attr === field) return acc;
+          return acc + ((form.getValues(attr) as number || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
+      }, 0);
       
       if (currentSpentExcludingThis + (value - BASE_ATTRIBUTE_VALUE_FORM) > totalPoints) {
         value = totalPoints - currentSpentExcludingThis + BASE_ATTRIBUTE_VALUE_FORM;
       }
       
-      form.setValue(field, value, { shouldDirty: true });
+      form.setValue(field, value, { shouldDirty: true, shouldValidate: true });
   }
 
 
@@ -450,3 +450,5 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     </Form>
   );
 }
+
+    
