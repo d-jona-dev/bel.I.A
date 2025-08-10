@@ -2523,15 +2523,20 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [currentLanguage, stagedAdventureSettings.playerLocationId, baseAdventureSettings.mapPointsOfInterest, baseAdventureSettings.mapImageUrl, baseAdventureSettings.playerLocationId]);
 
   const handleApplyStagedChanges = React.useCallback(() => {
-    let initialSituationChanged = false;
-    const prevLiveRpgMode = adventureSettings.rpgMode;
-
     setAdventureSettings(prevLiveSettings => {
-        initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
+        const initialSituationChanged = stagedAdventureSettings.initialSituation !== prevLiveSettings.initialSituation;
         
-        let newLiveSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
+        let newLiveSettings = {
+            ...prevLiveSettings, // Start with current live settings to preserve mode switches
+            ...JSON.parse(JSON.stringify(stagedAdventureSettings)) // Overwrite with form data
+        };
 
-        if (newLiveSettings.rpgMode && (initialSituationChanged || (!prevLiveRpgMode && newLiveSettings.rpgMode))) {
+        // Explicitly preserve the mode switches from the live state
+        newLiveSettings.rpgMode = prevLiveSettings.rpgMode;
+        newLiveSettings.relationsMode = prevLiveSettings.relationsMode;
+        newLiveSettings.strategyMode = prevLiveSettings.strategyMode;
+
+        if (newLiveSettings.rpgMode && initialSituationChanged) {
             newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
             newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
             newLiveSettings.playerCurrentExp = 0;
@@ -2557,7 +2562,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         });
     }
 
-    if (initialSituationChanged) {
+    if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
         if (activeCombat) { 
             setActiveCombat(undefined);
@@ -2567,7 +2572,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setTimeout(() => {
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
     }, 0);
-  }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings.rpgMode, activeCombat]);
+  }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings.initialSituation, adventureSettings.rpgMode, activeCombat]);
+
 
   const handleToggleStrategyMode = () => {};
   const handleToggleRpgMode = () => {};

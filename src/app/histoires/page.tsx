@@ -128,7 +128,10 @@ export default function HistoiresPage() {
   const handleContinueStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
     if (storyToLoad) {
+        // Save the specific story state to be loaded by the main page
         localStorage.setItem('currentAdventureState', JSON.stringify(storyToLoad.adventureState));
+        // Use a flag to indicate that a story should be loaded
+        localStorage.setItem('loadStoryOnMount', 'true');
         window.location.href = '/';
     } else {
         toast({
