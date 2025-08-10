@@ -92,7 +92,9 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                     const lastCollected = poi.lastCollectedTurn;
                     let turnsRemaining = 0;
                     if (isPlayerOwned && poi.resources && poi.resources.length > 0 && lastCollected !== undefined) {
-                        turnsRemaining = Math.max(0, (lastCollected + COLLECTION_COOLDOWN) - currentTurn);
+                        const hasBerlines = (poi.buildings || []).includes('berlines');
+                        const cooldownDuration = hasBerlines ? 5 : COLLECTION_COOLDOWN;
+                        turnsRemaining = Math.max(0, (lastCollected + cooldownDuration) - currentTurn);
                     }
                     const canCollectNow = isPlayerOwned && turnsRemaining === 0 && poi.resources && poi.resources.length > 0;
                     
