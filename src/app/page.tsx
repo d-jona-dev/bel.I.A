@@ -569,53 +569,53 @@ export default function Home() {
 
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-    const currentRpgMode = adventureSettings.rpgMode;
+    
+    // Create a mutable copy of the current adventure settings to pass around
+    // This avoids stale state issues within the complex logic of this function
+    let adventureSettingsSnapshot = JSON.parse(JSON.stringify(adventureSettings));
 
     const allExpGainingCharacters = (expGained: number) => {
-        const charUpdater = (prevChars: Character[]): Character[] => {
-            if (!currentRpgMode) return prevChars;
-            let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
-            let changed = false;
+        if (!adventureSettingsSnapshot.rpgMode) return;
 
-            charactersCopy = charactersCopy.map(char => {
-                if (!char.isAlly || char.level === undefined) return char;
-                let newChar = {...char};
-                if (newChar.currentExp === undefined) newChar.currentExp = 0;
-                if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
-                
-                newChar.currentExp += expGained;
-                let leveledUp = false;
-                while(newChar.currentExp >= newChar.expToNextLevel!) {
-                    leveledUp = true;
-                    changed = true;
-                    newChar.level! += 1;
-                    newChar.currentExp -= newChar.expToNextLevel!;
-                    newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
-                    newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-                }
-                if (leveledUp) {
-                    toastsToShow.push({
-                        title: `Montée de Niveau: ${newChar.name}!`,
-                        description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
-                        duration: 7000
-                    });
-                }
-                return newChar;
-            });
+        let charactersCopy = JSON.parse(JSON.stringify(characters)) as Character[];
+        let changed = false;
 
-            if (changed) return charactersCopy;
-            return prevChars;
-        };
+        charactersCopy = charactersCopy.map(char => {
+            if (!char.isAlly || char.level === undefined) return char;
+            let newChar = {...char};
+            if (newChar.currentExp === undefined) newChar.currentExp = 0;
+            if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
+            
+            newChar.currentExp += expGained;
+            let leveledUp = false;
+            while(newChar.currentExp >= newChar.expToNextLevel!) {
+                leveledUp = true;
+                changed = true;
+                newChar.level! += 1;
+                newChar.currentExp -= newChar.expToNextLevel!;
+                newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
+                newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+            }
+            if (leveledUp) {
+                toastsToShow.push({
+                    title: `Montée de Niveau: ${newChar.name}!`,
+                    description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
+                    duration: 7000
+                });
+            }
+            return newChar;
+        });
 
-        setCharacters(charUpdater);
-        setStagedCharacters(charUpdater); // Sync staged characters
+        if (changed) {
+            setCharacters(charactersCopy);
+            setStagedCharacters(charactersCopy); // Sync staged characters
+        }
 
-        setAdventureSettings(prevSettings => {
-            if (!prevSettings.familiars) return prevSettings;
-            const updatedFamiliars = prevSettings.familiars.map(fam => {
+        if (adventureSettingsSnapshot.familiars) {
+            const updatedFamiliars = adventureSettingsSnapshot.familiars.map((fam: Familiar) => {
                 let newFam = {...fam};
                 newFam.currentExp += expGained;
-                 let leveledUp = false;
+                let leveledUp = false;
                 while(newFam.currentExp >= newFam.expToNextLevel) {
                     leveledUp = true;
                     newFam.currentExp -= newFam.expToNextLevel;
@@ -631,8 +631,8 @@ export default function Home() {
                 }
                 return newFam;
             });
-            return {...prevSettings, familiars: updatedFamiliars};
-        });
+            adventureSettingsSnapshot.familiars = updatedFamiliars;
+        }
     };
 
     if ((combatUpdates.expGained ?? 0) > 0) {
@@ -640,103 +640,84 @@ export default function Home() {
     }
 
     setCharacters(prevChars => {
-        if (!currentRpgMode) {
+        if (!adventureSettingsSnapshot.rpgMode) {
              return prevChars;
         }
         let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
-
         charactersCopy = charactersCopy.map((char) => {
             let currentCharacterState = { ...char };
             const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
-
             if (combatantUpdate) {
                 currentCharacterState.hitPoints = combatantUpdate.newHp;
                 currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
-                currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true); // Keep hostile if not defeated
+                currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
                 currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
             }
-            
             return currentCharacterState;
         });
         return charactersCopy;
     });
 
-    setAdventureSettings(prevSettings => {
-        if (!currentRpgMode) return prevSettings;
-        let newSettings = { ...prevSettings };
-        const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-        if (playerCombatUpdate) {
-            newSettings.playerCurrentHp = playerCombatUpdate.newHp;
-            newSettings.playerCurrentMp = playerCombatUpdate.newMp ?? newSettings.playerCurrentMp;
-            if (playerCombatUpdate.isDefeated) {
-                 setTimeout(() => {
-                    toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
-                 },0);
+    const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
+    if (adventureSettingsSnapshot.rpgMode && playerCombatUpdate) {
+        adventureSettingsSnapshot.playerCurrentHp = playerCombatUpdate.newHp;
+        adventureSettingsSnapshot.playerCurrentMp = playerCombatUpdate.newMp ?? adventureSettingsSnapshot.playerCurrentMp;
+        if (playerCombatUpdate.isDefeated) {
+            setTimeout(() => {
+                toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
+            }, 0);
+        }
+    }
+
+    if (adventureSettingsSnapshot.playerMaxMp && (adventureSettingsSnapshot.playerMaxMp > 0) && adventureSettingsSnapshot.playerCurrentMp !== undefined && (adventureSettingsSnapshot.playerCurrentMp < adventureSettingsSnapshot.playerMaxMp)) {
+        adventureSettingsSnapshot.playerCurrentMp = Math.min(adventureSettingsSnapshot.playerMaxMp, (adventureSettingsSnapshot.playerCurrentMp || 0) + 1);
+    }
+
+    if (adventureSettingsSnapshot.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && adventureSettingsSnapshot.playerCurrentExp !== undefined && adventureSettingsSnapshot.playerExpToNextLevel !== undefined && adventureSettingsSnapshot.playerLevel !== undefined) {
+        adventureSettingsSnapshot.playerCurrentExp += combatUpdates.expGained;
+        setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
+
+        let gainedLevel = false;
+        while (adventureSettingsSnapshot.playerCurrentExp! >= adventureSettingsSnapshot.playerExpToNextLevel!) {
+            gainedLevel = true;
+            adventureSettingsSnapshot.playerLevel! += 1;
+            adventureSettingsSnapshot.playerCurrentExp! -= adventureSettingsSnapshot.playerExpToNextLevel!;
+            adventureSettingsSnapshot.playerExpToNextLevel = Math.floor(adventureSettingsSnapshot.playerExpToNextLevel! * 1.5);
+            adventureSettingsSnapshot.playerInitialAttributePoints = (adventureSettingsSnapshot.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+            
+            const derivedStats = calculateEffectiveStats(adventureSettingsSnapshot);
+            Object.assign(adventureSettingsSnapshot, derivedStats);
+            adventureSettingsSnapshot.playerCurrentHp = adventureSettingsSnapshot.playerMaxHp;
+            if (adventureSettingsSnapshot.playerMaxMp && adventureSettingsSnapshot.playerMaxMp > 0) {
+                adventureSettingsSnapshot.playerCurrentMp = adventureSettingsSnapshot.playerMaxMp;
             }
         }
 
-        if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
-             newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
+        if (gainedLevel) {
+            setTimeout(() => {
+                toast({
+                    title: "Niveau Supérieur!",
+                    description: (
+                        <div>
+                            <p>Vous avez atteint le niveau {adventureSettingsSnapshot.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                            <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
+                            <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
+                        </div>
+                    ),
+                    duration: 9000,
+                });
+            }, 0);
+            setFormPropKey(k => k + 1);
+            setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...adventureSettingsSnapshot }));
         }
+    }
 
-        if (typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && newSettings.playerCurrentExp !== undefined && newSettings.playerExpToNextLevel !== undefined && newSettings.playerLevel !== undefined) {
-            newSettings.playerCurrentExp += combatUpdates.expGained;
-            setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
-
-            let gainedLevel = false;
-            let newSettingsForLevelUp = { ...newSettings }; // Create a mutable copy
-
-            while (newSettingsForLevelUp.playerCurrentExp! >= newSettingsForLevelUp.playerExpToNextLevel!) {
-                gainedLevel = true;
-                newSettingsForLevelUp.playerLevel! += 1;
-                newSettingsForLevelUp.playerCurrentExp! -= newSettingsForLevelUp.playerExpToNextLevel!;
-                newSettingsForLevelUp.playerExpToNextLevel = Math.floor(newSettingsForLevelUp.playerExpToNextLevel! * 1.5);
-                newSettingsForLevelUp.playerInitialAttributePoints = (newSettingsForLevelUp.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-
-                const derivedStats = calculateEffectiveStats(newSettingsForLevelUp);
-                newSettingsForLevelUp.playerMaxHp = derivedStats.playerMaxHp;
-                newSettingsForLevelUp.playerCurrentHp = newSettingsForLevelUp.playerMaxHp;
-                if (newSettingsForLevelUp.playerMaxMp && newSettingsForLevelUp.playerMaxMp > 0) {
-                    newSettingsForLevelUp.playerMaxMp = derivedStats.playerMaxMp;
-                    newSettingsForLevelUp.playerCurrentMp = newSettingsForLevelUp.playerMaxMp;
-                }
-                 newSettingsForLevelUp.playerArmorClass = derivedStats.playerArmorClass;
-                 newSettingsForLevelUp.playerAttackBonus = derivedStats.playerAttackBonus;
-                 newSettingsForLevelUp.playerDamageBonus = derivedStats.playerDamageBonus;
-            }
-
-            if (gainedLevel) {
-                 setTimeout(() => {
-                    toast({
-                        title: "Niveau Supérieur!",
-                        description: (
-                            <div>
-                                <p>Vous avez atteint le niveau {newSettingsForLevelUp.playerLevel}! Vos PV et PM max ont augmenté.</p>
-                                <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
-                                <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
-                            </div>
-                        ),
-                        duration: 9000,
-                    });
-                }, 0);
-                 setFormPropKey(k => k + 1);
-                 // Also update staged settings to reflect the level up in the form
-                 setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...newSettingsForLevelUp }));
-            }
-             return newSettingsForLevelUp; // Return the updated settings
-        }
-        
-        return newSettings;
-    });
+    // Apply all accumulated changes to adventureSettings state
+    setAdventureSettings(adventureSettingsSnapshot);
     
-    if (currentRpgMode) {
+    if (adventureSettingsSnapshot.rpgMode) {
       if (combatUpdates.nextActiveCombatState?.isActive) {
-          // If combat continues, update the state with the latest info from the AI.
-          // This is the source of truth for the *next* turn.
           const nextState = { ...combatUpdates.nextActiveCombatState };
-
-          // But first, apply the results of the *current* turn to the combatant list.
-          // This ensures no "zombie" enemies.
           const updatedCombatants = nextState.combatants.map(c => {
               const updateForThisTurn = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
               if (updateForThisTurn) {
@@ -750,18 +731,16 @@ export default function Home() {
               }
               return c;
           });
-
           setActiveCombat({ ...nextState, combatants: updatedCombatants });
       } else if (combatUpdates.combatEnded) {
-          // If combat ended, clear the state.
           setActiveCombat(undefined);
           setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
       }
     }
 
-
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings.rpgMode]);
+  }, [toast, adventureSettings, characters]);
+
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -2293,20 +2272,47 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [currentLanguage, stagedAdventureSettings.playerLocationId, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode]);
 
   const handleApplyStagedChanges = React.useCallback(() => {
-    // Preserve the live state of the mode switches
     const liveModes = {
         rpgMode: adventureSettings.rpgMode,
         relationsMode: adventureSettings.relationsMode,
         strategyMode: adventureSettings.strategyMode,
     };
 
-    let newLiveSettings = {
-        ...adventureSettings, // Start with current live settings
-        ...JSON.parse(JSON.stringify(stagedAdventureSettings)), // Overwrite with form data
-        ...liveModes // Restore the live mode switch states
+    let newLiveSettings: AdventureSettings = {
+        ...adventureSettings,
+        world: stagedAdventureSettings.world || adventureSettings.world,
+        initialSituation: stagedAdventureSettings.initialSituation || adventureSettings.initialSituation,
+        playerName: stagedAdventureSettings.playerName,
+        usePlayerAvatar: stagedAdventureSettings.usePlayerAvatar,
+        ...liveModes
     };
 
+    // Merge POIs, preserving positions
+    const stagedPois = stagedAdventureSettings.mapPointsOfInterest || [];
+    const livePois = adventureSettings.mapPointsOfInterest || [];
+    const mergedPois = stagedPois.map(stagedPoi => {
+        const livePoi = livePois.find(p => p.id === stagedPoi.id);
+        return {
+            ...stagedPoi,
+            position: livePoi?.position || stagedPoi.position // Keep live position if it exists
+        };
+    });
+    newLiveSettings.mapPointsOfInterest = mergedPois;
+    
     if (newLiveSettings.rpgMode) {
+        Object.assign(newLiveSettings, {
+            playerClass: stagedAdventureSettings.playerClass,
+            playerLevel: stagedAdventureSettings.playerLevel,
+            playerInitialAttributePoints: stagedAdventureSettings.playerInitialAttributePoints,
+            playerStrength: stagedAdventureSettings.playerStrength,
+            playerDexterity: stagedAdventureSettings.playerDexterity,
+            playerConstitution: stagedAdventureSettings.playerConstitution,
+            playerIntelligence: stagedAdventureSettings.playerIntelligence,
+            playerWisdom: stagedAdventureSettings.playerWisdom,
+            playerCharisma: stagedAdventureSettings.playerCharisma,
+            playerGold: stagedAdventureSettings.playerGold,
+        });
+
         const effectiveStats = calculateEffectiveStats(newLiveSettings);
         Object.assign(newLiveSettings, effectiveStats);
         if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
@@ -2317,9 +2323,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
     
     setAdventureSettings(newLiveSettings);
-    setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings))); 
+    setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
     setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
-    setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters))); 
+    setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
 
     if (activeCombat) {
         setActiveCombat(prevCombat => {
@@ -2340,7 +2346,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
-        if (activeCombat) { 
+        if (activeCombat) {
             setActiveCombat(undefined);
         }
     }
@@ -3081,3 +3087,5 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
+    
