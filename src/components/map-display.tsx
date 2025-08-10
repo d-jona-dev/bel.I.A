@@ -414,6 +414,10 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             )}
             
             {pointsOfInterest.map((poi) => {
+                if (!poi.position) {
+                    console.warn(`POI "${poi.name}" (id: ${poi.id}) is missing position data and will not be rendered on the map.`);
+                    return null; // Don't render POIs without a position
+                }
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
