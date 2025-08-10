@@ -195,51 +195,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
 
         <div className="space-y-4">
-            <Card className="p-4">
-                <CardHeader className="p-0 pb-4">
-                     <CardTitle className="text-base">Modes de Jeu</CardTitle>
-                     <FormDescription>Activez ou désactivez les systèmes de jeu pour la configuration initiale de l'aventure.</FormDescription>
-                </CardHeader>
-                <CardContent className="p-0 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="rpgMode"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
-                            </div>
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="relationsMode"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel className="flex items-center gap-2 text-sm"><Users className="h-4 w-4"/> Mode Relations</FormLabel>
-                            </div>
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="strategyMode"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
-                            </div>
-                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                        </FormItem>
-                      )}
-                    />
-                </CardContent>
-            </Card>
-
             <div className="flex justify-end">
                  <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
                     <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
