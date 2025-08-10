@@ -29,6 +29,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { poiLevelConfig, poiLevelNameMap, BUILDING_DEFINITIONS, BUILDING_SLOTS } from "@/lib/buildings";
+import { Checkbox } from "./ui/checkbox";
 
 
 export type FormCharacterDefinition = Partial<Character> & { id?: string; name: string; details: string };
@@ -62,6 +64,8 @@ const mapPointOfInterestSchema = z.object({
     icon: z.enum(['Castle', 'Mountain', 'Trees', 'Village', 'Shield', 'Landmark']),
     ownerId: z.string().optional(),
     actions: z.array(z.string()).optional(),
+    level: z.number().optional(),
+    buildings: z.array(z.string()).optional(),
 });
 
 
@@ -132,7 +136,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         name: "characters",
     });
     
-    const { fields: poiFields, append: appendPoi, remove: removePoi } = useFieldArray({
+    const { fields: poiFields, append: appendPoi, remove: removePoi, update: updatePoi } = useFieldArray({
         control: form.control,
         name: "mapPointsOfInterest"
     });
@@ -339,51 +343,109 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                         <FormDescription>Configurez les points d'intérêt de votre aventure.</FormDescription>
                         <ScrollArea className="h-48 pr-3">
-                            {poiFields.map((item, index) => (
-                            <Card key={item.id} className="relative pt-6 bg-background border mb-2">
+                            {poiFields.map((item, index) => {
+                                const currentPoiType = watchedValues.mapPointsOfInterest?.[index]?.icon || 'Village';
+                                const currentPoiLevel = watchedValues.mapPointsOfInterest?.[index]?.level || 1;
+                                const buildingSlots = BUILDING_SLOTS[currentPoiType]?.[currentPoiLevel] ?? 0;
+                                const availableBuildingsForType = BUILDING_DEFINITIONS.filter(def => def.applicablePoiTypes.includes(currentPoiType));
+
+                                return (
+                                <Card key={item.id} className="relative pt-6 bg-background border mb-2">
                                     <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removePoi(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                <CardContent className="space-y-2 p-3">
-                                    <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Type</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="Village">Ville</SelectItem>
-                                            <SelectItem value="Trees">Forêt</SelectItem>
-                                            <SelectItem value="Shield">Mine</SelectItem>
-                                            <SelectItem value="Mountain">Montagne</SelectItem>
-                                            <SelectItem value="Castle">Château</SelectItem>
-                                            <SelectItem value="Landmark">Point d'intérêt</SelectItem>
-                                        </SelectContent>
-                                        </Select>
-                                    </FormItem>
-                                    )} />
-                                    <FormField
-                                        control={form.control}
-                                        name={`mapPointsOfInterest.${index}.ownerId`}
-                                        render={({ field }) => (
+                                    <CardContent className="space-y-2 p-3">
+                                        <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Propriétaire</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormLabel>Type</FormLabel>
+                                                <Select onValueChange={(value) => { field.onChange(value); updatePoi(index, {...item, icon: value as any, level: 1, buildings:[]}); }} defaultValue={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="player">{watchedValues.playerName || 'Joueur'}</SelectItem>
-                                                        {watchedValues.characters?.map(char => (
-                                                            <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
-                                                        ))}
+                                                        <SelectItem value="Village">Ville</SelectItem>
+                                                        <SelectItem value="Trees">Forêt</SelectItem>
+                                                        <SelectItem value="Shield">Mine</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </FormItem>
+                                        )} />
+                                        <FormField
+                                            control={form.control}
+                                            name={`mapPointsOfInterest.${index}.ownerId`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Propriétaire</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="player">{watchedValues.playerName || 'Joueur'}</SelectItem>
+                                                            {watchedValues.characters?.map(char => (
+                                                                <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`mapPointsOfInterest.${index}.level`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Niveau</FormLabel>
+                                                    <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={String(field.value || 1)}>
+                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            {Object.keys(poiLevelConfig[currentPoiType] || {}).map(level => (
+                                                                <SelectItem key={level} value={level}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        {buildingSlots > 0 && (
+                                            <div className="space-y-1">
+                                                <Label>Bâtiments ({watchedValues.mapPointsOfInterest?.[index]?.buildings?.length || 0}/{buildingSlots})</Label>
+                                                <div className="p-2 border rounded-md max-h-24 overflow-y-auto">
+                                                    {availableBuildingsForType.map(building => (
+                                                        <FormField
+                                                            key={building.id}
+                                                            control={form.control}
+                                                            name={`mapPointsOfInterest.${index}.buildings`}
+                                                            render={({ field }) => (
+                                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                                     <FormControl>
+                                                                        <Checkbox
+                                                                            checked={field.value?.includes(building.id)}
+                                                                            onCheckedChange={(checked) => {
+                                                                                const currentBuildings = field.value || [];
+                                                                                if (checked) {
+                                                                                    if (currentBuildings.length < buildingSlots) {
+                                                                                        field.onChange([...currentBuildings, building.id]);
+                                                                                    } else {
+                                                                                        toast({ title: "Limite de bâtiments atteinte", variant: "destructive" });
+                                                                                    }
+                                                                                } else {
+                                                                                    field.onChange(currentBuildings.filter((value) => value !== building.id));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormLabel className="font-normal text-sm">{building.name}</FormLabel>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
                                         )}
-                                    />
-                                </CardContent>
-                            </Card>
-                            ))}
+
+                                    </CardContent>
+                                </Card>
+                                )
+                            })}
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player', actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'] })}>
+                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player', actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'], level: 1, buildings: [] })}>
                             <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                         </Button>
                     </Card>

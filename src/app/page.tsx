@@ -712,8 +712,12 @@ export default function Home() {
         }
     }
 
-    // Apply all accumulated changes to adventureSettings state
-    setAdventureSettings(adventureSettingsSnapshot);
+    // Apply all accumulated changes to adventureSettings state, preserving map state
+    setAdventureSettings(prevSettings => ({
+        ...prevSettings,
+        ...adventureSettingsSnapshot,
+        mapPointsOfInterest: prevSettings.mapPointsOfInterest, // Explicitly keep current map state
+    }));
     
     if (adventureSettingsSnapshot.rpgMode) {
       if (combatUpdates.nextActiveCombatState?.isActive) {
@@ -2124,7 +2128,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
             currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
-            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? Math.floor(100 * Math.pow(1.5, ((char.level ?? 1) || 1) -1)) : char.expToNextLevel,
+            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? Math.floor(100 * Math.pow(1.5, ((char.level ?? 1) || 1) - 1)) : char.expToNextLevel,
             hitPoints: char.maxHitPoints, // Reset HP for allies on restart
             manaPoints: char.maxManaPoints, // Reset MP for allies on restart
             statusEffects: [], // Clear status effects
@@ -2136,7 +2140,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
             currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
-            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? Math.floor(100 * Math.pow(1.5, ((char.level ?? 1) || 1) -1)) : char.expToNextLevel,
+            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? Math.floor(100 * Math.pow(1.5, ((char.level ?? 1) || 1) - 1)) : char.expToNextLevel,
             hitPoints: char.maxHitPoints,
             manaPoints: char.maxManaPoints,
             statusEffects: [],
@@ -2287,16 +2291,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         ...liveModes
     };
 
-    // Merge POIs, preserving positions
+    // Merge POIs: keep existing positions and add new ones
     const stagedPois = stagedAdventureSettings.mapPointsOfInterest || [];
     const livePois = adventureSettings.mapPointsOfInterest || [];
+    const livePoiMap = new Map(livePois.map(p => [p.id, p]));
+
     const mergedPois = stagedPois.map(stagedPoi => {
-        const livePoi = livePois.find(p => p.id === stagedPoi.id);
+        const livePoi = livePoiMap.get(stagedPoi.id);
         return {
             ...stagedPoi,
             position: livePoi?.position || stagedPoi.position // Keep live position if it exists
         };
     });
+    
+    // Add POIs from live state that are not in staged state (e.g., created directly on map)
+    livePois.forEach(livePoi => {
+        if (!mergedPois.some(p => p.id === livePoi.id)) {
+            mergedPois.push(livePoi);
+        }
+    });
+
     newLiveSettings.mapPointsOfInterest = mergedPois;
     
     if (newLiveSettings.rpgMode) {
@@ -2825,9 +2839,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => {
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
     let resources: GeneratedResource[] = [];
-    let level = 1;
+    let level = data.level || 1;
     let description = data.description;
     
     const poiTypeConfig = poiLevelConfig[data.type as keyof typeof poiLevelConfig];
@@ -2849,7 +2863,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: resources,
-        buildings: [],
+        buildings: data.buildings || [],
     };
 
     setAdventureSettings(prev => ({
@@ -3087,5 +3101,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
-
-    
