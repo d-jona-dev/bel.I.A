@@ -190,7 +190,7 @@ export function PoiSidebar({ playerId, playerName, pointsOfInterest, characters,
                                         <div className="space-y-2">
                                             {builtBuildings.map(buildingId => {
                                                 const def = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
-                                                return <p key={buildingId} className="text-xs p-1.5 bg-background rounded-md shadow-sm border">{def?.name || buildingId}</p>
+                                                return <p key={`${poi.id}-${buildingId}`} className="text-xs p-1.5 bg-background rounded-md shadow-sm border">{def?.name || buildingId}</p>
                                             })}
                                             {emptySlots > 0 && Array.from({ length: emptySlots }).map((_, index) => (
                                                 <div key={`slot-${poi.id}-${index}`} className="p-1.5 bg-background/50 rounded-md border border-dashed">
