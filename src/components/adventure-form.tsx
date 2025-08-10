@@ -96,9 +96,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        if(type === 'change') {
-            onSettingsChange(value as AdventureFormValues);
-        }
+        onSettingsChange(value as AdventureFormValues);
     });
     return () => subscription.unsubscribe();
   }, [form.watch, onSettingsChange]);
@@ -126,8 +124,8 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
         world: "Grande université populaire nommée \"hight scoole of futur\".",
         initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
         characters: [
-            { name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
-            { name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
+            { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique." },
+            { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir." }
         ],
         rpgMode: true,
         relationsMode: true,
@@ -180,7 +178,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
       value = oldValue + remainingPoints;
     }
     
-    form.setValue(field, value);
+    form.setValue(field, value, { shouldDirty: true });
   }
 
   const handleAttributeBlur = (field: keyof AdventureFormValues) => {
@@ -203,27 +201,6 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                 </Button>
             </div>
             
-            <FormField
-              control={form.control}
-              name="strategyMode"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
-                  <div className="space-y-0.5">
-                    <FormLabel className="flex items-center gap-2"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
-                    <FormDescription>
-                      Activer la carte et la gestion des lieux.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
             {isStrategyModeEnabled && (
                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                      <FormDescription>Configurez les points d'intérêt de votre aventure.</FormDescription>
@@ -250,63 +227,39 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                                        </Select>
                                      </FormItem>
                                    )} />
+                                   <FormField
+                                    control={form.control}
+                                    name={`mapPointsOfInterest.${index}.ownerId`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Propriétaire</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value={initialValues.playerName || 'player'}>{initialValues.playerName || 'Joueur'}</SelectItem>
+                                                    {fields.map(char => (
+                                                        <SelectItem key={char.id} value={char.id!}>{char.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
                                </CardContent>
                            </Card>
                         ))}
                     </ScrollArea>
-                    <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village' })}>
+                    <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ name: "", description: "", icon: 'Village', ownerId: initialValues.playerName || 'player' })}>
                         <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
                     </Button>
                 </Card>
             )}
 
-            <FormField
-              control={form.control}
-              name="relationsMode"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
-                  <div className="space-y-0.5">
-                    <FormLabel className="flex items-center gap-2"><Users className="h-4 w-4"/> Mode Relations</FormLabel>
-                    <FormDescription>
-                      Activer l'affinité et les statuts relationnels.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                     <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
              {isRelationsModeEnabled && (
                  <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                      <p className="text-sm text-muted-foreground">La gestion détaillée des relations et affinités sera bientôt disponible ici.</p>
                  </Card>
             )}
-
-             <FormField
-              control={form.control}
-              name="rpgMode"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/50">
-                  <div className="space-y-0.5">
-                    <FormLabel className="flex items-center gap-2"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
-                    <FormDescription>
-                      Activer les stats, le combat, l'inventaire...
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                     <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
 
             {isRpgModeEnabled && (
               <Card className="p-4 space-y-3 border-dashed bg-muted/20">
