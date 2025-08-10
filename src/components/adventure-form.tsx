@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { AdventureSettings } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Label } from "@/components/ui/label";
 
 export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
@@ -131,8 +132,37 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
     onSettingsChange(loadedData);
     toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
   };
+  
+  const watchedValues = form.watch();
+  const isRpgModeEnabled = watchedValues.enableRpgMode;
+  const isRelationsModeEnabled = watchedValues.enableRelationsMode;
+  const isStrategyModeEnabled = watchedValues.enableStrategyMode;
 
-  const isRpgModeEnabled = form.watch('enableRpgMode');
+  const ATTRIBUTES: (keyof AdventureFormValues)[] = ['playerStrength', 'playerDexterity', 'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma'];
+  const spentPoints = ATTRIBUTES.reduce((acc, attr) => {
+    const value = watchedValues[attr] as number | undefined;
+    return acc + ((value || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
+  }, 0);
+  const totalPoints = watchedValues.totalDistributableAttributePoints || 0;
+  const remainingPoints = totalPoints - spentPoints;
+  
+  const handleAttributeChange = (field: keyof AdventureFormValues, value: number) => {
+    const oldValue = form.getValues(field) as number || BASE_ATTRIBUTE_VALUE_FORM;
+    const change = value - oldValue;
+    
+    if (change > 0 && change > remainingPoints) {
+      // Trying to spend more points than available
+      value = oldValue + remainingPoints;
+    }
+    
+    if (value < BASE_ATTRIBUTE_VALUE_FORM) {
+      value = BASE_ATTRIBUTE_VALUE_FORM;
+    }
+    
+    form.setValue(field, value);
+    handleSettingsBlur();
+  }
+
 
   return (
     <Form {...form}>
@@ -187,6 +217,12 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
               )}
             />
 
+            {isStrategyModeEnabled && (
+                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
+                     <p className="text-sm text-muted-foreground">La gestion détaillée des points d'intérêt sera bientôt disponible ici.</p>
+                 </Card>
+            )}
+
             <FormField
               control={form.control}
               name="enableRelationsMode"
@@ -207,6 +243,12 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                 </FormItem>
               )}
             />
+            
+             {isRelationsModeEnabled && (
+                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
+                     <p className="text-sm text-muted-foreground">La gestion détaillée des relations et affinités sera bientôt disponible ici.</p>
+                 </Card>
+            )}
 
              <FormField
               control={form.control}
@@ -232,19 +274,73 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
             {isRpgModeEnabled && (
               <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                  <FormDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</FormDescription>
-                 <FormField
-                  control={form.control}
-                  name="playerClass"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Classe du Joueur</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} className="bg-background border" onBlur={handleSettingsBlur}/>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <div className="grid grid-cols-2 gap-4">
+                     <FormField
+                      control={form.control}
+                      name="playerClass"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Classe du Joueur</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} className="bg-background border" onBlur={handleSettingsBlur}/>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="playerLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Niveau de départ</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="1" {...field} value={field.value || 1} className="bg-background border" onChange={e => field.onChange(Number(e.target.value))} onBlur={handleSettingsBlur}/>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                 </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Dices className="h-4 w-4"/> Attributs du Joueur</Label>
+                    <div className="p-2 border rounded-md bg-background text-center text-sm">
+                        Points à distribuer : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild><HelpCircle className="inline h-3 w-3 ml-1 text-muted-foreground cursor-help"/></TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="max-w-xs">Les attributs de base sont à 8. Chaque point au-delà coûte un point de distribution. Vous gagnez des points à la création et à chaque niveau.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        {ATTRIBUTES.map(attr => (
+                             <FormField
+                              key={attr}
+                              control={form.control}
+                              name={attr as any}
+                              render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            min={BASE_ATTRIBUTE_VALUE_FORM}
+                                            {...field}
+                                            value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
+                                            onChange={e => handleAttributeChange(attr as any, Number(e.target.value))}
+                                            onBlur={handleSettingsBlur}
+                                            className="h-8"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                        ))}
+                    </div>
+                  </div>
               </Card>
             )}
 
