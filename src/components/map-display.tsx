@@ -238,11 +238,11 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                              </Tooltip>
                          </TooltipProvider>
                          <DropdownMenuContent>
-                             {availablePoisToAdd.map((poi, index) => (
-                                 <DropdownMenuItem key={poi.id ?? `poi-to-add-${index}`} onSelect={() => onAddPoiToMap(poi.id)}>
-                                     {poi.name}
-                                 </DropdownMenuItem>
-                             ))}
+                            {availablePoisToAdd.map((poi, index) => (
+                                <DropdownMenuItem key={poi.id ?? `poi-to-add-${index}`} onSelect={() => onAddPoiToMap(poi.id)}>
+                                    {poi.name}
+                                </DropdownMenuItem>
+                            ))}
                          </DropdownMenuContent>
                      </DropdownMenu>
                  )}
@@ -446,6 +446,7 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             
             {pointsOfInterest.map((poi, index) => {
                 if (!poi.position) return null; // Do not render POI if it has no position
+                
                 const IconComponent = getIconForPoi(poi);
                 const isPlayerOwned = poi.ownerId === playerId;
                 
