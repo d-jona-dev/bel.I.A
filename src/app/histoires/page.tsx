@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
 import Link from 'next/link';
-import type { Character } from '@/types';
+import type { Character, AdventureSettings, SaveData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -30,69 +30,131 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
+import { initial } from 'lodash';
+
+// Helper to generate a unique ID
+const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
 interface SavedStory {
   id: string;
   title: string;
   date: string;
   description: string;
+  // This will hold the full adventure state
+  adventureState: SaveData;
 }
+
+const createNewAdventureState = (): SaveData => ({
+    adventureSettings: {
+        world: "",
+        initialSituation: "",
+        rpgMode: true,
+        relationsMode: true,
+        strategyMode: true,
+        playerName: "Héros",
+        playerClass: "Aventurier",
+        playerLevel: 1,
+        playerInitialAttributePoints: 10,
+        playerStrength: 8,
+        playerDexterity: 8,
+        playerConstitution: 8,
+        playerIntelligence: 8,
+        playerWisdom: 8,
+        playerCharisma: 8,
+        playerCurrentHp: 20,
+        playerMaxHp: 20,
+        playerCurrentMp: 0,
+        playerMaxMp: 0,
+        playerCurrentExp: 0,
+        playerExpToNextLevel: 100,
+        playerGold: 10,
+        playerInventory: [],
+        playerSkills: [],
+        equippedItemIds: { weapon: null, armor: null, jewelry: null },
+        familiars: [],
+        mapPointsOfInterest: [],
+        mapImageUrl: null,
+    },
+    characters: [],
+    narrative: [],
+    currentLanguage: "fr",
+    saveFormatVersion: 2.6,
+    timestamp: new Date().toISOString(),
+});
+
 
 export default function HistoiresPage() {
   const { toast } = useToast();
   
-  const initialStories: SavedStory[] = [
-    { id: 'story1', title: 'Aventure à Hight School of Future', date: '2024-05-01', description: 'Le début de l\'intrigue avec Rina et Kentaro...' },
-    { id: 'story2', title: 'Exploration de la Forêt Interdite', date: '2024-04-25', description: 'Une quête parallèle dans un monde fantastique...' },
-  ];
-
-  const [savedStories, setSavedStories] = React.useState<SavedStory[]>(initialStories);
+  const [savedStories, setSavedStories] = React.useState<SavedStory[]>([]);
   const [savedCharacters, setSavedCharacters] = React.useState<Character[]>([]);
-  const [isLoadingCharacters, setIsLoadingCharacters] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(true);
+  
   const [storyToDelete, setStoryToDelete] = React.useState<SavedStory | null>(null);
   const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [formPropKey, setFormPropKey] = React.useState(0);
+  const importFileRef = React.useRef<HTMLInputElement>(null);
+
 
   React.useEffect(() => {
     try {
+      const storiesFromStorage = localStorage.getItem('adventureStories');
+      if (storiesFromStorage) {
+        setSavedStories(JSON.parse(storiesFromStorage));
+      }
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
         setSavedCharacters(JSON.parse(charactersFromStorage));
       }
     } catch (error) {
-      console.error("Failed to load characters from localStorage:", error);
+      console.error("Failed to load data from localStorage:", error);
       toast({
         title: "Erreur de chargement",
-        description: "Impossible de charger les personnages sauvegardés.",
+        description: "Impossible de charger les données sauvegardées.",
         variant: "destructive",
       });
     }
-    setIsLoadingCharacters(false);
+    setIsLoading(false);
   }, [toast]);
 
+  const saveStories = (stories: SavedStory[]) => {
+    setSavedStories(stories);
+    localStorage.setItem('adventureStories', JSON.stringify(stories));
+  }
+  
+
   const handleContinueStory = (storyId: string) => {
-    toast({
-      title: "Fonctionnalité en cours",
-      description: `Continuer l'histoire "${savedStories.find(s => s.id === storyId)?.title}" n'est pas encore implémenté.`,
-    });
+    const storyToLoad = savedStories.find(s => s.id === storyId);
+    if (storyToLoad) {
+        localStorage.setItem('currentAdventureState', JSON.stringify(storyToLoad.adventureState));
+        // Redirect to the main adventure page. Using a simple redirect for now.
+        // A more robust solution might use Next.js router.
+        window.location.href = '/';
+    } else {
+        toast({
+          title: "Erreur",
+          description: `Impossible de charger l'histoire.`,
+          variant: 'destructive'
+        });
+    }
   };
 
   const confirmDeleteStory = () => {
     if (storyToDelete) {
-      setSavedStories(prevStories => prevStories.filter(story => story.id !== storyToDelete.id));
+      const updatedStories = savedStories.filter(story => story.id !== storyToDelete.id);
+      saveStories(updatedStories);
       toast({
         title: "Histoire Supprimée",
-        description: `L'histoire "${storyToDelete.title}" a été supprimée. (Actualisez pour réinitialiser)`,
+        description: `L'histoire "${storyToDelete.title}" a été supprimée.`,
       });
       setStoryToDelete(null);
     }
   };
 
   const handleDownloadStory = (story: SavedStory) => {
-    const jsonString = JSON.stringify(story, null, 2);
+    const jsonString = JSON.stringify(story.adventureState, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -104,13 +166,135 @@ export default function HistoiresPage() {
     URL.revokeObjectURL(url);
   };
   
-  const handleUpdateStory = () => {
-      if (!editingStory) return;
-      const updatedStories = savedStories.map(s => s.id === editingStory.id ? editingStory : s);
-      setSavedStories(updatedStories);
-      toast({ title: "Histoire Mise à Jour", description: "Les informations de l'histoire ont été sauvegardées." });
-      setEditingStory(null);
+  const handleSaveChanges = (updatedFormValues: AdventureFormValues) => {
+      if (editingStory) {
+          // Logic for updating an existing story
+          const updatedState: SaveData = {
+              ...editingStory.adventureState,
+              adventureSettings: {
+                  ...editingStory.adventureState.adventureSettings,
+                  ...updatedFormValues
+              },
+              characters: updatedFormValues.characters.map(c => ({
+                  ...c, 
+                  id: c.id || uid(),
+              }))
+          };
+
+          const updatedStory: SavedStory = {
+              ...editingStory,
+              title: updatedFormValues.world.substring(0, 30), // Example title
+              description: updatedFormValues.initialSituation.substring(0, 100),
+              adventureState: updatedState,
+              date: new Date().toISOString().split('T')[0],
+          };
+
+          const updatedStories = savedStories.map(s => s.id === updatedStory.id ? updatedStory : s);
+          saveStories(updatedStories);
+          toast({ title: "Histoire Mise à Jour", description: "Les modifications ont été sauvegardées." });
+          setEditingStory(null);
+      } else {
+         // Logic for creating a new story
+         const newId = uid();
+         const newAdventureState: SaveData = createNewAdventureState();
+         // TODO: Map AdventureFormValues to SaveData more comprehensively
+         newAdventureState.adventureSettings.world = updatedFormValues.world;
+         newAdventureState.adventureSettings.initialSituation = updatedFormValues.initialSituation;
+         newAdventureState.adventureSettings.playerName = updatedFormValues.playerName;
+         newAdventureState.adventureSettings.rpgMode = updatedFormValues.enableRpgMode;
+         newAdventureState.adventureSettings.relationsMode = updatedFormValues.enableRelationsMode;
+         newAdventureState.adventureSettings.strategyMode = updatedFormValues.enableStrategyMode;
+
+         const newStory: SavedStory = {
+             id: newId,
+             title: updatedFormValues.world.substring(0, 40) || "Nouvelle Histoire",
+             description: updatedFormValues.initialSituation.substring(0, 100) || "...",
+             date: new Date().toISOString().split('T')[0],
+             adventureState: newAdventureState,
+         };
+         saveStories([...savedStories, newStory]);
+         toast({ title: "Nouvelle Aventure Créée!", description: "Elle a été ajoutée à votre liste." });
+         setIsCreateModalOpen(false);
+      }
   };
+  
+  const handleImportStory = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const jsonString = e.target?.result as string;
+            const importedState = JSON.parse(jsonString) as SaveData;
+            
+            // Basic validation
+            if (!importedState.adventureSettings || !importedState.characters || !importedState.narrative) {
+                throw new Error("Fichier de sauvegarde invalide.");
+            }
+
+            const newId = uid();
+            const newStory: SavedStory = {
+                id: newId,
+                title: importedState.adventureSettings.world.substring(0, 40) || "Histoire Importée",
+                description: importedState.adventureSettings.initialSituation.substring(0, 100) || "...",
+                date: new Date().toISOString().split('T')[0],
+                adventureState: importedState,
+            };
+
+            saveStories([...savedStories, newStory]);
+            toast({ title: "Histoire Importée", description: "L'aventure a été ajoutée à votre liste." });
+
+        } catch (error) {
+            console.error("Error importing story:", error);
+            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+        }
+    };
+    reader.readAsText(file);
+    if(event.target) event.target.value = ''; // Reset for next upload
+  }
+
+  const openEditDialog = (story: SavedStory) => {
+    setFormPropKey(prev => prev + 1); // Force re-mount of form with new initial values
+    setEditingStory(story);
+  }
+  
+  const openCreateDialog = () => {
+    setFormPropKey(prev => prev + 1); // Force re-mount of form with new initial values
+    setEditingStory(null);
+    setIsCreateModalOpen(true);
+  }
+
+  const getAdventureFormValues = (story: SavedStory | null): AdventureFormValues => {
+      if (!story) {
+          // Default values for a new story
+          const defaultState = createNewAdventureState();
+          return {
+              world: '',
+              initialSituation: '',
+              characters: [],
+              enableRpgMode: true,
+              enableRelationsMode: true,
+              enableStrategyMode: true,
+              playerName: 'Héros',
+              playerClass: 'Aventurier',
+              // ... and other defaults
+          };
+      }
+      
+      const settings = story.adventureState.adventureSettings;
+      return {
+          world: settings.world,
+          initialSituation: settings.initialSituation,
+          characters: story.adventureState.characters.map(c => ({ id: c.id, name: c.name, details: c.details })),
+          enableRpgMode: settings.rpgMode,
+          enableRelationsMode: settings.relationsMode,
+          enableStrategyMode: settings.strategyMode,
+          playerName: settings.playerName,
+          playerClass: settings.playerClass,
+          // ... map other settings
+      }
+  }
 
 
   return (
@@ -118,30 +302,13 @@ export default function HistoiresPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Histoires & Personnages</h1>
         <div className="flex gap-2">
-          <Button variant="outline" disabled>
-            <Upload className="mr-2 h-4 w-4" /> Importer
-          </Button>
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[80vw] lg:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Créer une Nouvelle Aventure</DialogTitle>
-                    <DialogDescription>
-                        Configurez tous les aspects de votre nouvelle histoire.
-                    </DialogDescription>
-                </DialogHeader>
-                {/* Future: Add AdventureForm for creation here */}
-                <p className="py-8 text-center text-muted-foreground">Le formulaire de création d'aventure sera bientôt disponible ici.</p>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button disabled>Créer l'Histoire</Button>
-                </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            <input type="file" ref={importFileRef} onChange={handleImportStory} accept=".json" className="hidden" />
+            <Button variant="outline" onClick={() => importFileRef.current?.click()}>
+              <Upload className="mr-2 h-4 w-4" /> Importer
+            </Button>
+            <Button onClick={openCreateDialog}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
+            </Button>
         </div>
       </div>
 
@@ -163,40 +330,9 @@ export default function HistoiresPage() {
                     <Button variant="outline" size="sm" onClick={() => handleContinueStory(story.id)}>
                       <Play className="mr-2 h-4 w-4" /> Continuer
                     </Button>
-                     <Dialog open={editingStory?.id === story.id} onOpenChange={(open) => !open && setEditingStory(null)}>
-                        <DialogTrigger asChild>
-                           <Button variant="ghost" size="sm" onClick={() => setEditingStory(story)}>
-                                <Edit className="mr-2 h-4 w-4" /> Modifier
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-[80vw] lg:max-w-3xl">
-                            <DialogHeader>
-                                <DialogTitle>Modifier l'Histoire</DialogTitle>
-                                <DialogDescription>
-                                    Ajustez les détails de votre aventure.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 max-h-[60vh] overflow-y-auto">
-                            {editingStory?.id === story.id && (
-                                <div className="space-y-4">
-                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-story-title">Titre</Label>
-                                        <Input id="edit-story-title" value={editingStory.title} onChange={e => setEditingStory({...editingStory!, title: e.target.value})} />
-                                     </div>
-                                     <div className="space-y-2">
-                                        <Label htmlFor="edit-story-desc">Description</Label>
-                                        <Textarea id="edit-story-desc" value={editingStory.description} onChange={e => setEditingStory({...editingStory!, description: e.target.value})} rows={4}/>
-                                     </div>
-                                      <p className="text-center text-muted-foreground py-4">Le formulaire complet d'édition d'aventure sera ici.</p>
-                                </div>
-                            )}
-                            </div>
-                           <DialogFooter>
-                              <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
-                              <Button onClick={handleUpdateStory}>Enregistrer</Button>
-                           </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(story)}>
+                        <Edit className="mr-2 h-4 w-4" /> Modifier
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" onClick={() => setStoryToDelete(story)}>
@@ -211,7 +347,7 @@ export default function HistoiresPage() {
                               Confirmer la Suppression
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer l'histoire "{storyToDelete.title}" ? Cette action est irréversible (pour cette session).
+                              Êtes-vous sûr de vouloir supprimer l'histoire "{storyToDelete.title}" ? Cette action est irréversible.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -241,7 +377,7 @@ export default function HistoiresPage() {
       <section>
         <h2 className="text-2xl font-semibold mb-4">Chatter avec un Personnage</h2>
         <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
-          {isLoadingCharacters ? (
+          {isLoading ? (
             <p className="text-muted-foreground text-center py-10">Chargement des personnages...</p>
           ) : savedCharacters.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -282,6 +418,55 @@ export default function HistoiresPage() {
           )}
         </ScrollArea>
       </section>
+
+       {/* Dialog for Creating a new adventure */}
+       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Créer une Nouvelle Aventure</DialogTitle>
+                    <DialogDescription>
+                        Configurez tous les aspects de votre nouvelle histoire.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                  <AdventureForm
+                      formPropKey={formPropKey}
+                      initialValues={getAdventureFormValues(null)}
+                      onSettingsChange={handleSaveChanges}
+                  />
+                </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
+                    <Button onClick={() => { /* The form's onSettingsChange will handle it */ }}>Créer l'Histoire</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialog for Editing an existing adventure */}
+        <Dialog open={!!editingStory} onOpenChange={(open) => !open && setEditingStory(null)}>
+            <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Modifier l'Histoire : {editingStory?.title}</DialogTitle>
+                    <DialogDescription>
+                        Ajustez les détails de votre aventure.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
+                    {editingStory && (
+                        <AdventureForm
+                           formPropKey={formPropKey}
+                           initialValues={getAdventureFormValues(editingStory)}
+                           onSettingsChange={handleSaveChanges}
+                        />
+                    )}
+                 </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
+                    <Button onClick={() => { /* The form's onSettingsChange will handle it */ }}>Enregistrer les Modifications</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
+
