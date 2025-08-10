@@ -95,7 +95,9 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
   
   React.useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-        if (JSON.stringify(value) !== JSON.stringify(initialValuesRef.current)) {
+        const valueCopy = JSON.parse(JSON.stringify(value))
+        const initialCopy = JSON.parse(JSON.stringify(initialValuesRef.current))
+        if (JSON.stringify(valueCopy) !== JSON.stringify(initialCopy)) {
           onSettingsChange(value as AdventureFormValues);
           initialValuesRef.current = value as AdventureFormValues;
         }
@@ -531,7 +533,7 @@ export function AdventureForm({ formPropKey, initialValues, onSettingsChange }: 
                  </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </div>
+        </div>
       </form>
     </Form>
   );
