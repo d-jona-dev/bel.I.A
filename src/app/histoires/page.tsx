@@ -180,9 +180,11 @@ export default function HistoiresPage() {
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
                   ...formValues,
-                  mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})), // Ensure POIs are saved with ID
+                  mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
               },
               characters: (formValues.characters || []).map(c => ({
+                  // Keep existing full character data and override with form values
+                  ...editingStory.adventureState.characters.find(ec => ec.id === c.id),
                   ...c, 
                   id: c.id || uid(),
               } as Character))
@@ -219,7 +221,8 @@ export default function HistoiresPage() {
       newAdventureState.adventureSettings.strategyMode = formValues.strategyMode ?? true;
       newAdventureState.adventureSettings.mapPointsOfInterest = (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()}));
       newAdventureState.characters = (formValues.characters || []).map(c => ({
-          ...c, id: c.id || uid(),
+          ...c, 
+          id: c.id || uid(),
       } as Character));
 
       const newStory: SavedStory = {
@@ -290,7 +293,14 @@ export default function HistoiresPage() {
       return {
           world: settings.world,
           initialSituation: settings.initialSituation,
-          characters: story.adventureState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor })),
+          characters: story.adventureState.characters.map(c => ({ 
+              id: c.id, 
+              name: c.name, 
+              details: c.details, 
+              factionColor: c.factionColor,
+              affinity: c.affinity,
+              relations: c.relations,
+          })),
           rpgMode: settings.rpgMode,
           relationsMode: settings.relationsMode,
           strategyMode: settings.strategyMode,
