@@ -417,6 +417,7 @@ export default function Home() {
         const effectiveStats = calculateEffectiveStats(stateToLoad.adventureSettings);
         const finalSettings = { ...stateToLoad.adventureSettings, ...effectiveStats };
 
+        // Set live state
         setAdventureSettings(finalSettings);
         setCharacters(stateToLoad.characters);
         setNarrativeMessages(stateToLoad.narrative);
@@ -424,16 +425,10 @@ export default function Home() {
         setCurrentLanguage(stateToLoad.currentLanguage || "fr");
         setAiConfig(stateToLoad.aiConfig || { source: 'gemini' });
 
+        // Set base state for resets
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
-
-        setStagedAdventureSettings({
-            ...JSON.parse(JSON.stringify(finalSettings)),
-            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details }))
-        });
-        setStagedCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
         
-        setFormPropKey(k => k + 1);
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
 
         // Automated POI placement
@@ -457,6 +452,17 @@ export default function Home() {
         }
     });
   }, [toast]);
+
+  // This effect synchronizes the form state whenever the base state changes (e.g., after loading a game)
+  React.useEffect(() => {
+      setStagedAdventureSettings({
+          ...JSON.parse(JSON.stringify(baseAdventureSettings)),
+          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details }))
+      });
+      setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
+      setFormPropKey(k => k + 1); // Force re-render of form with new initialValues
+  }, [baseAdventureSettings, baseCharacters]);
+
 
   React.useEffect(() => {
     const shouldLoad = localStorage.getItem('loadStoryOnMount');
@@ -2177,32 +2183,21 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
   const handleSettingsUpdate = React.useCallback((newSettingsFromForm: AdventureFormValues) => {
       setStagedAdventureSettings(prevStagedSettings => {
-          const newSettingsCandidate: Partial<AdventureSettings> = {
-              ...prevStagedSettings,
-              world: newSettingsFromForm.world,
-              initialSituation: newSettingsFromForm.initialSituation,
-              playerName: newSettingsFromForm.playerName,
-              usePlayerAvatar: newSettingsFromForm.usePlayerAvatar,
-          };
+          let newSettingsCandidate: Partial<AdventureSettings> = { ...prevStagedSettings };
+
+          // Merge fields from form, ensuring not to overwrite live state unintentionally
+          const fieldsToUpdate: (keyof AdventureFormValues)[] = [
+              'world', 'initialSituation', 'playerName', 'usePlayerAvatar', 'rpgMode', 'relationsMode', 'strategyMode',
+              'playerClass', 'playerLevel', 'playerInitialAttributePoints',
+              'playerStrength', 'playerDexterity', 'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma',
+              'playerGold', 'mapPointsOfInterest'
+          ];
           
-          if (newSettingsFromForm.rpgMode) {
-              Object.assign(newSettingsCandidate, {
-                  playerClass: newSettingsFromForm.playerClass,
-                  playerLevel: newSettingsFromForm.playerLevel,
-                  playerInitialAttributePoints: newSettingsFromForm.playerInitialAttributePoints,
-                  playerStrength: newSettingsFromForm.playerStrength,
-                  playerDexterity: newSettingsFromForm.playerDexterity,
-                  playerConstitution: newSettingsFromForm.playerConstitution,
-                  playerIntelligence: newSettingsFromForm.playerIntelligence,
-                  playerWisdom: newSettingsFromForm.playerWisdom,
-                  playerCharisma: newSettingsFromForm.playerCharisma,
-                  playerGold: newSettingsFromForm.playerGold,
-              });
-          }
-  
-          if(newSettingsFromForm.mapPointsOfInterest) {
-              newSettingsCandidate.mapPointsOfInterest = newSettingsFromForm.mapPointsOfInterest;
-          }
+          fieldsToUpdate.forEach(field => {
+              if (newSettingsFromForm[field] !== undefined) {
+                  (newSettingsCandidate as any)[field] = newSettingsFromForm[field];
+              }
+          });
 
           if (newSettingsCandidate.rpgMode) {
             const effectiveStats = calculateEffectiveStats(newSettingsCandidate as AdventureSettings);
@@ -2214,183 +2209,82 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     setStagedCharacters(prevStagedChars => {
       const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-      const newRPGMode = stagedAdventureSettings.rpgMode;
-      const newRelationsMode = stagedAdventureSettings.relationsMode;
-      const existingCharsMap = new Map(prevStagedChars.map(sc => [sc.id, sc]));
-
+      const newRPGMode = newSettingsFromForm.rpgMode;
+      const newRelationsMode = newSettingsFromForm.relationsMode;
+      
       let updatedCharsList: Character[] = newSettingsFromForm.characters.map(formDef => {
-        const existingChar = formDef.id
-            ? existingCharsMap.get(formDef.id)
-            : prevStagedChars.find(sc => sc.name === formDef.name && !newSettingsFromForm.characters.some(otherFormDef => otherFormDef.id === sc.id && otherFormDef.id !== formDef.id && !formDef.id));
+        const existingChar = prevStagedChars.find(sc => sc.id === formDef.id || (sc.name === formDef.name && !formDef.id));
 
         const charLevel = newRPGMode ? ((existingChar?.level) ?? 1) : undefined;
-        const charInitialAttributes = newRPGMode ? (existingChar?.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
-        const charCurrentExp = newRPGMode ? (existingChar?.currentExp ?? 0) : undefined;
-        const charExpToNext = newRPGMode ? (existingChar?.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (charLevel ?? 1)-1))) : undefined;
-
 
         if (existingChar) {
-          return {
-            ...existingChar, name: formDef.name, details: formDef.details,
-            isAlly: existingChar.isAlly ?? false,
-            initialAttributePoints: charInitialAttributes,
-            currentExp: charCurrentExp,
-            expToNextLevel: charExpToNext,
-            ...(newRPGMode ? {
-                level: charLevel, characterClass: existingChar.characterClass || '', 
-                hitPoints: existingChar.hitPoints ?? existingChar.maxHitPoints ?? 10, maxHitPoints: existingChar.maxHitPoints ?? 10,
-                manaPoints: existingChar.manaPoints ?? existingChar.maxManaPoints ?? 0, maxManaPoints: existingChar.maxManaPoints ?? 0,
-                armorClass: existingChar.armorClass ?? 10, attackBonus: existingChar.attackBonus ?? 0, damageBonus: "1",
-                isHostile: existingChar.isHostile ?? false,
-                strength: existingChar.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: existingChar.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: existingChar.constitution ?? BASE_ATTRIBUTE_VALUE,
-                intelligence: existingChar.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: existingChar.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: existingChar.charisma ?? BASE_ATTRIBUTE_VALUE,
-            } : {
-                level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
-                armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined,
-                strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined,
-                initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined,
-             }),
-             ...(newRelationsMode ? {
-                affinity: existingChar.affinity ?? 50, relations: existingChar.relations || { [PLAYER_ID]: defaultRelation },
-             } : { affinity: undefined, relations: undefined, })
-          };
+          return { ...existingChar, name: formDef.name, details: formDef.details };
         } else {
-          const newId = formDef.id || `${formDef.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-          const defaultCharRPGStats = {
-            level: 1, characterClass: '', hitPoints: 10, maxHitPoints: 10, manaPoints:0, maxManaPoints:0, armorClass: 10,
-            attackBonus: 0, damageBonus: "1", isHostile: false,
-            strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-            intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-            initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
-            currentExp: 0, expToNextLevel: 100,
-          };
+          // This should ideally not happen if characters are managed correctly via Add/Remove
+          const newId = formDef.id || `${formDef.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
           return {
-            id: newId, name: formDef.name, details: formDef.details, history: [`Créé via formulaire le ${new Date().toLocaleString()}`], portraitUrl: null,
-            isAlly: false,
+            id: newId, name: formDef.name, details: formDef.details, history: [], isAlly: false,
             locationId: stagedAdventureSettings.playerLocationId,
-             ...(newRPGMode ? defaultCharRPGStats : {level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined, armorClass: undefined, attackBonus: undefined, damageBonus: undefined, isHostile: undefined, strength: undefined, dexterity: undefined, constitution: undefined, intelligence: undefined, wisdom: undefined, charisma: undefined, initialAttributePoints: undefined, currentExp: undefined, expToNextLevel: undefined}),
-            ...(newRelationsMode ? { affinity: 50, relations: { [PLAYER_ID]: defaultRelation }, } : {affinity: undefined, relations: undefined})
+            ...(newRPGMode && { level: 1, characterClass: '', hitPoints: 10, maxHitPoints: 10, isHostile: false, strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8, initialAttributePoints: 5, currentExp: 0, expToNextLevel: 100 }),
+            ...(newRelationsMode && { affinity: 50, relations: { [PLAYER_ID]: defaultRelation } }),
           };
         }
       });
-      if (newRelationsMode) {
-          const allCharIds = new Set(updatedCharsList.map(c => c.id));
-          updatedCharsList = updatedCharsList.map(char => {
-            const newRelations = { ...(char.relations || {}) };
-            if (!newRelations[PLAYER_ID]) { newRelations[PLAYER_ID] = defaultRelation; }
-            allCharIds.forEach(otherCharId => {
-                if (char.id !== otherCharId && !newRelations[otherCharId]) {
-                    newRelations[otherCharId] = defaultRelation;
-                }
-            });
-            return { ...char, relations: newRelations };
-          });
-      }
-      if (JSON.stringify(prevStagedChars) !== JSON.stringify(updatedCharsList)) { return updatedCharsList; }
-      return prevStagedChars;
+      return updatedCharsList;
     });
-  }, [currentLanguage, stagedAdventureSettings.playerLocationId, stagedAdventureSettings.rpgMode, stagedAdventureSettings.relationsMode]);
+  }, [currentLanguage, stagedAdventureSettings.playerLocationId]);
+
 
   const handleApplyStagedChanges = React.useCallback(() => {
-    const liveModes = {
-        rpgMode: adventureSettings.rpgMode,
-        relationsMode: adventureSettings.relationsMode,
-        strategyMode: adventureSettings.strategyMode,
-    };
-
-    let newLiveSettings: AdventureSettings = {
-        ...adventureSettings,
-        world: stagedAdventureSettings.world || adventureSettings.world,
-        initialSituation: stagedAdventureSettings.initialSituation || adventureSettings.initialSituation,
-        playerName: stagedAdventureSettings.playerName,
-        usePlayerAvatar: stagedAdventureSettings.usePlayerAvatar,
-        ...liveModes
-    };
+    // This is a deep copy to prevent mutation issues
+    let newLiveSettings: AdventureSettings = JSON.parse(JSON.stringify(stagedAdventureSettings));
     
-    // --- START OF NEW POI MERGE LOGIC ---
-    const livePois = adventureSettings.mapPointsOfInterest || [];
-    const stagedPois = stagedAdventureSettings.mapPointsOfInterest || [];
-    const mergedPoisMap = new Map<string, MapPointOfInterest>();
-
-    // First, add all live POIs to the map to preserve their state (position, level, etc.)
-    livePois.forEach(poi => mergedPoisMap.set(poi.id, poi));
-
-    // Then, iterate through staged POIs. If a POI exists, update it with staged data.
-    stagedPois.forEach(stagedPoi => {
-        const livePoi = mergedPoisMap.get(stagedPoi.id);
+    // 1. Preserve live-only state from the current adventure settings
+    newLiveSettings.playerCurrentHp = adventureSettings.playerCurrentHp;
+    newLiveSettings.playerCurrentMp = adventureSettings.playerCurrentMp;
+    newLiveSettings.playerCurrentExp = adventureSettings.playerCurrentExp;
+    newLiveSettings.playerInventory = adventureSettings.playerInventory;
+    newLiveSettings.equippedItemIds = adventureSettings.equippedItemIds;
+    newLiveSettings.playerSkills = adventureSettings.playerSkills;
+    newLiveSettings.familiars = adventureSettings.familiars;
+    
+    // 2. Merge POI data carefully, preserving positions and live state
+    const livePoisMap = new Map((adventureSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
+    const stagedPois = newLiveSettings.mapPointsOfInterest || [];
+    const mergedPois = stagedPois.map(stagedPoi => {
+        const livePoi = livePoisMap.get(stagedPoi.id);
         if (livePoi) {
-            // POI exists, merge staged data into live data
-            mergedPoisMap.set(stagedPoi.id, {
-                ...livePoi, // Preserves live position, level, buildings, etc.
-                ...stagedPoi, // Applies form changes like name, description, owner
-                position: livePoi.position, // Explicitly keep live position
-                level: livePoi.level, // Explicitly keep live level
-                buildings: livePoi.buildings, // Explicitly keep live buildings
-            });
-        } else {
-            // New POI from form, add it. It won't have a position initially.
-            mergedPoisMap.set(stagedPoi.id, stagedPoi);
+            return { ...livePoi, ...stagedPoi, position: livePoi.position }; // Keep live position and state, but update form data
         }
+        return stagedPoi; // It's a new POI from the form
     });
+    newLiveSettings.mapPointsOfInterest = mergedPois;
 
-    newLiveSettings.mapPointsOfInterest = Array.from(mergedPoisMap.values());
-    // --- END OF NEW POI MERGE LOGIC ---
-    
+    // 3. Recalculate stats if RPG mode is active
     if (newLiveSettings.rpgMode) {
-        Object.assign(newLiveSettings, {
-            playerClass: stagedAdventureSettings.playerClass,
-            playerLevel: stagedAdventureSettings.playerLevel,
-            playerInitialAttributePoints: stagedAdventureSettings.playerInitialAttributePoints,
-            playerStrength: stagedAdventureSettings.playerStrength,
-            playerDexterity: stagedAdventureSettings.playerDexterity,
-            playerConstitution: stagedAdventureSettings.playerConstitution,
-            playerIntelligence: stagedAdventureSettings.playerIntelligence,
-            playerWisdom: stagedAdventureSettings.playerWisdom,
-            playerCharisma: stagedAdventureSettings.playerCharisma,
-            playerGold: stagedAdventureSettings.playerGold,
-        });
-
-        const effectiveStats = calculateEffectiveStats(newLiveSettings);
-        Object.assign(newLiveSettings, effectiveStats);
-        if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
-            newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
-            newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
-            newLiveSettings.playerCurrentExp = 0;
-        }
+      const effectiveStats = calculateEffectiveStats(newLiveSettings);
+      Object.assign(newLiveSettings, effectiveStats);
+      // Reset HP/MP if the situation changes, as it implies a reset/new scene
+      if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
+        newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
+        newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
+        newLiveSettings.playerCurrentExp = 0;
+      }
     }
     
+    // 4. Update all state variables
     setAdventureSettings(newLiveSettings);
+    setCharacters(stagedCharacters);
     setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
-    setCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
     setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
-
-    if (activeCombat) {
-        setActiveCombat(prevCombat => {
-            if (!prevCombat) return undefined;
-            const newCombatants = prevCombat.combatants.map(c => {
-                if (c.characterId === PLAYER_ID) {
-                    return { ...c, name: stagedAdventureSettings.playerName || "Player" };
-                }
-                const stagedChar = stagedCharacters.find(sc => sc.id === c.characterId);
-                if (stagedChar) {
-                    return { ...c, name: stagedChar.name };
-                }
-                return c;
-            });
-            return { ...prevCombat, combatants: newCombatants };
-        });
-    }
-
+    
+    // Handle narrative reset if initial situation was changed
     if (stagedAdventureSettings.initialSituation !== adventureSettings.initialSituation) {
-        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: stagedAdventureSettings.initialSituation, timestamp: Date.now() }]);
-        if (activeCombat) {
-            setActiveCombat(undefined);
-        }
+        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveSettings.initialSituation, timestamp: Date.now() }]);
+        if (activeCombat) setActiveCombat(undefined);
     }
     
-    setTimeout(() => {
-        toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure et des personnages ont été mis à jour." });
-    }, 0);
+    toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
   }, [stagedAdventureSettings, stagedCharacters, toast, adventureSettings, activeCombat]);
 
 

@@ -182,20 +182,28 @@ export function CharacterSidebar({
 
   React.useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') {
-        try {
-            const storedGlobalChars = localStorage.getItem('globalCharacters');
-            if (storedGlobalChars) {
-                setGlobalCharactersList(JSON.parse(storedGlobalChars));
-            }
-        } catch (error) {
-            console.error("Failed to load global characters from localStorage:", error);
-            toast({
-                title: "Erreur de chargement",
-                description: "Impossible de charger les personnages globaux.",
-                variant: "destructive",
-            });
-        }
+    const loadGlobalChars = () => {
+      if (typeof window !== 'undefined') {
+          try {
+              const storedGlobalChars = localStorage.getItem('globalCharacters');
+              if (storedGlobalChars) {
+                  setGlobalCharactersList(JSON.parse(storedGlobalChars));
+              }
+          } catch (error) {
+              console.error("Failed to load global characters from localStorage:", error);
+              toast({
+                  title: "Erreur de chargement",
+                  description: "Impossible de charger les personnages globaux.",
+                  variant: "destructive",
+              });
+          }
+      }
+    };
+    loadGlobalChars();
+    // Listen for storage changes from other components/tabs
+    window.addEventListener('storage', loadGlobalChars);
+    return () => {
+      window.removeEventListener('storage', loadGlobalChars);
     }
   }, [toast]);
 
@@ -555,16 +563,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         setIsAddSpellDialogOpen(false);
     };
 
-    let isPotentiallyNew = false;
-    if (isClient) {
-        try {
-            const globalCharsStr = localStorage.getItem('globalCharacters');
-            const globalChars: Character[] = globalCharsStr ? JSON.parse(globalCharsStr) : [];
-            isPotentiallyNew = !globalChars.some(gc => gc.id === char.id) && !(char as any)._lastSaved;
-        } catch (e) {
-            console.error("Error accessing localStorage:", e);
-        }
-    }
+    const isPotentiallyNew = isClient && !char._lastSaved;
     const currentAffinity = char.affinity ?? 50;
     const isAllyAndRpg = rpgMode && char.isAlly;
 
@@ -596,7 +595,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                          )}
                     </Avatar>
                     <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''} {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500"/> : ''}</span>
-                    {isClient && isPotentiallyNew && (
+                    {isPotentiallyNew && (
                         <TooltipProvider>
                             <Tooltip>
                                  <TooltipTrigger asChild>
@@ -609,7 +608,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                {isClient && isPotentiallyNew && (
+                {isPotentiallyNew && (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>

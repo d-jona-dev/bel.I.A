@@ -55,6 +55,10 @@ interface AdventureFormProps {
     key: string;
     initialValues: AdventureFormValues;
     onSettingsChange?: (newSettings: AdventureFormValues) => void;
+    // Add props to receive the live adventure modes
+    rpgMode: boolean;
+    relationsMode: boolean;
+    strategyMode: boolean;
 }
 
 
@@ -85,9 +89,7 @@ const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0),
-  rpgMode: z.boolean().default(true),
-  relationsMode: z.boolean().default(true),
-  strategyMode: z.boolean().default(true),
+  // The form switches are now removed, we'll use props for visibility control
   usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
@@ -106,7 +108,7 @@ const adventureFormSchema = z.object({
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ key, initialValues, onSettingsChange }, ref) => {
+    ({ key, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode }, ref) => {
     const { toast } = useToast();
     
     const form = useForm<AdventureFormValues>({
@@ -176,9 +178,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     
     const watchedValues = form.watch();
     const usePlayerAvatar = watchedValues.usePlayerAvatar;
-    const isRpgMode = watchedValues.rpgMode;
-    const isRelationsMode = watchedValues.relationsMode;
-    const isStrategyMode = watchedValues.strategyMode;
 
     const ATTRIBUTES: (keyof AdventureFormValues)[] = ['playerStrength', 'playerDexterity', 'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma'];
     
@@ -227,51 +226,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </Button>
                 </div>
                 
-                <Card className="border-dashed bg-muted/20">
-                    <CardHeader>
-                        <CardTitle className="text-base">Modes de Jeu</CardTitle>
-                        <CardDescription>Choisissez les systèmes de jeu à activer pour cette histoire.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         <FormField
-                            control={form.control}
-                            name="rpgMode"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
-                                    <div className="space-y-0.5">
-                                        <FormLabel className="flex items-center gap-2"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
-                                    </div>
-                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="relationsMode"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
-                                    <div className="space-y-0.5">
-                                        <FormLabel className="flex items-center gap-2"><LinkIcon className="h-4 w-4"/> Mode Relations</FormLabel>
-                                    </div>
-                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="strategyMode"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
-                                    <div className="space-y-0.5">
-                                        <FormLabel className="flex items-center gap-2"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
-                                    </div>
-                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-
                 <FormField
                 control={form.control}
                 name="world"
@@ -310,7 +264,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 )}
                 />
 
-                {isRpgMode && (
+                {rpgMode && (
                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                     <CardDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</CardDescription>
                     <FormField
@@ -390,7 +344,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 </Card>
                 )}
 
-                {isStrategyMode && (
+                {strategyMode && (
                     <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                         <CardDescription>Configurez les points d'intérêt de votre aventure.</CardDescription>
                         <ScrollArea className="h-48 pr-3">
@@ -562,7 +516,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 </FormItem>
                             )}
                             />
-                             {isStrategyMode && (
+                             {strategyMode && (
                                 <FormField
                                     control={form.control}
                                     name={`characters.${index}.factionColor`}
@@ -580,7 +534,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     )}
                                 />
                              )}
-                             {isRelationsMode && (
+                             {relationsMode && (
                                  <>
                                 <FormField
                                     control={form.control}
@@ -661,5 +615,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    
