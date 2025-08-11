@@ -180,10 +180,12 @@ export default function HistoiresPage() {
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
                   ...formValues,
+                  rpgMode: formValues.rpgMode ?? editingStory.adventureState.adventureSettings.rpgMode,
+                  relationsMode: formValues.relationsMode ?? editingStory.adventureState.adventureSettings.relationsMode,
+                  strategyMode: formValues.strategyMode ?? editingStory.adventureState.adventureSettings.strategyMode,
                   mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
               },
               characters: (formValues.characters || []).map(c => ({
-                  // Keep existing full character data and override with form values
                   ...editingStory.adventureState.characters.find(ec => ec.id === c.id),
                   ...c, 
                   id: c.id || uid(),
