@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download, Palette } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -27,6 +27,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,6 +50,20 @@ interface PlayerAvatar {
   class: string;
   level: number;
 }
+
+interface CustomImageStyle {
+  name: string;
+  prompt: string;
+}
+
+const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
+    { name: "Par Défaut", isDefault: true },
+    { name: "Réaliste", isDefault: true },
+    { name: "Manga / Anime", isDefault: true },
+    { name: "Fantaisie Epique", isDefault: true },
+    { name: "Peinture à l'huile", isDefault: true },
+    { name: "Comics", isDefault: true },
+];
 
 const AVATARS_STORAGE_KEY = 'playerAvatars';
 const CURRENT_AVATAR_ID_KEY = 'currentAvatarId';
@@ -61,6 +82,8 @@ export default function AvatarsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [newAvatarData, setNewAvatarData] = React.useState({ name: '', details: '', class: 'Aventurier', level: 1 });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
+  const [imageStyle, setImageStyle] = React.useState<string>("");
+  const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
 
@@ -84,6 +107,12 @@ export default function AvatarsPage() {
       } else if (avatars.length > 0) {
         setCurrentAvatarId(avatars[0].id);
       }
+      
+      const savedStyles = localStorage.getItem("customImageStyles_v1");
+      if (savedStyles) {
+          setCustomStyles(JSON.parse(savedStyles));
+      }
+
     } catch (error) {
       console.error("Failed to load avatars from localStorage:", error);
       toast({ title: "Erreur de chargement", description: "Impossible de charger les avatars.", variant: "destructive" });
@@ -201,9 +230,9 @@ export default function AvatarsPage() {
   const handleGeneratePortraitForEditor = async () => {
       if (!editingAvatar) return;
       setIsGeneratingPortrait(true);
-      const prompt = `Generate a portrait of a hero named ${editingAvatar.name}. Description: ${editingAvatar.details}. Class: ${editingAvatar.class}.`;
+      const prompt = `portrait of a hero named ${editingAvatar.name}, ${editingAvatar.class}. Description: ${editingAvatar.details}.`;
       try {
-          const result = await generateSceneImage({ sceneDescription: prompt });
+          const result = await generateSceneImage({ sceneDescription: prompt, style: imageStyle });
           if (result.imageUrl) {
               setEditingAvatar(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
               toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
@@ -326,9 +355,27 @@ export default function AvatarsPage() {
                                             editingAvatar.portraitUrl ? <AvatarImage src={editingAvatar.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingAvatar.name.substring(0,2)}</AvatarFallback>}
                                         </Avatar>
                                         <div className="flex-1 space-y-2">
-                                            <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
-                                                <Wand2 className="mr-2 h-4 w-4" /> Générer un Portrait IA
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" size="icon">
+                                                            <Palette className="h-4 w-4"/>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent>
+                                                        {defaultImageStyles.map(style => (
+                                                            <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                                        ))}
+                                                        {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                                        {customStyles.map(style => (
+                                                             <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                                        ))}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
+                                                    <Wand2 className="mr-2 h-4 w-4" /> Générer un Portrait IA
+                                                </Button>
+                                            </div>
                                              <input type="file" accept="image/*" id={`upload-edit-portrait-${avatar.id}`} className="hidden" onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) {

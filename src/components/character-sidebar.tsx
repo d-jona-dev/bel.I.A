@@ -12,7 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin } from "lucide-react"; // Added ExpIcon and MapPin
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette } from "lucide-react"; // Added ExpIcon and MapPin
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +49,20 @@ import {
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
 const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT = 5;
+
+interface CustomImageStyle {
+  name: string;
+  prompt: string;
+}
+
+const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
+    { name: "Par Défaut", isDefault: true },
+    { name: "Réaliste", isDefault: true },
+    { name: "Manga / Anime", isDefault: true },
+    { name: "Fantaisie Epique", isDefault: true },
+    { name: "Peinture à l'huile", isDefault: true },
+    { name: "Comics", isDefault: true },
+];
 
 
 // Define props for the CharacterSidebar
@@ -222,30 +243,6 @@ export function CharacterSidebar({
     }
   };
 
-  const handleGeneratePortrait = async (character: Character) => {
-    if (imageLoadingStates[character.id]) return;
-    setImageLoadingStates(prev => ({ ...prev, [character.id]: true }));
-
-    try {
-      const prompt = `Generate a portrait of ${character.name}. Description: ${character.details}. ${rpgMode && character.characterClass ? `Class: ${character.characterClass}.` : ''}`;
-      const result = await generateImageAction({ sceneDescription: prompt });
-      onCharacterUpdate({ ...character, portraitUrl: result.imageUrl });
-      toast({
-        title: "Portrait Généré",
-        description: `Le portrait de ${character.name} a été généré.`,
-      });
-    } catch (error) {
-      console.error(`Error generating portrait for ${character.name}:`, error);
-      toast({
-        title: "Erreur de Génération",
-        description: `Impossible de générer le portrait de ${character.name}.`,
-        variant: "destructive",
-      });
-    } finally {
-      setImageLoadingStates(prev => ({ ...prev, [character.id]: false }));
-    }
-  };
-
   const handleUploadPortrait = (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -410,8 +407,9 @@ export function CharacterSidebar({
                         character={char}
                         isClient={isClient}
                         imageLoadingStates={imageLoadingStates}
+                        setImageLoadingStates={setImageLoadingStates}
                         onSaveNewCharacter={onSaveNewCharacter}
-                        handleGeneratePortrait={handleGeneratePortrait}
+                        generateImageAction={generateImageAction}
                         handleUploadPortrait={handleUploadPortrait}
                         handleFieldChange={handleFieldChange}
                         handleNestedFieldChange={handleNestedFieldChange}
@@ -442,8 +440,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     character: char,
     isClient,
     imageLoadingStates,
+    setImageLoadingStates,
     onSaveNewCharacter,
-    handleGeneratePortrait,
+    generateImageAction,
     handleUploadPortrait,
     handleFieldChange,
     handleNestedFieldChange,
@@ -465,8 +464,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     character: Character;
     isClient: boolean;
     imageLoadingStates: Record<string, boolean>;
+    setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     onSaveNewCharacter: (character: Character) => void;
-    handleGeneratePortrait: (character: Character) => void;
+    generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
     handleFieldChange: (charId: string, field: keyof Character, value: any) => void;
     handleNestedFieldChange: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void;
@@ -490,6 +490,19 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
     const [isAddSpellDialogOpen, setIsAddSpellDialogOpen] = React.useState(false);
     const [newSpellName, setNewSpellName] = React.useState("");
+    const [imageStyle, setImageStyle] = React.useState<string>("");
+    const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
+
+    React.useEffect(() => {
+        try {
+            const savedStyles = localStorage.getItem("customImageStyles_v1");
+            if (savedStyles) {
+                setCustomStyles(JSON.parse(savedStyles));
+            }
+        } catch (error) {
+            console.error("Failed to load custom styles:", error);
+        }
+    }, []);
 
     const { total: totalDistributablePoints, spent: spentPoints } = React.useMemo(() => {
         if (!rpgMode || !char.isAlly) return { total: 0, spent: 0 };
@@ -551,6 +564,31 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         }
         onCharacterUpdate(character);
     };
+
+    const handleGeneratePortrait = async () => {
+        if (imageLoadingStates[char.id]) return;
+        setImageLoadingStates(prev => ({ ...prev, [char.id]: true }));
+
+        try {
+          const prompt = `portrait of ${char.name}, ${char.characterClass}. Description: ${char.details}.`;
+          const result = await generateImageAction({ sceneDescription: prompt, style: imageStyle });
+          onCharacterUpdate({ ...char, portraitUrl: result.imageUrl });
+          toast({
+            title: "Portrait Généré",
+            description: `Le portrait de ${char.name} a été généré.`,
+          });
+        } catch (error) {
+          console.error(`Error generating portrait for ${char.name}:`, error);
+          toast({
+            title: "Erreur de Génération",
+            description: `Impossible de générer le portrait de ${char.name}.`,
+            variant: "destructive",
+          });
+        } finally {
+          setImageLoadingStates(prev => ({ ...prev, [char.id]: false }));
+        }
+      };
+
 
     const handleAddSpell = () => {
         if (!newSpellName.trim()) {
@@ -632,37 +670,62 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                          )}
                     </div>
                     <div className="flex gap-2">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}>
-                                    <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "IA" : "AI"}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        id={`upload-portrait-${char.id}`}
-                        className="hidden"
-                        onChange={(e) => handleUploadPortrait(char.id, e)}
-                    />
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}
-                                >
-                                    <UploadCloud className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Télécharger" : "Upload"}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                        <DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8">
+                                                <Palette className="h-4 w-4"/>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Style d'image</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                             <DropdownMenuContent>
+                                {defaultImageStyles.map((style) => (
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>
+                                        {style.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                {customStyles.map((style) => (
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={handleGeneratePortrait} disabled={imageLoadingStates[char.id]}>
+                                        <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Générer" : "Generate"}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            id={`upload-portrait-${char.id}`}
+                            className="hidden"
+                            onChange={(e) => handleUploadPortrait(char.id, e)}
+                        />
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}
+                                    >
+                                        <UploadCloud className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Télécharger" : "Upload"}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                </div>
 

@@ -999,7 +999,7 @@ export function AdventureDisplay({
                                     {customStyles.length > 0 && <DropdownMenuSeparator />}
                                     {customStyles.map((style) => (
                                          <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)} className="flex justify-between items-center pr-1">
-                                            <span onClick={() => setImageStyle(style.prompt)}>{style.name}</span>
+                                            <span onClick={(e) => { e.stopPropagation(); setImageStyle(style.prompt); }}>{style.name}</span>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteCustomStyle(style.name);}}>
                                                 <Trash2Icon className="h-3 w-3 text-destructive"/>
                                             </Button>
