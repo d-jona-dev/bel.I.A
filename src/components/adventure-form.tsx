@@ -35,10 +35,17 @@ import { poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
 import { Slider } from "./ui/slider";
 
 
-export type FormCharacterDefinition = Partial<Character> & { id?: string; name: string; details: string };
+export type FormCharacterDefinition = {
+  id?: string;
+  name: string;
+  details: string;
+  factionColor?: string;
+  affinity?: number;
+  relations?: Record<string, string>;
+};
 
 
-export type AdventureFormValues = Partial<Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'strategyMode'>> & {
+export type AdventureFormValues = Partial<Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'strategyMode' | 'characters'>> & {
     characters: FormCharacterDefinition[];
     usePlayerAvatar?: boolean;
     // These are for the form only

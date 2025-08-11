@@ -17,7 +17,7 @@ import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/s
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
-import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
+import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 
 
 const PLAYER_ID = "player";
@@ -25,8 +25,6 @@ const BASE_ATTRIBUTE_VALUE = 8;
 const INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER = 10; // For player
 const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC = 5; // Default for NPCs
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
-
-export type FormCharacterDefinition = { id?: string; name: string; details: string };
 
 // Calculates base stats derived from attributes, before equipment
 const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Character>) => {
@@ -363,7 +361,7 @@ export default function Home() {
     const initialState = createInitialState();
     return {
       ...JSON.parse(JSON.stringify(initialState.settings)),
-      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details }))))
+      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))))
     };
   });
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
@@ -452,7 +450,7 @@ export default function Home() {
   React.useEffect(() => {
       setStagedAdventureSettings({
           ...JSON.parse(JSON.stringify(baseAdventureSettings)),
-          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details }))
+          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))
       });
       setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
       setFormPropKey(k => k + 1); // Force re-render of form with new initialValues
@@ -2152,7 +2150,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         })));
         setStagedAdventureSettings({
             ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
-            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details }))
+            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))
         });
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
@@ -2517,7 +2515,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [toast]);
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
-    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details })));
+    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations })));
   }, [stagedCharacters]);
 
 
@@ -2965,5 +2963,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
-
-    
