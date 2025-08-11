@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud, Plus, ArrowUpCircle } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud, Plus, ArrowUpCircle, Link as LinkIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -45,6 +45,7 @@ interface MapDisplayProps {
     playerLocationId?: string;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onAddPoiToMap: (poiId: string) => void; 
+    onMapImageUrlChange: (url: string) => void; // Nouvelle prop
 }
 
 const iconMap: Record<MapPointOfInterest['icon'] | 'Building' | 'Building2' | 'TreeDeciduous' | 'TreePine' | 'Hammer' | 'Gem', React.ElementType> = {
@@ -85,13 +86,17 @@ const getIconForPoi = (poi: MapPointOfInterest) => {
 };
 
 
-export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId, onMapImageUpload, onAddPoiToMap }: MapDisplayProps) {
+export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAestheticFont, onToggleAestheticFont, mapImageUrl, onGenerateMap, isGeneratingMap, onPoiPositionChange, characters, playerName, onCreatePoi, playerLocationId, onMapImageUpload, onAddPoiToMap, onMapImageUrlChange }: MapDisplayProps) {
     const { toast } = useToast();
     const [draggingPoi, setDraggingPoi] = React.useState<string | null>(null);
     const mapRef = React.useRef<HTMLDivElement>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
     
+    // State for URL dialog
+    const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+    const [imageUrlFromUrl, setImageUrlFromUrl] = React.useState("");
+
     // Form state for new POI
     const [newPoiName, setNewPoiName] = React.useState("");
     const [newPoiDescription, setNewPoiDescription] = React.useState("");
@@ -149,6 +154,15 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             buildings: newPoiBuildings,
         });
         resetCreateForm();
+    };
+
+    const handleLoadFromUrl = () => {
+        if (!imageUrlFromUrl.trim()) {
+            toast({ title: "Erreur", description: "Veuillez entrer une URL valide.", variant: "destructive" });
+            return;
+        }
+        onMapImageUrlChange(imageUrlFromUrl);
+        setIsUrlDialogOpen(false);
     };
     
     const { availableLevelsForType, buildingSlotsForLevel, availableBuildingsForType } = React.useMemo(() => {
@@ -359,6 +373,38 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+                <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DialogTrigger asChild>
+                                     <Button variant="outline" size="icon" className="bg-background/70 backdrop-blur-sm" aria-label="Charger carte depuis URL">
+                                        <LinkIcon className="h-4 w-4"/>
+                                     </Button>
+                                </DialogTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" align="center">
+                                Charger une image de carte depuis une URL
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Charger une Carte depuis une URL</DialogTitle>
+                            <DialogDescription>
+                                Collez l'URL de l'image que vous souhaitez utiliser comme fond de carte.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Label htmlFor="map-url-input">URL de l'image</Label>
+                            <Input id="map-url-input" value={imageUrlFromUrl} onChange={(e) => setImageUrlFromUrl(e.target.value)} placeholder="https://example.com/map.jpg"/>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
+                            <Button onClick={handleLoadFromUrl}>Charger l'Image</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -545,10 +591,26 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                 <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'upgrade')}>
                                     <ArrowUpCircle className="mr-2 h-4 w-4"/> Améliorer
                                 </DropdownMenuItem>
-                                {isAttackable && (
+                                 {isPlayerOwned && builtBuildings.length > 0 && (
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                            <Building className="mr-2 h-4 w-4"/> Visiter un Bâtiment
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent>
+                                            {builtBuildings.map(buildingId => {
+                                                const def = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
+                                                return (
+                                                    <DropdownMenuItem key={buildingId} onSelect={() => onMapAction(poi.id, 'visit', buildingId)}>
+                                                        {def?.name || buildingId}
+                                                    </DropdownMenuItem>
+                                                )
+                                            })}
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                )}
+                                {!isPlayerOwned && (
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'attack')} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                        <Swords className="mr-2 h-4 w-4" />
-                                        <span>Attaquer</span>
+                                        <Swords className="mr-2 h-4 w-4"/> Attaquer
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
@@ -559,5 +621,3 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
         </div>
     );
 }
-
-    

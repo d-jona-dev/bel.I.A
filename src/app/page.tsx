@@ -2858,6 +2858,14 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     reader.readAsDataURL(file);
     if(event.target) event.target.value = '';
   }, [toast]);
+
+  const handleMapImageUrlChange = React.useCallback((url: string) => {
+    setAdventureSettings(prev => ({ ...prev, mapImageUrl: url }));
+    toast({
+        title: "Image de Carte Chargée",
+        description: "Le fond de la carte a été mis à jour depuis l'URL.",
+    });
+  }, [toast]);
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
     setAiConfig(newConfig);
@@ -2923,7 +2931,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook}
+      suggestQuestHookAction={callSuggestQuestHook as any}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -2954,6 +2962,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       handleSaveFamiliar={handleSaveFamiliar}
       handleAddStagedFamiliar={handleAddStagedFamiliar}
       onMapImageUpload={handleMapImageUpload}
+      onMapImageUrlChange={handleMapImageUrlChange}
       isLoading={isUiLocked}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}

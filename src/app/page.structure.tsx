@@ -118,6 +118,7 @@ interface PageStructureProps {
   handleSaveFamiliar: (familiar: Familiar) => void;
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onMapImageUrlChange: (url: string) => void; // Nouvelle prop
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
@@ -195,6 +196,7 @@ export function PageStructure({
   handleSaveFamiliar,
   handleAddStagedFamiliar,
   onMapImageUpload,
+  onMapImageUrlChange,
   aiConfig,
   onAiConfigChange,
   comicPages,
@@ -428,6 +430,7 @@ export function PageStructure({
                 onPoiPositionChange={onPoiPositionChange}
                 onCreatePoi={onCreatePoi}
                 onMapImageUpload={onMapImageUpload}
+                onMapImageUrlChange={onMapImageUrlChange}
                 onAddPoiToMap={onAddPoiToMap}
              />
              <Accordion type="single" collapsible className="w-full border rounded-lg p-2" defaultValue="comic-preview-accordion">
