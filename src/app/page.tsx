@@ -2181,15 +2181,14 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     
     const formData = await adventureFormRef.current.getFormData();
     if (!formData) {
-        // Validation failed, toast is shown by the form component.
         return;
     }
 
     React.startTransition(() => {
+        // Merge the form data with the existing settings to preserve live-only state
         const newLiveSettings: AdventureSettings = {
-            ...adventureSettings, // Start with current live state
-            ...formData, // Overwrite with all validated form data
-            // Ensure live-only states are preserved if not in form
+            ...adventureSettings,
+            ...formData,
             playerCurrentHp: adventureSettings.playerCurrentHp,
             playerCurrentMp: adventureSettings.playerCurrentMp,
             playerCurrentExp: adventureSettings.playerCurrentExp,
@@ -2203,10 +2202,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         const stagedPois = newLiveSettings.mapPointsOfInterest || [];
         const mergedPois = stagedPois.map(stagedPoi => {
             const livePoi = livePoisMap.get(stagedPoi.id);
-            if (livePoi) {
-                return { ...livePoi, ...stagedPoi, position: livePoi.position };
-            }
-            return stagedPoi;
+            return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
         });
         newLiveSettings.mapPointsOfInterest = mergedPois;
 
@@ -2218,21 +2214,25 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
             } else {
-                 newLiveSettings.playerCurrentHp = Math.min(
-                    adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp,
-                    effectiveStats.playerMaxHp
-                 );
-                 newLiveSettings.playerCurrentMp = Math.min(
-                    adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp,
-                    effectiveStats.playerMaxMp
-                 );
+                 newLiveSettings.playerCurrentHp = Math.min(adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
+                 newLiveSettings.playerCurrentMp = Math.min(adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
             }
         }
+        
+        // Merge the characters from the form data with the full character data
+        const formCharactersMap = new Map(formData.characters.map(fc => [fc.id, fc]));
+        const updatedCharacters = stagedCharacters.map(sc => {
+            const formChar = formCharactersMap.get(sc.id);
+            return formChar ? { ...sc, ...formChar } : sc;
+        });
+        
+        const newCharactersFromForm = formData.characters.filter(fc => !stagedCharacters.some(sc => sc.id === fc.id));
+        updatedCharacters.push(...(newCharactersFromForm as Character[]));
 
         setAdventureSettings(newLiveSettings);
-        setCharacters(stagedCharacters); // Assume stagedCharacters is the source of truth for character edits
+        setCharacters(updatedCharacters); 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
-        setBaseCharacters(JSON.parse(JSON.stringify(stagedCharacters)));
+        setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
 
         if (formData.initialSituation !== adventureSettings.initialSituation) {
             setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveSettings.initialSituation, timestamp: Date.now() }]);
@@ -2241,7 +2241,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-  };
+};
 
 
   const handleToggleStrategyMode = () => {
@@ -2965,3 +2965,5 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
+    
