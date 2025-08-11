@@ -52,7 +52,7 @@ export interface AdventureFormHandle {
 }
 
 interface AdventureFormProps {
-    key: string;
+    formPropKey: number; // Changed from key to formPropKey to avoid conflicts
     initialValues: AdventureFormValues;
     onSettingsChange?: (newSettings: AdventureFormValues) => void;
     // Add props to receive the live adventure modes
@@ -108,7 +108,7 @@ const adventureFormSchema = z.object({
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ key, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode }, ref) => {
+    ({ formPropKey, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode }, ref) => {
     const { toast } = useToast();
     
     const form = useForm<AdventureFormValues>({
@@ -134,7 +134,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     React.useEffect(() => {
         form.reset(initialValues);
-    }, [key, initialValues, form]);
+    }, [formPropKey, initialValues, form]);
 
 
     const { fields, append, remove } = useFieldArray({

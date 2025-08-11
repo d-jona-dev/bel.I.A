@@ -32,7 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AdventureForm, type AdventureFormValues } from '@/components/adventure-form';
+import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 import { CharacterSidebar } from '@/components/character-sidebar';
 import { ModelManager } from '@/components/model-manager';
 import { AdventureDisplay } from '@/components/adventure-display';
@@ -61,7 +61,7 @@ interface PageStructureProps {
   narrativeMessages: Message[];
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  handleSettingsUpdate: (newSettings: AdventureFormValues) => void;
+  adventureFormRef: React.RefObject<AdventureFormHandle>;
   handleToggleRpgMode: () => void;
   handleToggleRelationsMode: () => void;
   handleToggleStrategyMode: () => void;
@@ -136,7 +136,7 @@ export function PageStructure({
   narrativeMessages,
   currentLanguage,
   fileInputRef,
-  handleSettingsUpdate,
+  adventureFormRef,
   handleToggleRpgMode,
   handleToggleRelationsMode,
   handleToggleStrategyMode,
@@ -523,9 +523,9 @@ export function PageStructure({
                              </AccordionTrigger>
                              <AccordionContent className="pt-2">
                                 <AdventureForm
+                                    ref={adventureFormRef}
                                     formPropKey={formPropKey}
                                     initialValues={stagedAdventureSettings}
-                                    onSettingsChange={handleSettingsUpdate}
                                     rpgMode={adventureSettings.rpgMode}
                                     relationsMode={adventureSettings.relationsMode}
                                     strategyMode={adventureSettings.strategyMode}
