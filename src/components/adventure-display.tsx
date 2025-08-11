@@ -84,6 +84,7 @@ interface AdventureDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+    onMapImageUrlChange: (url: string) => void;
     onAddPoiToMap: (poiId: string) => void;
 }
 
@@ -131,6 +132,7 @@ export function AdventureDisplay({
     onPoiPositionChange,
     onCreatePoi,
     onMapImageUpload,
+    onMapImageUrlChange,
     onAddPoiToMap,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
@@ -657,6 +659,7 @@ export function AdventureDisplay({
                             onCreatePoi={onCreatePoi}
                             playerLocationId={adventureSettings.playerLocationId}
                             onMapImageUpload={onMapImageUpload}
+                            onMapImageUrlChange={onMapImageUrlChange}
                             onAddPoiToMap={onAddPoiToMap}
                         />
                     </TabsContent>
@@ -996,7 +999,7 @@ export function AdventureDisplay({
                                     {customStyles.length > 0 && <DropdownMenuSeparator />}
                                     {customStyles.map((style) => (
                                          <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)} className="flex justify-between items-center pr-1">
-                                            <span>{style.name}</span>
+                                            <span onClick={() => setImageStyle(style.prompt)}>{style.name}</span>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleDeleteCustomStyle(style.name);}}>
                                                 <Trash2Icon className="h-3 w-3 text-destructive"/>
                                             </Button>
