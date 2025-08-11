@@ -51,6 +51,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MapDisplay } from "./map-display";
 import ImageEditor from "@/components/ImageEditor";
+import { Input } from "./ui/input";
 
 
 interface AdventureDisplayProps {
@@ -86,6 +87,19 @@ interface AdventureDisplayProps {
     onAddPoiToMap: (poiId: string) => void;
 }
 
+interface CustomImageStyle {
+  name: string;
+  prompt: string;
+}
+
+const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
+    { name: "Par Défaut", isDefault: true },
+    { name: "Réaliste", isDefault: true },
+    { name: "Manga / Anime", isDefault: true },
+    { name: "Fantaisie Epique", isDefault: true },
+    { name: "Peinture à l'huile", isDefault: true },
+    { name: "Comics", isDefault: true },
+];
 
 export function AdventureDisplay({
     playerId,
@@ -134,6 +148,8 @@ export function AdventureDisplay({
 
   const [isCustomStyleDialogOpen, setIsCustomStyleDialogOpen] = React.useState(false);
   const [customStylePrompt, setCustomStylePrompt] = React.useState("");
+  const [customStyleName, setCustomStyleName] = React.useState("");
+  const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
 
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
@@ -147,6 +163,42 @@ export function AdventureDisplay({
     const playerCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category === 'combat') || [];
     const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
 
+    React.useEffect(() => {
+        try {
+            const savedStyles = localStorage.getItem("customImageStyles_v1");
+            if (savedStyles) {
+                setCustomStyles(JSON.parse(savedStyles));
+            }
+        } catch (error) {
+            console.error("Failed to load custom styles:", error);
+        }
+    }, []);
+
+    const saveAndSetCustomStyles = (newStyles: CustomImageStyle[]) => {
+        setCustomStyles(newStyles);
+        localStorage.setItem("customImageStyles_v1", JSON.stringify(newStyles));
+    }
+
+    const handleSaveCustomStyle = () => {
+        if (!customStyleName.trim() || !customStylePrompt.trim()) {
+            toast({ title: "Erreur", description: "Le nom et la description du style sont requis.", variant: "destructive" });
+            return;
+        }
+        const newStyle = { name: customStyleName, prompt: customStylePrompt };
+        const updatedStyles = [...customStyles, newStyle];
+        saveAndSetCustomStyles(updatedStyles);
+        setImageStyle(newStyle.prompt); // Apply the new style immediately
+        toast({ title: "Style Personnalisé Enregistré", description: `Le style "${newStyle.name}" a été ajouté et appliqué.` });
+        setIsCustomStyleDialogOpen(false);
+        setCustomStyleName("");
+        setCustomStylePrompt("");
+    };
+
+    const handleDeleteCustomStyle = (styleNameToDelete: string) => {
+        const updatedStyles = customStyles.filter(s => s.name !== styleNameToDelete);
+        saveAndSetCustomStyles(updatedStyles);
+        toast({ title: "Style Supprimé", description: `Le style "${styleNameToDelete}" a été supprimé.` });
+    };
 
     React.useEffect(() => {
         setMessages(initialMessages);
@@ -605,7 +657,7 @@ export function AdventureDisplay({
                             onCreatePoi={onCreatePoi}
                             playerLocationId={adventureSettings.playerLocationId}
                             onMapImageUpload={onMapImageUpload}
-                            onAddPoiToMap={handleAddPoiToMap}
+                            onAddPoiToMap={onAddPoiToMap}
                         />
                     </TabsContent>
                   </Tabs>
@@ -936,15 +988,23 @@ export function AdventureDisplay({
                                     </Tooltip>
                                 </TooltipProvider>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("")}>Par Défaut</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("Realistic")}>Réaliste</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("Manga / Anime")}>Manga/Animé</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("Epic Fantasy Art")}>Fantaisie Epique</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("Oil Painting")}>Peinture à l'huile</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setImageStyle("Comic Book")}>Comics</DropdownMenuItem>
+                                    {defaultImageStyles.map((style) => (
+                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>
+                                            {style.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                    {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                    {customStyles.map((style) => (
+                                         <DropdownMenuItem key={style.name} onSelect={(e) => e.preventDefault()} className="flex justify-between items-center">
+                                            <span onClick={() => setImageStyle(style.prompt)} className="flex-1 cursor-pointer">{style.name}</span>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteCustomStyle(style.name)}>
+                                                <Trash2Icon className="h-3 w-3 text-destructive"/>
+                                            </Button>
+                                        </DropdownMenuItem>
+                                    ))}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => setIsCustomStyleDialogOpen(true)}>
-                                        Personnalisé...
+                                        Gérer les styles...
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -960,7 +1020,7 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || ![...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription)}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>Générer Image {imageStyle && !imageStyle.startsWith("Style personnalisé:") ? `(${imageStyle.split(' ')[0]})` : ''}</span>
+                                            <span>Générer Image</span>
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
@@ -973,24 +1033,30 @@ export function AdventureDisplay({
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Définir un Style Personnalisé</DialogTitle>
+                            <DialogTitle>Gérer les Styles Personnalisés</DialogTitle>
                             <DialogDescription>
-                                Décrivez le style artistique que vous souhaitez. Vous pouvez inclure des mots-clés comme le genre, le nom d'un artiste ou l'ambiance.
+                                Ajoutez un nouveau style personnalisé ou modifiez les existants.
                             </DialogDescription>
                         </DialogHeader>
-                        <Textarea
-                            value={customStylePrompt}
-                            onChange={(e) => setCustomStylePrompt(e.target.value)}
-                            placeholder="Ex: cyberpunk, néon, futuriste, couleurs vives, par Katsuhiro Otomo..."
-                            rows={3}
-                        />
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="custom-style-name">Nom du style</Label>
+                                <Input id="custom-style-name" value={customStyleName} onChange={(e) => setCustomStyleName(e.target.value)} placeholder="Ex: Mon style Cyberpunk"/>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="custom-style-prompt">Description du style (prompt)</Label>
+                                <Textarea
+                                    id="custom-style-prompt"
+                                    value={customStylePrompt}
+                                    onChange={(e) => setCustomStylePrompt(e.target.value)}
+                                    placeholder="Ex: cyberpunk, néon, futuriste, couleurs vives, par Katsuhiro Otomo..."
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>Annuler</Button>
-                            <Button onClick={() => {
-                                setImageStyle(`Style personnalisé: ${customStylePrompt}`);
-                                toast({ title: "Style Personnalisé Appliqué", description: "Le nouveau style sera utilisé pour la prochaine génération d'image." });
-                                setIsCustomStyleDialogOpen(false);
-                            }}>Appliquer</Button>
+                            <Button onClick={handleSaveCustomStyle}>Enregistrer et Appliquer</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
