@@ -570,17 +570,16 @@ export default function Home() {
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     
-    // Create a mutable copy of the current adventure settings to pass around
-    // This avoids stale state issues within the complex logic of this function
-    let adventureSettingsSnapshot = JSON.parse(JSON.stringify(adventureSettings));
+    // Use a mutable copy of the adventure settings for this turn's logic
+    const adventureSettingsSnapshot = JSON.parse(JSON.stringify(adventureSettings));
+    // Use a mutable copy of characters for this turn's logic
+    let charactersSnapshot = JSON.parse(JSON.stringify(characters));
 
     const allExpGainingCharacters = (expGained: number) => {
         if (!adventureSettingsSnapshot.rpgMode) return;
-
-        let charactersCopy = JSON.parse(JSON.stringify(characters)) as Character[];
         let changed = false;
 
-        charactersCopy = charactersCopy.map(char => {
+        charactersSnapshot = charactersSnapshot.map((char: Character) => {
             if (!char.isAlly || char.level === undefined) return char;
             let newChar = {...char};
             if (newChar.currentExp === undefined) newChar.currentExp = 0;
@@ -607,8 +606,8 @@ export default function Home() {
         });
 
         if (changed) {
-            setCharacters(charactersCopy);
-            setStagedCharacters(charactersCopy); // Sync staged characters
+            setCharacters(charactersSnapshot);
+            setStagedCharacters(charactersSnapshot); // Sync staged characters
         }
 
         if (adventureSettingsSnapshot.familiars) {
@@ -639,24 +638,22 @@ export default function Home() {
         allExpGainingCharacters(combatUpdates.expGained!);
     }
 
-    setCharacters(prevChars => {
+    charactersSnapshot = charactersSnapshot.map((char: Character) => {
         if (!adventureSettingsSnapshot.rpgMode) {
-             return prevChars;
+             return char;
         }
-        let charactersCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
-        charactersCopy = charactersCopy.map((char) => {
-            let currentCharacterState = { ...char };
-            const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
-            if (combatantUpdate) {
-                currentCharacterState.hitPoints = combatantUpdate.newHp;
-                currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
-                currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
-                currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
-            }
-            return currentCharacterState;
-        });
-        return charactersCopy;
+        let currentCharacterState = { ...char };
+        const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
+        if (combatantUpdate) {
+            currentCharacterState.hitPoints = combatantUpdate.newHp;
+            currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
+            currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
+            currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
+        }
+        return currentCharacterState;
     });
+    setCharacters(charactersSnapshot);
+
 
     const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
     if (adventureSettingsSnapshot.rpgMode && playerCombatUpdate) {
@@ -712,11 +709,10 @@ export default function Home() {
         }
     }
 
-    // Apply all accumulated changes to adventureSettings state, preserving map state
+    // Apply accumulated changes to adventureSettings state, preserving map state
     setAdventureSettings(prevSettings => ({
-        ...prevSettings,
-        ...adventureSettingsSnapshot,
-        mapPointsOfInterest: prevSettings.mapPointsOfInterest, // Explicitly keep current map state
+        ...adventureSettingsSnapshot, // This now contains all the combat updates for the player
+        mapPointsOfInterest: prevSettings.mapPointsOfInterest, // Explicitly keep current map state from before this function
     }));
     
     if (adventureSettingsSnapshot.rpgMode) {
@@ -2290,28 +2286,35 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         usePlayerAvatar: stagedAdventureSettings.usePlayerAvatar,
         ...liveModes
     };
-
-    // Merge POIs: keep existing positions and add new ones
-    const stagedPois = stagedAdventureSettings.mapPointsOfInterest || [];
-    const livePois = adventureSettings.mapPointsOfInterest || [];
-    const livePoiMap = new Map(livePois.map(p => [p.id, p]));
-
-    const mergedPois = stagedPois.map(stagedPoi => {
-        const livePoi = livePoiMap.get(stagedPoi.id);
-        return {
-            ...stagedPoi,
-            position: livePoi?.position || stagedPoi.position // Keep live position if it exists
-        };
-    });
     
-    // Add POIs from live state that are not in staged state (e.g., created directly on map)
-    livePois.forEach(livePoi => {
-        if (!mergedPois.some(p => p.id === livePoi.id)) {
-            mergedPois.push(livePoi);
+    // --- START OF NEW POI MERGE LOGIC ---
+    const livePois = adventureSettings.mapPointsOfInterest || [];
+    const stagedPois = stagedAdventureSettings.mapPointsOfInterest || [];
+    const mergedPoisMap = new Map<string, MapPointOfInterest>();
+
+    // First, add all live POIs to the map to preserve their state (position, level, etc.)
+    livePois.forEach(poi => mergedPoisMap.set(poi.id, poi));
+
+    // Then, iterate through staged POIs. If a POI exists, update it with staged data.
+    // If it's new (shouldn't happen with current flow, but good for robustness), add it.
+    stagedPois.forEach(stagedPoi => {
+        const livePoi = mergedPoisMap.get(stagedPoi.id);
+        if (livePoi) {
+            // POI exists, merge staged data into live data
+            mergedPoisMap.set(stagedPoi.id, {
+                ...livePoi, // Preserves live position, level, buildings
+                ...stagedPoi, // Applies form changes like name, description
+                level: livePoi.level, // Explicitly keep live level
+                buildings: livePoi.buildings, // Explicitly keep live buildings
+            });
+        } else {
+            // New POI from form, add it. It won't have a position initially.
+            mergedPoisMap.set(stagedPoi.id, stagedPoi);
         }
     });
 
-    newLiveSettings.mapPointsOfInterest = mergedPois;
+    newLiveSettings.mapPointsOfInterest = Array.from(mergedPoisMap.values());
+    // --- END OF NEW POI MERGE LOGIC ---
     
     if (newLiveSettings.rpgMode) {
         Object.assign(newLiveSettings, {
@@ -2865,11 +2868,17 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         resources: resources,
         buildings: data.buildings || [],
     };
-
+    
+    // Add to both live and staged settings to ensure persistence
     setAdventureSettings(prev => ({
         ...prev,
         mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
     }));
+    setStagedAdventureSettings(prev => ({
+        ...prev,
+        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+    }));
+
 
     toast({
         title: "Point d'Intérêt Créé",
