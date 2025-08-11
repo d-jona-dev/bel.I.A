@@ -347,6 +347,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     )}
                     <div className="grid grid-cols-2 gap-4">
                         <FormField control={form.control} name="playerLevel" render={({ field }) => (<FormItem><FormLabel>Niveau de départ</FormLabel><FormControl><Input type="number" min="1" {...field} value={field.value || 1} onChange={e => field.onChange(Number(e.target.value))} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
+                        <FormField control={form.control} name="playerGold" render={({ field }) => (<FormItem><FormLabel>Or de départ</FormLabel><FormControl><Input type="number" min="0" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
                     </div>
                     <div className="space-y-2">
                         <Label className="flex items-center gap-2"><Dices className="h-4 w-4"/> Attributs du Joueur</Label>
@@ -660,3 +661,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
