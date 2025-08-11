@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud, Plus } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Type as FontIcon, Wand2, Loader2, Move, Briefcase, Swords, PlusSquare, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud, Plus, ArrowUpCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -41,7 +41,7 @@ interface MapDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
     characters: Character[];
     playerName: string;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => void;
     playerLocationId?: string;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onAddPoiToMap: (poiId: string) => void; 
@@ -145,14 +145,19 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             description: newPoiDescription,
             type: newPoiType,
             ownerId: newPoiOwnerId,
+            level: newPoiLevel,
+            buildings: newPoiBuildings,
         });
-        setIsCreateDialogOpen(false);
         resetCreateForm();
     };
     
-    const availableLevelsForType = Object.keys(poiLevelConfig[newPoiType] || {}).map(Number);
-    const buildingSlotsForLevel = BUILDING_SLOTS[newPoiType]?.[newPoiLevel] ?? 0;
-    const availableBuildingsForType = BUILDING_DEFINITIONS.filter(def => def.applicablePoiTypes.includes(newPoiType));
+    const { availableLevelsForType, buildingSlotsForLevel, availableBuildingsForType } = React.useMemo(() => {
+        const typeConfig = poiLevelConfig[newPoiType as keyof typeof poiLevelConfig];
+        const levels = Object.keys(typeConfig || {}).map(Number);
+        const slots = BUILDING_SLOTS[newPoiType]?.[newPoiLevel] ?? 0;
+        const buildings = BUILDING_DEFINITIONS.filter(def => def.applicablePoiTypes.includes(newPoiType));
+        return { availableLevelsForType: levels, buildingSlotsForLevel: slots, availableBuildingsForType: buildings };
+    }, [newPoiType, newPoiLevel]);
 
     const handleBuildingSelection = (buildingId: string, checked: boolean) => {
         setNewPoiBuildings(prev => {
@@ -537,6 +542,9 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
                                         <span>Collecter les ressources</span>
                                     </DropdownMenuItem>
                                 )}
+                                <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'upgrade')}>
+                                    <ArrowUpCircle className="mr-2 h-4 w-4"/> Améliorer
+                                </DropdownMenuItem>
                                 {isAttackable && (
                                     <DropdownMenuItem onSelect={() => onMapAction(poi.id, 'attack')} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                                         <Swords className="mr-2 h-4 w-4" />
@@ -551,3 +559,5 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
         </div>
     );
 }
+
+    
