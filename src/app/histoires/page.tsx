@@ -458,6 +458,9 @@ export default function HistoiresPage() {
                       key={`create-${formPropKey}`}
                       ref={createFormRef}
                       initialValues={getAdventureFormValues(null)}
+                      rpgMode={true} 
+                      relationsMode={true}
+                      strategyMode={true}
                   />
                 </div>
                  <DialogFooter>
@@ -481,6 +484,9 @@ export default function HistoiresPage() {
                            key={`edit-${editingStory.id}-${formPropKey}`}
                            ref={editFormRef}
                            initialValues={getAdventureFormValues(editingStory)}
+                           rpgMode={editingStory.adventureState.adventureSettings.rpgMode}
+                           relationsMode={editingStory.adventureState.adventureSettings.relationsMode}
+                           strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
                         />
                     )}
                  </div>

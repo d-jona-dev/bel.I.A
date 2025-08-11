@@ -45,13 +45,8 @@ export type FormCharacterDefinition = {
 };
 
 
-export type AdventureFormValues = Partial<Omit<AdventureSettings, 'rpgMode' | 'relationsMode' | 'strategyMode' | 'characters'>> & {
+export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters'>> & {
     characters: FormCharacterDefinition[];
-    usePlayerAvatar?: boolean;
-    // These are for the form only
-    rpgMode?: boolean;
-    relationsMode?: boolean;
-    strategyMode?: boolean;
 };
 
 export interface AdventureFormHandle {
@@ -96,7 +91,9 @@ const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise"),
   initialSituation: z.string().min(1, "La situation initiale est requise"),
   characters: z.array(characterSchema).min(0),
-  // The form switches are now removed, we'll use props for visibility control
+  rpgMode: z.boolean().default(true).optional(),
+  relationsMode: z.boolean().default(true).optional(),
+  strategyMode: z.boolean().default(true).optional(),
   usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
@@ -270,8 +267,48 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </FormItem>
                 )}
                 />
+                 <Card className="p-4 space-y-3 bg-muted/20 border-dashed">
+                    <CardDescription>Activez ou désactivez les systèmes de jeu.</CardDescription>
+                     <FormField
+                        control={form.control}
+                        name="rpgMode"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="relationsMode"
+                        render={({ field }) => (
+                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="flex items-center gap-2 text-sm"><LinkIcon className="h-4 w-4"/> Mode Relations</FormLabel>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="strategyMode"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                </Card>
 
-                {rpgMode && (
+
+                {watchedValues.rpgMode && (
                 <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                     <CardDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</CardDescription>
                     <FormField
@@ -351,7 +388,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 </Card>
                 )}
 
-                {strategyMode && (
+                {watchedValues.strategyMode && (
                     <Card className="p-4 space-y-3 border-dashed bg-muted/20">
                         <CardDescription>Configurez les points d'intérêt de votre aventure.</CardDescription>
                         <ScrollArea className="h-48 pr-3">
@@ -523,7 +560,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 </FormItem>
                             )}
                             />
-                             {strategyMode && (
+                             {watchedValues.strategyMode && (
                                 <FormField
                                     control={form.control}
                                     name={`characters.${index}.factionColor`}
@@ -541,7 +578,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     )}
                                 />
                              )}
-                             {relationsMode && (
+                             {watchedValues.relationsMode && (
                                  <>
                                 <FormField
                                     control={form.control}
