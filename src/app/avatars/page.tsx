@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download, Palette } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download, Palette, Link as LinkIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -45,8 +46,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 interface PlayerAvatar {
   id: string;
   name: string;
-  details: string;
   portraitUrl: string | null;
+  details: string; // physique, age
+  description: string; // background
+  orientation: string;
   class: string;
   level: number;
 }
@@ -65,7 +68,7 @@ const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
     { name: "Comics", isDefault: true },
 ];
 
-const AVATARS_STORAGE_KEY = 'playerAvatars';
+const AVATARS_STORAGE_KEY = 'playerAvatars_v2'; // increment version
 const CURRENT_AVATAR_ID_KEY = 'currentAvatarId';
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
@@ -80,8 +83,11 @@ export default function AvatarsPage() {
   const [avatarToDelete, setAvatarToDelete] = React.useState<PlayerAvatar | null>(null);
   const [editingAvatar, setEditingAvatar] = React.useState<PlayerAvatar | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
-  const [newAvatarData, setNewAvatarData] = React.useState({ name: '', details: '', class: 'Aventurier', level: 1 });
+  const [newAvatarData, setNewAvatarData] = React.useState<Omit<PlayerAvatar, 'id' | 'portraitUrl'>>({ name: '', details: '', description: '', orientation: '', class: 'Aventurier', level: 1 });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+  const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
+
   const [imageStyle, setImageStyle] = React.useState<string>("");
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
   const importFileRef = React.useRef<HTMLInputElement>(null);
@@ -95,9 +101,9 @@ export default function AvatarsPage() {
         setAvatars(JSON.parse(savedAvatars));
       } else {
         // Set default avatars if none are saved
-        const defaultAvatars = [
-          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, class: 'Guerrier', level: 5 },
-          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, class: 'Mage', level: 3 },
+        const defaultAvatars: PlayerAvatar[] = [
+          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, class: 'Guerrier', level: 5, description: "Vient d'une longue lignée de protecteurs.", orientation: "Hétérosexuel" },
+          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, class: 'Mage', level: 3, description: "A quitté sa tour pour découvrir le monde.", orientation: "Bisexuelle" },
         ];
         setAvatars(defaultAvatars);
         localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(defaultAvatars));
@@ -197,17 +203,14 @@ export default function AvatarsPage() {
   };
   
   const handleCreateAvatar = () => {
-    if (!newAvatarData.name.trim() || !newAvatarData.details.trim() || !newAvatarData.class.trim()) {
-        toast({ title: "Champs requis manquants", variant: "destructive" });
+    if (!newAvatarData.name.trim() || !newAvatarData.details.trim()) {
+        toast({ title: "Champs requis manquants", description: "Le nom et les détails sont obligatoires.", variant: "destructive" });
         return;
     }
     const newAvatar: PlayerAvatar = {
         id: uid(),
         portraitUrl: null,
-        name: newAvatarData.name,
-        details: newAvatarData.details,
-        class: newAvatarData.class,
-        level: newAvatarData.level,
+        ...newAvatarData
     };
     const updatedAvatars = [...avatars, newAvatar];
     saveAvatars(updatedAvatars);
@@ -216,7 +219,7 @@ export default function AvatarsPage() {
     }
     toast({ title: "Avatar Créé!", description: `Bienvenue à ${newAvatar.name}.` });
     setIsCreateModalOpen(false);
-    setNewAvatarData({ name: '', details: '', class: 'Aventurier', level: 1 });
+    setNewAvatarData({ name: '', details: '', description: '', orientation: '', class: 'Aventurier', level: 1 });
   };
 
   const handleUpdateAvatar = () => {
@@ -225,6 +228,14 @@ export default function AvatarsPage() {
       saveAvatars(updatedAvatars);
       toast({ title: "Avatar Mis à Jour", description: `Les informations de "${editingAvatar.name}" ont été sauvegardées.` });
       setEditingAvatar(null);
+  };
+
+  const handleSaveUrl = () => {
+    if (!editingAvatar) return;
+    setEditingAvatar(prev => prev ? { ...prev, portraitUrl: portraitUrlInput } : null);
+    setIsUrlDialogOpen(false);
+    setPortraitUrlInput("");
+    toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
   };
   
   const handleGeneratePortraitForEditor = async () => {
@@ -276,8 +287,16 @@ export default function AvatarsPage() {
                         <Input id="new-avatar-name" value={newAvatarData.name} onChange={e => setNewAvatarData({...newAvatarData, name: e.target.value})} placeholder="Nom de votre héros"/>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="new-avatar-details">Détails (Description)</Label>
+                        <Label htmlFor="new-avatar-details">Détails (Physique, Âge)</Label>
                         <Textarea id="new-avatar-details" value={newAvatarData.details} onChange={e => setNewAvatarData({...newAvatarData, details: e.target.value})} placeholder="Décrivez votre personnage..."/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="new-avatar-desc">Description (Background)</Label>
+                        <Textarea id="new-avatar-desc" value={newAvatarData.description} onChange={e => setNewAvatarData({...newAvatarData, description: e.target.value})} placeholder="Histoire, capacités spéciales..."/>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="new-avatar-orientation">Orientation Amoureuse</Label>
+                        <Input id="new-avatar-orientation" value={newAvatarData.orientation} onChange={e => setNewAvatarData({...newAvatarData, orientation: e.target.value})} placeholder="Ex: Hétérosexuel, ..."/>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -373,7 +392,7 @@ export default function AvatarsPage() {
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                                 <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
-                                                    <Wand2 className="mr-2 h-4 w-4" /> Générer un Portrait IA
+                                                    <Wand2 className="mr-2 h-4 w-4" /> Générer
                                                 </Button>
                                             </div>
                                              <input type="file" accept="image/*" id={`upload-edit-portrait-${avatar.id}`} className="hidden" onChange={(e) => {
@@ -384,9 +403,24 @@ export default function AvatarsPage() {
                                                     reader.readAsDataURL(file);
                                                 }
                                              }}/>
-                                             <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-edit-portrait-${avatar.id}`)?.click()}>
-                                                <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
-                                             </Button>
+                                             <div className="flex gap-2">
+                                                <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-edit-portrait-${avatar.id}`)?.click()}>
+                                                    <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
+                                                </Button>
+                                                 <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
+                                                        <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
+                                                        <DialogFooter>
+                                                            <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
+                                                            <Button onClick={handleSaveUrl}>Enregistrer</Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                 </Dialog>
+                                             </div>
                                         </div>
                                      </div>
                                      <div className="space-y-2">
@@ -394,8 +428,16 @@ export default function AvatarsPage() {
                                         <Input value={editingAvatar.name} onChange={e => setEditingAvatar({...editingAvatar!, name: e.target.value})} />
                                      </div>
                                      <div className="space-y-2">
-                                        <Label>Détails</Label>
-                                        <Textarea value={editingAvatar.details} onChange={e => setEditingAvatar({...editingAvatar!, details: e.target.value})} rows={3}/>
+                                        <Label>Détails (Physique, Âge)</Label>
+                                        <Textarea value={editingAvatar.details} onChange={e => setEditingAvatar({...editingAvatar!, details: e.target.value})} rows={2}/>
+                                     </div>
+                                     <div className="space-y-2">
+                                        <Label>Description (Background)</Label>
+                                        <Textarea value={editingAvatar.description} onChange={e => setEditingAvatar({...editingAvatar!, description: e.target.value})} rows={3}/>
+                                     </div>
+                                      <div className="space-y-2">
+                                        <Label>Orientation Amoureuse</Label>
+                                        <Input value={editingAvatar.orientation} onChange={e => setEditingAvatar({...editingAvatar!, orientation: e.target.value})}/>
                                      </div>
                                       <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">

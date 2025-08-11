@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -492,6 +493,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [newSpellName, setNewSpellName] = React.useState("");
     const [imageStyle, setImageStyle] = React.useState<string>("");
     const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
+    const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+    const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
+
 
     React.useEffect(() => {
         try {
@@ -599,6 +603,12 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         onCharacterUpdate({ ...char, spells: [...currentSpells, newSpellName.trim()] });
         setNewSpellName("");
         setIsAddSpellDialogOpen(false);
+    };
+
+    const handleSaveUrl = () => {
+        handleFieldChange(char.id, 'portraitUrl', portraitUrl);
+        setIsUrlDialogOpen(false);
+        toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
     };
 
     const isPotentiallyNew = isClient && !char._lastSaved;
@@ -726,6 +736,42 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 <TooltipContent>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
+                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8">
+                                                <LinkIcon className="h-4 w-4"/>
+                                            </Button>
+                                        </DialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
+                                    <DialogDescription>
+                                        Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {char.name}.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4">
+                                    <Label htmlFor="portrait-url">URL de l'image</Label>
+                                    <Input
+                                        id="portrait-url"
+                                        value={portraitUrl}
+                                        onChange={(e) => setPortraitUrl(e.target.value)}
+                                        placeholder="https://example.com/portrait.jpg"
+                                        className="mt-1"
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
+                                    <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                </div>
 

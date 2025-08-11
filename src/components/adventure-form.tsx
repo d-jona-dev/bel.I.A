@@ -96,6 +96,10 @@ const adventureFormSchema = z.object({
   strategyMode: z.boolean().default(true).optional(),
   usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
+  playerPortraitUrl: z.string().url().optional().or(z.literal("")),
+  playerDetails: z.string().optional(),
+  playerDescription: z.string().optional(),
+  playerOrientation: z.string().optional(),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
   playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs de création (au niveau 1)."),
@@ -189,7 +193,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         const level = form.getValues('playerLevel') || 1;
         const initialPoints = form.getValues('playerInitialAttributePoints') || 10;
         const levelPoints = (level > 1) ? ((level - 1) * POINTS_PER_LEVEL_GAIN_FORM) : 0;
-        const totalPoints = initialPoints + levelPoints + (level === 1 ? 5 : 0);
+        const totalPoints = initialPoints + levelPoints;
         form.setValue('totalDistributableAttributePoints', totalPoints);
     }, [watchedValues.playerLevel, watchedValues.playerInitialAttributePoints, form]);
     
@@ -308,85 +312,101 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 </Card>
 
 
-                {watchedValues.rpgMode && (
-                <Card className="p-4 space-y-3 border-dashed bg-muted/20">
-                    <CardDescription>Configurez les statistiques initiales du joueur pour le mode RPG.</CardDescription>
-                    <FormField
-                        control={form.control}
-                        name="usePlayerAvatar"
-                        render={({ field }) => (
-                            <FormItem className="space-y-3">
-                                <FormLabel>Personnage Joueur</FormLabel>
-                                <FormControl>
-                                    <RadioGroup
-                                    onValueChange={(value) => field.onChange(value === 'true')}
-                                    defaultValue={String(field.value)}
-                                    className="flex flex-col space-y-1"
-                                    >
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl><RadioGroupItem value="false" /></FormControl>
-                                        <FormLabel className="font-normal">Créer un héros prédéfini pour cette histoire</FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0">
-                                        <FormControl><RadioGroupItem value="true" /></FormControl>
-                                        <FormLabel className="font-normal">Laisser le joueur utiliser son propre avatar</FormLabel>
-                                    </FormItem>
-                                    </RadioGroup>
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-
-                    {!usePlayerAvatar && (
-                        <div className="grid grid-cols-2 gap-4 pt-2">
-                            <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Joueur</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="playerClass" render={({ field }) => (<FormItem><FormLabel>Classe du Joueur</FormLabel><FormControl><Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
-                        </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="playerLevel" render={({ field }) => (<FormItem><FormLabel>Niveau de départ</FormLabel><FormControl><Input type="number" min="1" {...field} value={field.value || 1} onChange={e => field.onChange(Number(e.target.value))} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
-                        <FormField control={form.control} name="playerGold" render={({ field }) => (<FormItem><FormLabel>Or de départ</FormLabel><FormControl><Input type="number" min="0" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} className="bg-background border"/></FormControl><FormMessage /></FormItem>)}/>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="flex items-center gap-2"><Dices className="h-4 w-4"/> Attributs du Joueur</Label>
-                        <div className="p-2 border rounded-md bg-background text-center text-sm">
-                            Points à distribuer : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild><HelpCircle className="inline h-3 w-3 ml-1 text-muted-foreground cursor-help"/></TooltipTrigger>
-                                    <TooltipContent>
-                                        <p className="max-w-xs">Les attributs de base sont à 8. Chaque point au-delà coûte un point de distribution. Vous gagnez des points à la création et à chaque niveau.</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                            {ATTRIBUTES.map(attr => (
-                                <FormField
-                                key={attr}
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="player-character-config">
+                        <AccordionTrigger>Configuration du Héros</AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-4">
+                            <FormField
                                 control={form.control}
-                                name={attr as any}
+                                name="usePlayerAvatar"
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                    <FormItem className="space-y-3 p-3 border rounded-lg bg-muted/20">
+                                        <FormLabel>Personnage Joueur</FormLabel>
                                         <FormControl>
-                                            <Input 
-                                                type="number" 
-                                                {...field}
-                                                value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
-                                                onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                                                onBlur={() => handleAttributeBlur(attr as any)}
-                                                className="h-8"
-                                            />
+                                            <RadioGroup
+                                            onValueChange={(value) => field.onChange(value === 'true')}
+                                            defaultValue={String(field.value)}
+                                            className="flex flex-col space-y-1"
+                                            >
+                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                <FormControl><RadioGroupItem value="false" /></FormControl>
+                                                <FormLabel className="font-normal">Créer un héros prédéfini pour cette histoire</FormLabel>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                <FormControl><RadioGroupItem value="true" /></FormControl>
+                                                <FormLabel className="font-normal">Laisser le joueur utiliser son propre avatar</FormLabel>
+                                            </FormItem>
+                                            </RadioGroup>
                                         </FormControl>
                                     </FormItem>
                                 )}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </Card>
-                )}
+                            />
+
+                            {!usePlayerAvatar && (
+                            <Card className="p-4 bg-background">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                    <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                </div>
+                                <FormField control={form.control} name="playerDetails" render={({ field }) => (<FormItem className="mt-4"><FormLabel>Détails (Physique, Âge)</FormLabel><FormControl><Textarea placeholder="Décrivez l'apparence physique de votre héros..." {...field} value={field.value || ""} rows={2} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="playerOrientation" render={({ field }) => (<FormItem className="mt-4"><FormLabel>Orientation Amoureuse</FormLabel><FormControl><Input placeholder="Ex: Hétérosexuel, Bisexuel..." {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="playerDescription" render={({ field }) => (<FormItem className="mt-4"><FormLabel>Description (Background)</FormLabel><FormControl><Textarea placeholder="Racontez son histoire, ses capacités spéciales..." {...field} value={field.value || ""} rows={3} /></FormControl><FormMessage /></FormItem>)}/>
+                                
+                                {watchedValues.rpgMode && (
+                                    <>
+                                        <Separator className="my-4"/>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="playerClass" render={({ field }) => (<FormItem><FormLabel>Classe du Joueur</FormLabel><FormControl><Input placeholder="Ex: Guerrier, Mage..." {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name="playerLevel" render={({ field }) => (<FormItem><FormLabel>Niveau de départ</FormLabel><FormControl><Input type="number" min="1" {...field} value={field.value || 1} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name="playerGold" render={({ field }) => (<FormItem><FormLabel>Or de départ</FormLabel><FormControl><Input type="number" min="0" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>)}/>
+                                        </div>
+                                         <div className="space-y-2 pt-4">
+                                            <Label className="flex items-center gap-2"><Dices className="h-4 w-4"/> Attributs du Joueur</Label>
+                                            <div className="p-2 border rounded-md bg-muted/50 text-center text-sm">
+                                                Points à distribuer : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild><HelpCircle className="inline h-3 w-3 ml-1 text-muted-foreground cursor-help"/></TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p className="max-w-xs">Les attributs de base sont à 8. Chaque point au-delà coûte un point de distribution. Vous gagnez des points à la création et à chaque niveau.</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                                {ATTRIBUTES.map(attr => (
+                                                    <FormField
+                                                    key={attr}
+                                                    control={form.control}
+                                                    name={attr as any}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    {...field}
+                                                                    value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
+                                                                    onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                                    onBlur={() => handleAttributeBlur(attr as any)}
+                                                                    className="h-8"
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </Card>
+                            )}
+
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+
 
                 {watchedValues.strategyMode && (
                     <Card className="p-4 space-y-3 border-dashed bg-muted/20">

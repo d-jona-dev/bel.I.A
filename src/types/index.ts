@@ -198,8 +198,12 @@ export interface AdventureSettings {
   rpgMode: boolean;
   relationsMode: boolean;
   strategyMode: boolean;
-  usePlayerAvatar?: boolean; // New setting
+  usePlayerAvatar?: boolean;
   playerName?: string;
+  playerPortraitUrl?: string | null;
+  playerDetails?: string;
+  playerDescription?: string;
+  playerOrientation?: string;
   playerClass?: string;
   playerLevel?: number;
   playerInitialAttributePoints?: number;

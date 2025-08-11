@@ -11,7 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon } from 'lucide-react'; // Added Download and fixed FontIcon
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon, Wand2 } from 'lucide-react'; // Added Download and fixed FontIcon
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
@@ -49,6 +49,7 @@ import { Input } from '@/components/ui/input';
 import { PoiSidebar } from '@/components/poi-sidebar';
 import { FamiliarSidebar } from '@/components/familiar-sidebar';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 
 
 interface PageStructureProps {
@@ -537,26 +538,34 @@ export function PageStructure({
                          </AccordionItem>
                      </Accordion>
 
-                    {adventureSettings.rpgMode && (
-                        <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
-                            <AccordionItem value="player-character-accordion">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-2 space-y-3">
-                                    <Card>
-                                        <CardContent className="p-4 space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-16 w-16">
-                                                    <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="font-semibold">{playerName || "Héros"}</p>
-                                                    <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>
-                                                </div>
+                    <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
+                        <AccordionItem value="player-character-accordion">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                    <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 space-y-3">
+                                <Card>
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-16 w-16">
+                                                {adventureSettings.playerPortraitUrl ? <UIAvatarImage src={adventureSettings.playerPortraitUrl} alt={playerName} /> : <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>}
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-semibold">{playerName || "Héros"}</p>
+                                                {adventureSettings.rpgMode && <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>}
                                             </div>
+                                        </div>
+                                        <div className="text-sm">
+                                            <p><strong className="font-medium">Détails :</strong> {adventureSettings.playerDetails || "Non spécifié."}</p>
+                                            <p><strong className="font-medium">Orientation :</strong> {adventureSettings.playerOrientation || "Non spécifié."}</p>
+                                            <p><strong className="font-medium">Background :</strong> {adventureSettings.playerDescription || "Non spécifié."}</p>
+                                        </div>
+                                        
+                                        {adventureSettings.rpgMode && (
+                                          <>
+                                            <Separator />
                                             <div>
                                                 <div className="flex justify-between items-center mb-1">
                                                     <Label htmlFor="player-hp-sidebar" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
@@ -592,17 +601,21 @@ export function PageStructure({
                                                     <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
                                                 </div>
                                             )}
+                                        </>
+                                        )}
 
-                                            {adventureSettings.strategyMode && (
-                                            <div className="mt-2 pt-2 border-t">
-                                                <Label className="text-sm font-medium flex items-center">
-                                                    <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
-                                                    Lieu Actuel
-                                                </Label>
-                                                <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
-                                            </div>
-                                            )}
-                                            
+                                        {adventureSettings.strategyMode && (
+                                        <div className="mt-2 pt-2 border-t">
+                                            <Label className="text-sm font-medium flex items-center">
+                                                <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
+                                                Lieu Actuel
+                                            </Label>
+                                            <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
+                                        </div>
+                                        )}
+                                        
+                                        {adventureSettings.rpgMode && (
+                                            <>
                                             <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
                                                 <AccordionItem value="player-equipment-accordion">
                                                     <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
@@ -635,7 +648,6 @@ export function PageStructure({
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             </Accordion>
-
 
                                             <CardDescription className="text-xs pt-2">
                                               <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
@@ -802,12 +814,13 @@ export function PageStructure({
                                                     </AccordionContent>
                                                 </AccordionItem>
                                             </Accordion>
-                                        </CardContent>
-                                    </Card>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    )}
+                                            </>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
 
                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="characters-accordion">
