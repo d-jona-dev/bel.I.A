@@ -2514,6 +2514,33 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     });
   }, [toast]);
 
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
+    const newPoi: MapPointOfInterest = {
+        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        name: data.name,
+        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
+        icon: data.type,
+        level: data.level || 1,
+        position: { x: 50, y: 50 }, // Place it at the center by default
+        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
+        ownerId: data.ownerId,
+        lastCollectedTurn: undefined,
+        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
+        buildings: data.buildings || [],
+    };
+
+    setAdventureSettings(prev => ({
+        ...prev,
+        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+    }));
+
+    toast({
+        title: "Point d'Intérêt Créé",
+        description: `Le lieu "${data.name}" a été ajouté à la carte.`,
+    });
+}, [toast]);
+
+
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations })));
   }, [stagedCharacters]);
@@ -2709,36 +2736,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       setIsGeneratingItemImage(false);
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
-
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
-    const newPoi: MapPointOfInterest = {
-        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-        name: data.name,
-        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
-        icon: data.type,
-        level: data.level || 1,
-        position: undefined, // Let the user place it
-        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
-        ownerId: data.ownerId,
-        lastCollectedTurn: undefined,
-        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
-        buildings: data.buildings || [],
-    };
     
-    const updater = (prev: AdventureSettings) => ({
-        ...prev,
-        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    });
-
-    setAdventureSettings(updater);
-    setStagedAdventureSettings(prev => ({...prev, mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest }));
-    
-    toast({
-        title: "Point d'Intérêt Créé",
-        description: `Le lieu "${data.name}" est prêt à être placé sur la carte.`,
-    });
-  }, [toast]);
-
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi || poi.ownerId !== PLAYER_ID) {

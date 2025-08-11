@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, User as UserIcon, UploadCloud, Plus, Link as LinkIcon, Wand2, PlusSquare, Type as FontIcon } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, PlusCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -41,7 +41,7 @@ interface MapDisplayProps {
     onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number }) => void;
     characters: Character[];
     playerName: string;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
+    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[] }) => void;
     playerLocationId?: string;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onAddPoiToMap: (poiId: string) => void; 
@@ -150,6 +150,8 @@ export function MapDisplay({ playerId, pointsOfInterest, onMapAction, useAesthet
             description: newPoiDescription,
             type: newPoiType,
             ownerId: newPoiOwnerId,
+            level: newPoiLevel,
+            buildings: newPoiBuildings,
         });
         resetCreateForm();
         setIsCreateDialogOpen(false);
