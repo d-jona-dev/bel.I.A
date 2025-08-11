@@ -60,10 +60,10 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Charact
   const proficiencyBonus = Math.floor((level - 1) / 4) + 2;
   const baseAttackBonus = Math.floor(((strength) - 10) / 2) + proficiencyBonus;
 
-  const strengthModifier = Math.floor(((strength) - 10) / 2);
+  const strengthModifierValue = Math.floor(((strength) - 10) / 2);
   let baseDamageBonusString = "1"; // Base damage for unarmed
-  if (strengthModifier !== 0) {
-    baseDamageBonusString = `1${strengthModifier > 0 ? '+' : ''}${strengthModifier}`;
+  if (strengthModifierValue !== 0) {
+    baseDamageBonusString = `1${strengthModifierValue > 0 ? '+' : ''}${strengthModifierValue}`;
   }
 
 
@@ -233,7 +233,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       playerSkills: [],
       familiars: [],
       mapPointsOfInterest: [
-          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
           { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
           { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
       ],
@@ -435,6 +435,26 @@ export default function Home() {
         
         setFormPropKey(k => k + 1);
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
+
+        // Automated POI placement
+        const poisToPlace = finalSettings.mapPointsOfInterest?.filter(p => !p.position) || [];
+        if (poisToPlace.length > 0) {
+            setTimeout(() => {
+                let currentSettings = finalSettings;
+                poisToPlace.forEach(poi => {
+                    const pois = currentSettings.mapPointsOfInterest || [];
+                    const poiExists = pois.some(p => p.id === poi.id && p.position);
+                    if (!poiExists) {
+                        const newPois = pois.map(p => 
+                            p.id === poi.id ? { ...p, position: { x: 50, y: 50 } } : p
+                        );
+                        currentSettings = { ...currentSettings, mapPointsOfInterest: newPois };
+                    }
+                });
+                setAdventureSettings(currentSettings);
+                toast({ title: "Carte Mise à Jour", description: `${poisToPlace.length} lieu(x) ont été placé(s) sur la carte.` });
+            }, 500); // Small delay to ensure state is settled
+        }
     });
   }, [toast]);
 
@@ -2296,14 +2316,14 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     livePois.forEach(poi => mergedPoisMap.set(poi.id, poi));
 
     // Then, iterate through staged POIs. If a POI exists, update it with staged data.
-    // If it's new (shouldn't happen with current flow, but good for robustness), add it.
     stagedPois.forEach(stagedPoi => {
         const livePoi = mergedPoisMap.get(stagedPoi.id);
         if (livePoi) {
             // POI exists, merge staged data into live data
             mergedPoisMap.set(stagedPoi.id, {
-                ...livePoi, // Preserves live position, level, buildings
-                ...stagedPoi, // Applies form changes like name, description
+                ...livePoi, // Preserves live position, level, buildings, etc.
+                ...stagedPoi, // Applies form changes like name, description, owner
+                position: livePoi.position, // Explicitly keep live position
                 level: livePoi.level, // Explicitly keep live level
                 buildings: livePoi.buildings, // Explicitly keep live buildings
             });
@@ -2843,46 +2863,31 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
 
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
-    let resources: GeneratedResource[] = [];
-    let level = data.level || 1;
-    let description = data.description;
-    
-    const poiTypeConfig = poiLevelConfig[data.type as keyof typeof poiLevelConfig];
-    if (poiTypeConfig) {
-        resources = poiTypeConfig[level as keyof typeof poiTypeConfig]?.resources || [];
-        if (!description) {
-            description = `Un(e) nouveau/nouvelle ${poiLevelConfig[data.type][level]?.name.toLowerCase()} plein(e) de potentiel.`
-        }
-    }
-
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: data.name,
-        description: description,
+        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
         icon: data.type,
-        level: level,
-        position: { x: 50, y: 50 },
+        level: data.level || 1,
+        position: undefined, // Let the user place it
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
-        resources: resources,
+        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
         buildings: data.buildings || [],
     };
     
-    // Add to both live and staged settings to ensure persistence
-    setAdventureSettings(prev => ({
+    const updater = (prev: AdventureSettings) => ({
         ...prev,
         mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    }));
-    setStagedAdventureSettings(prev => ({
-        ...prev,
-        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    }));
+    });
 
-
+    setAdventureSettings(updater);
+    setStagedAdventureSettings(prev => ({...prev, mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest }));
+    
     toast({
         title: "Point d'Intérêt Créé",
-        description: `Le lieu "${data.name}" a été ajouté à la carte.`,
+        description: `Le lieu "${data.name}" est prêt à être placé sur la carte.`,
     });
   }, [toast]);
 
