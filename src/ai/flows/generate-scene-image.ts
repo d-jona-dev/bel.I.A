@@ -17,7 +17,7 @@ const GenerateSceneImageInputSchema = z.object({
   sceneDescription: z
     .string()
     .describe('A visual description of the scene to generate an image for. Should prioritize physical descriptions of characters over names.'),
-  style: z.string().optional().describe("The artistic style for the image (e.g., 'Realistic', 'Manga', 'Fantasy Art')."),
+  style: z.string().optional().describe("The artistic style for the image (e.g., 'Realistic', 'Manga', 'Fantasy Art', or a custom user prompt)."),
 });
 export type GenerateSceneImageInput = z.infer<typeof GenerateSceneImageInputSchema>;
 
@@ -52,6 +52,8 @@ const getStyleEnhancedPrompt = (description: string, style?: string): string => 
     'Comic Book': `An image in a bold, American comic book style. Keywords: comic book art, bold lines, ink, vibrant colors, halftone dots. ${sizePrompt} Scene: ${description}`,
   };
 
+  // If the style is one of the predefined keys, use its prompt.
+  // Otherwise, treat the style itself as a custom prompt to be appended.
   const styledDescription = stylePrompts[style] || `${description}. Art style: ${style}`;
   return `${negativePrompt} ${styledDescription}`;
 };

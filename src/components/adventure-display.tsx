@@ -132,6 +132,10 @@ export function AdventureDisplay({
   const [imageEditorOpen, setImageEditorOpen] = React.useState(false);
   const [imageToEditUrl, setImageToEditUrl] = React.useState<string | null>(null);
 
+  const [isCustomStyleDialogOpen, setIsCustomStyleDialogOpen] = React.useState(false);
+  const [customStylePrompt, setCustomStylePrompt] = React.useState("");
+
+
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef(messages);
   const { toast } = useToast();
@@ -938,6 +942,10 @@ export function AdventureDisplay({
                                     <DropdownMenuItem onSelect={() => setImageStyle("Epic Fantasy Art")}>Fantaisie Epique</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={() => setImageStyle("Oil Painting")}>Peinture à l'huile</DropdownMenuItem>
                                     <DropdownMenuItem onSelect={() => setImageStyle("Comic Book")}>Comics</DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => setIsCustomStyleDialogOpen(true)}>
+                                        Personnalisé...
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <TooltipProvider>
@@ -952,7 +960,7 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || ![...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription)}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>Générer Image {imageStyle ? `(${imageStyle.split(' ')[0]})` : ''}</span>
+                                            <span>Générer Image {imageStyle && !imageStyle.startsWith("Style personnalisé:") ? `(${imageStyle.split(' ')[0]})` : ''}</span>
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
@@ -961,6 +969,31 @@ export function AdventureDisplay({
                         </div>
                     </CardFooter>
                 </Card>
+
+                 <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Définir un Style Personnalisé</DialogTitle>
+                            <DialogDescription>
+                                Décrivez le style artistique que vous souhaitez. Vous pouvez inclure des mots-clés comme le genre, le nom d'un artiste ou l'ambiance.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Textarea
+                            value={customStylePrompt}
+                            onChange={(e) => setCustomStylePrompt(e.target.value)}
+                            placeholder="Ex: cyberpunk, néon, futuriste, couleurs vives, par Katsuhiro Otomo..."
+                            rows={3}
+                        />
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>Annuler</Button>
+                            <Button onClick={() => {
+                                setImageStyle(`Style personnalisé: ${customStylePrompt}`);
+                                toast({ title: "Style Personnalisé Appliqué", description: "Le nouveau style sera utilisé pour la prochaine génération d'image." });
+                                setIsCustomStyleDialogOpen(false);
+                            }}>Appliquer</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Combat Status Display or Static Ally Display */}
                 {adventureSettings.rpgMode && (
