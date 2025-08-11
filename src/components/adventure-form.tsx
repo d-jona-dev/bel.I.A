@@ -225,15 +225,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
                     </Button>
                 </div>
-
-                <Card className="p-4 space-y-3">
-                    <FormDescription>Choisissez les systèmes de jeu à activer pour cette histoire.</FormDescription>
-                    <div className="space-y-4">
-                        <FormField control={form.control} name="rpgMode" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background"> <div className="space-y-0.5"> <FormLabel className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</FormLabel></div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
-                        <FormField control={form.control} name="relationsMode" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background"> <div className="space-y-0.5"> <FormLabel className="flex items-center gap-2 text-sm"><LinkIcon className="h-4 w-4"/> Mode Relations</FormLabel></div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
-                        <FormField control={form.control} name="strategyMode" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background"> <div className="space-y-0.5"> <FormLabel className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel></div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
-                    </div>
-                </Card>
                 
                 <FormField
                 control={form.control}
@@ -458,11 +449,17 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </Card>
                                     )
                                 })}
+                                 <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player', level: 1, buildings: [] })}
+                                >
+                                    <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
+                                </Button>
                             </div>
                         </ScrollArea>
-                        <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => appendPoi({ id: `new-poi-${Date.now()}`, name: "", description: "", icon: 'Village', ownerId: 'player', level: 1, buildings: [] })}>
-                            <MapIcon className="mr-2 h-4 w-4"/>Ajouter un lieu
-                        </Button>
                     </Card>
                 )}
 
