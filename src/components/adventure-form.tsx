@@ -527,7 +527,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <FormLabel>Couleur de Faction</FormLabel>
                                             <FormControl>
                                                 <div className="flex items-center gap-2">
-                                                    <Input type="color" {...field} className="w-10 h-10 p-1"/>
+                                                    <Input type="color" {...field} value={field.value || ''} className="w-10 h-10 p-1"/>
                                                     <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
                                                 </div>
                                             </FormControl>
@@ -569,7 +569,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     control={form.control}
                                                     name={`characters.${index}.relations.player`}
                                                     render={({ field }) => (
-                                                        <Input {...field} placeholder="Relation avec le joueur" className="h-8"/>
+                                                        <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
                                                     )}
                                                 />
                                             </div>
@@ -580,7 +580,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                         control={form.control}
                                                         name={`characters.${index}.relations.${otherChar.id}`}
                                                         render={({ field }) => (
-                                                            <Input {...field} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                            <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
                                                         )}
                                                     />
                                                 </div>
