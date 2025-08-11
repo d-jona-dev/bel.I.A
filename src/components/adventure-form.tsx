@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS } from "@/lib/buildings";
 import { Checkbox } from "./ui/checkbox";
 import { poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
+import { Slider } from "./ui/slider";
 
 
 export type FormCharacterDefinition = Partial<Character> & { id?: string; name: string; details: string };
@@ -56,6 +57,8 @@ const characterSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
   factionColor: z.string().optional(),
+  affinity: z.number().min(0).max(100).optional(),
+  relations: z.record(z.string()).optional(),
 });
 
 const mapPointOfInterestSchema = z.object({
@@ -147,8 +150,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             world: "Grande université populaire nommée \"hight scoole of futur\".",
             initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", factionColor: '#FF69B4' },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", factionColor: '#4682B4' }
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
+                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
             rpgMode: true,
             relationsMode: true,
@@ -533,6 +536,60 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     )}
                                 />
                              )}
+                             {isRelationsModeEnabled && (
+                                 <>
+                                <FormField
+                                    control={form.control}
+                                    name={`characters.${index}.affinity`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="flex items-center gap-2"><Heart className="h-4 w-4"/> Affinité avec {watchedValues.playerName || "le Héros"}</FormLabel>
+                                            <FormControl>
+                                                <div className="flex items-center gap-2">
+                                                    <Slider
+                                                        min={0} max={100} step={1}
+                                                        defaultValue={[50]}
+                                                        value={[field.value ?? 50]}
+                                                        onValueChange={(value) => field.onChange(value[0])}
+                                                    />
+                                                    <span className="text-sm font-medium w-8 text-center">{field.value ?? 50}</span>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <Accordion type="single" collapsible className="w-full">
+                                    <AccordionItem value="relations">
+                                        <AccordionTrigger className="text-sm p-2 hover:no-underline">Relations</AccordionTrigger>
+                                        <AccordionContent className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`characters.${index}.relations.player`}
+                                                    render={({ field }) => (
+                                                        <Input {...field} placeholder="Relation avec le joueur" className="h-8"/>
+                                                    )}
+                                                />
+                                            </div>
+                                            {fields.filter((_, otherIndex) => otherIndex !== index).map(otherChar => (
+                                                 <div key={otherChar.id} className="flex items-center gap-2">
+                                                    <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`characters.${index}.relations.${otherChar.id}`}
+                                                        render={({ field }) => (
+                                                            <Input {...field} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                        )}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                                </>
+                             )}
                         </CardContent>
                         </Card>
                     ))}
@@ -540,7 +597,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
+                        onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
                         className="mt-2 w-full"
                         >
                         <PlusCircle className="mr-2 h-4 w-4" />
