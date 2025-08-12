@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage, PlayerAvatar } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -206,10 +206,13 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       rpgMode: true,
       relationsMode: true,
       strategyMode: true,
-      usePlayerAvatar: false,
       playerName: "Héros",
       playerClass: "Guerrier",
       playerLevel: 1,
+      playerDetails: "Un aventurier errant au regard déterminé.",
+      playerDescription: "Un passé mystérieux, à la recherche de gloire et de fortune.",
+      playerOrientation: "Inconnu",
+      playerPortraitUrl: null,
       ...initialPlayerAttributes,
       ...initialBaseDerivedStats,
       playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
@@ -361,7 +364,7 @@ export default function Home() {
     const initialState = createInitialState();
     return {
       ...JSON.parse(JSON.stringify(initialState.settings)),
-      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))))
+      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))))
     };
   });
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
@@ -450,7 +453,7 @@ export default function Home() {
   React.useEffect(() => {
       setStagedAdventureSettings({
           ...JSON.parse(JSON.stringify(baseAdventureSettings)),
-          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))
+          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))
       });
       setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
       setFormPropKey(k => k + 1); // Force re-render of form with new initialValues
@@ -2150,7 +2153,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         })));
         setStagedAdventureSettings({
             ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
-            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations }))
+            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))
         });
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
@@ -2515,34 +2518,33 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, [toast]);
 
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
-    const newPoi: MapPointOfInterest = {
-        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-        name: data.name,
-        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
-        icon: data.type,
-        level: data.level || 1,
-        position: { x: 50, y: 50 }, // Place it at the center by default
-        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
-        ownerId: data.ownerId,
-        lastCollectedTurn: undefined,
-        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
-        buildings: data.buildings || [],
-    };
+    setStagedAdventureSettings(prevStaged => {
+        const newPoi: MapPointOfInterest = {
+            id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+            name: data.name,
+            description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
+            icon: data.type,
+            level: data.level || 1,
+            position: { x: 50, y: 50 }, // Place it at the center by default
+            actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
+            ownerId: data.ownerId,
+            lastCollectedTurn: undefined,
+            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
+            buildings: data.buildings || [],
+        };
 
-    setAdventureSettings(prev => ({
-        ...prev,
-        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    }));
-
-    toast({
-        title: "Point d'Intérêt Créé",
-        description: `Le lieu "${data.name}" a été ajouté à la carte.`,
+        const updatedPois = [...(prevStaged.mapPointsOfInterest || []), newPoi];
+        toast({
+            title: "Point d'Intérêt Ajouté",
+            description: `"${data.name}" a été ajouté à votre configuration. N'oubliez pas d'enregistrer les modifications.`,
+        });
+        return { ...prevStaged, mapPointsOfInterest: updatedPois };
     });
 }, [toast]);
 
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
-    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations })));
+    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl })));
   }, [stagedCharacters]);
 
 
@@ -2560,7 +2562,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       world: stagedAdventureSettings.world,
       initialSituation: stagedAdventureSettings.initialSituation,
       characters: formCharacters,
-      usePlayerAvatar: stagedAdventureSettings.usePlayerAvatar,
       rpgMode: stagedAdventureSettings.rpgMode,
       relationsMode: stagedAdventureSettings.relationsMode,
       strategyMode: stagedAdventureSettings.strategyMode,
@@ -2568,6 +2569,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       playerName: stagedAdventureSettings.playerName,
       playerClass: stagedAdventureSettings.playerClass,
       playerLevel: stagedAdventureSettings.playerLevel,
+      playerPortraitUrl: stagedAdventureSettings.playerPortraitUrl,
+      playerDetails: stagedAdventureSettings.playerDetails,
+      playerDescription: stagedAdventureSettings.playerDescription,
+      playerOrientation: stagedAdventureSettings.playerOrientation,
       playerInitialAttributePoints: creationPoints,
       totalDistributableAttributePoints: totalDistributable,
       playerStrength: stagedAdventureSettings.playerStrength,

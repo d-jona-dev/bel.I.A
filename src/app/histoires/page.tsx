@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -76,6 +76,9 @@ const createNewAdventureState = (): SaveData => ({
         mapPointsOfInterest: [],
         mapImageUrl: null,
         playerPortraitUrl: null,
+        playerDetails: "",
+        playerDescription: "",
+        playerOrientation: "",
     },
     characters: [],
     narrative: [],
@@ -293,8 +296,10 @@ export default function HistoiresPage() {
               strategyMode: true,
               playerName: 'Héros',
               playerClass: 'Aventurier',
-              mapPointsOfInterest: [],
               playerPortraitUrl: null,
+              playerDetails: "",
+              playerDescription: "",
+              playerOrientation: "",
           };
       }
       
@@ -316,8 +321,11 @@ export default function HistoiresPage() {
           strategyMode: settings.strategyMode,
           playerName: settings.playerName,
           playerClass: settings.playerClass,
-          mapPointsOfInterest: settings.mapPointsOfInterest,
+          playerDetails: settings.playerDetails,
+          playerDescription: settings.playerDescription,
+          playerOrientation: settings.playerOrientation,
           playerPortraitUrl: settings.playerPortraitUrl,
+          mapPointsOfInterest: settings.mapPointsOfInterest,
       }
   }
 

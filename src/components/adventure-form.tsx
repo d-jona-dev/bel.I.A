@@ -23,11 +23,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS } from "@/lib/buildings";
 import { Checkbox } from "./ui/checkbox";
@@ -96,7 +95,6 @@ const adventureFormSchema = z.object({
   rpgMode: z.boolean().default(true).optional(),
   relationsMode: z.boolean().default(true).optional(),
   strategyMode: z.boolean().default(true).optional(),
-  usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
   playerDetails: z.string().optional(),
@@ -120,12 +118,24 @@ const adventureFormSchema = z.object({
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
     ({ formPropKey, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode }, ref) => {
     const { toast } = useToast();
+    const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
         defaultValues: initialValues,
         mode: "onBlur",
     });
+
+    React.useEffect(() => {
+        try {
+            const storedAvatars = localStorage.getItem('playerAvatars_v2');
+            if (storedAvatars) {
+                setSavedAvatars(JSON.parse(storedAvatars));
+            }
+        } catch (error) {
+            console.error("Failed to load player avatars", error);
+        }
+    }, []);
 
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
@@ -187,7 +197,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     };
     
     const watchedValues = form.watch();
-    const usePlayerAvatar = watchedValues.usePlayerAvatar;
 
     const ATTRIBUTES: (keyof AdventureFormValues)[] = ['playerStrength', 'playerDexterity', 'playerConstitution', 'playerIntelligence', 'playerWisdom', 'playerCharisma'];
     
@@ -223,6 +232,43 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         
         form.setValue(field, value, { shouldDirty: true, shouldValidate: true });
     }
+
+    const handleAvatarSelection = (avatarId: string) => {
+        if (avatarId === 'custom') {
+            // Reset to default custom hero if user wants to create a new one
+            form.reset({
+                ...form.getValues(),
+                playerName: "Héros",
+                playerClass: "Aventurier",
+                playerLevel: 1,
+                playerDetails: "",
+                playerDescription: "",
+                playerOrientation: "",
+                playerPortraitUrl: null,
+                // Reset stats if you want a completely fresh start
+                playerStrength: BASE_ATTRIBUTE_VALUE_FORM,
+                playerDexterity: BASE_ATTRIBUTE_VALUE_FORM,
+                playerConstitution: BASE_ATTRIBUTE_VALUE_FORM,
+                playerIntelligence: BASE_ATTRIBUTE_VALUE_FORM,
+                playerWisdom: BASE_ATTRIBUTE_VALUE_FORM,
+                playerCharisma: BASE_ATTRIBUTE_VALUE_FORM,
+            });
+            return;
+        }
+
+        const selectedAvatar = savedAvatars.find(a => a.id === avatarId);
+        if (selectedAvatar) {
+            form.setValue('playerName', selectedAvatar.name);
+            form.setValue('playerClass', selectedAvatar.class);
+            form.setValue('playerLevel', selectedAvatar.level);
+            form.setValue('playerDetails', selectedAvatar.details);
+            form.setValue('playerDescription', selectedAvatar.description);
+            form.setValue('playerOrientation', selectedAvatar.orientation);
+            form.setValue('playerPortraitUrl', selectedAvatar.portraitUrl);
+            // Here you might want to also load stats if they are saved with the avatar
+            toast({ title: "Avatar Chargé", description: `Les informations de ${selectedAvatar.name} ont été appliquées.` });
+        }
+    };
 
 
     return (
@@ -314,37 +360,29 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 </Card>
 
 
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full" defaultValue="player-character-config">
                     <AccordionItem value="player-character-config">
                         <AccordionTrigger>Configuration du Héros</AccordionTrigger>
                         <AccordionContent className="pt-2 space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="usePlayerAvatar"
-                                render={({ field }) => (
-                                    <FormItem className="space-y-3 p-3 border rounded-lg bg-muted/20">
-                                        <FormLabel>Personnage Joueur</FormLabel>
-                                        <FormControl>
-                                            <RadioGroup
-                                            onValueChange={(value) => field.onChange(value === 'true')}
-                                            defaultValue={String(field.value)}
-                                            className="flex flex-col space-y-1"
-                                            >
-                                            <FormItem className="flex items-center space-x-3 space-y-0">
-                                                <FormControl><RadioGroupItem value="false" /></FormControl>
-                                                <FormLabel className="font-normal">Créer un héros prédéfini pour cette histoire</FormLabel>
-                                            </FormItem>
-                                            <FormItem className="flex items-center space-x-3 space-y-0">
-                                                <FormControl><RadioGroupItem value="true" /></FormControl>
-                                                <FormLabel className="font-normal">Laisser le joueur utiliser son propre avatar</FormLabel>
-                                            </FormItem>
-                                            </RadioGroup>
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
+                             <div className="space-y-2">
+                                <Label>Personnage Joueur</Label>
+                                <Select onValueChange={handleAvatarSelection}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choisir un avatar ou créer un héros personnalisé..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="custom">-- Héros Personnalisé --</SelectItem>
+                                        <Separator className="my-1"/>
+                                        {savedAvatars.map(avatar => (
+                                            <SelectItem key={avatar.id} value={avatar.id}>{avatar.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Sélectionnez un de vos avatars sauvegardés pour pré-remplir les informations du héros, ou choisissez "Héros Personnalisé" pour en créer un spécifique à cette histoire.
+                                </FormDescription>
+                            </div>
 
-                            {!usePlayerAvatar && (
                             <Card className="p-4 bg-background">
                                 <div className="flex gap-4 items-start">
                                     <div className="flex-1 space-y-4">
@@ -409,7 +447,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </>
                                 )}
                             </Card>
-                            )}
 
                         </AccordionContent>
                     </AccordionItem>

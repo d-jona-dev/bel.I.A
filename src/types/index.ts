@@ -192,13 +192,24 @@ export interface Familiar {
     _lastSaved?: number;
 }
 
+export interface PlayerAvatar {
+  id: string;
+  name: string;
+  portraitUrl: string | null;
+  details: string;
+  description: string;
+  orientation: string;
+  class: string;
+  level: number;
+  // Optional stats could be added here if needed
+}
+
 export interface AdventureSettings {
   world: string;
   initialSituation: string;
   rpgMode: boolean;
   relationsMode: boolean;
   strategyMode: boolean;
-  usePlayerAvatar?: boolean;
   playerName?: string;
   playerPortraitUrl?: string | null;
   playerDetails?: string;
