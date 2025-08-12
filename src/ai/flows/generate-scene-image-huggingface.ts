@@ -38,19 +38,26 @@ export async function generateSceneImageWithHuggingFace(
         return { imageUrl: "", error: `Erreur de l'API Hugging Face: ${response.status} ${errorBody}` };
     }
 
-    const imageArrayBuffer = await response.arrayBuffer();
-    
-    // Convert ArrayBuffer to Base64 Data URI using Buffer (server-side)
-    const imageBuffer = Buffer.from(imageArrayBuffer);
-    const base64Image = imageBuffer.toString('base64');
-    const mimeType = response.headers.get('content-type') || 'image/jpeg';
-    const imageUrl = `data:${mimeType};base64,${base64Image}`;
+    const contentType = response.headers.get('content-type');
 
-    if (!imageUrl) {
-        return { imageUrl: "", error: "Impossible de convertir la réponse de l'API en image." };
+    if (contentType && contentType.includes('image/')) {
+        const imageArrayBuffer = await response.arrayBuffer();
+        const imageBuffer = Buffer.from(imageArrayBuffer);
+        const base64Image = imageBuffer.toString('base64');
+        const imageUrl = `data:${contentType};base64,${base64Image}`;
+
+        if (!imageUrl) {
+            return { imageUrl: "", error: "Impossible de convertir la réponse de l'API en image." };
+        }
+        
+        return { imageUrl, error: undefined };
+    } else {
+        // Handle non-image responses (e.g., model loading error)
+        const errorResponse = await response.json();
+        const errorMessage = errorResponse.error || "Réponse inattendue de l'API Hugging Face.";
+        console.warn("Hugging Face non-image response:", errorMessage);
+        return { imageUrl: "", error: `Hugging Face: ${errorMessage}. Le modèle est peut-être en cours de chargement, veuillez réessayer dans un instant.` };
     }
-    
-    return { imageUrl, error: undefined };
 
   } catch (error) {
     console.error('Error calling Hugging Face for image generation:', error);
