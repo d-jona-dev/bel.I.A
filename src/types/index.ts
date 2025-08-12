@@ -267,8 +267,8 @@ export interface ModelDefinition {
 export interface ImageModelDefinition {
     id: string;
     name: string;
-    source: 'gemini' | 'openrouter';
-    modelName?: string; // e.g. stability-ai/stable-diffusion-3
+    source: 'gemini' | 'openrouter' | 'huggingface';
+    modelName?: string;
     apiKey?: string;
 }
 
@@ -287,11 +287,15 @@ export interface AiConfig {
         }
     },
     image: {
-        source: 'gemini' | 'openrouter';
+        source: 'gemini' | 'openrouter' | 'huggingface';
         openRouter?: {
             model: string;
             apiKey: string;
-        }
+        };
+        huggingface?: {
+            model: string;
+            apiKey: string;
+        };
     }
 }
 
@@ -602,3 +606,13 @@ export const GenerateAdventureOutputSchema = z.object({
   updatedTime: UpdatedTimeSchema.optional().describe("The updated time of day if time management is enabled."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
+
+// Types for Image Generation flows
+export interface GenerateSceneImageInput {
+  sceneDescription: string;
+  style?: string;
+}
+export type GenerateSceneImageFlowOutput = {
+    imageUrl: string;
+    error?: string;
+};

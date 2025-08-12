@@ -36,8 +36,7 @@ const DEFAULT_LLM_MODELS: ModelDefinition[] = [
 
 const DEFAULT_IMAGE_MODELS: ImageModelDefinition[] = [
     { id: 'gemini-image-default', name: 'Gemini (Google)', source: 'gemini'},
-    { id: 'openrouter-sdxl', name: 'Stable Diffusion XL (OpenRouter)', source: 'openrouter', modelName: 'stabilityai/stable-diffusion-xl' },
-    { id: 'openrouter-sd3', name: 'Stable Diffusion 3 (OpenRouter)', source: 'openrouter', modelName: 'stabilityai/stable-diffusion-3' },
+    // OpenRouter models removed as they were not generating images directly
 ];
 
 
@@ -52,6 +51,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   const [imageModels, setImageModels] = React.useState<ImageModelDefinition[]>([]);
   
   const [editingLlmModel, setEditingLlmModel] = React.useState<ModelDefinition | null>(null);
+  const [editingImageModel, setEditingImageModel] = React.useState<ImageModelDefinition | null>(null);
 
   const [localModels, setLocalModels] = React.useState<string[]>([]);
   const [isLocalServerLoading, setIsLocalServerLoading] = React.useState(true);
@@ -95,6 +95,12 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     setLlmModels(updatedModels);
     localStorage.setItem('llm_models', JSON.stringify(updatedModels));
   };
+
+  const saveImageModels = (updatedModels: ImageModelDefinition[]) => {
+    setImageModels(updatedModels);
+    localStorage.setItem('image_models', JSON.stringify(updatedModels));
+  };
+
 
   const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['llm']['openRouter']>, value: string | boolean) => {
     onConfigChange({
@@ -162,7 +168,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     saveLlmModels(updatedModels);
   };
   
-  const handleSelectImageSource = (source: 'gemini' | 'openrouter') => {
+  const handleSelectImageSource = (source: 'gemini' | 'openrouter' | 'huggingface') => {
       let newImageConfig = { ...config.image, source };
       if (source === 'openrouter') {
           const firstOpenRouterModel = imageModels.find(m => m.source === 'openrouter');
@@ -170,6 +176,11 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
               apiKey: config.image.openRouter?.apiKey || '',
               model: firstOpenRouterModel?.modelName || '',
           };
+      } else if (source === 'huggingface') {
+          newImageConfig.huggingface = {
+              apiKey: config.image.huggingface?.apiKey || '',
+              model: config.image.huggingface?.model || 'stabilityai/stable-diffusion-xl-base-1.0',
+          }
       }
       onConfigChange({ ...config, image: newImageConfig });
   };
@@ -186,6 +197,47 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
               }
           }
       });
+  };
+
+  const handleImageHuggingFaceConfigChange = (field: 'model' | 'apiKey', value: string) => {
+      onConfigChange({
+          ...config,
+          image: {
+              ...config.image,
+              source: 'huggingface',
+              huggingface: {
+                  ...(config.image.huggingface || { model: '', apiKey: ''}),
+                  [field]: value
+              }
+          }
+      });
+  };
+
+  const handleAddNewImageModel = () => {
+    setEditingImageModel({ id: `new-img-${Date.now()}`, name: '', source: 'openrouter', modelName: '' });
+  };
+
+  const handleSaveImageModel = () => {
+    if (!editingImageModel || !editingImageModel.name || !editingImageModel.modelName) {
+        toast({ title: "Erreur", description: "Le nom et l'identifiant du modèle sont requis.", variant: 'destructive' });
+        return;
+    }
+    const isNew = editingImageModel.id.startsWith('new-');
+    let updatedModels: ImageModelDefinition[];
+
+    if (isNew) {
+        const newModel = { ...editingImageModel, id: `${editingImageModel.source}-img-${editingImageModel.modelName}-${Date.now()}` };
+        updatedModels = [...imageModels, newModel];
+    } else {
+        updatedModels = imageModels.map(m => m.id === editingImageModel.id ? editingImageModel : m);
+    }
+    saveImageModels(updatedModels);
+    setEditingImageModel(null);
+  };
+  
+  const handleDeleteImageModel = (modelId: string) => {
+    const updatedModels = imageModels.filter(m => m.id !== modelId);
+    saveImageModels(updatedModels);
   };
 
   const selectedLlmModelId = config.llm.source === 'gemini' 
@@ -327,7 +379,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     <SelectTrigger id="image-source-select"><SelectValue/></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
-                        <SelectItem value="openrouter">OpenRouter (Divers modèles)</SelectItem>
+                        <SelectItem value="openrouter">OpenRouter</SelectItem>
+                        <SelectItem value="huggingface">Hugging Face</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -351,6 +404,59 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                         placeholder="Clé API OpenRouter"
                         value={config.image.openRouter?.apiKey || ''}
                         onChange={(e) => handleImageOpenRouterConfigChange('apiKey', e.target.value)}
+                    />
+                    <Accordion type="single" collapsible>
+                        <AccordionItem value="manage-image-models" className="border-b-0">
+                            <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
+                            <AccordionContent className="space-y-2">
+                                {imageModels.filter(m => m.source === 'openrouter').map(model => (
+                                    <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
+                                        {editingImageModel?.id === model.id ? (
+                                            <>
+                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
+                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="flex-1 text-sm truncate">{model.name}</p>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                                {editingImageModel && editingImageModel.id.startsWith('new-') && (
+                                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
+                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                    </div>
+                                )}
+                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddNewImageModel}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
+                                </Button>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </div>
+            )}
+            
+            {config.image.source === 'huggingface' && (
+                <div className="space-y-3 p-3 border bg-background rounded-md">
+                    <Label>Configuration Hugging Face</Label>
+                    <Input
+                        placeholder="Identifiant du modèle (ex: stabilityai/stable-diffusion-xl-base-1.0)"
+                        value={config.image.huggingface?.model || ''}
+                        onChange={(e) => handleImageHuggingFaceConfigChange('model', e.target.value)}
+                    />
+                    <Input
+                        type="password"
+                        placeholder="Clé API Hugging Face (optionnel)"
+                        value={config.image.huggingface?.apiKey || ''}
+                        onChange={(e) => handleImageHuggingFaceConfigChange('apiKey', e.target.value)}
                     />
                 </div>
             )}
