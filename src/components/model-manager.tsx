@@ -36,7 +36,6 @@ const DEFAULT_LLM_MODELS: ModelDefinition[] = [
 
 const DEFAULT_IMAGE_MODELS: ImageModelDefinition[] = [
     { id: 'gemini-image-default', name: 'Gemini (Google)', source: 'gemini'},
-    { id: 'huggingface-sdxl-base', name: 'Stable Diffusion XL (HF)', source: 'huggingface', modelName: 'stabilityai/stable-diffusion-xl-base-1.0' },
     { id: 'huggingface-sd3', name: 'Stable Diffusion 3 (HF)', source: 'huggingface', modelName: 'stabilityai/stable-diffusion-3-medium-diffusers' },
 ];
 
@@ -169,7 +168,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     saveLlmModels(updatedModels);
   };
   
-  const handleSelectImageSource = (source: 'gemini' | 'openrouter' | 'huggingface') => {
+  const handleSelectImageSource = (source: 'gemini' | 'openrouter' | 'huggingface' | 'local-sd') => {
       let newImageConfig = { ...config.image, source };
       if (source === 'openrouter') {
           const firstOpenRouterModel = imageModels.find(m => m.source === 'openrouter');
@@ -183,6 +182,10 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
               apiKey: config.image.huggingface?.apiKey || '',
               model: firstHuggingFaceModel?.modelName || 'stabilityai/stable-diffusion-xl-base-1.0',
           }
+      } else if (source === 'local-sd') {
+          newImageConfig.localSd = {
+              apiUrl: config.image.localSd?.apiUrl || 'http://127.0.0.1:7860',
+          };
       }
       onConfigChange({ ...config, image: newImageConfig });
   };
@@ -214,6 +217,20 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
           }
       });
   };
+
+  const handleImageLocalSdConfigChange = (field: 'apiUrl', value: string) => {
+      onConfigChange({
+          ...config,
+          image: {
+              ...config.image,
+              source: 'local-sd',
+              localSd: {
+                  ...(config.image.localSd || { apiUrl: ''}),
+                  [field]: value
+              }
+          }
+      });
+  }
 
   const handleAddNewImageModel = (source: 'openrouter' | 'huggingface') => {
     setEditingImageModel({ id: `new-img-${Date.now()}`, name: '', source: source, modelName: '' });
@@ -389,6 +406,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
                         <SelectItem value="huggingface">Hugging Face</SelectItem>
+                        <SelectItem value="local-sd">Local (Stable Diffusion)</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -508,6 +526,20 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>
+                </div>
+            )}
+             {config.image.source === 'local-sd' && (
+                <div className="space-y-3 p-3 border bg-background rounded-md">
+                     <Label>Configuration Stable Diffusion Local</Label>
+                      <Input
+                        type="text"
+                        placeholder="URL de l'API (ex: http://127.0.0.1:7860)"
+                        value={config.image.localSd?.apiUrl || ''}
+                        onChange={(e) => handleImageLocalSdConfigChange('apiUrl', e.target.value)}
+                    />
+                     <CardDescription className="text-xs">
+                        Entrez l'URL de base de votre API locale (par exemple, celle de votre interface Automatic1111).
+                     </CardDescription>
                 </div>
             )}
         </CardContent>

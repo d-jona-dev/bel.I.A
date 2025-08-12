@@ -10,6 +10,7 @@ import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, AiConfig } 
 import { generateSceneImageWithGenkit } from './generate-scene-image-genkit';
 import { generateSceneImageWithOpenRouter } from './generate-scene-image-openrouter';
 import { generateSceneImageWithHuggingFace } from './generate-scene-image-huggingface';
+import { generateSceneImageWithLocalSd } from './generate-scene-image-local-sd';
 
 // This is the main exported function that the application will call.
 export async function generateSceneImage(
@@ -25,6 +26,10 @@ export async function generateSceneImage(
 
   if (imageConfig?.source === 'huggingface' && imageConfig.huggingface) {
     return generateSceneImageWithHuggingFace(input, imageConfig.huggingface);
+  }
+  
+  if (imageConfig?.source === 'local-sd' && imageConfig.localSd) {
+    return generateSceneImageWithLocalSd(input, imageConfig.localSd);
   }
   
   // Default to Genkit/Gemini if no specific config is found or if it's explicitly set to 'gemini'

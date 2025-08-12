@@ -268,9 +268,10 @@ export interface ModelDefinition {
 export interface ImageModelDefinition {
     id: string;
     name: string;
-    source: 'gemini' | 'openrouter' | 'huggingface';
-    modelName?: string;
-    apiKey?: string;
+    source: 'gemini' | 'openrouter' | 'huggingface' | 'local-sd';
+    modelName?: string; // For HuggingFace/OpenRouter
+    apiKey?: string; // For HuggingFace/OpenRouter
+    apiUrl?: string; // For local-sd
 }
 
 
@@ -288,7 +289,7 @@ export interface AiConfig {
         }
     },
     image: {
-        source: 'gemini' | 'openrouter' | 'huggingface';
+        source: 'gemini' | 'openrouter' | 'huggingface' | 'local-sd';
         openRouter?: {
             model: string;
             apiKey: string;
@@ -296,6 +297,9 @@ export interface AiConfig {
         huggingface?: {
             model: string;
             apiKey: string;
+        };
+        localSd?: {
+            apiUrl: string;
         };
     }
 }
@@ -424,7 +428,7 @@ const AiConfigForAdventureInputSchema = z.object({
         }).optional(),
     }),
     image: z.object({
-        source: z.enum(['gemini', 'openrouter', 'huggingface']),
+        source: z.enum(['gemini', 'openrouter', 'huggingface', 'local-sd']),
         openRouter: z.object({
             model: z.string(),
             apiKey: z.string(),
@@ -432,6 +436,9 @@ const AiConfigForAdventureInputSchema = z.object({
         huggingface: z.object({
             model: z.string(),
             apiKey: z.string(),
+        }).optional(),
+        localSd: z.object({
+            apiUrl: z.string(),
         }).optional(),
     }),
 }).passthrough();
