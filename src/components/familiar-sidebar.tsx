@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, PawPrint, Save, UploadCloud, Star, BarChart2, CheckCircle, Diamond } from "lucide-react";
+import { Wand2, Loader2, PawPrint, Save, UploadCloud, Star, BarChart2, CheckCircle, Diamond, Palette, Trash2 } from "lucide-react";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
 import type { Familiar } from "@/types";
@@ -17,6 +17,8 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
+
 
 interface FamiliarSidebarProps {
     familiars: Familiar[];
@@ -26,6 +28,21 @@ interface FamiliarSidebarProps {
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
 }
+
+interface CustomImageStyle {
+  name: string;
+  prompt: string;
+}
+
+const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
+    { name: "Par Défaut", isDefault: true },
+    { name: "Réaliste", isDefault: true },
+    { name: "Manga / Anime", isDefault: true },
+    { name: "Fantaisie Epique", isDefault: true },
+    { name: "Peinture à l'huile", isDefault: true },
+    { name: "Comics", isDefault: true },
+];
+
 
 export function FamiliarSidebar({
     familiars,
@@ -39,6 +56,9 @@ export function FamiliarSidebar({
   const [isClient, setIsClient] = React.useState(false);
   const [globalFamiliars, setGlobalFamiliars] = React.useState<Familiar[]>([]);
   const { toast } = useToast();
+  const [imageStyle, setImageStyle] = React.useState<string>("");
+  const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
+
 
   React.useEffect(() => {
     setIsClient(true);
@@ -48,9 +68,13 @@ export function FamiliarSidebar({
             if (storedGlobal) {
                 setGlobalFamiliars(JSON.parse(storedGlobal));
             }
+             const savedStyles = localStorage.getItem("customImageStyles_v1");
+            if (savedStyles) {
+                setCustomStyles(JSON.parse(savedStyles));
+            }
         } catch (error) {
-            console.error("Failed to load global familiars:", error);
-            toast({ title: "Erreur", description: "Impossible de charger les familiers globaux.", variant: "destructive" });
+            console.error("Failed to load global data:", error);
+            toast({ title: "Erreur", description: "Impossible de charger les données globales.", variant: "destructive" });
         }
     }
   }, [toast]);
@@ -61,7 +85,7 @@ export function FamiliarSidebar({
 
     try {
       const prompt = `Generate a portrait of a fantasy creature: ${familiar.name}. Description: ${familiar.description}. Rarity: ${familiar.rarity}.`;
-      const result = await generateImageAction({ sceneDescription: prompt });
+      const result = await generateImageAction({ sceneDescription: prompt, style: imageStyle });
       onFamiliarUpdate({ ...familiar, portraitUrl: result.imageUrl });
       toast({ title: "Portrait Généré", description: `Le portrait de ${familiar.name} a été généré.` });
     } catch (error) {
@@ -167,6 +191,32 @@ export function FamiliarSidebar({
                                      : <PawPrint className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
                                 <div className="flex gap-2">
+                                     <DropdownMenu>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" size="icon" className="h-8 w-8">
+                                                            <Palette className="h-4 w-4"/>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Choisir un style d'image</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <DropdownMenuContent>
+                                            {defaultImageStyles.map(style => (
+                                                <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                            ))}
+                                            {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                            {customStyles.map(style => (
+                                                 <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
                                     <Button variant="outline" size="sm" onClick={() => handleGeneratePortrait(familiar)} disabled={imageLoadingStates[familiar.id]}><Wand2 className="h-4 w-4 mr-1"/> IA</Button>
                                     <input type="file" accept="image/*" id={`upload-familiar-${familiar.id}`} className="hidden" onChange={(e) => handleUploadPortrait(familiar.id, e)} />
                                     <Button variant="outline" size="sm" onClick={() => document.getElementById(`upload-familiar-${familiar.id}`)?.click()}><UploadCloud className="h-4 w-4 mr-1"/> Télécharger</Button>
