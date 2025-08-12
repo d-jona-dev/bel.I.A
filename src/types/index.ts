@@ -201,7 +201,14 @@ export interface PlayerAvatar {
   orientation: string;
   class: string;
   level: number;
-  // Optional stats could be added here if needed
+}
+
+export interface TimeManagementSettings {
+    enabled: boolean;
+    currentTime: string; // "HH:MM"
+    timeFormat: '24h' | '12h';
+    currentEvent: string;
+    timeElapsedPerTurn: string; // "HH:MM"
 }
 
 export interface AdventureSettings {
@@ -242,6 +249,7 @@ export interface AdventureSettings {
   mapPointsOfInterest?: MapPointOfInterest[];
   mapImageUrl?: string | null;
   playerLocationId?: string;
+  timeManagement?: TimeManagementSettings;
 }
 
 export interface ModelDefinition {
@@ -392,6 +400,14 @@ const AiConfigSchema = z.object({
 }).passthrough();
 
 
+const TimeManagementSchemaForAI = z.object({
+    enabled: z.boolean(),
+    currentTime: z.string().describe("Current time in the story, e.g., '18:23' or '6:36pm'."),
+    currentEvent: z.string().optional().describe("Description of the current event, e.g., 'Début du cours'."),
+    timeElapsedPerTurn: z.string().describe("The fixed amount of time that should pass in this turn, e.g., '01:00' for one hour. The AI MUST strictly adhere to this duration for its narrative."),
+});
+
+
 export const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
@@ -431,14 +447,16 @@ export const GenerateAdventureInputSchema = z.object({
   mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
   playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
   aiConfig: AiConfigSchema.optional(),
+  timeManagement: TimeManagementSchemaForAI.optional().describe("Advanced time management settings for the story."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig' | 'timeManagement'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
     playerSkills?: PlayerSkill[];
     mapPointsOfInterest?: MapPointOfInterest[];
     aiConfig?: AiConfig;
+    timeManagement?: TimeManagementSettings;
 };
 
 // Represents the output from the flow to the main application, including potential errors.
@@ -520,6 +538,10 @@ const PoiOwnershipChangeSchema = z.object({
     newOwnerId: z.string().describe("The ID of the new owner (e.g., 'player', 'frak-1')."),
 });
 
+const UpdatedTimeSchema = z.object({
+    newCurrentTime: z.string().optional().describe("The new time of day (e.g., '18:43') after the turn's time elapsed has been added. Only set if time management is enabled."),
+});
+
 export const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game client will display the loot separately based on the structured data provided in other fields.**'),
   sceneDescriptionForImage: z
@@ -547,5 +569,6 @@ export const GenerateAdventureOutputSchema = z.object({
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
   poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
+  updatedTime: UpdatedTimeSchema.optional().describe("The updated time of day if time management is enabled."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;

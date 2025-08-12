@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage, PlayerAvatar } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage, PlayerAvatar, TimeManagementSettings } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -233,6 +233,13 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
       ],
       mapImageUrl: null,
+      timeManagement: {
+        enabled: false,
+        currentTime: "12:00",
+        timeFormat: "24h",
+        currentEvent: "",
+        timeElapsedPerTurn: "00:15",
+      },
     };
   
     const initialCharacters: Character[] = [
@@ -1035,6 +1042,18 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       });
   }, [toast, characters]);
 
+  const handleTimeUpdate = React.useCallback((newTime?: string) => {
+    if (newTime && adventureSettings.timeManagement?.enabled) {
+        setAdventureSettings(prev => ({
+            ...prev,
+            timeManagement: {
+                ...prev.timeManagement!,
+                currentTime: newTime,
+            },
+        }));
+    }
+  }, [adventureSettings.timeManagement]);
+
   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
       setIsLoading(true);
@@ -1148,6 +1167,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: aiConfig,
+        timeManagement: settingsForThisTurn.timeManagement,
     };
 
     try {
@@ -1181,6 +1201,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             }
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
+            }
+            if (result.updatedTime?.newCurrentTime) {
+                handleTimeUpdate(result.updatedTime.newCurrentTime);
             }
 
             // Handle NON-combat currency and items
@@ -1224,7 +1247,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       currentLanguage, narrativeMessages, toast,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig
+      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate
   ]);
 
 const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
@@ -1821,6 +1844,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
                  playerLocation: currentPlayerLocation,
                  aiConfig: aiConfig,
+                 timeManagement: currentTurnSettings.timeManagement,
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
@@ -1875,6 +1899,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
                 }
+                if (result.updatedTime?.newCurrentTime) {
+                    handleTimeUpdate(result.updatedTime.newCurrentTime);
+                }
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
                     if (amount < 0) {
@@ -1911,7 +1938,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
          handleNewFamiliar,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
          handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
-         adventureSettings, characters, activeCombat, aiConfig
+         adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
      ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
@@ -2583,6 +2610,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       playerCharisma: stagedAdventureSettings.playerCharisma,
       playerGold: stagedAdventureSettings.playerGold,
       familiars: stagedAdventureSettings.familiars || [],
+      timeManagement: stagedAdventureSettings.timeManagement,
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
 

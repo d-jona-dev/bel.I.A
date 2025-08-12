@@ -144,6 +144,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         })),
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: input.aiConfig,
+        timeManagement: input.timeManagement,
     };
     return flowInput;
 }
@@ -167,6 +168,15 @@ World: {{{world}}}
 
 Current Situation/Recent Narrative:
 {{{initialSituation}}}
+
+{{#if timeManagement.enabled}}
+--- TIME & EVENT CONTEXT ---
+Current Time: **{{timeManagement.currentTime}}**
+Current Event: **{{timeManagement.currentEvent}}**
+Time to Elapse This Turn: **{{timeManagement.timeElapsedPerTurn}}**. 
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). You MUST update the time in the 'updatedTime.newCurrentTime' output field by adding this duration.**
+---
+{{/if}}
 
 {{#if rpgModeActive}}
 --- Player Stats ({{playerName}}) ---
@@ -369,15 +379,15 @@ Tasks:
         *   reason: A brief justification for the change.
     *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
-{{else}}
-(Affinity and Relation updates are disabled.)
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
     *   **Conquest:** If combat has ended, and the player's team is victorious, AND if the 'activeCombat.contestedPoiId' field was set for this combat, you MUST change the ownership of that POI to the player.
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
-    
+
+8.  **Time Update:** If \`{{timeManagement.enabled}}\` was true in the input, you MUST populate \`updatedTime.newCurrentTime\` with the new time after adding \`{{timeManagement.timeElapsedPerTurn}}\`.
+
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; the game client displays loot separately from the combatUpdates data.]
 `,

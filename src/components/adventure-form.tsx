@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import { Checkbox } from "./ui/checkbox";
 import { poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
 import { Slider } from "./ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 
 export type FormCharacterDefinition = {
@@ -84,6 +85,14 @@ const mapPointOfInterestSchema = z.object({
     buildings: z.array(z.string()).optional(),
 });
 
+const timeManagementSchema = z.object({
+    enabled: z.boolean().default(false),
+    currentTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("12:00"),
+    timeFormat: z.enum(['24h', '12h']).default('24h'),
+    currentEvent: z.string().optional().default(""),
+    timeElapsedPerTurn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("00:15"),
+}).optional();
+
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const POINTS_PER_LEVEL_GAIN_FORM = 5;
@@ -112,6 +121,7 @@ const adventureFormSchema = z.object({
   playerCharisma: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
   playerGold: z.number().int().min(0).optional().default(0),
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
+  timeManagement: timeManagementSchema.optional(),
 });
 
 
@@ -122,7 +132,16 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
-        defaultValues: initialValues,
+        defaultValues: {
+            ...initialValues,
+            timeManagement: initialValues.timeManagement ?? {
+                enabled: false,
+                currentTime: '12:00',
+                timeFormat: '24h',
+                currentEvent: '',
+                timeElapsedPerTurn: '00:15',
+            }
+        },
         mode: "onBlur",
     });
 
@@ -153,7 +172,16 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     }));
 
     React.useEffect(() => {
-        form.reset(initialValues);
+        form.reset({
+            ...initialValues,
+            timeManagement: initialValues.timeManagement ?? {
+                enabled: false,
+                currentTime: '12:00',
+                timeFormat: '24h',
+                currentEvent: '',
+                timeElapsedPerTurn: '00:15',
+            }
+        });
     }, [formPropKey, initialValues, form]);
 
 
@@ -360,6 +388,85 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 </Card>
 
 
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="time-management-config">
+                        <AccordionTrigger>Gestion avancée du temps</AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="timeManagement.enabled"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4"/> Activer la gestion du temps</FormLabel>
+                                        </div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            {watchedValues.timeManagement?.enabled && (
+                                <Card className="p-4 bg-background space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="timeManagement.currentEvent"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Événement en cours</FormLabel>
+                                                <FormControl><Input placeholder="Ex: Début du cours, Réunion d'équipe..." {...field} /></FormControl>
+                                                <FormDescription className="text-xs">Donne un contexte précis à l'IA sur l'activité actuelle.</FormDescription>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="timeManagement.currentTime"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Heure de début</FormLabel>
+                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                         <FormField
+                                            control={form.control}
+                                            name="timeManagement.timeElapsedPerTurn"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Temps par tour</FormLabel>
+                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="timeManagement.timeFormat"
+                                        render={({ field }) => (
+                                            <FormItem className="space-y-3">
+                                            <FormLabel>Format de l'heure</FormLabel>
+                                            <FormControl>
+                                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                                    <FormItem className="flex items-center space-x-2">
+                                                        <FormControl><RadioGroupItem value="24h" id="24h" /></FormControl>
+                                                        <FormLabel htmlFor="24h" className="font-normal">24 Heures</FormLabel>
+                                                    </FormItem>
+                                                    <FormItem className="flex items-center space-x-2">
+                                                        <FormControl><RadioGroupItem value="12h" id="12h" /></FormControl>
+                                                        <FormLabel htmlFor="12h" className="font-normal">12 Heures (AM/PM)</FormLabel>
+                                                    </FormItem>
+                                                </RadioGroup>
+                                            </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </Card>
+                            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+                
                 <Accordion type="single" collapsible className="w-full" defaultValue="player-character-config">
                     <AccordionItem value="player-character-config">
                         <AccordionTrigger>Configuration du Héros</AccordionTrigger>
