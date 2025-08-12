@@ -16,7 +16,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, NewCharacterSchema, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect } from '@/types';
+import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, NewCharacterSchema as FlowNewCharacterSchema, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect } from '@/types';
 import { GenerateAdventureInputSchema, GenerateAdventureOutputSchema, RpgContextSchema, CharacterWithContextSummarySchema, ActiveCombatSchema } from '@/types';
 
 
@@ -386,7 +386,9 @@ Tasks:
     *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
-8.  **Time Update:** If \`{{timeManagement.enabled}}\` was true in the input, you MUST populate \`updatedTime.newCurrentTime\` with the new time after adding \`{{timeManagement.timeElapsedPerTurn}}\`.
+{{#if timeManagement.enabled}}
+8.  **Time Update:** If \`timeManagement.enabled\` was true in the input, you MUST populate \`updatedTime.newCurrentTime\` with the new time after adding \`timeManagement.timeElapsedPerTurn\`.
+{{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; the game client displays loot separately from the combatUpdates data.]
