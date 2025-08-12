@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, PawPrint } from 'lucide-react';
+import { Upload, Trash2, PawPrint, Download } from 'lucide-react';
 import type { Familiar } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -56,6 +56,19 @@ export default function FamiliersPage() {
       });
       setFamiliarToDelete(null);
     }
+  };
+
+  const handleDownloadFamiliar = (familiar: Familiar) => {
+    const jsonString = JSON.stringify(familiar, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${familiar.name.toLowerCase().replace(/\s/g, '_')}_familiar.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const rarityColorClass = (rarity: Familiar['rarity']) => {
@@ -108,6 +121,9 @@ export default function FamiliersPage() {
                   <p className="text-sm text-muted-foreground line-clamp-3">{familiar.description}</p>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadFamiliar(familiar)}>
+                    <Download className="mr-2 h-4 w-4" /> Télécharger
+                  </Button>
                   <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" onClick={() => setFamiliarToDelete(familiar)}>

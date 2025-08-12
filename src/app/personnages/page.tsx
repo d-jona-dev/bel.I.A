@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, MessageSquare, Download, Save, Wand2 } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, MessageSquare, Download, Save, Wand2, Link as LinkIcon, Palette, UploadCloud } from 'lucide-react';
 import type { Character } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,10 +35,26 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { generateSceneImage } from '@/ai/flows/generate-scene-image';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2 } from 'lucide-react';
 
 
 // Helper to generate a unique ID
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
+
+interface CustomImageStyle {
+  name: string;
+  prompt: string;
+}
+
+const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
+    { name: "Par Défaut", isDefault: true },
+    { name: "Réaliste", isDefault: true },
+    { name: "Manga / Anime", isDefault: true },
+    { name: "Fantaisie Epique", isDefault: true },
+    { name: "Peinture à l'huile", isDefault: true },
+    { name: "Comics", isDefault: true },
+];
 
 
 export default function PersonnagesPage() {
@@ -55,12 +71,22 @@ export default function PersonnagesPage() {
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+  const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
+
+  const [imageStyle, setImageStyle] = React.useState<string>("");
+  const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
+
 
   const loadCharactersFromStorage = () => {
      try {
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
         setSavedNPCs(JSON.parse(charactersFromStorage));
+      }
+      const savedStyles = localStorage.getItem("customImageStyles_v1");
+      if (savedStyles) {
+          setCustomStyles(JSON.parse(savedStyles));
       }
     } catch (error) {
       console.error("Failed to load characters from localStorage:", error);
@@ -177,10 +203,10 @@ export default function PersonnagesPage() {
     if (!editingCharacter) return;
     setIsGeneratingPortrait(true);
     
-    const prompt = `Generate a portrait of ${editingCharacter.name}. Description: ${editingCharacter.details}. ${editingCharacter.characterClass ? `Class: ${editingCharacter.characterClass}.` : ''}`;
+    const prompt = `portrait of ${editingCharacter.name}. Description: ${editingCharacter.details}. ${editingCharacter.characterClass ? `Class: ${editingCharacter.characterClass}.` : ''}`;
 
     try {
-        const result = await generateSceneImage({ sceneDescription: prompt });
+        const result = await generateSceneImage({ sceneDescription: prompt, style: imageStyle });
         if (result.imageUrl) {
             setEditingCharacter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
             toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
@@ -193,6 +219,14 @@ export default function PersonnagesPage() {
         setIsGeneratingPortrait(false);
     }
   }
+
+  const handleSaveUrl = () => {
+    if (!editingCharacter) return;
+    setEditingCharacter(prev => prev ? { ...prev, portraitUrl: portraitUrlInput } : null);
+    setIsUrlDialogOpen(false);
+    setPortraitUrlInput("");
+    toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
+  };
 
 
   return (
@@ -293,13 +327,57 @@ export default function PersonnagesPage() {
                           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-4">
                              <div className="flex items-center gap-4">
                                 <Avatar className="h-24 w-24">
-                                    {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div> :
+                                    {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div> :
                                     editingCharacter.portraitUrl ? <AvatarImage src={editingCharacter.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingCharacter.name.substring(0,2)}</AvatarFallback>}
                                 </Avatar>
                                 <div className="flex-1 space-y-2">
-                                    <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
-                                        <Wand2 className="mr-2 h-4 w-4" /> Générer un Portrait IA
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" size="icon">
+                                                    <Palette className="h-4 w-4"/>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                {defaultImageStyles.map(style => (
+                                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                                ))}
+                                                {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                                {customStyles.map(style => (
+                                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
+                                            <Wand2 className="mr-2 h-4 w-4" /> Générer
+                                        </Button>
+                                    </div>
+                                    <input type="file" accept="image/*" id={`upload-edit-portrait-${npc.id}`} className="hidden" onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => setEditingCharacter(p => p ? {...p, portraitUrl: reader.result as string} : null);
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}/>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-edit-portrait-${npc.id}`)?.click()}>
+                                            <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
+                                        </Button>
+                                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
+                                                <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
+                                                    <Button onClick={handleSaveUrl}>Enregistrer</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
                                 </div>
                              </div>
                              <div className="space-y-2">
