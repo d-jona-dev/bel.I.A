@@ -36,7 +36,8 @@ const DEFAULT_LLM_MODELS: ModelDefinition[] = [
 
 const DEFAULT_IMAGE_MODELS: ImageModelDefinition[] = [
     { id: 'gemini-image-default', name: 'Gemini (Google)', source: 'gemini'},
-    // OpenRouter models removed as they were not generating images directly
+    { id: 'huggingface-sdxl-base', name: 'Stable Diffusion XL (HF)', source: 'huggingface', modelName: 'stabilityai/stable-diffusion-xl-base-1.0' },
+    { id: 'huggingface-sd3', name: 'Stable Diffusion 3 (HF)', source: 'huggingface', modelName: 'stabilityai/stable-diffusion-3-medium-diffusers' },
 ];
 
 
@@ -177,9 +178,10 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
               model: firstOpenRouterModel?.modelName || '',
           };
       } else if (source === 'huggingface') {
+          const firstHuggingFaceModel = imageModels.find(m => m.source === 'huggingface');
           newImageConfig.huggingface = {
               apiKey: config.image.huggingface?.apiKey || '',
-              model: config.image.huggingface?.model || 'stabilityai/stable-diffusion-xl-base-1.0',
+              model: firstHuggingFaceModel?.modelName || 'stabilityai/stable-diffusion-xl-base-1.0',
           }
       }
       onConfigChange({ ...config, image: newImageConfig });
@@ -213,8 +215,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
       });
   };
 
-  const handleAddNewImageModel = () => {
-    setEditingImageModel({ id: `new-img-${Date.now()}`, name: '', source: 'openrouter', modelName: '' });
+  const handleAddNewImageModel = (source: 'openrouter' | 'huggingface') => {
+    setEditingImageModel({ id: `new-img-${Date.now()}`, name: '', source: source, modelName: '' });
   };
 
   const handleSaveImageModel = () => {
@@ -244,9 +246,15 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     ? llmModels.find(m => m.source === 'gemini')?.id
     : llmModels.find(m => m.source === 'openrouter' && m.modelName === config.llm.openRouter?.model)?.id;
 
-   const selectedImageModelId = config.image.source === 'gemini'
-    ? imageModels.find(m => m.source === 'gemini')?.id
-    : imageModels.find(m => m.source === 'openrouter' && m.modelName === config.image.openRouter?.model)?.id;
+   let selectedImageModelId: string | undefined;
+    if (config.image.source === 'gemini') {
+        selectedImageModelId = imageModels.find(m => m.source === 'gemini')?.id;
+    } else if (config.image.source === 'openrouter') {
+        selectedImageModelId = imageModels.find(m => m.source === 'openrouter' && m.modelName === config.image.openRouter?.model)?.id;
+    } else if (config.image.source === 'huggingface') {
+        selectedImageModelId = imageModels.find(m => m.source === 'huggingface' && m.modelName === config.image.huggingface?.model)?.id;
+    }
+
 
   return (
     <Card className="bg-muted/20 border-dashed">
@@ -427,7 +435,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                         )}
                                     </div>
                                 ))}
-                                {editingImageModel && editingImageModel.id.startsWith('new-') && (
+                                {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'openrouter' && (
                                     <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
                                         <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                         <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
@@ -435,7 +443,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
                                     </div>
                                 )}
-                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddNewImageModel}>
+                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('openrouter')}>
                                     <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
                                 </Button>
                             </AccordionContent>
@@ -447,17 +455,59 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             {config.image.source === 'huggingface' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
                     <Label>Configuration Hugging Face</Label>
-                    <Input
-                        placeholder="Identifiant du modèle (ex: stabilityai/stable-diffusion-xl-base-1.0)"
-                        value={config.image.huggingface?.model || ''}
-                        onChange={(e) => handleImageHuggingFaceConfigChange('model', e.target.value)}
-                    />
+                     <Select value={selectedImageModelId} onValueChange={(modelId) => {
+                        const selected = imageModels.find(m => m.id === modelId);
+                        if(selected) handleImageHuggingFaceConfigChange('model', selected.modelName || '');
+                    }}>
+                        <SelectTrigger><SelectValue placeholder="Choisir un modèle d'image..."/></SelectTrigger>
+                        <SelectContent>
+                             {imageModels.filter(m => m.source === 'huggingface').map(model => (
+                                <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Input
                         type="password"
-                        placeholder="Clé API Hugging Face (optionnel)"
+                        placeholder="Clé API Hugging Face (recommandé)"
                         value={config.image.huggingface?.apiKey || ''}
                         onChange={(e) => handleImageHuggingFaceConfigChange('apiKey', e.target.value)}
                     />
+                     <Accordion type="single" collapsible>
+                        <AccordionItem value="manage-hf-image-models" className="border-b-0">
+                            <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
+                            <AccordionContent className="space-y-2">
+                                {imageModels.filter(m => m.source === 'huggingface').map(model => (
+                                    <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
+                                        {editingImageModel?.id === model.id ? (
+                                            <>
+                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
+                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="flex-1 text-sm truncate">{model.name}</p>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                                {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'huggingface' && (
+                                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
+                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                    </div>
+                                )}
+                                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('huggingface')}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
+                                </Button>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </div>
             )}
         </CardContent>
