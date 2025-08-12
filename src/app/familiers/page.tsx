@@ -27,6 +27,7 @@ export default function FamiliersPage() {
   const [savedFamiliars, setSavedFamiliars] = React.useState<Familiar[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [familiarToDelete, setFamiliarToDelete] = React.useState<Familiar | null>(null);
+  const importFileRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     try {
@@ -45,11 +46,15 @@ export default function FamiliersPage() {
     setIsLoading(false);
   }, [toast]);
 
+  const saveFamiliars = (updatedFamiliars: Familiar[]) => {
+    setSavedFamiliars(updatedFamiliars);
+    localStorage.setItem('globalFamiliars', JSON.stringify(updatedFamiliars));
+  };
+
   const confirmDelete = () => {
     if (familiarToDelete) {
       const updatedFamiliars = savedFamiliars.filter(f => f.id !== familiarToDelete.id);
-      setSavedFamiliars(updatedFamiliars);
-      localStorage.setItem('globalFamiliars', JSON.stringify(updatedFamiliars));
+      saveFamiliars(updatedFamiliars);
       toast({
         title: "Familier Supprimé",
         description: `Le familier "${familiarToDelete.name}" a été supprimé de la sauvegarde globale.`,
@@ -71,6 +76,40 @@ export default function FamiliersPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleImportFamiliar = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const jsonString = e.target?.result as string;
+            const newFamiliar = JSON.parse(jsonString) as Familiar;
+
+            if (!newFamiliar.id || !newFamiliar.name || !newFamiliar.rarity || !newFamiliar.passiveBonus) {
+                throw new Error("Fichier JSON invalide ou manquant de champs obligatoires (id, name, rarity, passiveBonus).");
+            }
+            
+            const isDuplicate = savedFamiliars.some(f => f.id === newFamiliar.id || f.name.toLowerCase() === newFamiliar.name.toLowerCase());
+            if (isDuplicate) {
+                 toast({ title: "Importation échouée", description: `Un familier avec le nom ou l'ID "${newFamiliar.name}" existe déjà.`, variant: "destructive" });
+                 return;
+            }
+
+            const updatedFamiliars = [...savedFamiliars, newFamiliar];
+            saveFamiliars(updatedFamiliars);
+            toast({ title: "Familier Importé", description: `"${newFamiliar.name}" a été ajouté à votre collection.` });
+
+        } catch (error) {
+            console.error("Error loading familiar from JSON:", error);
+            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+        }
+    };
+    reader.readAsText(file);
+    if(event.target) event.target.value = '';
+  }
+
+
   const rarityColorClass = (rarity: Familiar['rarity']) => {
     switch (rarity) {
       case 'common': return 'text-gray-500';
@@ -86,9 +125,12 @@ export default function FamiliersPage() {
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Familiers Sauvegardés</h1>
-        <Button variant="outline" disabled>
-          <Upload className="mr-2 h-4 w-4" /> Importer
-        </Button>
+        <div>
+          <input type="file" ref={importFileRef} onChange={handleImportFamiliar} accept=".json" className="hidden" />
+          <Button variant="outline" onClick={() => importFileRef.current?.click()}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+        </div>
       </div>
 
       <p className="text-muted-foreground mb-4">
