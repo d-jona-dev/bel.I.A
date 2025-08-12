@@ -280,6 +280,9 @@ export function AdventureDisplay({
      };
      setIsImageLoading(true);
 
+    // Clear previous image on the message before generating a new one
+    onEditMessage(message.id, message.content, undefined, null);
+
     try {
         const result = await generateSceneImageAction({ 
             sceneDescription: descriptionForImage,

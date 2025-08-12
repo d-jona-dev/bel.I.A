@@ -41,7 +41,6 @@ export type FormCharacterDefinition = {
   name: string;
   details: string;
   portraitUrl?: string | null;
-  faceSwapEnabled?: boolean;
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
@@ -71,7 +70,6 @@ const characterSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
-  faceSwapEnabled: z.boolean().optional(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
@@ -745,16 +743,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <FormMessage />
                                             </FormItem>
                                         )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name={`characters.${index}.faceSwapEnabled`}
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2 shadow-sm">
-                                                    <FormLabel className="flex items-center gap-2 text-xs"><Replace className="h-4 w-4"/> FaceSwap</FormLabel>
-                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                </FormItem>
-                                            )}
                                         />
                                     </div>
                                     <Avatar className="h-20 w-20">
