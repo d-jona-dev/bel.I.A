@@ -1042,17 +1042,29 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       });
   }, [toast, characters]);
 
-  const handleTimeUpdate = React.useCallback((newTime?: string) => {
-    if (newTime && adventureSettings.timeManagement?.enabled) {
-        setAdventureSettings(prev => ({
+  const handleTimeUpdate = React.useCallback((newTime?: string, newEvent?: string) => {
+    setAdventureSettings(prev => {
+        if (!prev.timeManagement?.enabled) return prev;
+
+        // Calculate new time
+        const [h1, m1] = (newTime || prev.timeManagement.currentTime).split(':').map(Number);
+        const [h2, m2] = prev.timeManagement.timeElapsedPerTurn.split(':').map(Number);
+        let totalMinutes = m1 + m2;
+        let totalHours = h1 + h2 + Math.floor(totalMinutes / 60);
+        totalMinutes %= 60;
+        totalHours %= 24;
+        const calculatedNewTime = `${String(totalHours).padStart(2, '0')}:${String(totalMinutes).padStart(2, '0')}`;
+
+        return {
             ...prev,
             timeManagement: {
-                ...prev.timeManagement!,
-                currentTime: newTime,
+                ...prev.timeManagement,
+                currentTime: calculatedNewTime,
+                currentEvent: newEvent || prev.timeManagement.currentEvent,
             },
-        }));
-    }
-  }, [adventureSettings.timeManagement]);
+        };
+    });
+  }, []);
 
   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
@@ -1202,8 +1214,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
-            if (result.updatedTime?.newCurrentTime) {
-                handleTimeUpdate(result.updatedTime.newCurrentTime);
+            if (result.updatedTime) {
+                handleTimeUpdate(undefined, result.updatedTime.newEvent);
             }
 
             // Handle NON-combat currency and items
@@ -1899,8 +1911,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
                 }
-                if (result.updatedTime?.newCurrentTime) {
-                    handleTimeUpdate(result.updatedTime.newCurrentTime);
+                if (result.updatedTime) {
+                    handleTimeUpdate(undefined, result.updatedTime.newEvent);
                 }
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
@@ -2247,13 +2259,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             }
         }
         
-        // Merge the characters from the form data with the full character data
+        // Merge characters from form with full character data from `stagedCharacters`
         const formCharactersMap = new Map(formData.characters.map(fc => [fc.id, fc]));
         const updatedCharacters = stagedCharacters.map(sc => {
             const formChar = formCharactersMap.get(sc.id);
+            // If the character from the form exists, merge it with the full staged character object
+            // This preserves fields not present in the form, like history, stats, etc.
             return formChar ? { ...sc, ...formChar } : sc;
         });
-        
+
+        // Add any brand new characters that were added to the form
         const newCharactersFromForm = formData.characters.filter(fc => !stagedCharacters.some(sc => sc.id === fc.id));
         updatedCharacters.push(...(newCharactersFromForm as Character[]));
 
