@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -423,8 +424,12 @@ const AiConfigForAdventureInputSchema = z.object({
         }).optional(),
     }),
     image: z.object({
-        source: z.enum(['gemini', 'openrouter']),
+        source: z.enum(['gemini', 'openrouter', 'huggingface']),
         openRouter: z.object({
+            model: z.string(),
+            apiKey: z.string(),
+        }).optional(),
+        huggingface: z.object({
             model: z.string(),
             apiKey: z.string(),
         }).optional(),
