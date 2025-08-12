@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Replace } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,6 +41,7 @@ export type FormCharacterDefinition = {
   name: string;
   details: string;
   portraitUrl?: string | null;
+  faceSwapEnabled?: boolean;
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
@@ -70,6 +71,7 @@ const characterSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
+  faceSwapEnabled: z.boolean().optional(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
@@ -106,6 +108,7 @@ const adventureFormSchema = z.object({
   strategyMode: z.boolean().default(true).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
+  playerFaceSwapEnabled: z.boolean().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
   playerOrientation: z.string().optional(),
@@ -423,7 +426,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             name="timeManagement.currentTime"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Heure de début</FormLabel>
+                                                    <FormLabel>Heure actuelle</FormLabel>
                                                     <FormControl><Input type="time" {...field} /></FormControl>
                                                 </FormItem>
                                             )}
@@ -495,6 +498,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField
+                                            control={form.control}
+                                            name="playerFaceSwapEnabled"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel className="flex items-center gap-2 text-sm"><Replace className="h-4 w-4"/> Activer FaceSwap</FormLabel>
+                                                    </div>
+                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                      <Avatar className="h-24 w-24">
                                         <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />
@@ -730,6 +745,16 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <FormMessage />
                                             </FormItem>
                                         )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`characters.${index}.faceSwapEnabled`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2 shadow-sm">
+                                                    <FormLabel className="flex items-center gap-2 text-xs"><Replace className="h-4 w-4"/> FaceSwap</FormLabel>
+                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                </FormItem>
+                                            )}
                                         />
                                     </div>
                                     <Avatar className="h-20 w-20">

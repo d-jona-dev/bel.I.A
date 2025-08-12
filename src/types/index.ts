@@ -117,6 +117,7 @@ export interface Character {
   history?: string[];
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
+  faceSwapEnabled?: boolean; // Added for FaceSwap feature
   affinity?: number;
   relations?: Record<string, string>; // Clé: characterId ou 'player', Valeur: description de la relation
   level?: number;
@@ -222,6 +223,7 @@ export interface AdventureSettings {
   playerDetails?: string;
   playerDescription?: string;
   playerOrientation?: string;
+  playerFaceSwapEnabled?: boolean; // Added for FaceSwap feature
   playerClass?: string;
   playerLevel?: number;
   playerInitialAttributePoints?: number;
@@ -351,6 +353,7 @@ const BaseCharacterSchema = z.object({
   isAlly: z.boolean().optional().default(false).describe("Is this character currently an ally of the player in combat?"),
   spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
   locationId: z.string().optional().describe("The ID of the POI where the character is currently located. This is the source of truth for location."),
+  faceSwapEnabled: z.boolean().optional().describe("Whether FaceSwap is enabled for this character's portrait."),
 }).passthrough();
 
 
@@ -439,6 +442,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerArmorClass: z.number().optional().describe("Player's effective Armor Class including equipment."),
   playerAttackBonus: z.number().optional().describe("Player's effective Attack Bonus including equipment."),
   playerDamageBonus: z.string().optional().describe("Player's effective Damage (e.g. '1d8+3') including equipment."),
+  playerFaceSwapEnabled: z.boolean().optional().describe("Whether FaceSwap is enabled for the player's portrait."),
   equippedWeaponName: z.string().optional().describe("Name of the player's equipped weapon, if any."),
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),
@@ -540,6 +544,7 @@ const PoiOwnershipChangeSchema = z.object({
 
 const UpdatedTimeSchema = z.object({
     newCurrentTime: z.string().optional().describe("The new time of day (e.g., '18:43') after the turn's time elapsed has been added. Only set if time management is enabled."),
+    newEvent: z.string().optional().describe("An optional updated event description (e.g., 'Milieu du cours', 'Fin de la réunion'). The AI can suggest a new event description if the narrative context has changed significantly.")
 });
 
 export const GenerateAdventureOutputSchema = z.object({

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette } from "lucide-react"; // Added ExpIcon and MapPin
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace } from "lucide-react"; // Added ExpIcon and MapPin, Replace
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -776,6 +776,19 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                </div>
 
                 <Separator />
+                 <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
+                    <div className="space-y-0.5">
+                        <Label htmlFor={`${char.id}-faceSwap`} className="flex items-center gap-2"><Replace className="h-4 w-4"/> Activer FaceSwap</Label>
+                        <UICardDescription className="text-xs">
+                           Tente d'utiliser ce portrait dans les scènes générées.
+                        </UICardDescription>
+                    </div>
+                    <Switch
+                        id={`${char.id}-faceSwap`}
+                        checked={char.faceSwapEnabled ?? false}
+                        onCheckedChange={(checked) => handleFieldChange(char.id, 'faceSwapEnabled', checked)}
+                    />
+                </div>
                 
                 {strategyMode && (
                     <div className="space-y-1">
