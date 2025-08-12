@@ -38,17 +38,13 @@ export async function generateSceneImageWithHuggingFace(
         return { imageUrl: "", error: `Erreur de l'API Hugging Face: ${response.status} ${errorBody}` };
     }
 
-    const imageBlob = await response.blob();
+    const imageArrayBuffer = await response.arrayBuffer();
     
-    // Convert Blob to Base64 Data URI
-    const reader = new FileReader();
-    const dataUriPromise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageBlob);
-    });
-
-    const imageUrl = await dataUriPromise;
+    // Convert ArrayBuffer to Base64 Data URI using Buffer (server-side)
+    const imageBuffer = Buffer.from(imageArrayBuffer);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = response.headers.get('content-type') || 'image/jpeg';
+    const imageUrl = `data:${mimeType};base64,${base64Image}`;
 
     if (!imageUrl) {
         return { imageUrl: "", error: "Impossible de convertir la réponse de l'API en image." };
