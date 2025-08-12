@@ -8,10 +8,6 @@
  * and calculates changes in character affinity towards the player. Includes dynamic character relation updates (player-NPC and NPC-NPC).
  * Handles combat initiation, turn-based combat narration, enemy actions, rewards (EXP, Loot), HP/MP, and status effects.
  * NPCs can act as merchants, offering items for sale.
- *
- * - generateAdventureWithGenkit - A function that generates adventure narratives using Genkit/Gemini.
- * - GenerateAdventureInput - The input type for the generateAdventure function.
- * - GenerateAdventureOutput - The return type for the generateAdventure function.
  */
 
 import {ai} from '@/ai/ai-instance';
@@ -79,6 +75,8 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
             isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
             spells: char.spells, // Pass spells,
             locationId: char.locationId,
+            faceSwapEnabled: char.faceSwapEnabled,
+            portraitUrl: char.portraitUrl,
         };
     });
 
@@ -145,6 +143,8 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: input.aiConfig,
         timeManagement: input.timeManagement,
+        playerPortraitUrl: input.playerPortraitUrl,
+        playerFaceSwapEnabled: input.playerFaceSwapEnabled,
     };
     return flowInput;
 }
@@ -174,9 +174,26 @@ Current Situation/Recent Narrative:
 Current Time: **{{timeManagement.currentTime}}**
 Current Event: **{{timeManagement.currentEvent}}**
 Time to Elapse This Turn: **{{timeManagement.timeElapsedPerTurn}}**. 
-**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). You MUST update the time in the 'updatedTime.newCurrentTime' output field by adding this duration.**
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes.**
 ---
 {{/if}}
+
+{{#if playerFaceSwapEnabled}}
+--- FACESWAP CONTEXT ---
+**IMPORTANT RULE FOR FACESWAP: The player's face is provided as a reference. You MUST use this face for the player character, {{playerName}}, in the generated scene. Faithfully reproduce the face shape, hair color, hair style, and eye color from the reference image, but seamlessly adapt it to the scene's artistic style, lighting, and character pose.**
+Player Face Reference: {{media url=playerPortraitUrl}}
+---
+{{/if}}
+
+{{#each characters}}
+{{#if this.faceSwapEnabled}}
+--- FACESWAP CONTEXT for {{this.name}} ---
+**IMPORTANT RULE FOR FACESWAP: The face for {{this.name}} is provided as a reference. You MUST use this face for this character in the generated scene. Faithfully reproduce the face shape, hair color, hair style, and eye color from the reference image, but seamlessly adapt it to the scene's artistic style, lighting, and character pose.**
+{{this.name}}'s Face Reference: {{media url=this.portraitUrl}}
+---
+{{/if}}
+{{/each}}
+
 
 {{#if rpgModeActive}}
 --- Player Stats ({{playerName}}) ---
@@ -387,7 +404,7 @@ Tasks:
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 {{#if timeManagement.enabled}}
-8.  **Time Update:** If \`timeManagement.enabled\` was true in the input, you MUST populate \`updatedTime.newCurrentTime\` with the new time after adding \`timeManagement.timeElapsedPerTurn\`.
+8.  **Time Update:** You can suggest a new event description in \`updatedTime.newEvent\` if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):

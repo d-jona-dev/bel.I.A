@@ -106,7 +106,6 @@ const adventureFormSchema = z.object({
   strategyMode: z.boolean().default(true).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
-  playerFaceSwapEnabled: z.boolean().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
   playerOrientation: z.string().optional(),
@@ -496,18 +495,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
-                                        <FormField
-                                            control={form.control}
-                                            name="playerFaceSwapEnabled"
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                                    <div className="space-y-0.5">
-                                                        <FormLabel className="flex items-center gap-2 text-sm"><Replace className="h-4 w-4"/> Activer FaceSwap</FormLabel>
-                                                    </div>
-                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
                                     </div>
                                      <Avatar className="h-24 w-24">
                                         <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />

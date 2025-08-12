@@ -354,6 +354,7 @@ const BaseCharacterSchema = z.object({
   spells: z.array(z.string()).optional().describe("List of spells known by the character (e.g., ['Boule de Feu', 'Soin Léger']). For AI decision making."),
   locationId: z.string().optional().describe("The ID of the POI where the character is currently located. This is the source of truth for location."),
   faceSwapEnabled: z.boolean().optional().describe("Whether FaceSwap is enabled for this character's portrait."),
+  portraitUrl: z.string().nullable().optional().describe("The URL of the character's portrait, to be used for FaceSwap if enabled."),
 }).passthrough();
 
 
@@ -443,6 +444,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerAttackBonus: z.number().optional().describe("Player's effective Attack Bonus including equipment."),
   playerDamageBonus: z.string().optional().describe("Player's effective Damage (e.g. '1d8+3') including equipment."),
   playerFaceSwapEnabled: z.boolean().optional().describe("Whether FaceSwap is enabled for the player's portrait."),
+  playerPortraitUrl: z.string().nullable().optional().describe("The URL of the player's portrait, to be used for FaceSwap if enabled."),
   equippedWeaponName: z.string().optional().describe("Name of the player's equipped weapon, if any."),
   equippedArmorName: z.string().optional().describe("Name of the player's equipped armor, if any."),
   equippedJewelryName: z.string().optional().describe("Name of the player's equipped jewelry, if any."),

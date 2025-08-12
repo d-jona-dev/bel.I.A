@@ -213,6 +213,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       playerDescription: "Un passé mystérieux, à la recherche de gloire et de fortune.",
       playerOrientation: "Inconnu",
       playerPortraitUrl: null,
+      playerFaceSwapEnabled: false,
       ...initialPlayerAttributes,
       ...initialBaseDerivedStats,
       playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
@@ -250,6 +251,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
           history: ["A demandé de l'aide au joueur pour les gobelins."],
           portraitUrl: null,
+          faceSwapEnabled: false,
           affinity: 60,
           relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
           isAlly: false, 
@@ -269,6 +271,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           biographyNotes: "Elara cherche à prouver sa valeur et à protéger les innocents. Elle est loyale mais peut être un peu impulsive.",
           history: ["S'est jointe à l'équipe du joueur."],
           portraitUrl: null,
+          faceSwapEnabled: false,
           affinity: 70,
           relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
           isAlly: true,
@@ -292,6 +295,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           biographyNotes: "Le Duc Asdrubael est un reclus qui communique rarement avec le monde extérieur. Il est très protecteur de ses terres.",
           history: ["Possède la Forêt Murmurante."],
           portraitUrl: null,
+          faceSwapEnabled: false,
           affinity: 40,
           relations: { [PLAYER_ID]: "Inconnu" },
           isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
@@ -310,6 +314,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           biographyNotes: "Frak est devenu plus agressif récemment, poussé par une force mystérieuse ou un besoin désespéré.",
           history: ["Dirige les raids contre Bourgenval."],
           portraitUrl: null,
+          faceSwapEnabled: false,
           affinity: 5,
           relations: { [PLAYER_ID]: "Intrus à tuer" },
           isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
@@ -328,6 +333,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           biographyNotes: "Snirf est plus couard que méchant, mais loyal à Frak par peur.",
           history: ["A été aperçu rôdant près de Bourgenval."],
           portraitUrl: null,
+          faceSwapEnabled: false,
           affinity: 10,
           relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
           isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
@@ -812,6 +818,7 @@ export default function Home() {
                 biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
                 history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
                 portraitUrl: null,
+                faceSwapEnabled: false,
                 affinity: currentSettings.relationsMode ? 50 : undefined,
                 relations: currentSettings.relationsMode ? initialRelations : undefined,
                 isAlly: nc.isAlly ?? false,
@@ -1047,7 +1054,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         if (!prev.timeManagement?.enabled) return prev;
 
         // Calculate new time
-        const [h1, m1] = (newTime || prev.timeManagement.currentTime).split(':').map(Number);
+        const [h1, m1] = (prev.timeManagement.currentTime).split(':').map(Number);
         const [h2, m2] = prev.timeManagement.timeElapsedPerTurn.split(':').map(Number);
         let totalMinutes = m1 + m2;
         let totalHours = h1 + h2 + Math.floor(totalMinutes / 60);
@@ -1180,6 +1187,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: aiConfig,
         timeManagement: settingsForThisTurn.timeManagement,
+        playerPortraitUrl: settingsForThisTurn.playerPortraitUrl,
+        playerFaceSwapEnabled: settingsForThisTurn.playerFaceSwapEnabled,
     };
 
     try {
@@ -1857,6 +1866,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  playerLocation: currentPlayerLocation,
                  aiConfig: aiConfig,
                  timeManagement: currentTurnSettings.timeManagement,
+                 playerPortraitUrl: currentTurnSettings.playerPortraitUrl,
+                 playerFaceSwapEnabled: currentTurnSettings.playerFaceSwapEnabled,
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
