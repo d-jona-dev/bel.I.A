@@ -9,7 +9,7 @@ import { PageStructure } from "./page.structure";
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureInput, GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
-import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
@@ -180,7 +180,7 @@ export interface SellingItemDetails {
 }
 
 // Function to create a clean, default state
-const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[] } => {
+const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[], aiConfig: AiConfig } => {
     const initialPlayerAttributes = {
       playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
       playerStrength: BASE_ATTRIBUTE_VALUE,
@@ -350,8 +350,13 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
     const initialNarrative: Message[] = [
         { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }
     ];
+    
+    const initialAiConfig: AiConfig = {
+      llm: { source: 'gemini' },
+      image: { source: 'gemini' }
+    };
   
-    return { settings: initialSettings, characters: initialCharacters, narrative: initialNarrative };
+    return { settings: initialSettings, characters: initialCharacters, narrative: initialNarrative, aiConfig: initialAiConfig };
 };
 
 
@@ -365,7 +370,7 @@ export default function Home() {
   const [activeCombat, setActiveCombat] = React.useState<ActiveCombat | undefined>(undefined);
   const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
-  const [aiConfig, setAiConfig] = React.useState<AiConfig>({ source: 'gemini' });
+  const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [comicPages, setComicPages] = React.useState<ComicPage[]>([]);
 
   // Base state for resets
@@ -377,7 +382,7 @@ export default function Home() {
     const initialState = createInitialState();
     return {
       ...JSON.parse(JSON.stringify(initialState.settings)),
-      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))))
+      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))))
     };
   });
   const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
@@ -432,7 +437,7 @@ export default function Home() {
         setNarrativeMessages(stateToLoad.narrative);
         setActiveCombat(stateToLoad.activeCombat);
         setCurrentLanguage(stateToLoad.currentLanguage || "fr");
-        setAiConfig(stateToLoad.aiConfig || { source: 'gemini' });
+        setAiConfig(stateToLoad.aiConfig || createInitialState().aiConfig);
 
         // Set base state for resets
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
@@ -466,7 +471,7 @@ export default function Home() {
   React.useEffect(() => {
       setStagedAdventureSettings({
           ...JSON.parse(JSON.stringify(baseAdventureSettings)),
-          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))
+          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
       });
       setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
       setFormPropKey(k => k + 1); // Force re-render of form with new initialValues
@@ -1049,7 +1054,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       });
   }, [toast, characters]);
 
-  const handleTimeUpdate = React.useCallback((newTime?: string, newEvent?: string) => {
+  const handleTimeUpdate = React.useCallback((newEvent?: string) => {
     setAdventureSettings(prev => {
         if (!prev.timeManagement?.enabled) return prev;
 
@@ -1185,7 +1190,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         playerLocationId: settingsForThisTurn.playerLocationId,
         mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
-        aiConfig: aiConfig,
+        aiConfig: aiConfig.llm,
         timeManagement: settingsForThisTurn.timeManagement,
         playerPortraitUrl: settingsForThisTurn.playerPortraitUrl,
         playerFaceSwapEnabled: settingsForThisTurn.playerFaceSwapEnabled,
@@ -1224,7 +1229,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
             if (result.updatedTime) {
-                handleTimeUpdate(undefined, result.updatedTime.newEvent);
+                handleTimeUpdate(result.updatedTime.newEvent);
             }
 
             // Handle NON-combat currency and items
@@ -1864,7 +1869,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  playerLocationId: currentTurnSettings.playerLocationId,
                  mapPointsOfInterest: currentTurnSettings.mapPointsOfInterest,
                  playerLocation: currentPlayerLocation,
-                 aiConfig: aiConfig,
+                 aiConfig: aiConfig.llm,
                  timeManagement: currentTurnSettings.timeManagement,
                  playerPortraitUrl: currentTurnSettings.playerPortraitUrl,
                  playerFaceSwapEnabled: currentTurnSettings.playerFaceSwapEnabled,
@@ -1923,7 +1928,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
                 }
                 if (result.updatedTime) {
-                    handleTimeUpdate(undefined, result.updatedTime.newEvent);
+                    handleTimeUpdate(result.updatedTime.newEvent);
                 }
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
@@ -2203,7 +2208,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         })));
         setStagedAdventureSettings({
             ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
-            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl }))
+            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
         });
         setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
@@ -2597,7 +2602,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
-    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl })));
+    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })));
   }, [stagedCharacters]);
 
 
@@ -2626,6 +2631,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       playerDetails: stagedAdventureSettings.playerDetails,
       playerDescription: stagedAdventureSettings.playerDescription,
       playerOrientation: stagedAdventureSettings.playerOrientation,
+      playerFaceSwapEnabled: stagedAdventureSettings.playerFaceSwapEnabled,
       playerInitialAttributePoints: creationPoints,
       totalDistributableAttributePoints: totalDistributable,
       playerStrength: stagedAdventureSettings.playerStrength,
@@ -2691,7 +2697,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
   const generateSceneImageActionWrapper = React.useCallback(
     async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
-        const result = await generateSceneImage(input);
+        const result = await generateSceneImage(input, aiConfig);
         if (result.error) {
             setTimeout(() => {
                 toast({ title: "Erreur de Génération d'Image IA", description: result.error, variant: "destructive" });
@@ -2699,7 +2705,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             return { imageUrl: "", error: result.error };
         }
         return result;
-    }, [toast]);
+    }, [toast, aiConfig]);
 
     const handleGenerateMapImage = React.useCallback(async () => {
         setIsGeneratingMap(true);
@@ -2926,7 +2932,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
     setAiConfig(newConfig);
-    toast({ title: "Configuration IA mise à jour", description: `La source de l'IA est maintenant ${newConfig.source}.` });
+    toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
     
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;

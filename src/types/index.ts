@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -223,7 +222,7 @@ export interface AdventureSettings {
   playerDetails?: string;
   playerDescription?: string;
   playerOrientation?: string;
-  playerFaceSwapEnabled?: boolean; // Added for FaceSwap feature
+  playerFaceSwapEnabled?: boolean;
   playerClass?: string;
   playerLevel?: number;
   playerInitialAttributePoints?: number;
@@ -265,17 +264,34 @@ export interface ModelDefinition {
     iconUrl?: string;
 }
 
+export interface ImageModelDefinition {
+    id: string;
+    name: string;
+    source: 'gemini' | 'openrouter';
+    modelName?: string; // e.g. stability-ai/stable-diffusion-3
+    apiKey?: string;
+}
+
+
 export interface AiConfig {
-    source: 'gemini' | 'openrouter' | 'local';
-    openRouter?: {
-        model: string;
-        apiKey: string;
-        baseUrl?: string;
-        enforceStructuredResponse: boolean;
-        compatibilityMode?: boolean; 
-    };
-    local?: {
-        model: string;
+    llm: {
+        source: 'gemini' | 'openrouter' | 'local';
+        openRouter?: {
+            model: string;
+            apiKey: string;
+            enforceStructuredResponse: boolean;
+            compatibilityMode?: boolean; 
+        };
+        local?: {
+            model: string;
+        }
+    },
+    image: {
+        source: 'gemini' | 'openrouter';
+        openRouter?: {
+            model: string;
+            apiKey: string;
+        }
     }
 }
 
@@ -389,18 +405,26 @@ const PointOfInterestSchemaForAI = z.object({
     buildings: z.array(z.string()).optional().describe("A list of building IDs that exist at this location, e.g., ['forgeron', 'auberge']."),
 });
 
-const AiConfigSchema = z.object({
-    source: z.enum(['gemini', 'openrouter', 'local']),
-    openRouter: z.object({
-        model: z.string(),
-        apiKey: z.string(),
-        baseUrl: z.string().optional(),
-        enforceStructuredResponse: z.boolean(),
-        compatibilityMode: z.boolean().optional(),
-    }).optional(),
-    local: z.object({
-        model: z.string(),
-    }).optional(),
+const AiConfigForAdventureInputSchema = z.object({
+    llm: z.object({
+        source: z.enum(['gemini', 'openrouter', 'local']),
+        openRouter: z.object({
+            model: z.string(),
+            apiKey: z.string(),
+            enforceStructuredResponse: z.boolean(),
+            compatibilityMode: z.boolean().optional(),
+        }).optional(),
+        local: z.object({
+            model: z.string(),
+        }).optional(),
+    }),
+    image: z.object({
+        source: z.enum(['gemini', 'openrouter']),
+        openRouter: z.object({
+            model: z.string(),
+            apiKey: z.string(),
+        }).optional(),
+    }),
 }).passthrough();
 
 
@@ -452,7 +476,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerLocationId: z.string().optional().describe("The ID of the POI where the player is currently located. This is the source of truth for location."),
   mapPointsOfInterest: z.array(PointOfInterestSchemaForAI).optional().describe("List of known points of interest on the map, including their ID, current owner, and a list of building IDs."),
   playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
-  aiConfig: AiConfigSchema.optional(),
+  aiConfig: AiConfigForAdventureInputSchema.optional(),
   timeManagement: TimeManagementSchemaForAI.optional().describe("Advanced time management settings for the story."),
 });
 
@@ -472,7 +496,7 @@ export type GenerateAdventureFlowOutput = z.infer<typeof GenerateAdventureOutput
 export const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper', 'Marchand'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
-    portraitUrl: z.string().optional().nullable().describe("URL to an image for the character's portrait, if one can be inferred or is relevant."),
+    portraitUrl: z.string().nullable().optional().describe("URL to an image for the character's portrait, if one can be inferred or is relevant."),
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(
@@ -545,7 +569,6 @@ const PoiOwnershipChangeSchema = z.object({
 });
 
 const UpdatedTimeSchema = z.object({
-    newCurrentTime: z.string().optional().describe("The new time of day (e.g., '18:43') after the turn's time elapsed has been added. Only set if time management is enabled."),
     newEvent: z.string().optional().describe("An optional updated event description (e.g., 'Milieu du cours', 'Fin de la réunion'). The AI can suggest a new event description if the narrative context has changed significantly.")
 });
 
