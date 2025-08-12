@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, PlusCircle, PlusSquare, UploadCloud, Link as LinkIcon, Plus, Loader2, Wand2, Type as FontIcon } from 'lucide-react';
+import { Castle, Trees, Mountain, Home as VillageIcon, Shield as ShieldIcon, Landmark, MoveRight, Search, Briefcase, Swords, Hourglass, ArrowUpCircle, Building, Building2, TreeDeciduous, TreePine, Hammer, Gem, PlusCircle, PlusSquare, UploadCloud, Link as LinkIcon, Plus, Loader2, Wand2, Type as FontIcon, User as UserIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
