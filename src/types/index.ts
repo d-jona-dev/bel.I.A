@@ -437,6 +437,7 @@ export type GenerateAdventureFlowOutput = z.infer<typeof GenerateAdventureOutput
 export const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context, including their appearance, perceived role/class (e.g., 'Thug', 'Shopkeeper', 'Marchand'), and the location/circumstance of meeting if possible. MUST be in the specified language."),
+    portraitUrl: z.string().url().optional().nullable().describe("URL to an image for the character's portrait, if one can be inferred or is relevant."),
     biographyNotes: z.string().optional().describe("Initial private notes or observations about the new character if any can be inferred. Keep this brief for new characters. MUST be in the specified language."),
     initialHistoryEntry: z.string().optional().describe("A brief initial history entry (in the specified language) about meeting the character, including location if identifiable (e.g., 'Rencontré {{playerName}} au marché noir de Neo-Kyoto.', 'A interpellé {{playerName}} dans les couloirs de Hight School of Future.'). MUST be in the specified language."),
     initialRelations: z.array(

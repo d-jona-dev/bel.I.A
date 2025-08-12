@@ -33,12 +33,14 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS } from "@/lib/buildings";
 import { Checkbox } from "./ui/checkbox";
 import { poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
 import { Slider } from "./ui/slider";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 
 export type FormCharacterDefinition = {
   id?: string;
   name: string;
   details: string;
+  portraitUrl?: string | null;
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
@@ -54,10 +56,9 @@ export interface AdventureFormHandle {
 }
 
 interface AdventureFormProps {
-    formPropKey: number; // Changed from key to formPropKey to avoid conflicts
+    formPropKey: number;
     initialValues: AdventureFormValues;
     onSettingsChange?: (newSettings: AdventureFormValues) => void;
-    // Add props to receive the live adventure modes
     rpgMode: boolean;
     relationsMode: boolean;
     strategyMode: boolean;
@@ -68,6 +69,7 @@ const characterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
+  portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
@@ -96,7 +98,7 @@ const adventureFormSchema = z.object({
   strategyMode: z.boolean().default(true).optional(),
   usePlayerAvatar: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
-  playerPortraitUrl: z.string().url().optional().or(z.literal("")),
+  playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
   playerOrientation: z.string().optional(),
@@ -161,8 +163,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             world: "Grande université populaire nommée \"hight scoole of futur\".",
             initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
+                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
             rpgMode: true,
             relationsMode: true,
@@ -344,9 +346,15 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
                             {!usePlayerAvatar && (
                             <Card className="p-4 bg-background">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
-                                    <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                <div className="flex gap-4 items-start">
+                                    <div className="flex-1 space-y-4">
+                                        <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                    </div>
+                                     <Avatar className="h-24 w-24">
+                                        <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />
+                                        <AvatarFallback><User /></AvatarFallback>
+                                    </Avatar>
                                 </div>
                                 <FormField control={form.control} name="playerDetails" render={({ field }) => (<FormItem className="mt-4"><FormLabel>Détails (Physique, Âge)</FormLabel><FormControl><Textarea placeholder="Décrivez l'apparence physique de votre héros..." {...field} value={field.value || ""} rows={2} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="playerOrientation" render={({ field }) => (<FormItem className="mt-4"><FormLabel>Orientation Amoureuse</FormLabel><FormControl><Input placeholder="Ex: Hétérosexuel, Bisexuel..." {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
@@ -537,141 +545,165 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         <div className="hidden">
                             
                         </div>
-                        {fields.map((item, index) => (
-                        <Card key={item.id} className="relative pt-6 bg-muted/30 border">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-1 right-1 h-6 w-6"
-                                onClick={() => remove(index)}
-                            >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                        <CardContent className="space-y-2 p-3">
-                            <FormField
-                            control={form.control}
-                            name={`characters.${index}.name`}
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Nom du Personnage</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Nom" {...field} className="bg-background border"/>
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <FormField
-                            control={form.control}
-                            name={`characters.${index}.details`}
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Détails (Description Initiale)</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                    placeholder="Caractère, physique, rôle initial..."
-                                    {...field}
-                                    rows={3}
-                                    className="bg-background border"
+                        {fields.map((item, index) => {
+                          const characterPortrait = watchedValues.characters?.[index]?.portraitUrl;
+                          return (
+                            <Card key={item.id} className="relative pt-6 bg-muted/30 border">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-6 w-6"
+                                    onClick={() => remove(index)}
+                                >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            <CardContent className="space-y-2 p-3">
+                                <div className="flex gap-4 items-start">
+                                    <div className="flex-1 space-y-2">
+                                        <FormField
+                                        control={form.control}
+                                        name={`characters.${index}.name`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Nom du Personnage</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Nom" {...field} className="bg-background border"/>
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                        <FormField
+                                        control={form.control}
+                                        name={`characters.${index}.portraitUrl`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>URL du Portrait</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ""} className="bg-background border"/>
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                    </div>
+                                    <Avatar className="h-20 w-20">
+                                      <AvatarImage src={characterPortrait || undefined} alt={item.name} />
+                                      <AvatarFallback><Users/></AvatarFallback>
+                                    </Avatar>
+                                </div>
+                                <FormField
+                                control={form.control}
+                                name={`characters.${index}.details`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Détails (Description Initiale)</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                        placeholder="Caractère, physique, rôle initial..."
+                                        {...field}
+                                        rows={3}
+                                        className="bg-background border"
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                                 {watchedValues.strategyMode && (
+                                    <FormField
+                                        control={form.control}
+                                        name={`characters.${index}.factionColor`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Couleur de Faction</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" {...field} value={field.value || ''} className="w-10 h-10 p-1"/>
+                                                        <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
                                     />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                             {watchedValues.strategyMode && (
-                                <FormField
-                                    control={form.control}
-                                    name={`characters.${index}.factionColor`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Couleur de Faction</FormLabel>
-                                            <FormControl>
+                                 )}
+                                 {watchedValues.relationsMode && (
+                                     <>
+                                    <FormField
+                                        control={form.control}
+                                        name={`characters.${index}.affinity`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="flex items-center gap-2"><Heart className="h-4 w-4"/> Affinité avec {watchedValues.playerName || "le Héros"}</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Slider
+                                                            min={0} max={100} step={1}
+                                                            defaultValue={[50]}
+                                                            value={[field.value ?? 50]}
+                                                            onValueChange={(value) => field.onChange(value[0])}
+                                                        />
+                                                        <span className="text-sm font-medium w-8 text-center">{field.value ?? 50}</span>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Accordion type="single" collapsible className="w-full">
+                                        <AccordionItem value="relations">
+                                            <AccordionTrigger className="text-sm p-2 hover:no-underline">Relations</AccordionTrigger>
+                                            <AccordionContent className="space-y-2">
                                                 <div className="flex items-center gap-2">
-                                                    <Input type="color" {...field} value={field.value || ''} className="w-10 h-10 p-1"/>
-                                                    <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                             )}
-                             {watchedValues.relationsMode && (
-                                 <>
-                                <FormField
-                                    control={form.control}
-                                    name={`characters.${index}.affinity`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="flex items-center gap-2"><Heart className="h-4 w-4"/> Affinité avec {watchedValues.playerName || "le Héros"}</FormLabel>
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Slider
-                                                        min={0} max={100} step={1}
-                                                        defaultValue={[50]}
-                                                        value={[field.value ?? 50]}
-                                                        onValueChange={(value) => field.onChange(value[0])}
-                                                    />
-                                                    <span className="text-sm font-medium w-8 text-center">{field.value ?? 50}</span>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <Accordion type="single" collapsible className="w-full">
-                                    <AccordionItem value="relations">
-                                        <AccordionTrigger className="text-sm p-2 hover:no-underline">Relations</AccordionTrigger>
-                                        <AccordionContent className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`characters.${index}.relations.player`}
-                                                    render={({ field }) => (
-                                                        <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
-                                                    )}
-                                                />
-                                            </div>
-                                            {fields.filter((_, otherIndex) => otherIndex !== index).map(otherChar => (
-                                                 <div key={otherChar.id} className="flex items-center gap-2">
-                                                    <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
+                                                    <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
                                                     <FormField
                                                         control={form.control}
-                                                        name={`characters.${index}.relations.${otherChar.id}`}
+                                                        name={`characters.${index}.relations.player`}
                                                         render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                            <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
                                                         )}
                                                     />
                                                 </div>
-                                            ))}
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                                </>
-                             )}
-                        </CardContent>
-                        </Card>
-                    ))}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
-                        className="mt-2 w-full"
-                        >
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Ajouter un personnage
-                        </Button>
-                        <FormDescription className="mt-2 text-xs">
-                            Les détails complets (stats, etc.) sont gérés dans le panneau latéral une fois l'aventure commencée.
-                        </FormDescription>
-                        </div>
-                    </ScrollArea>
-                    </AccordionContent>
-                </AccordionItem>
+                                                {fields.filter((_, otherIndex) => otherIndex !== index).map(otherChar => (
+                                                     <div key={otherChar.id} className="flex items-center gap-2">
+                                                        <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
+                                                        <FormField
+                                                            control={form.control}
+                                                            name={`characters.${index}.relations.${otherChar.id}`}
+                                                            render={({ field }) => (
+                                                                <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                    </>
+                                 )}
+                            </CardContent>
+                            </Card>
+                          )
+                        })}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", portraitUrl: null, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
+                            className="mt-2 w-full"
+                            >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter un personnage
+                            </Button>
+                            <FormDescription className="mt-2 text-xs">
+                                Les détails complets (stats, etc.) sont gérés dans le panneau latéral une fois l'aventure commencée.
+                            </FormDescription>
+                            </div>
+                        </ScrollArea>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
             </div>
         </form>

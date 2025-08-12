@@ -75,6 +75,7 @@ const createNewAdventureState = (): SaveData => ({
         familiars: [],
         mapPointsOfInterest: [],
         mapImageUrl: null,
+        playerPortraitUrl: null,
     },
     characters: [],
     narrative: [],
@@ -215,13 +216,18 @@ export default function HistoiresPage() {
       const newId = uid();
       const newAdventureState = createNewAdventureState();
       
-      newAdventureState.adventureSettings.world = formValues.world || "";
-      newAdventureState.adventureSettings.initialSituation = formValues.initialSituation || "";
-      newAdventureState.adventureSettings.playerName = formValues.playerName;
-      newAdventureState.adventureSettings.rpgMode = formValues.rpgMode ?? true;
-      newAdventureState.adventureSettings.relationsMode = formValues.relationsMode ?? true;
-      newAdventureState.adventureSettings.strategyMode = formValues.strategyMode ?? true;
-      newAdventureState.adventureSettings.mapPointsOfInterest = (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()}));
+      newAdventureState.adventureSettings = {
+          ...newAdventureState.adventureSettings,
+          ...formValues,
+          world: formValues.world || "",
+          initialSituation: formValues.initialSituation || "",
+          playerName: formValues.playerName,
+          rpgMode: formValues.rpgMode ?? true,
+          relationsMode: formValues.relationsMode ?? true,
+          strategyMode: formValues.strategyMode ?? true,
+          mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
+      };
+
       newAdventureState.characters = (formValues.characters || []).map(c => ({
           ...c, 
           id: c.id || uid(),
@@ -288,6 +294,7 @@ export default function HistoiresPage() {
               playerName: 'Héros',
               playerClass: 'Aventurier',
               mapPointsOfInterest: [],
+              playerPortraitUrl: null,
           };
       }
       
@@ -298,7 +305,8 @@ export default function HistoiresPage() {
           characters: story.adventureState.characters.map(c => ({ 
               id: c.id, 
               name: c.name, 
-              details: c.details, 
+              details: c.details,
+              portraitUrl: c.portraitUrl || null,
               factionColor: c.factionColor,
               affinity: c.affinity,
               relations: c.relations,
@@ -309,6 +317,7 @@ export default function HistoiresPage() {
           playerName: settings.playerName,
           playerClass: settings.playerClass,
           mapPointsOfInterest: settings.mapPointsOfInterest,
+          playerPortraitUrl: settings.playerPortraitUrl,
       }
   }
 
