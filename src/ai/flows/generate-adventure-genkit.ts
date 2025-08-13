@@ -153,7 +153,6 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
     return flowInput;
 }
 
-
 const prompt = ai.definePrompt({
   name: 'generateAdventurePrompt',
   input: {
@@ -384,7 +383,7 @@ Tasks:
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
 
-4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates, including location context if known.
+4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates. **CRITICAL: The format MUST be an array of objects, each with 'characterName' and 'historyEntry' keys.** For example: `[{"characterName": "Rina", "historyEntry": "A semblé troublée par la question de {{../playerName}}."}]`.
 
 {{#if relationsModeActive}}
 5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
@@ -413,115 +412,5 @@ Tasks:
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
-[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; the game client displays loot separately from the combatUpdates data.]
-`,
-});
-
-const generateAdventureFlow = ai.defineFlow(
-  {
-    name: 'generateAdventureFlow',
-    inputSchema: GenerateAdventureInputSchema,
-    outputSchema: GenerateAdventureOutputSchema,
-  },
-  async (input): Promise<GenerateAdventureFlowOutput> => { // Explicitly type the Promise return
-    console.log("[LOG_PAGE_TSX] Generating adventure with input:", JSON.stringify(input, null, 2));
-
-    if (input.activeCombat && input.activeCombat.combatants) {
-      const mutableCombatants = input.activeCombat.combatants.map(combatant => {
-        const augmentedCombatant = { ...combatant } as any;
-        augmentedCombatant.isPlayerTeam = combatant.team === 'player';
-        augmentedCombatant.isEnemyTeam = combatant.team === 'enemy';
-        return augmentedCombatant;
-      });
-      input.activeCombat = {
-        ...input.activeCombat,
-        combatants: mutableCombatants
-      };
-    }
-
-    let aiModelOutput: GenerateAdventureOutput | null = null;
-    try {
-        const result = await prompt(input);
-        aiModelOutput = result.output;
-
-        if (!aiModelOutput?.narrative) {
-            console.warn("[LOG_PAGE_TSX] AI Output was null or lacked narrative for generateAdventureFlow. Full AI response:", JSON.stringify(result, null, 2));
-            return getDefaultOutput("L'IA n'a pas réussi à générer une structure de réponse valide.");
-        }
-    } catch (e: any) {
-        console.error("Error during AI prompt call in generateAdventureFlow:", e);
-        const errorMessage = e.message || String(e);
-        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
-            return getDefaultOutput("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
-        }
-        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-            return getDefaultOutput("Le modèle d'IA est actuellement surchargé. Veuillez réessayer dans quelques instants.");
-        }
-        return getDefaultOutput(`Une erreur est survenue lors de la génération de l'aventure par l'IA: ${errorMessage}`);
-    }
-
-
-    console.log("[LOG_PAGE_TSX] AI Output (from model):", JSON.stringify(aiModelOutput, null, 2));
-    if (aiModelOutput.combatUpdates) {
-        console.log("[LOG_PAGE_TSX] Combat Updates from AI:", JSON.stringify(aiModelOutput.combatUpdates, null, 2));
-        if (aiModelOutput.combatUpdates.expGained === undefined && input.rpgModeActive) console.warn("AI_WARNING: combatUpdates.expGained is undefined, should be 0 if none");
-    }
-     if (aiModelOutput.itemsObtained === undefined) {
-        console.warn("AI_WARNING: itemsObtained is undefined, should be at least []");
-        aiModelOutput.itemsObtained = [];
-     }
-     if (aiModelOutput.currencyGained === undefined && input.rpgModeActive) {
-        console.warn("AI_WARNING: currencyGained is undefined, should be at least 0");
-        aiModelOutput.currencyGained = 0;
-     }
-
-
-    if (aiModelOutput.newCharacters) {
-        aiModelOutput.newCharacters.forEach(nc => {
-            if (nc.details) console.log(`[LOG_PAGE_TSX] New char ${nc.name} details language check (should be ${input.currentLanguage}): ${nc.details.substring(0,20)}`);
-            if (nc.initialHistoryEntry) console.log(`[LOG_PAGE_TSX] New char ${nc.name} history language check (should be ${input.currentLanguage}): ${nc.initialHistoryEntry.substring(0,20)}`);
-            if (input.relationsModeActive && nc.initialRelations) {
-                nc.initialRelations.forEach(rel => {
-                     console.log(`[LOG_PAGE_TSX] New char ${nc.name} relation to ${rel.targetName} language check (should be ${input.currentLanguage}): ${String(rel.description).substring(0,20)}`);
-                });
-            }
-        });
-    }
-    if (aiModelOutput.characterUpdates) {
-        aiModelOutput.characterUpdates.forEach(upd => {
-            console.log(`[LOG_PAGE_TSX] History update for ${upd.characterName} language check (should be ${input.currentLanguage}): ${upd.historyEntry.substring(0,20)}`);
-        });
-    }
-    if (input.relationsModeActive && aiModelOutput.relationUpdates) {
-        aiModelOutput.relationUpdates.forEach(upd => {
-             console.log(`[LOG_PAGE_TSX] Relation update for ${upd.characterName} towards ${upd.targetName} language check (should be ${input.currentLanguage}): ${upd.newRelation.substring(0,20)}`);
-        });
-    }
-    if (input.rpgModeActive && aiModelOutput.combatUpdates) {
-        console.log("[LOG_PAGE_TSX] Combat Turn Narration (from output.combatUpdates.turnNarration):", aiModelOutput.combatUpdates.turnNarration.substring(0, 100));
-        if(aiModelOutput.combatUpdates.nextActiveCombatState) {
-            console.log("[LOG_PAGE_TSX] Next combat state active:", aiModelOutput.combatUpdates.nextActiveCombatState.isActive);
-            aiModelOutput.combatUpdates.nextActiveCombatState.combatants.forEach(c => {
-                 console.log(`[LOG_PAGE_TSX] Combatant ${c.name} - HP: ${c.currentHp}/${c.maxHp}, MP: ${c.currentMp ?? 'N/A'}/${c.maxMp ?? 'N/A'}, Statuses: ${c.statusEffects?.map(s => s.name).join(', ') || 'None'}`);
-            });
-        }
-    }
-    if (aiModelOutput.itemsObtained) {
-        aiModelOutput.itemsObtained.forEach(item => {
-            if (item.description) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} description language check (should be ${input.currentLanguage}): ${item.description.substring(0,20)}`);
-            if (item.effect) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} effect language check (should be ${input.currentLanguage}): ${item.effect.substring(0,20)}`);
-            if (item.itemType) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} type check: ${item.itemType}`); else console.warn(`Item ${item.itemName} MISSING itemType!`);
-            if (item.goldValue === undefined && item.itemType !== 'quest') console.warn(`Item ${item.itemName} MISSING goldValue!`);
-            if (item.statBonuses) console.log(`[LOG_PAGE_TSX] Item ${item.itemName} stat bonuses: ${JSON.stringify(item.statBonuses)}`);
-        });
-    }
-
-    return {...aiModelOutput, error: undefined }; // Add error: undefined for successful case
-  }
-);
-
-
-export async function generateAdventureWithGenkit(input: GenkitFlowInputType): Promise<GenerateAdventureFlowOutput> {
-    const processedInput = await commonAdventureProcessing(input);
-    return generateAdventureFlow(processedInput);
-}
+[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the combatUpdates data.]
+` is not a function"`

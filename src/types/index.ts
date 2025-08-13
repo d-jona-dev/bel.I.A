@@ -629,7 +629,4 @@ export interface GenerateSceneImageInput {
   sceneDescription: string;
   style?: string;
 }
-export type GenerateSceneImageFlowOutput = {
-    imageUrl: string;
-    error?: string;
-};
+export

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -409,12 +408,35 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         <div className="space-y-0.5">
                                             <FormLabel className="flex items-center gap-2 text-sm"><Clock className="h-4 w-4"/> Activer la gestion du temps</FormLabel>
                                         </div>
-                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={(checked) => {
+                                            field.onChange(checked);
+                                            if (checked) {
+                                                form.setValue('timeManagement.day', 1);
+                                                form.setValue('timeManagement.dayName', 'Lundi');
+                                            }
+                                        }} /></FormControl>
                                     </FormItem>
                                 )}
                             />
                             {watchedValues.timeManagement?.enabled && (
                                 <Card className="p-4 bg-background space-y-4">
+                                     <FormField
+                                        control={form.control}
+                                        name="timeManagement.dayName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Jour de départ</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        {(watchedValues.timeManagement?.dayNames || []).map((day, index) => (
+                                                            <SelectItem key={day} value={day}>{day}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="timeManagement.currentEvent"
