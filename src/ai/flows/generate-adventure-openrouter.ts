@@ -9,8 +9,8 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): any[] {
     const promptSections: string[] = [];
-    const isCompatibilityMode = input.aiConfig?.openRouter?.compatibilityMode ?? false;
-    const isStructuredResponseForced = input.aiConfig?.openRouter?.enforceStructuredResponse ?? false;
+    const isCompatibilityMode = input.aiConfig?.llm.openRouter?.compatibilityMode ?? false;
+    const isStructuredResponseForced = input.aiConfig?.llm.openRouter?.enforceStructuredResponse ?? false;
 
 
     const addSection = (title: string, content: string | undefined | null) => {
@@ -172,8 +172,9 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
 
 export async function generateAdventureWithOpenRouter(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
     const { aiConfig } = input;
+    const openRouterConfig = aiConfig?.llm.openRouter;
 
-    if (!aiConfig?.openRouter?.apiKey || !aiConfig.openRouter.model) {
+    if (!openRouterConfig?.apiKey || !openRouterConfig.model) {
         return { error: "Clé API OpenRouter ou nom du modèle manquant.", narrative: "" };
     }
 
@@ -184,15 +185,15 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${aiConfig.openRouter.apiKey}`,
+                "Authorization": `Bearer ${openRouterConfig.apiKey}`,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:3000", // Example referrer
                 "X-Title": "Aventurier Textuel", // Example title
             },
             body: JSON.stringify({
-                model: aiConfig.openRouter.model,
+                model: openRouterConfig.model,
                 messages: messages,
-                ...(aiConfig.openRouter.enforceStructuredResponse ? { response_format: { type: "json_object" } } : {})
+                ...(openRouterConfig.enforceStructuredResponse ? { response_format: { type: "json_object" } } : {})
             }),
         });
 
@@ -220,7 +221,7 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
             // Not a JSON object, might be plain text (compatibility mode) or malformed
         }
         
-        if (aiConfig.openRouter.compatibilityMode) {
+        if (openRouterConfig.compatibilityMode) {
             return {
                 narrative: content,
                 sceneDescriptionForImage: content.substring(0, 200),
