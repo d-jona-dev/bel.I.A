@@ -87,7 +87,10 @@ const mapPointOfInterestSchema = z.object({
 
 const timeManagementSchema = z.object({
     enabled: z.boolean().default(false),
-    currentTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("12:00"),
+    day: z.number().int().min(1).default(1),
+    dayName: z.string().default("Lundi"),
+    dayNames: z.array(z.string()).min(1).default(["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]),
+    currentTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM (24h) requis").default("12:00"),
     timeFormat: z.enum(['24h', '12h']).default('24h'),
     currentEvent: z.string().optional().default(""),
     timeElapsedPerTurn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("00:15"),
@@ -136,6 +139,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             ...initialValues,
             timeManagement: initialValues.timeManagement ?? {
                 enabled: false,
+                day: 1,
+                dayName: "Lundi",
+                dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
                 currentTime: '12:00',
                 timeFormat: '24h',
                 currentEvent: '',
@@ -176,6 +182,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             ...initialValues,
             timeManagement: initialValues.timeManagement ?? {
                 enabled: false,
+                day: 1,
+                dayName: "Lundi",
+                dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
                 currentTime: '12:00',
                 timeFormat: '24h',
                 currentEvent: '',
@@ -418,13 +427,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         )}
                                     />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <FormField
+                                         <FormField
                                             control={form.control}
                                             name="timeManagement.currentTime"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Heure actuelle</FormLabel>
-                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                    <FormControl><Input type="text" {...field} placeholder="HH:MM" /></FormControl>
+                                                    <FormMessage/>
                                                 </FormItem>
                                             )}
                                         />
@@ -434,7 +444,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Temps par tour</FormLabel>
-                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                    <FormControl><Input type="text" {...field} placeholder="HH:MM" /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

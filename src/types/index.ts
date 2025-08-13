@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -205,10 +206,10 @@ export interface PlayerAvatar {
 
 export interface TimeManagementSettings {
     enabled: boolean;
-    day: number; // e.g., 1, 2, 3...
-    dayName: string; // e.g., "Lundi", "Mardi"...
-    dayNames: string[]; // e.g., ["Lundi", "Mardi", ...]
-    currentTime: string; // "HH:MM"
+    day: number;
+    dayName: string;
+    dayNames: string[];
+    currentTime: string; // "HH:MM" (24h format internal)
     timeFormat: '24h' | '12h';
     currentEvent: string;
     timeElapsedPerTurn: string; // "HH:MM"

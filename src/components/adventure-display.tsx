@@ -102,6 +102,19 @@ const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
     { name: "Comics", isDefault: true },
 ];
 
+const formatTimeToDisplay = (time24h: string, format: '12h' | '24h' | undefined) => {
+    if (format !== '12h') {
+        return time24h;
+    }
+    const [hours, minutes] = time24h.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    let hours12 = hours % 12;
+    if (hours12 === 0) {
+        hours12 = 12; // Midnight and Noon case
+    }
+    return `${hours12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+};
+
 export function AdventureDisplay({
     playerId,
     generateAdventureAction,
@@ -494,7 +507,7 @@ export function AdventureDisplay({
                    <div className="flex items-center gap-2">
                        <Clock className="h-4 w-4 text-muted-foreground"/>
                        <span className="font-semibold">Heure:</span>
-                       <span>{adventureSettings.timeManagement.currentTime}</span>
+                       <span>{formatTimeToDisplay(adventureSettings.timeManagement.currentTime, adventureSettings.timeManagement.timeFormat)}</span>
                    </div>
                     <Separator orientation="vertical" className="h-4"/>
                    <div className="flex items-center gap-2">
