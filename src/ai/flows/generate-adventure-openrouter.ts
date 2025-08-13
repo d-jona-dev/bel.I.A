@@ -22,6 +22,15 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
     addSection("CONTEXTE GLOBAL (MONDE)", input.world);
     addSection("SITUATION ACTUELLE / ÉVÉNEMENTS RÉCENTS", input.initialSituation);
 
+    if (input.timeManagement?.enabled) {
+        promptSections.push(`## TIME & EVENT CONTEXT
+Current Day: **Jour ${input.timeManagement.day} (${input.timeManagement.dayName})**
+Current Time: **${input.timeManagement.currentTime}**
+Current Event: **${input.timeManagement.currentEvent}**
+Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes.**`);
+    }
+
     if (input.characters.length > 0) {
         const charactersDesc = input.characters.map(char => `Nom: ${char.name}, Description: ${char.details}, Affinité: ${char.affinity}/100`).join('\n');
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
@@ -45,6 +54,7 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
 - Ne réponds avec AUCUN texte en dehors de l'objet JSON.
 - N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
 - Si une section est vide, utilise une valeur appropriée ([], {}, 0, null).
+- Si la gestion du temps est active, tu peux suggérer un nouvel événement dans le champ 'updatedTime.newEvent'.
 - Le JSON doit être parfaitement formaté.`;
         
         const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
@@ -100,6 +110,8 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
             isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
             spells: char.spells, // Pass spells,
             locationId: char.locationId,
+            faceSwapEnabled: char.faceSwapEnabled,
+            portraitUrl: char.portraitUrl,
         };
     });
 
@@ -165,6 +177,9 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         })),
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: input.aiConfig,
+        timeManagement: input.timeManagement,
+        playerPortraitUrl: input.playerPortraitUrl,
+        playerFaceSwapEnabled: input.playerFaceSwapEnabled,
     };
     return flowInput;
 }
@@ -254,3 +269,5 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         return { error: `Erreur inattendue lors de l'appel à OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    
