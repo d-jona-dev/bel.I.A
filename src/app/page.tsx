@@ -1228,7 +1228,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
              if (result.poiOwnershipChanges) {
                 handlePoiOwnershipChange(result.poiOwnershipChanges);
             }
-            if (result.updatedTime) {
+            if (settingsForThisTurn.timeManagement?.enabled && result.updatedTime) {
                 handleTimeUpdate(result.updatedTime.newEvent);
             }
 
@@ -1927,7 +1927,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                  if (result.poiOwnershipChanges) {
                     handlePoiOwnershipChange(result.poiOwnershipChanges);
                 }
-                if (result.updatedTime) {
+                if (currentTurnSettings.timeManagement?.enabled && result.updatedTime) {
                     handleTimeUpdate(result.updatedTime.newEvent);
                 }
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
@@ -2587,7 +2587,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
             ownerId: data.ownerId,
             lastCollectedTurn: undefined,
-            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
+            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]]?.resources || [],
             buildings: data.buildings || [],
         };
 
@@ -2611,8 +2611,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM) + 5
-                        : 5;
+                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)
+                        : 0;
     const totalDistributable = creationPoints + levelPoints;
 
 
