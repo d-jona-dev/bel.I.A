@@ -1061,7 +1061,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     setAdventureSettings(prev => {
         if (!prev.timeManagement?.enabled) return prev;
 
-        const { currentTime, timeElapsedPerTurn, day, dayNames } = prev.timeManagement;
+        const { currentTime, timeElapsedPerTurn, day, dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"] } = prev.timeManagement;
 
         const [h1, m1] = currentTime.split(':').map(Number);
         const [h2, m2] = timeElapsedPerTurn.split(':').map(Number);
