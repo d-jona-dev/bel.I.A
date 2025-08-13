@@ -46,7 +46,7 @@ Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
     systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
 - Ne réponds avec AUCUN texte en dehors de l'objet JSON.
 - N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
-- Si une section est vide, utilise une valeur appropriée ([], {}, 0, null).
+- Si une section est vide, utilise une valeur appropriée ([], {}, 0, null). Si un objet comme 'combatUpdates' n'est pas applicable, omets-le complètement ou assigne lui la valeur 'undefined', mais JAMAIS 'null'.
 - Si la gestion du temps est active, tu peux suggérer un nouvel événement dans le champ 'updatedTime.newEvent'.
 - Le JSON doit être parfaitement formaté.`;
     
@@ -217,20 +217,16 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         if (!content) {
             return { error: "La réponse de l'API ne contenait pas de contenu valide.", narrative: "" };
         }
-
-        // Handle cases where the response is a double-encoded JSON string
-        try {
-            const parsedOnce = JSON.parse(content);
-            if (typeof parsedOnce === 'string') {
-                content = parsedOnce; // It was double-encoded, use the inner string
-            }
-        } catch (e) {
-            // Not a JSON object, might be plain text or malformed
-        }
         
         // Always try to parse as JSON now
         try {
             const parsedJson = JSON.parse(content);
+            
+            // Fix for models returning `null` instead of `undefined` or `{}`
+            if (parsedJson.combatUpdates === null) {
+                delete parsedJson.combatUpdates;
+            }
+
             const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
 
             if (!validationResult.success) {
