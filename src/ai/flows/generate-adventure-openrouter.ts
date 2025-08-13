@@ -269,5 +269,3 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         return { error: `Erreur inattendue lors de l'appel à OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-    
