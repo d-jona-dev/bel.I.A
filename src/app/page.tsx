@@ -3037,7 +3037,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       handleFamiliarUpdate={handleFamiliarUpdate}
       handleSaveFamiliar={handleSaveFamiliar}
       handleAddStagedFamiliar={handleAddStagedFamiliar}
-      onMapImageUpload={handleMapImageUpload}
+      handleMapImageUpload={handleMapImageUpload}
       onMapImageUrlChange={handleMapImageUrlChange}
       isLoading={isUiLocked}
       aiConfig={aiConfig}
@@ -3049,4 +3049,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   );
 }
 
-    

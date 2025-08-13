@@ -9,7 +9,6 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): any[] {
     const promptSections: string[] = [];
-    const isCompatibilityMode = input.aiConfig?.llm.openRouter?.compatibilityMode ?? false;
 
     const addSection = (title: string, content: string | undefined | null) => {
         if (content) {
@@ -41,24 +40,18 @@ Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
     
     let systemPromptContent = "";
 
-    if (isCompatibilityMode) {
-        // Simplified prompt for compatibility mode
-        mainInstruction += `\nRéponds DIRECTEMENT avec le texte narratif. N'ajoute AUCUN formatage JSON. Juste le texte de l'histoire.`;
-        systemPromptContent = "Tu es un auteur de fiction interactive. Réponds uniquement avec le texte de la narration, sans aucun autre formatage.";
-    } else {
-        // Full structured prompt instruction
-        mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant.`;
-        
-        systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
+    // Full structured prompt instruction
+    mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant.`;
+    
+    systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
 - Ne réponds avec AUCUN texte en dehors de l'objet JSON.
 - N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
 - Si une section est vide, utilise une valeur appropriée ([], {}, 0, null).
 - Si la gestion du temps est active, tu peux suggérer un nouvel événement dans le champ 'updatedTime.newEvent'.
 - Le JSON doit être parfaitement formaté.`;
-        
-        const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
-        promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
-    }
+    
+    const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
+    promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
     
     promptSections.unshift(mainInstruction);
 
@@ -232,27 +225,21 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
                 content = parsedOnce; // It was double-encoded, use the inner string
             }
         } catch (e) {
-            // Not a JSON object, might be plain text (compatibility mode) or malformed
+            // Not a JSON object, might be plain text or malformed
         }
         
-        if (openRouterConfig.compatibilityMode) {
-            return {
-                narrative: content,
-                sceneDescriptionForImage: content.substring(0, 200),
-                error: undefined,
-            };
-        }
-
-
+        // Always try to parse as JSON now
         try {
             const parsedJson = JSON.parse(content);
             const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
 
             if (!validationResult.success) {
                 console.error("Zod validation failed:", validationResult.error.errors);
+                // Attempt to salvage narrative if parsing fails
+                const narrative = typeof parsedJson.narrative === 'string' ? parsedJson.narrative : content;
                 return {
                     error: `La réponse de l'IA ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}\nRéponse brute: ${content}`,
-                    narrative: ""
+                    narrative: narrative // Return at least the narrative part
                 };
             }
             
@@ -260,7 +247,12 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
 
         } catch (e) {
             console.error("JSON parsing error:", e);
-            return { error: `Erreur lors du parsing de la réponse JSON de l'IA. Réponse brute: ${content}`, narrative: "" };
+             // If parsing fails completely, treat the whole content as the narrative
+            return { 
+                narrative: content,
+                sceneDescriptionForImage: content.substring(0, 200),
+                error: `Erreur lors du parsing de la réponse JSON de l'IA.`,
+             };
         }
 
     } catch (error) {
