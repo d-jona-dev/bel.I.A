@@ -408,9 +408,33 @@ Tasks:
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 {{#if timeManagement.enabled}}
-8.  **Time Update:** You can suggest a new event description in \`updatedTime.newEvent\` if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
+8.  **Time Update:** You can suggest a new event description in 'updatedTime.newEvent' if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the combatUpdates data.]
-` is not a function"`
+`,
+});
+
+export async function generateAdventureWithGenkit(input: GenkitFlowInputType): Promise<GenerateAdventureFlowOutput> {
+  try {
+      const processedInput = await commonAdventureProcessing(input);
+      const { output } = await prompt(processedInput);
+      if (!output) {
+          throw new Error("AI failed to generate a response.");
+      }
+      return { ...output, error: undefined };
+  } catch (error: any) {
+      console.error("[Genkit Flow Error] Failed to generate adventure:", error);
+      const errorMessage = error.message || String(error);
+      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+          return getDefaultOutput("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
+      }
+      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+          return getDefaultOutput("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
+      }
+      return getDefaultOutput(`Erreur de l'IA Genkit: ${errorMessage}`);
+  }
+}
+
+    
