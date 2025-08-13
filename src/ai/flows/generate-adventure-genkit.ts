@@ -142,7 +142,11 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         })),
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: input.aiConfig,
-        timeManagement: input.timeManagement?.enabled ? input.timeManagement : undefined,
+        timeManagement: input.timeManagement?.enabled ? {
+            ...input.timeManagement,
+            day: input.timeManagement.day ?? 1,
+            dayName: input.timeManagement.dayName ?? "Lundi",
+        } : undefined,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,
     };

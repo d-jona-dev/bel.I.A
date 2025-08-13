@@ -169,7 +169,11 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         })),
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
         aiConfig: input.aiConfig,
-        timeManagement: input.timeManagement,
+        timeManagement: input.timeManagement?.enabled ? {
+            ...input.timeManagement,
+            day: input.timeManagement.day ?? 1,
+            dayName: input.timeManagement.dayName ?? "Lundi",
+        } : undefined,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,
     };
@@ -222,9 +226,12 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
         try {
             const parsedJson = JSON.parse(content);
             
-            // Fix for models returning `null` instead of `undefined` or `{}`
+            // Fix for models returning `null` instead of `undefined` or `{}` for optional objects.
             if (parsedJson.combatUpdates === null) {
                 delete parsedJson.combatUpdates;
+            }
+            if (parsedJson.updatedTime === null) {
+                delete parsedJson.updatedTime;
             }
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
