@@ -383,7 +383,7 @@ Tasks:
 
 3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
 
-4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates. **CRITICAL: The format MUST be an array of objects, each with 'characterName' and 'historyEntry' keys.** For example: `[{"characterName": "Rina", "historyEntry": "A semblé troublée par la question de {{../playerName}}."}]`.
+4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates. **CRITICAL: The format MUST be an array of objects, each with 'characterName' and 'historyEntry' keys.** For example: \`[{"characterName": "Rina", "historyEntry": "A semblé troublée par la question de {{../playerName}}."}]\`.
 
 {{#if relationsModeActive}}
 5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
@@ -413,28 +413,4 @@ Tasks:
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the combatUpdates data.]
-`,
-});
-
-export async function generateAdventureWithGenkit(input: GenkitFlowInputType): Promise<GenerateAdventureFlowOutput> {
-  try {
-      const processedInput = await commonAdventureProcessing(input);
-      const { output } = await prompt(processedInput);
-      if (!output) {
-          throw new Error("AI failed to generate a response.");
-      }
-      return { ...output, error: undefined };
-  } catch (error: any) {
-      console.error("[Genkit Flow Error] Failed to generate adventure:", error);
-      const errorMessage = error.message || String(error);
-      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
-          return getDefaultOutput("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
-      }
-      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-          return getDefaultOutput("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
-      }
-      return getDefaultOutput(`Erreur de l'IA Genkit: ${errorMessage}`);
-  }
-}
-
-    
+` is not a function"`
