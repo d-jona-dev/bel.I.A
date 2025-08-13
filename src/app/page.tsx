@@ -236,6 +236,9 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       mapImageUrl: null,
       timeManagement: {
         enabled: false,
+        day: 1,
+        dayName: "Lundi",
+        dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
         currentTime: "12:00",
         timeFormat: "24h",
         currentEvent: "",
@@ -1058,20 +1061,30 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     setAdventureSettings(prev => {
         if (!prev.timeManagement?.enabled) return prev;
 
-        // Calculate new time
-        const [h1, m1] = (prev.timeManagement.currentTime).split(':').map(Number);
-        const [h2, m2] = prev.timeManagement.timeElapsedPerTurn.split(':').map(Number);
+        const { currentTime, timeElapsedPerTurn, day, dayNames } = prev.timeManagement;
+
+        const [h1, m1] = currentTime.split(':').map(Number);
+        const [h2, m2] = timeElapsedPerTurn.split(':').map(Number);
+        
         let totalMinutes = m1 + m2;
         let totalHours = h1 + h2 + Math.floor(totalMinutes / 60);
-        totalMinutes %= 60;
-        totalHours %= 24;
-        const calculatedNewTime = `${String(totalHours).padStart(2, '0')}:${String(totalMinutes).padStart(2, '0')}`;
+        
+        let newDay = day;
+        if (totalHours >= 24) {
+            newDay += Math.floor(totalHours / 24);
+            totalHours %= 24;
+        }
 
+        const newCurrentTime = `${String(totalHours).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+        const newDayName = dayNames[(newDay - 1) % dayNames.length];
+        
         return {
             ...prev,
             timeManagement: {
                 ...prev.timeManagement,
-                currentTime: calculatedNewTime,
+                day: newDay,
+                dayName: newDayName,
+                currentTime: newCurrentTime,
                 currentEvent: newEvent || prev.timeManagement.currentEvent,
             },
         };
@@ -3035,3 +3048,5 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
+    
