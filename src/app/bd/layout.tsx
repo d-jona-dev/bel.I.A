@@ -1,4 +1,3 @@
-
 // src/app/bd/layout.tsx
 "use client";
 
@@ -149,7 +148,7 @@ export default function BdLayout({
          <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
             <div className="flex items-center space-x-2">
               <SidebarTrigger />
-              <span className="font-semibold">Éditeur de Bande Dessinée</span>
+              <span className="font-semibold">Bibliothèque de BD</span>
             </div>
          </header>
          <main className="flex-1 overflow-auto">

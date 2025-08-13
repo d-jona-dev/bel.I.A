@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ComicPage } from "@/types";
+import type { ComicPage, SaveData } from "@/types";
 
 const bubbleTypes = {
   parole: { label: "Parole", border: "2px solid black", lineDash: [] },
@@ -172,67 +172,58 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
   const addToComicPage = async () => {
     if (!canvasRef.current) return;
     try {
-        // Draw the current state to the canvas to get the full image with bubbles
-        const canvasWithBubbles = canvasRef.current;
-        const dataUrlWithBubbles = canvasWithBubbles.toDataURL('image/png');
-        
-        // Compress the image
+        const stateString = localStorage.getItem('currentAdventureState');
+        if (!stateString) {
+            toast({ title: "Erreur", description: "Aucune aventure active pour sauvegarder l'image.", variant: "destructive"});
+            return;
+        }
+        const currentAdventure: SaveData = JSON.parse(stateString);
+        const storyId = currentAdventure.adventureSettings.world; // Using world title as a pseudo-id for the story
+
+        const storageKey = `comic_book_v1_${storyId}`;
+
+        const dataUrlWithBubbles = canvasRef.current.toDataURL('image/png');
         const compressedDataUrl = await compressImage(dataUrlWithBubbles, 0.8);
 
-        const savedComicStr = localStorage.getItem("comic_book_v1");
-        let comicBook: ComicPage[] = savedComicStr ? JSON.parse(savedComicStr) : [];
+        const savedComicStr = localStorage.getItem(storageKey);
+        let comicBook: ComicPage[] = savedComicStr ? JSON.parse(savedComicStr) : [createNewPage()];
+        
         let panelFound = false;
-
         for (let i = 0; i < comicBook.length; i++) {
             const page = comicBook[i];
             const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
             if (firstEmptyPanelIndex !== -1) {
                 page.panels[firstEmptyPanelIndex].imageUrl = compressedDataUrl;
-                page.panels[firstEmptyPanelIndex].bubbles = []; // Bubbles are now part of the image
                 panelFound = true;
                 
-                // Save the updated structure back to localStorage
-                localStorage.setItem("comic_book_v1", JSON.stringify(comicBook));
+                localStorage.setItem(storageKey, JSON.stringify(comicBook));
                 
                 toast({
                     title: "Image Ajoutée !",
-                    description: `L'image a été ajoutée au panneau n°${firstEmptyPanelIndex + 1} de la planche ${i + 1}.`,
+                    description: `L'image a été ajoutée à l'album de "${storyId}".`,
                 });
-
-                // Dispatch a storage event to notify other components (like page.tsx)
-                window.dispatchEvent(new Event('storage'));
                 break;
             }
         }
         if (!panelFound) {
             toast({
                 title: "Aucun panneau vide",
-                description: "Aucun panneau vide trouvé. Veuillez en ajouter un sur la page BD.",
+                description: "Veuillez ajouter une nouvelle planche ou un nouveau panneau dans l'éditeur de BD.",
                 variant: "destructive"
             });
         }
     } catch (e) {
-        if (e instanceof Error && e.message.toLowerCase().includes('quota')) {
-            toast({
-                title: "Erreur de Stockage",
-                description: "Le stockage local est plein. La compression n'a pas suffi. Essayez de supprimer des planches.",
-                variant: "destructive",
-            });
-        } else {
-            console.error("Failed to add to comic page:", e);
-            toast({ title: "Erreur", description: "Impossible d'ajouter l'image à la planche.", variant: "destructive" });
-        }
+        toast({ title: "Erreur", description: "Impossible d'ajouter l'image à la planche.", variant: "destructive" });
     }
   };
   
     const exportImage = async () => {
         if (!canvasRef.current) return;
         
-        // Use the compressed image for export as well for consistency and smaller file size
         const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
 
         const link = document.createElement("a");
-        link.download = "panneau_bd.jpg"; // Export as JPG
+        link.download = "panneau_bd.jpg";
         link.href = compressedUrl;
         link.click();
         toast({
@@ -240,6 +231,12 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
             description: "Votre panneau compressé a été sauvegardé."
         })
     };
+
+    const createNewPage = (): ComicPage => ({
+      id: `page-${Date.now()}`,
+      panels: Array.from({ length: 4 }, () => ({ id: `panel-${Math.random()}`, bubbles: [] })),
+      gridCols: 2,
+    });
 
 
   const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;

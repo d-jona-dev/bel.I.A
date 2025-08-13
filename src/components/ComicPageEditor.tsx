@@ -18,13 +18,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { ComicPage, Bubble, Panel } from "@/types";
-// Retire l'importation de `next/image` car il n'est plus utilisé directement ici, mais le rendu final le sera
-// import Image from "next/image";
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
-const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
+export const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
     id: uid(),
     gridCols: cols,
     panels: Array.from({ length: numPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] }))
@@ -33,14 +31,18 @@ const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
 
 /* Component */
 export default function ComicPageEditor({
+  pages: initialPages = [],
+  onPagesChange,
   pageWidth = 1200,
   pageHeight = 1700,
 }: {
+  pages: ComicPage[];
+  onPagesChange: (pages: ComicPage[]) => void;
   pageWidth?: number;
   pageHeight?: number;
 }) {
   const { toast } = useToast();
-  const [pages, setPages] = useState<ComicPage[]>([createNewPage()]);
+  const [pages, setPages] = useState<ComicPage[]>(initialPages.length > 0 ? initialPages : [createNewPage()]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -48,24 +50,13 @@ export default function ComicPageEditor({
 
   /* Persistence */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("comic_book_v1");
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (Array.isArray(data) && data.length > 0) {
-            setPages(data.map((p: any) => ({ ...p, id: p.id || uid() })));
-        }
-      }
-    } catch {
-       setPages([createNewPage()]);
-    }
-  }, []);
-
+    onPagesChange(pages);
+  }, [pages, onPagesChange]);
+  
   useEffect(() => {
-    if (pages.length > 0) {
-        localStorage.setItem("comic_book_v1", JSON.stringify(pages));
-    }
-  }, [pages]);
+    // If external pages update, reflect it in the editor
+    setPages(initialPages.length > 0 ? initialPages : [createNewPage()]);
+  }, [initialPages]);
 
   const currentPage = pages[currentPageIndex];
 
