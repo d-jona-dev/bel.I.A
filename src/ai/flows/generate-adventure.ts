@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import type { GenerateAdventureInput, GenerateAdventureFlowOutput } from '@/types';
@@ -11,16 +10,14 @@ import { generateAdventureWithLocalLlm } from './generate-adventure-local';
 export async function generateAdventure(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
   const { aiConfig } = input;
 
-  if (aiConfig?.source === 'openrouter') {
+  if (aiConfig?.llm.source === 'openrouter') {
     return generateAdventureWithOpenRouter(input);
   }
   
-  if (aiConfig?.source === 'local') {
+  if (aiConfig?.llm.source === 'local') {
     return generateAdventureWithLocalLlm(input);
   }
   
   // Default to Genkit/Gemini
   return generateAdventureWithGenkit(input);
 }
-
-    

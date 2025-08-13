@@ -2075,7 +2075,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
     const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
     const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
-    const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (newCharLevel ?? 1) -1))) : undefined;
+    const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (newCharLevel ?? 1) - 1))) : undefined;
 
     const newChar: Character = {
         ...globalCharToAdd,
