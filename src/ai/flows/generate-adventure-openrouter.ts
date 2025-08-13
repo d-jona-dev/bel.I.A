@@ -10,8 +10,6 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): any[] {
     const promptSections: string[] = [];
     const isCompatibilityMode = input.aiConfig?.llm.openRouter?.compatibilityMode ?? false;
-    const isStructuredResponseForced = input.aiConfig?.llm.openRouter?.enforceStructuredResponse ?? false;
-
 
     const addSection = (title: string, content: string | undefined | null) => {
         if (content) {
@@ -23,12 +21,13 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
     addSection("SITUATION ACTUELLE / ÉVÉNEMENTS RÉCENTS", input.initialSituation);
 
     if (input.timeManagement?.enabled) {
-        promptSections.push(`## TIME & EVENT CONTEXT
+        promptSections.push(`--- TIME & EVENT CONTEXT ---
 Current Day: **Jour ${input.timeManagement.day} (${input.timeManagement.dayName})**
 Current Time: **${input.timeManagement.currentTime}**
 Current Event: **${input.timeManagement.currentEvent}**
-Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
-**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes.**`);
+Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**. 
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes (e.g. from "Début de la patrouille" to "Milieu de la patrouille").**
+---`);
     }
 
     if (input.characters.length > 0) {
