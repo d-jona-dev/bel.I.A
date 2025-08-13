@@ -46,8 +46,10 @@ Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
     systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
 - Ne réponds avec AUCUN texte en dehors de l'objet JSON.
 - N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
-- Si une section est vide, utilise une valeur appropriée ([], {}, 0, null). Si un objet comme 'combatUpdates' n'est pas applicable, omets-le complètement ou assigne lui la valeur 'undefined', mais JAMAIS 'null'.
+- Si une section est vide, utilise une valeur appropriée ([], {}, "", 0, null). Si un objet comme 'combatUpdates' n'est pas applicable, omets-le complètement ou assigne lui la valeur 'undefined', mais JAMAIS 'null'.
 - Si la gestion du temps est active, tu peux suggérer un nouvel événement dans le champ 'updatedTime.newEvent'.
+- Le champ 'characterUpdates' DOIT être un tableau d'objets, où CHAQUE objet a les clés "characterName" et "historyEntry". Exemple : '[{"characterName": "Rina", "historyEntry": "A semblé troublée."}]'.
+- Le champ 'affinityUpdates' DOIT être un tableau d'objets, où CHAQUE objet a les clés "characterName", "change" et "reason". Exemple : '[{"characterName": "Rina", "change": -2, "reason": "A été insultée."}]'.
 - Le JSON doit être parfaitement formaté.`;
     
     const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);

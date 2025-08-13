@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -79,6 +79,16 @@ const createNewAdventureState = (): SaveData => ({
         playerDetails: "",
         playerDescription: "",
         playerOrientation: "",
+        timeManagement: {
+            enabled: false,
+            day: 1,
+            dayName: "Lundi",
+            dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+            currentTime: "12:00",
+            timeFormat: "24h",
+            currentEvent: "",
+            timeElapsedPerTurn: "00:15",
+        },
     },
     characters: [],
     narrative: [],
@@ -300,6 +310,7 @@ export default function HistoiresPage() {
               playerDetails: "",
               playerDescription: "",
               playerOrientation: "",
+              timeManagement: defaultState.adventureSettings.timeManagement,
           };
       }
       
@@ -326,6 +337,7 @@ export default function HistoiresPage() {
           playerOrientation: settings.playerOrientation,
           playerPortraitUrl: settings.playerPortraitUrl,
           mapPointsOfInterest: settings.mapPointsOfInterest,
+          timeManagement: settings.timeManagement,
       }
   }
 
