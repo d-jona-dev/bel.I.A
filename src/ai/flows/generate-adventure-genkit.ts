@@ -171,10 +171,11 @@ Current Situation/Recent Narrative:
 
 {{#if timeManagement.enabled}}
 --- TIME & EVENT CONTEXT ---
+Current Day: **Jour {{timeManagement.day}} ({{timeManagement.dayName}})**
 Current Time: **{{timeManagement.currentTime}}**
 Current Event: **{{timeManagement.currentEvent}}**
 Time to Elapse This Turn: **{{timeManagement.timeElapsedPerTurn}}**. 
-**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes.**
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes (e.g. from "Début de la patrouille" to "Milieu de la patrouille").**
 ---
 {{/if}}
 

@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -206,6 +205,9 @@ export interface PlayerAvatar {
 
 export interface TimeManagementSettings {
     enabled: boolean;
+    day: number; // e.g., 1, 2, 3...
+    dayName: string; // e.g., "Lundi", "Mardi"...
+    dayNames: string[]; // e.g., ["Lundi", "Mardi", ...]
     currentTime: string; // "HH:MM"
     timeFormat: '24h' | '12h';
     currentEvent: string;
@@ -446,6 +448,8 @@ const AiConfigForAdventureInputSchema = z.object({
 
 const TimeManagementSchemaForAI = z.object({
     enabled: z.boolean(),
+    day: z.number().describe("The current day number of the adventure (e.g., 1, 2, 3...)."),
+    dayName: z.string().describe("The name of the current day (e.g., Lundi, Mardi...)."),
     currentTime: z.string().describe("Current time in the story, e.g., '18:23' or '6:36pm'."),
     currentEvent: z.string().optional().describe("Description of the current event, e.g., 'Début du cours'."),
     timeElapsedPerTurn: z.string().describe("The fixed amount of time that should pass in this turn, e.g., '01:00' for one hour. The AI MUST strictly adhere to this duration for its narrative."),

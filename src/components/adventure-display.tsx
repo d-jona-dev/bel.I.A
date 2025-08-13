@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3 } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, CalendarDays, Clock, Drama } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -482,6 +482,30 @@ export function AdventureDisplay({
            </TabsList>
          </Tabs>
        )}
+       {adventureSettings.timeManagement?.enabled && (
+           <Card className="mb-2 shadow-sm">
+               <CardContent className="p-2 text-xs flex justify-around items-center">
+                   <div className="flex items-center gap-2">
+                       <CalendarDays className="h-4 w-4 text-muted-foreground"/>
+                       <span className="font-semibold">Jour {adventureSettings.timeManagement.day}:</span>
+                       <span>{adventureSettings.timeManagement.dayName}</span>
+                   </div>
+                   <Separator orientation="vertical" className="h-4"/>
+                   <div className="flex items-center gap-2">
+                       <Clock className="h-4 w-4 text-muted-foreground"/>
+                       <span className="font-semibold">Heure:</span>
+                       <span>{adventureSettings.timeManagement.currentTime}</span>
+                   </div>
+                    <Separator orientation="vertical" className="h-4"/>
+                   <div className="flex items-center gap-2">
+                       <Drama className="h-4 w-4 text-muted-foreground"/>
+                       <span className="font-semibold">Événement:</span>
+                       <span className="truncate">{adventureSettings.timeManagement.currentEvent || "Aucun"}</span>
+                   </div>
+               </CardContent>
+           </Card>
+       )}
+
 
       <div className="flex-1 flex gap-4 overflow-hidden">
             <Card className="flex-1 flex flex-col overflow-hidden">
