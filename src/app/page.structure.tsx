@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon, Wand2 } from 'lucide-react'; // Added Download and fixed FontIcon
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig } from "@/types"; // Removed ComicPage
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
 import { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -124,6 +124,12 @@ interface PageStructureProps {
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
   onAddPoiToMap: (poiId: string) => void; // Added prop
+  comicDraft: ComicPage[];
+  onSaveComicDraft: () => void;
+  onDownloadComicDraft: () => void;
+  onAddComicPage: () => void;
+  onAddComicPanel: () => void;
+  onRemoveLastComicPanel: () => void;
 }
 
 export function PageStructure({
@@ -199,6 +205,12 @@ export function PageStructure({
   aiConfig,
   onAiConfigChange,
   onAddPoiToMap,
+  comicDraft,
+  onSaveComicDraft,
+  onDownloadComicDraft,
+  onAddComicPage,
+  onAddComicPanel,
+  onRemoveLastComicPanel,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -429,6 +441,12 @@ export function PageStructure({
                 onMapImageUpload={onMapImageUpload}
                 onMapImageUrlChange={onMapImageUrlChange}
                 onAddPoiToMap={onAddPoiToMap}
+                comicDraft={comicDraft}
+                onSaveComicDraft={onSaveComicDraft}
+                onDownloadComicDraft={onDownloadComicDraft}
+                onAddComicPage={onAddComicPage}
+                onAddComicPanel={onAddComicPanel}
+                onRemoveLastComicPanel={onRemoveLastComicPanel}
              />
         </main>
       </SidebarInset>
