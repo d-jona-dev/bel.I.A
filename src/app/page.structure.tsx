@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon, Wand2 } from 'lucide-react'; // Added Download and fixed FontIcon
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage } from "@/types"; // Added Familiar, AiConfig & ComicPage
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig } from "@/types"; // Removed ComicPage
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
 import { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
@@ -123,8 +123,6 @@ interface PageStructureProps {
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
-  comicPages: ComicPage[];
-  onRefreshComicPreview: () => void; // Added prop for refresh handler
   onAddPoiToMap: (poiId: string) => void; // Added prop
 }
 
@@ -200,8 +198,6 @@ export function PageStructure({
   onMapImageUrlChange,
   aiConfig,
   onAiConfigChange,
-  comicPages,
-  onRefreshComicPreview, // Destructure new prop
   onAddPoiToMap,
 }: PageStructureProps) {
 
@@ -434,52 +430,6 @@ export function PageStructure({
                 onMapImageUrlChange={onMapImageUrlChange}
                 onAddPoiToMap={onAddPoiToMap}
              />
-             <Accordion type="single" collapsible className="w-full border rounded-lg p-2" defaultValue="comic-preview-accordion">
-                <AccordionItem value="comic-preview-accordion" className="border-b-0">
-                    <div className="flex items-center justify-between py-4 font-medium">
-                        <AccordionTrigger className="flex-1">
-                            <div className="flex items-center gap-2">
-                                <BookImage className="h-5 w-5" /> Aperçu de la BD
-                            </div>
-                        </AccordionTrigger>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRefreshComicPreview}>
-                                        <RefreshCw className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Actualiser l'aperçu</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                    <AccordionContent>
-                        <ScrollArea className="h-48 w-full">
-                            <div className="flex gap-4 p-2">
-                            {comicPages.length === 0 ? (
-                                <p className="text-sm text-muted-foreground italic">Aucune planche de BD sauvegardée.</p>
-                            ) : (
-                                comicPages.map((page, pageIndex) => (
-                                    <div key={page.id} className="flex-shrink-0 w-32">
-                                        <p className="text-xs text-center mb-1">Planche {pageIndex + 1}</p>
-                                        <div className="aspect-[12/17] border bg-muted rounded-md overflow-hidden">
-                                            {/* Simplified preview */}
-                                            <div className="grid h-full w-full" style={{ gridTemplateColumns: `repeat(${page.gridCols}, 1fr)`}}>
-                                                {page.panels.map(panel => (
-                                                    <div key={panel.id} className="border border-muted-foreground/20">
-                                                        {panel.imageUrl && <Image src={panel.imageUrl} alt="panel preview" width={30} height={42} className="w-full h-full object-cover" />}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            </div>
-                        </ScrollArea>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
         </main>
       </SidebarInset>
 

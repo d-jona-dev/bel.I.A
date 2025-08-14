@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ComicPage, SaveData } from "@/types";
 
 const bubbleTypes = {
   parole: { label: "Parole", border: "2px solid black", lineDash: [] },
@@ -168,54 +167,6 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
     setBubbles(bubbles.filter((b) => b.id !== selectedBubbleId));
     setSelectedBubbleId(null);
   };
-
-  const addToComicPage = async () => {
-    if (!canvasRef.current) return;
-    try {
-        const stateString = localStorage.getItem('currentAdventureState');
-        if (!stateString) {
-            toast({ title: "Erreur", description: "Aucune aventure active pour sauvegarder l'image.", variant: "destructive"});
-            return;
-        }
-        const currentAdventure: SaveData = JSON.parse(stateString);
-        const storyId = currentAdventure.adventureSettings.world; // Using world title as a pseudo-id for the story
-
-        const storageKey = `comic_book_v1_${storyId}`;
-
-        const dataUrlWithBubbles = canvasRef.current.toDataURL('image/png');
-        const compressedDataUrl = await compressImage(dataUrlWithBubbles, 0.8);
-
-        const savedComicStr = localStorage.getItem(storageKey);
-        let comicBook: ComicPage[] = savedComicStr ? JSON.parse(savedComicStr) : [createNewPage()];
-        
-        let panelFound = false;
-        for (let i = 0; i < comicBook.length; i++) {
-            const page = comicBook[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-            if (firstEmptyPanelIndex !== -1) {
-                page.panels[firstEmptyPanelIndex].imageUrl = compressedDataUrl;
-                panelFound = true;
-                
-                localStorage.setItem(storageKey, JSON.stringify(comicBook));
-                
-                toast({
-                    title: "Image Ajoutée !",
-                    description: `L'image a été ajoutée à l'album de "${storyId}".`,
-                });
-                break;
-            }
-        }
-        if (!panelFound) {
-            toast({
-                title: "Aucun panneau vide",
-                description: "Veuillez ajouter une nouvelle planche ou un nouveau panneau dans l'éditeur de BD.",
-                variant: "destructive"
-            });
-        }
-    } catch (e) {
-        toast({ title: "Erreur", description: "Impossible d'ajouter l'image à la planche.", variant: "destructive" });
-    }
-  };
   
     const exportImage = async () => {
         if (!canvasRef.current) return;
@@ -231,12 +182,6 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
             description: "Votre panneau compressé a été sauvegardé."
         })
     };
-
-    const createNewPage = (): ComicPage => ({
-      id: `page-${Date.now()}`,
-      panels: Array.from({ length: 4 }, () => ({ id: `panel-${Math.random()}`, bubbles: [] })),
-      gridCols: 2,
-    });
 
 
   const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
@@ -272,7 +217,6 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
             </Select>
         </div>
         <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
-        <Button onClick={addToComicPage} variant="default" size="sm">🖼️ Ajouter à la Planche BD</Button>
         <Button onClick={exportImage} variant="secondary" size="sm">💾 Exporter en JPG</Button>
       </div>
 

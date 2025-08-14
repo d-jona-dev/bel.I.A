@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, ComicPage, PlayerAvatar, TimeManagementSettings } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -374,7 +374,6 @@ export default function Home() {
   const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
-  const [comicPages, setComicPages] = React.useState<ComicPage[]>([]);
 
   // Base state for resets
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
@@ -411,19 +410,6 @@ export default function Home() {
         description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
     });
   }, [useAestheticFont, toast]);
-
-  const handleRefreshComicPreview = React.useCallback(() => {
-    try {
-      const savedPages = localStorage.getItem("comic_book_v1");
-      if (savedPages) {
-        setComicPages(JSON.parse(savedPages));
-        toast({ title: "Aperçu de la BD actualisé" });
-      }
-    } catch (e) {
-      console.error("Could not load comic pages from localStorage", e);
-      toast({ title: "Erreur", description: "Impossible de charger les planches de BD.", variant: "destructive" });
-    }
-  }, [toast]);
 
   const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative) {
@@ -497,10 +483,7 @@ export default function Home() {
         localStorage.removeItem('loadStoryOnMount');
         localStorage.removeItem('currentAdventureState');
     }
-
-    // Initial load comic preview
-    handleRefreshComicPreview();
-  }, [loadAdventureState, handleRefreshComicPreview, toast]);
+  }, [loadAdventureState, toast]);
 
   React.useEffect(() => {
     const fetchInitialSkill = async () => {
@@ -3042,8 +3025,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       isLoading={isUiLocked}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
-      comicPages={comicPages}
-      onRefreshComicPreview={handleRefreshComicPreview}
       onAddPoiToMap={handleAddPoiToMap}
     />
   );

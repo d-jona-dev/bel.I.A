@@ -17,7 +17,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { ComicPage, Bubble, Panel } from "@/types";
+import type { Bubble, Panel } from "@/types";
+
+// This type is now defined locally as it's only used here.
+export interface ComicPage {
+    id: string;
+    panels: Panel[];
+    gridCols: number;
+};
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
@@ -31,7 +38,7 @@ export const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
 
 /* Component */
 export default function ComicPageEditor({
-  pages: initialPages = [],
+  pages: initialPages,
   onPagesChange,
   pageWidth = 1200,
   pageHeight = 1700,
@@ -42,28 +49,19 @@ export default function ComicPageEditor({
   pageHeight?: number;
 }) {
   const { toast } = useToast();
-  const [pages, setPages] = useState<ComicPage[]>(initialPages.length > 0 ? initialPages : [createNewPage()]);
+  // No longer maintains its own state, works directly with props
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedPanelId, setSelectedPanelId] = useState<string | null>(null);
 
-  /* Persistence */
-  useEffect(() => {
-    onPagesChange(pages);
-  }, [pages, onPagesChange]);
-  
-  useEffect(() => {
-    // If external pages update, reflect it in the editor
-    setPages(initialPages.length > 0 ? initialPages : [createNewPage()]);
-  }, [initialPages]);
-
-  const currentPage = pages[currentPageIndex];
+  const currentPage = initialPages[currentPageIndex];
 
   const updateCurrentPage = (updater: (page: ComicPage) => ComicPage) => {
-    setPages(currentPages => currentPages.map((page, index) => 
+     const newPages = initialPages.map((page, index) => 
         index === currentPageIndex ? updater(page) : page
-    ));
+    );
+    onPagesChange(newPages);
   }
 
   const setPanelImage = (panelId: string, url: string | null) => {
@@ -179,7 +177,7 @@ export default function ComicPageEditor({
     return (
         <div className="flex flex-col items-center justify-center h-full">
             <p className="text-muted-foreground">Aucune planche à afficher.</p>
-            <Button onClick={() => setPages([createNewPage()])} className="mt-4">
+            <Button onClick={() => onPagesChange([createNewPage()])} className="mt-4">
                 <PlusCircle className="mr-2 h-4 w-4" /> Créer la première planche
             </Button>
         </div>
@@ -196,8 +194,8 @@ export default function ComicPageEditor({
         <CardContent className="p-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.max(0, p-1))} disabled={currentPageIndex === 0}><ArrowLeft className="h-4 w-4"/></Button>
-            <span className="text-sm font-medium w-24 text-center">Planche {currentPageIndex+1} / {pages.length}</span>
-            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(pages.length-1, p+1))} disabled={currentPageIndex === pages.length - 1}><ArrowRight className="h-4 w-4"/></Button>
+            <span className="text-sm font-medium w-24 text-center">Planche {currentPageIndex+1} / {initialPages.length}</span>
+            <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(initialPages.length-1, p+1))} disabled={currentPageIndex === initialPages.length - 1}><ArrowRight className="h-4 w-4"/></Button>
           </div>
            <div className="flex items-center gap-2">
             <Label htmlFor="grid-cols-input">Colonnes :</Label>
@@ -213,7 +211,7 @@ export default function ComicPageEditor({
           <Button onClick={() => updateCurrentPage(p => ({...p, panels: [...p.panels, { id: uid(), imageUrl: null, bubbles: [] }] }))}>
             <PlusCircle className="mr-2 h-4 w-4" /> Ajouter panneau
           </Button>
-           <Button onClick={() => setPages(p => [...p, createNewPage(p[p.length-1]?.gridCols || 2)])}>
+           <Button onClick={() => onPagesChange([...initialPages, createNewPage(initialPages[initialPages.length-1]?.gridCols || 2)])}>
             <BookPlus className="mr-2 h-4 w-4" /> Ajouter planche vierge
           </Button>
           <Button onClick={() => exportPage(2)} variant="secondary">

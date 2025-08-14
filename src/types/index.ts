@@ -307,29 +307,6 @@ export interface AiConfig {
     }
 }
 
-export type Bubble = {
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  text: string;
-  type?: "parole" | "pensée" | "cri" | "chuchotement";
-};
-
-export type Panel = {
-  id: string;
-  imageUrl?: string | null;
-  bubbles: Bubble[];
-};
-
-export interface ComicPage {
-  id: string;
-  panels: Panel[];
-  gridCols: number;
-}
-
-
 export interface SaveData {
     adventureSettings: AdventureSettings;
     characters: Character[];
