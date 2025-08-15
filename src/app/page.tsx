@@ -19,6 +19,7 @@ import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSk
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor from "@/components/ImageEditor";
+import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
 
 
 const PLAYER_ID = "player";
@@ -182,11 +183,6 @@ export interface SellingItemDetails {
 
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
-const createNewComicPage = (cols = 2, numPanels = 4): ComicPage => ({
-    id: uid(),
-    gridCols: cols,
-    panels: Array.from({ length: numPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] }))
-});
 
 // Function to create a clean, default state
 const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[], aiConfig: AiConfig } => {
@@ -1950,7 +1946,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         const currentGold = adventureSettings.playerGold ?? 0;
                         if (currentGold + amount < 0) {
                         } else {
-                            addCurrencyToPlayer(amount);
+                             addCurrencyToPlayer(amount);
                         }
                     } else {
                          addCurrencyToPlayer(amount);
@@ -2963,17 +2959,12 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             toast({ title: "Brouillon Vide", description: "Aucune planche à télécharger.", variant: "default" });
             return;
         }
-        const jsonString = JSON.stringify({ comicDraft, title: comicTitle || "Sans Titre" }, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `brouillon_bd_${(comicTitle || 'sans-titre').toLowerCase().replace(/\s/g, '_')}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast({ title: "Brouillon de BD Téléchargé", description: "Le fichier JSON a été sauvegardé." });
+        const pageToExport = comicDraft[currentComicPageIndex];
+        if (pageToExport) {
+            exportPageAsJpeg(pageToExport, currentComicPageIndex, toast);
+        } else {
+            toast({ title: "Erreur", description: "Planche actuelle introuvable.", variant: "destructive" });
+        }
     };
 
     const handleSaveToLibrary = () => {
@@ -3002,6 +2993,29 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder dans la bibliothèque.", variant: "destructive" });
         }
     };
+
+    const handleGenerateCover = React.useCallback(async () => {
+        setIsGeneratingCover(true);
+        toast({ title: "Génération de la couverture..."});
+
+        const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+        const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+        const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
+
+        try {
+            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+            if (result.imageUrl) {
+                setComicCoverUrl(result.imageUrl);
+                toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+        } finally {
+            setIsGeneratingCover(false);
+        }
+    }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
 
 
   const handleAddComicPage = () => {
@@ -3073,30 +3087,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return draft;
     });
   };
-
-  const handleGenerateCover = async () => {
-    setIsGeneratingCover(true);
-    toast({ title: "Génération de la couverture..."});
-
-    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
-
-    try {
-        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-        if (result.imageUrl) {
-            setComicCoverUrl(result.imageUrl);
-            toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
-    } finally {
-        setIsGeneratingCover(false);
-    }
-  };
-
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3170,11 +3160,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       isGeneratingItemImage={isGeneratingItemImage}
       handleEquipItem={handleEquipItem}
       handleUnequipItem={handleUnequipItem}
-      itemToSellDetails={itemToSellDetails}
-      sellQuantity={sellQuantity}
-      setSellQuantity={setSellQuantity}
-      confirmSellMultipleItems={confirmSellMultipleItems}
-      onCloseSellDialog={() => setItemToSellDetails(null)}
       handleMapAction={handleMapAction}
       useAestheticFont={useAestheticFont}
       onToggleAestheticFont={handleToggleAestheticFont}
@@ -3215,3 +3200,4 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   );
 }
 
+    

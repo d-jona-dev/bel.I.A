@@ -36,6 +36,147 @@ export const createNewPage = (cols = 2, numPanels = 4): ComicPage => ({
 });
 
 
+/* Drawing logic helpers (now exported) */
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+    img.src = src;
+  });
+
+const roundRectPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+};
+
+const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+    const words = text.split(" ");
+    let line = "";
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + " ";
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        line = words[n] + " ";
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+};
+
+const drawBubble = (ctx: CanvasRenderingContext2D, b: Bubble, scale = 1) => {
+    const dash = b.type === "pensée" ? [6, 4] : b.type === "chuchotement" ? [2, 3] : [];
+    const color = b.type === "cri" ? "#b00" : "#000";
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = (b.type === "cri" ? 4 : 2) * scale;
+    if (dash.length) ctx.setLineDash(dash);
+    roundRectPath(ctx, b.x, b.y, b.w, b.h, 12 * scale);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#000";
+    const fontSize = Math.max(12, Math.min(18, b.w / 10)) * scale;
+    ctx.font = `${fontSize}px sans-serif`;
+    wrapText(ctx, b.text, b.x + 8 * scale, b.y + 22 * scale, b.w - 16 * scale, (fontSize + 4) * scale);
+    ctx.restore();
+};
+
+const renderPanelToCanvas = async (panel: Panel, width: number, height: number): Promise<HTMLCanvasElement> => {
+    const c = document.createElement("canvas");
+    c.width = width;
+    c.height = height;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, height);
+
+    if (panel.imageUrl) {
+      try {
+        const img = await loadImage(panel.imageUrl);
+        const scale = Math.max(width / img.width, height / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
+      } catch (e) {
+         console.error("Failed to load image for panel:", panel.imageUrl, e);
+         ctx.fillStyle = "#eee";
+         ctx.fillRect(0, 0, width, height);
+         ctx.fillStyle = "#999";
+         ctx.textAlign = "center";
+         ctx.fillText("Image error", width / 2, height / 2);
+      }
+    } else {
+      ctx.fillStyle = "#eee";
+      ctx.fillRect(0, 0, width, height);
+    }
+    panel.bubbles.forEach((b) => drawBubble(ctx, b));
+    return c;
+  };
+
+export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast: (options: any) => void, pageWidth = 1200, pageHeight = 1700, scale = 2) => {
+    toast({ title: "Exportation en cours...", description: `Génération de votre planche en JPEG.` });
+    
+    const gutterWidth = 10;
+    const rows = Math.ceil(page.panels.length / page.gridCols);
+    
+    const totalGutterWidth = (page.gridCols - 1) * gutterWidth;
+    const totalGutterHeight = (rows - 1) * gutterWidth;
+
+    const panelW = Math.floor((pageWidth - totalGutterWidth) / page.gridCols);
+    const panelH = Math.floor((pageHeight - totalGutterHeight) / rows);
+
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = pageWidth * scale;
+    outCanvas.height = pageHeight * scale;
+    const outCtx = outCanvas.getContext("2d")!;
+    outCtx.scale(scale, scale);
+    outCtx.fillStyle = "#fff";
+    outCtx.fillRect(0, 0, pageWidth, pageHeight);
+
+    for (let i = 0; i < page.panels.length; i++) {
+      const panel = page.panels[i];
+      const r = Math.floor(i / page.gridCols);
+      const c = i % page.gridCols;
+      
+      const x = c * (panelW + gutterWidth);
+      const y = r * (panelH + gutterWidth);
+      
+      try {
+        const panelCanvas = await renderPanelToCanvas(panel, panelW, panelH);
+        outCtx.drawImage(panelCanvas, x, y, panelW, panelH);
+        
+        outCtx.strokeStyle = "#222";
+        outCtx.lineWidth = 2;
+        outCtx.strokeRect(x, y, panelW, panelH);
+        
+      } catch (e) {
+        console.error(`Error rendering panel ${i}`, e);
+        outCtx.fillStyle = "red";
+        outCtx.fillRect(x,y, panelW, panelH);
+        outCtx.fillStyle = "white";
+        outCtx.fillText(`Erreur panneau ${i+1}`, x + 10, y + 20);
+      }
+    }
+
+    const mimeType = 'image/jpeg';
+    const link = document.createElement("a");
+    link.download = `planche_bd_${pageIndex + 1}.jpeg`;
+    link.href = outCanvas.toDataURL(mimeType, 0.9);
+    link.click();
+    toast({ title: "Exportation terminée", description: `La planche ${pageIndex + 1} a été téléchargée en JPEG.` });
+};
+
+
 /* Component */
 export default function ComicPageEditor({
   pages: initialPages,
@@ -70,92 +211,6 @@ export default function ComicPageEditor({
         panels: page.panels.map((x) => (x.id === panelId ? { ...x, imageUrl: url, bubbles: [] } : x))
     }));
   };
-
-  /* Drawing logic */
-  const renderPanelToCanvas = async (panel: Panel, width: number, height: number): Promise<HTMLCanvasElement> => {
-    const c = document.createElement("canvas");
-    c.width = width;
-    c.height = height;
-    const ctx = c.getContext("2d")!;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, width, height);
-
-    if (panel.imageUrl) {
-      try {
-        const img = await loadImage(panel.imageUrl);
-        const scale = Math.max(width / img.width, height / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
-      } catch (e) {
-         console.error("Failed to load image for panel:", panel.imageUrl, e);
-         ctx.fillStyle = "#eee";
-         ctx.fillRect(0, 0, width, height);
-         ctx.fillStyle = "#999";
-         ctx.textAlign = "center";
-         ctx.fillText("Image error", width / 2, height / 2);
-      }
-    } else {
-      ctx.fillStyle = "#eee";
-      ctx.fillRect(0, 0, width, height);
-    }
-    panel.bubbles.forEach((b) => drawBubble(ctx, b));
-    return c;
-  };
-
-  const exportPageAs = async (format: 'png' | 'jpeg', scale = 2) => {
-    toast({ title: "Exportation en cours...", description: `Génération de votre planche en ${format.toUpperCase()}.` });
-    
-    const gutterWidth = 10;
-    const rows = Math.ceil(currentPage.panels.length / currentPage.gridCols);
-    
-    const totalGutterWidth = (currentPage.gridCols - 1) * gutterWidth;
-    const totalGutterHeight = (rows - 1) * gutterWidth;
-
-    const panelW = Math.floor((pageWidth - totalGutterWidth) / currentPage.gridCols);
-    const panelH = Math.floor((pageHeight - totalGutterHeight) / rows);
-
-    const outCanvas = document.createElement("canvas");
-    outCanvas.width = pageWidth * scale;
-    outCanvas.height = pageHeight * scale;
-    const outCtx = outCanvas.getContext("2d")!;
-    outCtx.scale(scale, scale);
-    outCtx.fillStyle = "#fff";
-    outCtx.fillRect(0, 0, pageWidth, pageHeight);
-
-    for (let i = 0; i < currentPage.panels.length; i++) {
-      const panel = currentPage.panels[i];
-      const r = Math.floor(i / currentPage.gridCols);
-      const c = i % currentPage.gridCols;
-      
-      const x = c * (panelW + gutterWidth);
-      const y = r * (panelH + gutterWidth);
-      
-      try {
-        const panelCanvas = await renderPanelToCanvas(panel, panelW, panelH);
-        outCtx.drawImage(panelCanvas, x, y, panelW, panelH);
-        
-        outCtx.strokeStyle = "#222";
-        outCtx.lineWidth = 2;
-        outCtx.strokeRect(x, y, panelW, panelH);
-        
-      } catch (e) {
-        console.error(`Error rendering panel ${i}`, e);
-        outCtx.fillStyle = "red";
-        outCtx.fillRect(x,y, panelW, panelH);
-        outCtx.fillStyle = "white";
-        outCtx.fillText(`Erreur panneau ${i+1}`, x + 10, y + 20);
-      }
-    }
-
-    const mimeType = `image/${format}`;
-    const link = document.createElement("a");
-    link.download = `planche_bd_${currentPageIndex + 1}.${format}`;
-    link.href = outCanvas.toDataURL(mimeType, format === 'jpeg' ? 0.9 : undefined);
-    link.click();
-    toast({ title: "Exportation terminée", description: `La planche ${currentPageIndex + 1} a été téléchargée en ${format.toUpperCase()}.` });
-  };
-
 
   /* UI handlers */
   const handleFileForPanel = (panelId: string, file: File | null) => {
@@ -212,7 +267,7 @@ export default function ComicPageEditor({
            <Button onClick={() => onPagesChange([...initialPages, createNewPage(initialPages[initialPages.length-1]?.gridCols || 2)])}>
             <BookPlus className="mr-2 h-4 w-4" /> Ajouter planche vierge
           </Button>
-          <Button onClick={() => exportPageAs('jpeg')} variant="secondary">
+          <Button onClick={() => exportPageAsJpeg(currentPage, currentPageIndex, toast)} variant="secondary">
             <Download className="mr-2 h-4 w-4" /> Exporter Planche (JPEG)
           </Button>
         </CardContent>
@@ -290,14 +345,6 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
 }
 
 
-const loadImage = (src: string) =>
-  new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
-    img.src = src;
-  });
 
 /* PanelEditor: full editor for a panel (move bubbles and edit text) */
 function PanelEditor({ panel, onClose, onChange }: { panel: Panel; onClose: () => void; onChange: (p: Panel) => void }) {
@@ -413,50 +460,3 @@ function PanelEditor({ panel, onClose, onChange }: { panel: Panel; onClose: () =
     </div>
   );
 }
-
-/* Draw bubble helper */
-const drawBubble = (ctx: CanvasRenderingContext2D, b: Bubble, scale = 1) => {
-    const dash = b.type === "pensée" ? [6, 4] : b.type === "chuchotement" ? [2, 3] : [];
-    const color = b.type === "cri" ? "#b00" : "#000";
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = "#fff";
-    ctx.strokeStyle = color;
-    ctx.lineWidth = (b.type === "cri" ? 4 : 2) * scale;
-    if (dash.length) ctx.setLineDash(dash);
-    roundRectPath(ctx, b.x, b.y, b.w, b.h, 12 * scale);
-    ctx.fill();
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#000";
-    const fontSize = Math.max(12, Math.min(18, b.w / 10)) * scale;
-    ctx.font = `${fontSize}px sans-serif`;
-    wrapText(ctx, b.text, b.x + 8 * scale, b.y + 22 * scale, b.w - 16 * scale, (fontSize + 4) * scale);
-    ctx.restore();
-};
-
-const roundRectPath = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-};
-
-const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
-    const words = text.split(" ");
-    let line = "";
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && n > 0) {
-        ctx.fillText(line, x, y);
-        line = words[n] + " ";
-        y += lineHeight;
-      } else {
-        line = testLine;
-      }
-    }
-    ctx.fillText(line, x, y);
-};

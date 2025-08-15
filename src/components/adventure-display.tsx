@@ -52,6 +52,8 @@ import { Separator } from "@/components/ui/separator";
 import { MapDisplay } from "./map-display";
 import ImageEditor from "@/components/ImageEditor";
 import { Input } from "./ui/input";
+import { CalendarDays, Clock, Drama } from "lucide-react";
+import { createNewPage as createNewComicPage, exportPageAsJpeg } from "./ComicPageEditor";
 
 
 interface AdventureDisplayProps {
@@ -392,10 +394,6 @@ export function AdventureDisplay({
 
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
-  
-  const handleAddPoiToMap = (poiId: string) => {
-      onAddPoiToMap(poiId);
-  }
   
   const PlayerStatusCard = () => {
     if (!adventureSettings.rpgMode) return null;
@@ -1002,44 +1000,38 @@ export function AdventureDisplay({
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
                         {messages.find(m=>m.imageUrl) ? (
-                            <Dialog>
-                                <div className="relative w-full aspect-square group">
-                                    <Image
-                                        src={messages.find(m=>m.imageUrl)!.imageUrl!}
-                                        alt="Generated Scene"
-                                        fill
-                                        style={{ objectFit: 'contain' }}
-                                        data-ai-hint="adventure scene visual"
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
-                                    />
-                                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="relative w-full aspect-square group">
+                                <Image
+                                    src={messages.find(m=>m.imageUrl)!.imageUrl!}
+                                    alt="Generated Scene"
+                                    fill
+                                    style={{ objectFit: 'contain' }}
+                                    data-ai-hint="adventure scene visual"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
+                                />
+                                <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Dialog>
                                         <DialogTrigger asChild>
                                             <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80">
                                                 <Expand className="h-4 w-4" />
                                             </Button>
                                         </DialogTrigger>
-                                        <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { setImageToEditUrl(messages.find(m => m.imageUrl)!.imageUrl!); setImageEditorOpen(true);}}>
-                                            <Edit3 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                        <DialogContent className="max-w-4xl h-[90vh] p-2">
+                                            <div className="relative w-full h-full">
+                                                <Image
+                                                    src={messages.find(m=>m.imageUrl)!.imageUrl!}
+                                                    alt="Generated Scene in Fullscreen"
+                                                    layout="fill"
+                                                    objectFit="contain"
+                                                />
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { setImageToEditUrl(messages.find(m => m.imageUrl)!.imageUrl!); setImageEditorOpen(true);}}>
+                                        <Edit3 className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                                <DialogContent className="max-w-4xl h-[90vh] p-2">
-                                    <DialogHeader>
-                                        <DialogTitle className="sr-only">Image de la Scène Agrandie</DialogTitle>
-                                        <DialogDescription className="sr-only">
-                                            Version agrandie de l'image de la scène générée par l'IA.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="relative w-full h-full">
-                                        <Image
-                                            src={messages.find(m=>m.imageUrl)!.imageUrl!}
-                                            alt="Generated Scene in Fullscreen"
-                                            layout="fill"
-                                            objectFit="contain"
-                                        />
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
+                            </div>
                         ) : (
                             <div className="text-center text-muted-foreground">
                                 <ImageIcon className="h-12 w-12 mx-auto mb-2" />
@@ -1112,36 +1104,24 @@ export function AdventureDisplay({
                             <Clapperboard className="h-5 w-5"/>
                             Brouillon de la BD
                         </CardTitle>
-                        <div className="flex items-center gap-1">
-                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                                        <Save className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={onDownloadComicDraft}>
-                                        <Download className="mr-2 h-4 w-4"/> Télécharger (.json)
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
-                                        <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la bibliothèque
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                                        <PlusCircle className="h-4 w-4"/>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={onAddComicPage}>Ajouter une page</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={onAddComicPanel}>Ajouter une case</DropdownMenuItem>
-                                    <DropdownMenuSeparator/>
-                                    <DropdownMenuItem onSelect={onRemoveLastComicPanel} className="text-destructive">Retirer dernière case</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <Save className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => {
+                                     const page = comicDraft[currentComicPageIndex];
+                                     if(page) exportPageAsJpeg(page, currentComicPageIndex, toast);
+                                }}>
+                                    <Download className="mr-2 h-4 w-4"/> Télécharger la planche (JPEG)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
+                                    <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la bibliothèque
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
                          <div className="flex items-center justify-center gap-2 mb-2">
@@ -1179,6 +1159,11 @@ export function AdventureDisplay({
                             </div>
                         </ScrollArea>
                     </CardContent>
+                    <CardFooter className="p-2 border-t flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>Page</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>Case</Button>
+                        <Button variant="destructive" size="icon" onClick={onRemoveLastComicPanel}><Trash2Icon className="h-4 w-4"/></Button>
+                    </CardFooter>
                 </Card>
 
 
