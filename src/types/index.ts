@@ -221,6 +221,7 @@ export interface AdventureSettings {
   rpgMode: boolean;
   relationsMode: boolean;
   strategyMode: boolean;
+  comicModeActive: boolean;
   playerName?: string;
   playerPortraitUrl?: string | null;
   playerDetails?: string;

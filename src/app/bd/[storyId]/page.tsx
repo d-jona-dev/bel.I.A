@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+// TODO: Charger et afficher la BD depuis le localStorage basé sur l'ID.
+
 export default function StoryComicEditorPage() {
 
   return (
@@ -14,13 +16,13 @@ export default function StoryComicEditorPage() {
                 <Link href="/bd"><ArrowLeft className="h-4 w-4"/></Link>
             </Button>
             <div>
-                <h1 className="text-2xl font-bold">Éditeur de BD</h1>
+                <h1 className="text-2xl font-bold">Lecteur de BD</h1>
                 <p className="text-muted-foreground">Cette section est en cours de développement.</p>
             </div>
         </div>
          <div className="text-center py-20 border-2 border-dashed rounded-lg">
             <h2 className="text-xl font-semibold">Bientôt disponible</h2>
-            <p className="text-muted-foreground mt-2">L'éditeur de bandes dessinées pour cette histoire sera bientôt disponible ici.</p>
+            <p className="text-muted-foreground mt-2">Le lecteur de bandes dessinées sera bientôt disponible ici.</p>
         </div>
     </div>
   );
