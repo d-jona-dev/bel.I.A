@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import ComicPageEditor from '@/components/ComicPageEditor';
 import type { ComicPage } from '@/types';
+import { useParams } from 'next/navigation';
 
 interface SavedComic {
     id: string;
@@ -16,17 +17,21 @@ interface SavedComic {
     createdAt: string;
 }
 
-export default function StoryComicEditorPage({ params }: { params: { storyId: string } }) {
+export default function StoryComicEditorPage() {
   const { toast } = useToast();
+  const params = useParams();
+  const storyId = params.storyId as string;
+
   const [comic, setComic] = useState<SavedComic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!storyId) return;
     try {
       const storedComics = localStorage.getItem('savedComics_v1');
       if (storedComics) {
         const allComics: SavedComic[] = JSON.parse(storedComics);
-        const foundComic = allComics.find(c => c.id === params.storyId);
+        const foundComic = allComics.find(c => c.id === storyId);
         if (foundComic) {
           setComic(foundComic);
         } else {
@@ -38,7 +43,7 @@ export default function StoryComicEditorPage({ params }: { params: { storyId: st
       toast({ title: "Erreur de chargement", variant: "destructive" });
     }
     setIsLoading(false);
-  }, [params.storyId, toast]);
+  }, [storyId, toast]);
 
   const handlePagesChange = (updatedPages: ComicPage[]) => {
     if (!comic) return;
