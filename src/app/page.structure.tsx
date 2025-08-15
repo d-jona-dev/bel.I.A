@@ -67,7 +67,6 @@ interface PageStructureProps {
   handleToggleRpgMode: () => void;
   handleToggleRelationsMode: () => void;
   handleToggleStrategyMode: () => void;
-  handleToggleComicMode: () => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -159,7 +158,6 @@ export function PageStructure({
   handleToggleRpgMode,
   handleToggleRelationsMode,
   handleToggleStrategyMode,
-  handleToggleComicMode,
   handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters,
@@ -517,12 +515,6 @@ export function PageStructure({
                                     <Label className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</Label>
                                 </div>
                                 <Switch checked={adventureSettings.strategyMode} onCheckedChange={handleToggleStrategyMode} />
-                            </div>
-                            <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <Label className="flex items-center gap-2 text-sm"><Clapperboard className="h-4 w-4"/> Création de BD</Label>
-                                </div>
-                                <Switch checked={adventureSettings.comicModeActive} onCheckedChange={handleToggleComicMode} />
                             </div>
                         </CardContent>
                     </Card>

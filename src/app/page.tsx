@@ -211,7 +211,6 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       rpgMode: true,
       relationsMode: true,
       strategyMode: true,
-      comicModeActive: false, // Default to false
       playerName: "Héros",
       playerClass: "Guerrier",
       playerLevel: 1,
@@ -2207,7 +2206,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerSkills: [],
             familiars: [],
         };
-        setAdventureSettings(newLiveAdventureSettings);
+        setAdventureSettings(newLiveSettings);
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
             currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
@@ -2322,14 +2321,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   const handleToggleRelationsMode = () => {
       setAdventureSettings(prev => ({ ...prev, relationsMode: !prev.relationsMode }));
   };
-
-  const handleToggleComicMode = () => {
-    const newMode = !adventureSettings.comicModeActive;
-    setAdventureSettings(prev => ({...prev, comicModeActive: newMode }));
-    if (newMode && comicDraft.length === 0) {
-        setComicDraft([createNewComicPage()]);
-    }
-  }
 
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
@@ -2608,7 +2599,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? ((stagedAdventureSettings.playerLevel - 1) * POINTS_PER_LEVEL_GAIN_FORM)
+                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)
                         : 0;
     const totalDistributable = creationPoints + levelPoints;
 
@@ -2620,7 +2611,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       rpgMode: stagedAdventureSettings.rpgMode,
       relationsMode: stagedAdventureSettings.relationsMode,
       strategyMode: stagedAdventureSettings.strategyMode,
-      comicModeActive: stagedAdventureSettings.comicModeActive,
       mapPointsOfInterest: stagedAdventureSettings.mapPointsOfInterest,
       playerName: stagedAdventureSettings.playerName,
       playerClass: stagedAdventureSettings.playerClass,
@@ -3085,26 +3075,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     });
   };
 
-    const handleAddPoiToMap = React.useCallback((poiId: string) => {
-        setAdventureSettings(prev => {
-            const pois = prev.mapPointsOfInterest || [];
-            const poiExists = pois.some(p => p.id === poiId && p.position);
-            if (poiExists) {
-                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-                return prev;
+  const handleAddPoiToMap = React.useCallback((poiId: string) => {
+    setAdventureSettings(prev => {
+        const pois = prev.mapPointsOfInterest || [];
+        const poiExists = pois.some(p => p.id === poiId && p.position);
+        if (poiExists) {
+            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            return prev;
+        }
+
+        const newPois = pois.map(p => {
+            if (p.id === poiId) {
+                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
             }
-
-            const newPois = pois.map(p => {
-                if (p.id === poiId) {
-                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                    return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
-                }
-                return p;
-            });
-
-            return { ...prev, mapPointsOfInterest: newPois };
+            return p;
         });
-    }, [toast]);
+
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+  }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3123,7 +3113,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       handleToggleRpgMode={handleToggleRpgMode}
       handleToggleRelationsMode={handleToggleRelationsMode}
       handleToggleStrategyMode={handleToggleStrategyMode}
-      handleToggleComicMode={handleToggleComicMode}
       handleNarrativeUpdate={handleNarrativeUpdate}
       handleCharacterUpdate={handleCharacterUpdate}
       handleNewCharacters={handleNewCharacters}
