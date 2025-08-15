@@ -7,7 +7,19 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SavedComic {
     id: string;
@@ -20,18 +32,42 @@ interface SavedComic {
 export default function ComicLibraryPage() {
   const [savedComics, setSavedComics] = React.useState<SavedComic[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [comicToDelete, setComicToDelete] = React.useState<SavedComic | null>(null);
+  const { toast } = useToast();
 
-  React.useEffect(() => {
+  const loadComics = React.useCallback(() => {
+    setIsLoading(true);
     try {
         const storedComics = localStorage.getItem('savedComics_v1');
         if (storedComics) {
             setSavedComics(JSON.parse(storedComics));
+        } else {
+            setSavedComics([]);
         }
     } catch (e) {
         console.error("Failed to load comics from storage", e);
+        toast({title: "Erreur de chargement", variant: "destructive"})
     }
     setIsLoading(false);
-  }, []);
+  }, [toast]);
+
+  React.useEffect(() => {
+    loadComics();
+  }, [loadComics]);
+
+  const handleDeleteComic = () => {
+    if (!comicToDelete) return;
+    try {
+        const updatedComics = savedComics.filter(c => c.id !== comicToDelete.id);
+        localStorage.setItem('savedComics_v1', JSON.stringify(updatedComics));
+        setSavedComics(updatedComics);
+        toast({ title: "BD Supprimée", description: `"${comicToDelete.title}" a été retiré de votre bibliothèque.`});
+    } catch (e) {
+        console.error("Failed to delete comic", e);
+        toast({ title: "Erreur", description: "Impossible de supprimer la BD.", variant: "destructive"});
+    }
+    setComicToDelete(null);
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -51,7 +87,7 @@ export default function ComicLibraryPage() {
         <ScrollArea className="h-[calc(100vh-220px)]">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pr-4">
                 {savedComics.map(comic => (
-                    <Card key={comic.id} className="overflow-hidden">
+                    <Card key={comic.id} className="overflow-hidden flex flex-col">
                         <CardHeader className="p-0">
                             <div className="relative aspect-[2/3] w-full bg-muted">
                                 {comic.coverUrl ? (
@@ -61,15 +97,36 @@ export default function ComicLibraryPage() {
                                 )}
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4">
+                        <CardContent className="p-4 flex-1">
                             <CardTitle className="text-lg truncate">{comic.title}</CardTitle>
                         </CardContent>
-                        <CardFooter className="p-4 pt-0">
-                             <Button asChild className="w-full">
+                        <CardFooter className="p-4 pt-0 flex gap-2">
+                             <Button asChild className="flex-1">
                                 <Link href={`/bd/${comic.id}`}>
                                     <BookOpen className="mr-2 h-4 w-4"/> Lire
                                 </Link>
                             </Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" onClick={() => setComicToDelete(comic)}>
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                {comicToDelete?.id === comic.id && (
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Supprimer "{comicToDelete.title}" ?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Cette action est irréversible et supprimera la bande dessinée de votre bibliothèque.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setComicToDelete(null)}>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteComic}>Supprimer</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                )}
+                            </AlertDialog>
                         </CardFooter>
                     </Card>
                 ))}

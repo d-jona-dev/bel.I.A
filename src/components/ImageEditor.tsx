@@ -31,7 +31,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resol
     img.src = src;
 });
 
-const compressImage = async (dataUrl: string, quality = 0.85): Promise<string> => {
+export const compressImage = async (dataUrl: string, quality = 0.85): Promise<string> => {
     const img = await loadImage(dataUrl);
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
@@ -179,14 +179,22 @@ export default function ImageEditor({
     const handleSave = async () => {
         if (!canvasRef.current) return;
         
-        const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
-
-        onSave(compressedUrl);
-        toast({
-            title: "Image Sauvegardée",
-            description: "Votre image modifiée a été ajoutée à la BD."
-        })
-        onClose();
+        try {
+            const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
+            onSave(compressedUrl);
+            toast({
+                title: "Image Sauvegardée",
+                description: "Votre image modifiée a été ajoutée à la BD."
+            })
+            onClose();
+        } catch(error) {
+            toast({
+                title: "Erreur de compression",
+                description: "Impossible de compresser l'image.",
+                variant: "destructive"
+            });
+            console.error(error);
+        }
     };
 
 

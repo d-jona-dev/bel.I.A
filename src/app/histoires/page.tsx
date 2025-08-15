@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush } from 'lucide-react';
 import Link from 'next/link';
 import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -116,15 +116,19 @@ export default function HistoiresPage() {
   const createFormRef = React.useRef<AdventureFormHandle>(null);
 
 
-  React.useEffect(() => {
+  const loadData = React.useCallback(() => {
     try {
       const storiesFromStorage = localStorage.getItem('adventureStories');
       if (storiesFromStorage) {
         setSavedStories(JSON.parse(storiesFromStorage));
+      } else {
+        setSavedStories([]);
       }
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
         setSavedCharacters(JSON.parse(charactersFromStorage));
+      } else {
+        setSavedCharacters([]);
       }
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
@@ -135,12 +139,45 @@ export default function HistoiresPage() {
       });
     }
     setIsLoading(false);
-  }, [toast]);
+  },[toast]);
+
+  React.useEffect(() => {
+    loadData();
+  }, [loadData]);
+
 
   const saveStories = (stories: SavedStory[]) => {
     setSavedStories(stories);
     localStorage.setItem('adventureStories', JSON.stringify(stories));
   }
+
+  const handleClearLocalStorage = () => {
+    try {
+      const keysToClear = [
+        'adventureStories',
+        'globalCharacters',
+        'savedComics_v1',
+        'playerAvatars_v2',
+        'currentAvatarId',
+        'globalFamiliars',
+        'customImageStyles_v1',
+        // Ajoutez d'autres clés si nécessaire
+      ];
+      keysToClear.forEach(key => localStorage.removeItem(key));
+      loadData(); // Re-load data which will now be empty
+      toast({
+        title: "Données Locales Effacées",
+        description: "Toutes les sauvegardes d'aventures, de personnages et de BD ont été supprimées.",
+      });
+    } catch (error) {
+      console.error("Failed to clear localStorage:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'effacer les données locales.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const handleLaunchStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
@@ -357,6 +394,23 @@ export default function HistoiresPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Mes Histoires & Personnages</h1>
         <div className="flex gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm"><Brush className="mr-2 h-4 w-4"/> Nettoyer</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Nettoyer toutes les données locales ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible. Elle supprimera toutes les histoires, personnages et bandes dessinées sauvegardés dans ce navigateur. Êtes-vous sûr de vouloir continuer ?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearLocalStorage}>Oui, tout nettoyer</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <input type="file" ref={importFileRef} onChange={handleImportStory} accept=".json" className="hidden" />
             <Button variant="outline" onClick={() => importFileRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" /> Importer

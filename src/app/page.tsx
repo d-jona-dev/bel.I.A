@@ -18,7 +18,7 @@ import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillOutput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
-import ImageEditor from "@/components/ImageEditor";
+import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
 
 
@@ -2952,19 +2952,29 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             return;
         }
 
-        const newComic = {
-            id: uid(),
-            title: comicTitle,
-            coverUrl: comicCoverUrl,
-            comicDraft: comicDraft,
-            createdAt: new Date().toISOString(),
-        };
-
         try {
+            // Compress images in the draft before saving
+            const compressedDraft: ComicPage[] = await Promise.all(
+                comicDraft.map(async (page) => ({
+                    ...page,
+                    panels: await Promise.all(page.panels.map(async (panel) => ({
+                        ...panel,
+                        imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
+                    }))),
+                }))
+            );
+
+            const newComic = {
+                id: uid(),
+                title: comicTitle,
+                coverUrl: comicCoverUrl,
+                comicDraft: compressedDraft,
+                createdAt: new Date().toISOString(),
+            };
+
             const existingComicsStr = localStorage.getItem('savedComics_v1');
             const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-            const updatedComics = [...existingComics, newComic];
-            localStorage.setItem('savedComics_v1', JSON.stringify(updatedComics));
+            localStorage.setItem('savedComics_v1', JSON.stringify([...existingComics, newComic]));
             
             toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
             setIsSaveComicDialogOpen(false);
@@ -2972,7 +2982,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             setComicCoverUrl(null);
         } catch (e) {
             console.error("Failed to save comic to library:", e);
-            toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein.", variant: "destructive" });
+            toast({
+                title: "Erreur de Sauvegarde",
+                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
+                variant: "destructive"
+            });
         }
     };
 
