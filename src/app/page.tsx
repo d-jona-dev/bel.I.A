@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -3004,6 +3004,34 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     reader.readAsDataURL(file);
   };
     
+  const handleAddToComicPage = (dataUrl: string) => {
+    setComicDraft(prev => {
+        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
+        let pageUpdated = false;
+
+        for (let i = currentComicPageIndex; i < draft.length; i++) {
+            const page = draft[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
+            if (firstEmptyPanelIndex !== -1) {
+                const newPanels = [...page.panels];
+                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
+                draft[i] = { ...page, panels: newPanels };
+                pageUpdated = true;
+                break;
+            }
+        }
+        
+        if (!pageUpdated) {
+            const newPage = createNewComicPage();
+            newPage.panels[0].imageUrl = dataUrl;
+            draft.push(newPage);
+            setCurrentComicPageIndex(draft.length - 1);
+        }
+        
+        return draft;
+    });
+  };
+
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3108,6 +3136,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       onUploadToComicPanel={handleUploadToComicPanel}
       currentComicPageIndex={currentComicPageIndex}
       onComicPageChange={setCurrentComicPageIndex}
+      onAddToComicPage={handleAddToComicPage}
     />
   );
 }

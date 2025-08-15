@@ -31,7 +31,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resol
     img.src = src;
 });
 
-const compressImage = async (dataUrl: string, quality = 0.8): Promise<string> => {
+const compressImage = async (dataUrl: string, quality = 0.85): Promise<string> => {
     const img = await loadImage(dataUrl);
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
@@ -43,7 +43,15 @@ const compressImage = async (dataUrl: string, quality = 0.8): Promise<string> =>
 };
 
 
-export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
+export default function ImageEditor({
+    imageUrl,
+    onSave,
+    onClose,
+ }: {
+    imageUrl: string;
+    onSave: (dataUrl: string) => void;
+    onClose: () => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [selectedBubbleId, setSelectedBubbleId] = useState<string | null>(null);
@@ -78,13 +86,13 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = "black";
-      ctx.font = "16px Arial";
+      ctx.font = "32px 'Comic Sans MS', sans-serif"; // Using a more comic-like font
       ctx.textBaseline = "top";
       const words = bubble.text.split(' ');
       let line = '';
-      let textY = bubble.y + 10;
-      const lineHeight = 20;
-      const padding = 10;
+      let textY = bubble.y + 15;
+      const lineHeight = 35;
+      const padding = 15;
       for(let n = 0; n < words.length; n++) {
         const testLine = line + words[n] + ' ';
         const metrics = ctx.measureText(testLine);
@@ -113,8 +121,8 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
       id: `bubble-${Date.now()}`,
       x: 50,
       y: 50,
-      width: 200,
-      height: 80,
+      width: 300,
+      height: 120,
       text: "Nouveau texte...",
       type: currentBubbleType,
     };
@@ -168,27 +176,25 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
     setSelectedBubbleId(null);
   };
   
-    const exportImage = async () => {
+    const handleSave = async () => {
         if (!canvasRef.current) return;
         
         const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
 
-        const link = document.createElement("a");
-        link.download = "panneau_bd.jpg";
-        link.href = compressedUrl;
-        link.click();
+        onSave(compressedUrl);
         toast({
-            title: "Image Exportée",
-            description: "Votre panneau compressé a été sauvegardé."
+            title: "Image Sauvegardée",
+            description: "Votre image modifiée a été ajoutée à la BD."
         })
+        onClose();
     };
 
 
   const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
 
   return (
-    <div className="flex flex-col gap-4 items-center p-4 bg-muted/50 rounded-lg">
-      <div className="w-full max-w-3xl overflow-auto border rounded-md">
+    <div className="flex flex-col gap-4 items-center p-4 bg-muted/50 rounded-lg h-full">
+      <div className="flex-1 w-full overflow-auto border rounded-md">
         <canvas
             ref={canvasRef}
             onMouseDown={handleMouseDown}
@@ -202,58 +208,64 @@ export default function ImageEditor({ imageUrl }: { imageUrl: string; }) {
             }}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Style de bulle :</span>
-             <Select value={currentBubbleType} onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}>
-                <SelectTrigger className="w-[180px] bg-background">
-                    <SelectValue placeholder="Style" />
-                </SelectTrigger>
-                <SelectContent>
-                    {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-        <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
-        <Button onClick={exportImage} variant="secondary" size="sm">💾 Exporter en JPG</Button>
-      </div>
-
-      {selectedBubble && (
-        <div className="w-full p-3 border rounded-md bg-background space-y-3">
-            <h3 className="font-semibold">Éditer la bulle sélectionnée ({bubbleTypes[selectedBubble.type].label})</h3>
-            <Textarea
-              value={selectedBubble.text}
-              onChange={(e) => updateText(e.target.value)}
-              placeholder="Écrivez votre dialogue ici..."
-              rows={3}
-            />
-             <div className="flex items-center gap-2">
-                <label htmlFor="bubble-type-editor">Style:</label>
-                <Select
-                    value={selectedBubble.type}
-                    onValueChange={(value) => {
-                        if (selectedBubbleId) {
-                             setBubbles(bubbles.map(b => b.id === selectedBubbleId ? {...b, type: value as BubbleType} : b));
-                        }
-                    }}
-                >
-                    <SelectTrigger id="bubble-type-editor" className="flex-1">
-                        <SelectValue placeholder="Style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                            <SelectItem key={key} value={key}>{label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+      <div className="flex flex-col md:flex-row w-full gap-4">
+        <div className="flex-1 space-y-3">
+             <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Style de bulle :</span>
+                    <Select value={currentBubbleType} onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}>
+                        <SelectTrigger className="w-[180px] bg-background">
+                            <SelectValue placeholder="Style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.entries(bubbleTypes).map(([key, { label }]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
             </div>
-            <Button onClick={deleteBubble} variant="destructive" size="sm">
-                🗑️ Supprimer la bulle
-            </Button>
+            {selectedBubble && (
+                <div className="w-full p-3 border rounded-md bg-background space-y-3">
+                    <h3 className="font-semibold">Éditer la bulle sélectionnée ({bubbleTypes[selectedBubble.type].label})</h3>
+                    <Textarea
+                    value={selectedBubble.text}
+                    onChange={(e) => updateText(e.target.value)}
+                    placeholder="Écrivez votre dialogue ici..."
+                    rows={3}
+                    />
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="bubble-type-editor">Style:</label>
+                        <Select
+                            value={selectedBubble.type}
+                            onValueChange={(value) => {
+                                if (selectedBubbleId) {
+                                    setBubbles(bubbles.map(b => b.id === selectedBubbleId ? {...b, type: value as BubbleType} : b));
+                                }
+                            }}
+                        >
+                            <SelectTrigger id="bubble-type-editor" className="flex-1">
+                                <SelectValue placeholder="Style" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.entries(bubbleTypes).map(([key, { label }]) => (
+                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <Button onClick={deleteBubble} variant="destructive" size="sm">
+                        🗑️ Supprimer la bulle
+                    </Button>
+                </div>
+            )}
         </div>
-      )}
+        <div className="flex flex-col gap-2 md:w-40">
+             <Button onClick={handleSave} variant="default" size="lg">💾 Sauvegarder dans la BD</Button>
+             <Button onClick={onClose} variant="outline" size="lg">Fermer</Button>
+        </div>
+      </div>
     </div>
   );
 }

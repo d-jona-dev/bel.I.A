@@ -95,6 +95,7 @@ interface AdventureDisplayProps {
     onUploadToComicPanel: (pageIndex: number, panelIndex: number, file: File) => void;
     currentComicPageIndex: number;
     onComicPageChange: (index: number) => void;
+    onAddToComicPage: (dataUrl: string) => void; // New prop
 }
 
 interface CustomImageStyle {
@@ -165,6 +166,7 @@ export function AdventureDisplay({
     onUploadToComicPanel,
     currentComicPageIndex,
     onComicPageChange,
+    onAddToComicPage,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -975,11 +977,11 @@ export function AdventureDisplay({
                         <DialogHeader>
                             <DialogTitle>Éditeur d'Image</DialogTitle>
                             <DialogDescription>
-                                Ajoutez des bulles de dialogue à votre image et exportez le résultat.
+                                Ajoutez des bulles de dialogue à votre image et ajoutez-la à la BD.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
-                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} />}
+                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} onClose={() => setImageEditorOpen(false)} onSave={handleAddToComicPage} />}
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -1002,6 +1004,9 @@ export function AdventureDisplay({
                                                 <Expand className="h-4 w-4" />
                                             </Button>
                                         </DialogTrigger>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { setImageToEditUrl(messages.find(m => m.imageUrl)!.imageUrl!); setImageEditorOpen(true);}}>
+                                            <Edit3 className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
                                 <DialogContent className="max-w-4xl h-[90vh] p-2">
