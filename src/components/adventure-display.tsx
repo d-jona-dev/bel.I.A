@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings, ComicPage } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings, ComicPage, Panel, Bubble } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,7 +87,6 @@ interface AdventureDisplayProps {
     onMapImageUrlChange: (url: string) => void;
     onAddPoiToMap: (poiId: string) => void;
     comicDraft: ComicPage[];
-    onSaveComicDraft: () => void;
     onDownloadComicDraft: () => void;
     onAddComicPage: () => void;
     onAddComicPanel: () => void;
@@ -96,6 +95,14 @@ interface AdventureDisplayProps {
     currentComicPageIndex: number;
     onComicPageChange: (index: number) => void;
     onAddToComicPage: (dataUrl: string) => void;
+    isSaveComicDialogOpen: boolean;
+    setIsSaveComicDialogOpen: (isOpen: boolean) => void;
+    comicTitle: string;
+    setComicTitle: (title: string) => void;
+    comicCoverUrl: string | null;
+    isGeneratingCover: boolean;
+    onGenerateCover: () => void;
+    onSaveToLibrary: () => void;
 }
 
 interface CustomImageStyle {
@@ -158,7 +165,6 @@ export function AdventureDisplay({
     onMapImageUrlChange,
     onAddPoiToMap,
     comicDraft,
-    onSaveComicDraft,
     onDownloadComicDraft,
     onAddComicPage,
     onAddComicPanel,
@@ -167,6 +173,14 @@ export function AdventureDisplay({
     currentComicPageIndex,
     onComicPageChange,
     onAddToComicPage,
+    isSaveComicDialogOpen,
+    setIsSaveComicDialogOpen,
+    comicTitle,
+    setComicTitle,
+    comicCoverUrl,
+    isGeneratingCover,
+    onGenerateCover,
+    onSaveToLibrary,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -1109,7 +1123,7 @@ export function AdventureDisplay({
                                     <DropdownMenuItem onSelect={onDownloadComicDraft}>
                                         <Download className="mr-2 h-4 w-4"/> Télécharger (.json)
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={onSaveComicDraft}>
+                                    <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
                                         <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la bibliothèque
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -1195,6 +1209,36 @@ export function AdventureDisplay({
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>Annuler</Button>
                             <Button onClick={handleSaveCustomStyle}>Enregistrer et Appliquer</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                
+                <Dialog open={isSaveComicDialogOpen} onOpenChange={setIsSaveComicDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Sauvegarder dans la Bibliothèque</DialogTitle>
+                            <DialogDescription>Donnez un titre à votre BD. Vous pouvez aussi générer une couverture.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="comic-title">Titre de la BD</Label>
+                                <Input id="comic-title" value={comicTitle} onChange={(e) => setComicTitle(e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Couverture</Label>
+                                <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
+                                    {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
+                                     comicCoverUrl ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" layout="fill" objectFit="cover" className="rounded-md"/>
+                                     : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
+                                </div>
+                                <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
+                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? "Génération..." : "Générer une couverture"}
+                                </Button>
+                            </div>
+                        </div>
+                         <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>Annuler</Button>
+                            <Button onClick={onSaveToLibrary}>Sauvegarder</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

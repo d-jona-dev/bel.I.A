@@ -2958,8 +2958,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
 
-  // Comic Draft Handlers
-    const handleDownloadComicDraft = () => {
+  const handleDownloadComicDraft = () => {
         if (comicDraft.length === 0) {
             toast({ title: "Brouillon Vide", description: "Aucune planche à télécharger.", variant: "default" });
             return;
@@ -2977,31 +2976,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         toast({ title: "Brouillon de BD Téléchargé", description: "Le fichier JSON a été sauvegardé." });
     };
 
-    const handleGenerateCover = async () => {
-        setIsGeneratingCover(true);
-        toast({ title: "Génération de la couverture..."});
-
-        const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-        const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-        const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
-
-        try {
-            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-            if (result.imageUrl) {
-                setComicCoverUrl(result.imageUrl);
-                toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
-        } finally {
-            setIsGeneratingCover(false);
-        }
-    };
-
-
-    const handleSaveComicToLibrary = () => {
+    const handleSaveToLibrary = () => {
         if (!comicTitle.trim()) {
             toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
             return;
@@ -3098,6 +3073,30 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return draft;
     });
   };
+
+  const handleGenerateCover = async () => {
+    setIsGeneratingCover(true);
+    toast({ title: "Génération de la couverture..."});
+
+    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
+
+    try {
+        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+        if (result.imageUrl) {
+            setComicCoverUrl(result.imageUrl);
+            toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+    } finally {
+        setIsGeneratingCover(false);
+    }
+  };
+
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3211,7 +3210,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
-      onSaveToLibrary={handleSaveComicToLibrary}
+      onSaveToLibrary={handleSaveToLibrary}
     />
   );
 }
+

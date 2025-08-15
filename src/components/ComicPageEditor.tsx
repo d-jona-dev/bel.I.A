@@ -103,13 +103,12 @@ export default function ComicPageEditor({
     return c;
   };
 
-  const exportPage = async (scale = 2) => {
-    toast({ title: "Exportation en cours...", description: "Génération de votre planche en haute résolution." });
+  const exportPageAs = async (format: 'png' | 'jpeg', scale = 2) => {
+    toast({ title: "Exportation en cours...", description: `Génération de votre planche en ${format.toUpperCase()}.` });
     
-    const gutterWidth = 10; // La largeur de la bande blanche entre les panneaux
+    const gutterWidth = 10;
     const rows = Math.ceil(currentPage.panels.length / currentPage.gridCols);
     
-    // La largeur/hauteur totale disponible pour les panneaux (sans les gouttières)
     const totalGutterWidth = (currentPage.gridCols - 1) * gutterWidth;
     const totalGutterHeight = (rows - 1) * gutterWidth;
 
@@ -121,7 +120,7 @@ export default function ComicPageEditor({
     outCanvas.height = pageHeight * scale;
     const outCtx = outCanvas.getContext("2d")!;
     outCtx.scale(scale, scale);
-    outCtx.fillStyle = "#fff"; // Le fond est blanc, ce qui créera les gouttières
+    outCtx.fillStyle = "#fff";
     outCtx.fillRect(0, 0, pageWidth, pageHeight);
 
     for (let i = 0; i < currentPage.panels.length; i++) {
@@ -129,7 +128,6 @@ export default function ComicPageEditor({
       const r = Math.floor(i / currentPage.gridCols);
       const c = i % currentPage.gridCols;
       
-      // Calculer la position avec les gouttières
       const x = c * (panelW + gutterWidth);
       const y = r * (panelH + gutterWidth);
       
@@ -137,9 +135,8 @@ export default function ComicPageEditor({
         const panelCanvas = await renderPanelToCanvas(panel, panelW, panelH);
         outCtx.drawImage(panelCanvas, x, y, panelW, panelH);
         
-        // La bordure noire autour de chaque panneau
         outCtx.strokeStyle = "#222";
-        outCtx.lineWidth = 2; // Une bordure de 2px
+        outCtx.lineWidth = 2;
         outCtx.strokeRect(x, y, panelW, panelH);
         
       } catch (e) {
@@ -151,11 +148,12 @@ export default function ComicPageEditor({
       }
     }
 
+    const mimeType = `image/${format}`;
     const link = document.createElement("a");
-    link.download = `planche_bd_${currentPageIndex + 1}.png`;
-    link.href = outCanvas.toDataURL("image/png");
+    link.download = `planche_bd_${currentPageIndex + 1}.${format}`;
+    link.href = outCanvas.toDataURL(mimeType, format === 'jpeg' ? 0.9 : undefined);
     link.click();
-    toast({ title: "Exportation terminée", description: `La planche ${currentPageIndex + 1} a été téléchargée.` });
+    toast({ title: "Exportation terminée", description: `La planche ${currentPageIndex + 1} a été téléchargée en ${format.toUpperCase()}.` });
   };
 
 
@@ -214,8 +212,8 @@ export default function ComicPageEditor({
            <Button onClick={() => onPagesChange([...initialPages, createNewPage(initialPages[initialPages.length-1]?.gridCols || 2)])}>
             <BookPlus className="mr-2 h-4 w-4" /> Ajouter planche vierge
           </Button>
-          <Button onClick={() => exportPage(2)} variant="secondary">
-            <Download className="mr-2 h-4 w-4" /> Exporter Planche (PNG)
+          <Button onClick={() => exportPageAs('jpeg')} variant="secondary">
+            <Download className="mr-2 h-4 w-4" /> Exporter Planche (JPEG)
           </Button>
         </CardContent>
       </Card>
