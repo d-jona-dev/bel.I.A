@@ -1111,10 +1111,7 @@ export function AdventureDisplay({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => {
-                                     const page = comicDraft[currentComicPageIndex];
-                                     if(page) exportPageAsJpeg(page, currentComicPageIndex, toast);
-                                }}>
+                                <DropdownMenuItem onSelect={onDownloadComicDraft}>
                                     <Download className="mr-2 h-4 w-4"/> Télécharger la planche (JPEG)
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>

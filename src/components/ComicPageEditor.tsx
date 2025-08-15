@@ -17,14 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { Bubble, Panel } from "@/types";
-
-// This type is now defined locally as it's only used here.
-export interface ComicPage {
-    id: string;
-    panels: Panel[];
-    gridCols: number;
-};
+import type { Bubble, Panel, ComicPage } from '@/types';
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);

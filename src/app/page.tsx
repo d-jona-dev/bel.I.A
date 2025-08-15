@@ -2572,27 +2572,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     });
   }, []);
   
-  const handleAddPoiToMap = React.useCallback((poiId: string) => {
-    setAdventureSettings(prev => {
-        const pois = prev.mapPointsOfInterest || [];
-        const poiExists = pois.some(p => p.id === poiId && p.position);
-        if (poiExists) {
-            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-            return prev;
-        }
-
-        const newPois = pois.map(p => {
-            if (p.id === poiId) {
-                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
-            }
-            return p;
-        });
-
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [toast]);
-
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
     setStagedAdventureSettings(prevStaged => {
         const newPoi: MapPointOfInterest = {
@@ -2990,6 +2969,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             setComicTitle("");
             setComicCoverUrl(null);
         } catch (e) {
+            console.error("Failed to save comic to library:", e);
             toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder dans la bibliothèque.", variant: "destructive" });
         }
     };
@@ -3087,6 +3067,27 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return draft;
     });
   };
+
+  const handleAddPoiToMap = React.useCallback((poiId: string) => {
+    setAdventureSettings(prev => {
+        const pois = prev.mapPointsOfInterest || [];
+        const poiExists = pois.some(p => p.id === poiId && p.position);
+        if (poiExists) {
+            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            return prev;
+        }
+
+        const newPois = pois.map(p => {
+            if (p.id === poiId) {
+                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+            }
+            return p;
+        });
+
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+  }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3200,4 +3201,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   );
 }
 
-    
