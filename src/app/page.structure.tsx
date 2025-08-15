@@ -50,6 +50,7 @@ import { PoiSidebar } from '@/components/poi-sidebar';
 import { FamiliarSidebar } from '@/components/familiar-sidebar';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog } from '../components/ui/dialog';
 
 
 interface PageStructureProps {
@@ -66,6 +67,7 @@ interface PageStructureProps {
   handleToggleRpgMode: () => void;
   handleToggleRelationsMode: () => void;
   handleToggleStrategyMode: () => void;
+  handleToggleComicMode: () => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
@@ -125,7 +127,6 @@ interface PageStructureProps {
   onAiConfigChange: (newConfig: AiConfig) => void;
   onAddPoiToMap: (poiId: string) => void;
   comicDraft: ComicPage[];
-  onSaveComicDraft: () => void;
   onDownloadComicDraft: () => void;
   onAddComicPage: () => void;
   onAddComicPanel: () => void;
@@ -134,6 +135,14 @@ interface PageStructureProps {
   currentComicPageIndex: number;
   onComicPageChange: (index: number) => void;
   onAddToComicPage: (dataUrl: string) => void;
+  isSaveComicDialogOpen: boolean;
+  setIsSaveComicDialogOpen: (isOpen: boolean) => void;
+  comicTitle: string;
+  setComicTitle: (title: string) => void;
+  comicCoverUrl: string | null;
+  isGeneratingCover: boolean;
+  onGenerateCover: () => void;
+  onSaveToLibrary: () => void;
 }
 
 export function PageStructure({
@@ -150,6 +159,7 @@ export function PageStructure({
   handleToggleRpgMode,
   handleToggleRelationsMode,
   handleToggleStrategyMode,
+  handleToggleComicMode,
   handleNarrativeUpdate,
   handleCharacterUpdate,
   handleNewCharacters,
@@ -210,7 +220,6 @@ export function PageStructure({
   onAiConfigChange,
   onAddPoiToMap,
   comicDraft,
-  onSaveComicDraft,
   onDownloadComicDraft,
   onAddComicPage,
   onAddComicPanel,
@@ -219,6 +228,14 @@ export function PageStructure({
   currentComicPageIndex,
   onComicPageChange,
   onAddToComicPage,
+  isSaveComicDialogOpen,
+  setIsSaveComicDialogOpen,
+  comicTitle,
+  setComicTitle,
+  comicCoverUrl,
+  isGeneratingCover,
+  onGenerateCover,
+  onSaveToLibrary,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -450,7 +467,6 @@ export function PageStructure({
                 onMapImageUrlChange={onMapImageUrlChange}
                 onAddPoiToMap={onAddPoiToMap}
                 comicDraft={comicDraft}
-                onSaveComicDraft={onSaveComicDraft}
                 onDownloadComicDraft={onDownloadComicDraft}
                 onAddComicPage={onAddComicPage}
                 onAddComicPanel={onAddComicPanel}
@@ -459,6 +475,14 @@ export function PageStructure({
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={onComicPageChange}
                 onAddToComicPage={onAddToComicPage}
+                isSaveComicDialogOpen={isSaveComicDialogOpen}
+                setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
+                comicTitle={comicTitle}
+                setComicTitle={setComicTitle}
+                comicCoverUrl={comicCoverUrl}
+                isGeneratingCover={isGeneratingCover}
+                onGenerateCover={onGenerateCover}
+                onSaveToLibrary={onSaveToLibrary}
              />
         </main>
       </SidebarInset>
@@ -493,6 +517,12 @@ export function PageStructure({
                                     <Label className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</Label>
                                 </div>
                                 <Switch checked={adventureSettings.strategyMode} onCheckedChange={handleToggleStrategyMode} />
+                            </div>
+                            <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <Label className="flex items-center gap-2 text-sm"><Clapperboard className="h-4 w-4"/> Création de BD</Label>
+                                </div>
+                                <Switch checked={adventureSettings.comicModeActive} onCheckedChange={handleToggleComicMode} />
                             </div>
                         </CardContent>
                     </Card>

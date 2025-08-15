@@ -1,6 +1,7 @@
 
-// This layout can simply pass children through, as the main layout is handled by `src/app/bd/layout.tsx`
-export default function StoryBdLayout({
+// src/app/bd/[storyId]/layout.tsx
+// This layout passes children through, as the page itself handles its full structure.
+export default function StoryComicEditorLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
