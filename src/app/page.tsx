@@ -2946,12 +2946,12 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }
     };
 
-    const handleSaveToLibrary = () => {
+    const handleSaveToLibrary = async () => {
         if (!comicTitle.trim()) {
             toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
             return;
         }
-        
+
         const newComic = {
             id: uid(),
             title: comicTitle,
@@ -2963,16 +2963,19 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         try {
             const existingComicsStr = localStorage.getItem('savedComics_v1');
             const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-            localStorage.setItem('savedComics_v1', JSON.stringify([...existingComics, newComic]));
+            const updatedComics = [...existingComics, newComic];
+            localStorage.setItem('savedComics_v1', JSON.stringify(updatedComics));
+            
             toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
             setIsSaveComicDialogOpen(false);
             setComicTitle("");
             setComicCoverUrl(null);
         } catch (e) {
             console.error("Failed to save comic to library:", e);
-            toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder dans la bibliothèque.", variant: "destructive" });
+            toast({ title: "Erreur de Sauvegarde", description: "Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein.", variant: "destructive" });
         }
     };
+
 
     const handleGenerateCover = React.useCallback(async () => {
         setIsGeneratingCover(true);
@@ -3068,26 +3071,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     });
   };
 
-  const handleAddPoiToMap = React.useCallback((poiId: string) => {
-    setAdventureSettings(prev => {
-        const pois = prev.mapPointsOfInterest || [];
-        const poiExists = pois.some(p => p.id === poiId && p.position);
-        if (poiExists) {
-            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-            return prev;
-        }
-
-        const newPois = pois.map(p => {
-            if (p.id === poiId) {
-                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+    const handleAddPoiToMap = React.useCallback((poiId: string) => {
+        setAdventureSettings(prev => {
+            const pois = prev.mapPointsOfInterest || [];
+            const poiExists = pois.some(p => p.id === poiId && p.position);
+            if (poiExists) {
+                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+                return prev;
             }
-            return p;
-        });
 
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [toast]);
+            const newPois = pois.map(p => {
+                if (p.id === poiId) {
+                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                    return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+                }
+                return p;
+            });
+
+            return { ...prev, mapPointsOfInterest: newPois };
+        });
+    }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3200,4 +3203,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
-
