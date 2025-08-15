@@ -123,13 +123,16 @@ interface PageStructureProps {
   handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
-  onAddPoiToMap: (poiId: string) => void; // Added prop
+  onAddPoiToMap: (poiId: string) => void;
   comicDraft: ComicPage[];
   onSaveComicDraft: () => void;
   onDownloadComicDraft: () => void;
   onAddComicPage: () => void;
   onAddComicPanel: () => void;
   onRemoveLastComicPanel: () => void;
+  onUploadToComicPanel: (pageIndex: number, panelIndex: number, file: File) => void;
+  currentComicPageIndex: number;
+  onComicPageChange: (index: number) => void;
 }
 
 export function PageStructure({
@@ -211,6 +214,9 @@ export function PageStructure({
   onAddComicPage,
   onAddComicPanel,
   onRemoveLastComicPanel,
+  onUploadToComicPanel,
+  currentComicPageIndex,
+  onComicPageChange,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -447,6 +453,9 @@ export function PageStructure({
                 onAddComicPage={onAddComicPage}
                 onAddComicPanel={onAddComicPanel}
                 onRemoveLastComicPanel={onRemoveLastComicPanel}
+                onUploadToComicPanel={onUploadToComicPanel}
+                currentComicPageIndex={currentComicPageIndex}
+                onComicPageChange={onComicPageChange}
              />
         </main>
       </SidebarInset>

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -178,6 +178,14 @@ export interface SellingItemDetails {
   item: PlayerInventoryItem;
   sellPricePerUnit: number;
 }
+
+const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
+
+const createNewComicPage = (cols = 2, numPanels = 4): ComicPage => ({
+    id: uid(),
+    gridCols: cols,
+    panels: Array.from({ length: numPanels }, () => ({ id: uid(), imageUrl: null, bubbles: [] }))
+});
 
 // Function to create a clean, default state
 const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[], aiConfig: AiConfig } => {
@@ -374,6 +382,10 @@ export default function Home() {
   const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
+
+  // Comic Draft State
+  const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
+  const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
 
   // Base state for resets
   const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
@@ -2583,7 +2595,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
             ownerId: data.ownerId,
             lastCollectedTurn: undefined,
-            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]]?.resources || [],
+            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
             buildings: data.buildings || [],
         };
 
@@ -2930,6 +2942,67 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setAiConfig(newConfig);
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
+
+  // Comic Draft Handlers
+  const handleSaveComicDraft = () => {
+    toast({ title: "Fonctionnalité à venir", description: "La sauvegarde de la BD sur le cloud sera bientôt disponible." });
+  };
+
+  const handleDownloadComicDraft = () => {
+    if (comicDraft.length === 0) {
+        toast({ title: "Brouillon Vide", description: "Aucune planche à télécharger.", variant: "default" });
+        return;
+    }
+    const jsonString = JSON.stringify({ comicDraft }, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brouillon_bd_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Brouillon de BD Téléchargé", description: "Le fichier JSON a été sauvegardé." });
+  };
+
+  const handleAddComicPage = () => {
+    setComicDraft(prev => [...prev, createNewComicPage()]);
+    setCurrentComicPageIndex(comicDraft.length); // Switch to the new page
+  };
+
+  const handleAddComicPanel = () => {
+    if (comicDraft.length === 0) {
+        handleAddComicPage();
+    } else {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
+        ));
+    }
+  };
+
+  const handleRemoveLastComicPanel = () => {
+    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
+        ));
+    }
+  };
+
+  const handleUploadToComicPanel = (pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setComicDraft(prev => prev.map((page, pIndex) => {
+            if (pIndex !== pageIndex) return page;
+            const newPanels = page.panels.map((panel, paIndex) => 
+                paIndex === panelIndex ? { ...panel, imageUrl } : panel
+            );
+            return { ...page, panels: newPanels };
+        }));
+    };
+    reader.readAsDataURL(file);
+  };
     
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3026,6 +3099,15 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
       onAddPoiToMap={handleAddPoiToMap}
+      comicDraft={comicDraft}
+      onSaveComicDraft={handleSaveComicDraft}
+      onDownloadComicDraft={handleDownloadComicDraft}
+      onAddComicPage={handleAddComicPage}
+      onAddComicPanel={handleAddComicPanel}
+      onRemoveLastComicPanel={handleRemoveLastComicPanel}
+      onUploadToComicPanel={handleUploadToComicPanel}
+      currentComicPageIndex={currentComicPageIndex}
+      onComicPageChange={setCurrentComicPageIndex}
     />
   );
 }

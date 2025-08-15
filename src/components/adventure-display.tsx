@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3 } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,7 +25,7 @@ import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, Affinit
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings } from "@/types";
+import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings, ComicPage } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,6 +86,15 @@ interface AdventureDisplayProps {
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onMapImageUrlChange: (url: string) => void;
     onAddPoiToMap: (poiId: string) => void;
+    comicDraft: ComicPage[];
+    onSaveComicDraft: () => void;
+    onDownloadComicDraft: () => void;
+    onAddComicPage: () => void;
+    onAddComicPanel: () => void;
+    onRemoveLastComicPanel: () => void;
+    onUploadToComicPanel: (pageIndex: number, panelIndex: number, file: File) => void;
+    currentComicPageIndex: number;
+    onComicPageChange: (index: number) => void;
 }
 
 interface CustomImageStyle {
@@ -147,6 +156,15 @@ export function AdventureDisplay({
     onMapImageUpload,
     onMapImageUrlChange,
     onAddPoiToMap,
+    comicDraft,
+    onSaveComicDraft,
+    onDownloadComicDraft,
+    onAddComicPage,
+    onAddComicPanel,
+    onRemoveLastComicPanel,
+    onUploadToComicPanel,
+    currentComicPageIndex,
+    onComicPageChange,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -174,8 +192,8 @@ export function AdventureDisplay({
     const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
       ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] // Examples
       : [];
-    const playerNonCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category !== 'combat') || [];
-    const playerCombatSkills = adventureSettings.playerSkills?.filter(skill => skill.category === 'combat') || [];
+    const playerNonCombatSkills = (adventureSettings.playerSkills || []).filter(skill => skill.category !== 'combat') || [];
+    const playerCombatSkills = (adventureSettings.playerSkills || []).filter(skill => skill.category === 'combat') || [];
     const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
 
     React.useEffect(() => {
@@ -1069,6 +1087,72 @@ export function AdventureDisplay({
                         </div>
                     </CardFooter>
                 </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between p-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Clapperboard className="h-5 w-5"/>
+                            Brouillon de la BD
+                        </CardTitle>
+                        <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSaveComicDraft}>
+                                <Save className="h-4 w-4"/>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDownloadComicDraft}>
+                                <Download className="h-4 w-4"/>
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                                        <PlusCircle className="h-4 w-4"/>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onSelect={onAddComicPage}>Ajouter une page</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={onAddComicPanel}>Ajouter une case</DropdownMenuItem>
+                                    <DropdownMenuSeparator/>
+                                    <DropdownMenuItem onSelect={onRemoveLastComicPanel} className="text-destructive">Retirer dernière case</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                         <div className="flex items-center justify-center gap-2 mb-2">
+                             <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
+                                <ArrowLeft className="h-4 w-4"/>
+                            </Button>
+                            <span className="text-xs font-medium">Page {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
+                             <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
+                                <ArrowRight className="h-4 w-4"/>
+                            </Button>
+                         </div>
+                         <ScrollArea className="h-48 w-full">
+                             <div className="grid gap-2 p-1" style={{gridTemplateColumns: `repeat(${comicDraft[currentComicPageIndex]?.gridCols || 2}, 1fr)`}}>
+                             {comicDraft[currentComicPageIndex] && comicDraft[currentComicPageIndex].panels.length > 0 ? (
+                                 comicDraft[currentComicPageIndex].panels.map((panel, panelIndex) => (
+                                    <div key={panel.id} className="relative aspect-square bg-muted rounded-md flex items-center justify-center group">
+                                        {panel.imageUrl ? (
+                                            <Image src={panel.imageUrl} alt={`Panel ${panelIndex + 1}`} layout="fill" objectFit="cover" className="rounded-md"/>
+                                        ) : (
+                                             <ImageIcon className="h-8 w-8 text-muted-foreground"/>
+                                        )}
+                                        <input type="file" accept="image/*" className="hidden" id={`upload-panel-${currentComicPageIndex}-${panelIndex}`} onChange={(e) => {
+                                            if (e.target.files?.[0]) {
+                                                onUploadToComicPanel(currentComicPageIndex, panelIndex, e.target.files[0]);
+                                            }
+                                        }}/>
+                                        <Button variant="outline" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => document.getElementById(`upload-panel-${currentComicPageIndex}-${panelIndex}`)?.click()}>
+                                            <FileUp className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
+                                ))
+                             ) : (
+                                <p className="text-sm text-muted-foreground italic text-center col-span-full py-10">Aucune case sur cette page.</p>
+                            )}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+
 
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
                     <DialogContent>
