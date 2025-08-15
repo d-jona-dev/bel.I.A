@@ -981,7 +981,7 @@ export function AdventureDisplay({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
-                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} onClose={() => setImageEditorOpen(false)} onSave={handleAddToComicPage} />}
+                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} onClose={() => setImageEditorOpen(false)} onSave={onAddToComicPage} />}
                         </div>
                     </DialogContent>
                 </Dialog>

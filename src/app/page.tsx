@@ -2619,7 +2619,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
     const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
     const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)
+                        ? ((stagedAdventureSettings.playerLevel - 1) * POINTS_PER_LEVEL_GAIN_FORM)
                         : 0;
     const totalDistributable = creationPoints + levelPoints;
 

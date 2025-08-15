@@ -133,6 +133,7 @@ interface PageStructureProps {
   onUploadToComicPanel: (pageIndex: number, panelIndex: number, file: File) => void;
   currentComicPageIndex: number;
   onComicPageChange: (index: number) => void;
+  onAddToComicPage: (dataUrl: string) => void;
 }
 
 export function PageStructure({
@@ -217,6 +218,7 @@ export function PageStructure({
   onUploadToComicPanel,
   currentComicPageIndex,
   onComicPageChange,
+  onAddToComicPage,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -456,6 +458,7 @@ export function PageStructure({
                 onUploadToComicPanel={onUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={onComicPageChange}
+                onAddToComicPage={onAddToComicPage}
              />
         </main>
       </SidebarInset>
