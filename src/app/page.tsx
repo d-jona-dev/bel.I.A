@@ -2564,29 +2564,35 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, []);
   
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
-    setStagedAdventureSettings(prevStaged => {
-        const newPoi: MapPointOfInterest = {
-            id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-            name: data.name,
-            description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
-            icon: data.type,
-            level: data.level || 1,
-            position: { x: 50, y: 50 }, // Place it at the center by default
-            actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
-            ownerId: data.ownerId,
-            lastCollectedTurn: undefined,
-            resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
-            buildings: data.buildings || [],
-        };
+    if (!adventureFormRef.current) return;
+    
+    const newPoi: MapPointOfInterest = {
+        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        name: data.name,
+        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
+        icon: data.type,
+        level: data.level || 1,
+        position: { x: 50, y: 50 },
+        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
+        ownerId: data.ownerId,
+        lastCollectedTurn: undefined,
+        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
+        buildings: data.buildings || [],
+    };
 
-        const updatedPois = [...(prevStaged.mapPointsOfInterest || []), newPoi];
-        toast({
-            title: "Point d'Intérêt Ajouté",
-            description: `"${data.name}" a été ajouté à votre configuration. N'oubliez pas d'enregistrer les modifications.`,
-        });
-        return { ...prevStaged, mapPointsOfInterest: updatedPois };
+    const currentPois = adventureFormRef.current?.getValues('mapPointsOfInterest') || [];
+    adventureFormRef.current.setValue('mapPointsOfInterest', [...currentPois, newPoi]);
+
+    setStagedAdventureSettings(prevStaged => ({
+      ...prevStaged,
+      mapPointsOfInterest: [...(prevStaged.mapPointsOfInterest || []), newPoi]
+    }));
+
+    toast({
+        title: "Point d'Intérêt Ajouté",
+        description: `"${data.name}" a été ajouté à votre configuration. N'oubliez pas d'enregistrer les modifications.`,
     });
-}, [toast]);
+  }, [toast]);
 
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
@@ -2923,6 +2929,27 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
 
+  const handleAddPoiToMap = React.useCallback((poiId: string) => {
+    setAdventureSettings(prev => {
+        const pois = prev.mapPointsOfInterest || [];
+        const poiExists = pois.some(p => p.id === poiId && p.position);
+        if (poiExists) {
+            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            return prev;
+        }
+
+        const newPois = pois.map(p => {
+            if (p.id === poiId) {
+                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+            }
+            return p;
+        });
+
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+  }, [toast]);
+
   const handleDownloadComicDraft = () => {
         if (comicDraft.length === 0) {
             toast({ title: "Brouillon Vide", description: "Aucune planche à télécharger.", variant: "default" });
@@ -2964,7 +2991,16 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
             const existingComicsStr = localStorage.getItem('savedComics_v1');
             const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-            localStorage.setItem('savedComics_v1', JSON.stringify([...existingComics, newComic]));
+            
+            const comicIndex = existingComics.findIndex((c: any) => c.title === newComic.title);
+
+            if (comicIndex > -1) {
+                existingComics[comicIndex] = newComic;
+            } else {
+                existingComics.push(newComic);
+            }
+            
+            localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
             
             toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
             setIsSaveComicDialogOpen(false);
@@ -3074,27 +3110,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return draft;
     });
   };
-
-  const handleAddPoiToMap = React.useCallback((poiId: string) => {
-    setAdventureSettings(prev => {
-        const pois = prev.mapPointsOfInterest || [];
-        const poiExists = pois.some(p => p.id === poiId && p.position);
-        if (poiExists) {
-            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-            return prev;
-        }
-
-        const newPois = pois.map(p => {
-            if (p.id === poiId) {
-                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
-            }
-            return p;
-        });
-
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 

@@ -53,6 +53,8 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters'>>
 
 export interface AdventureFormHandle {
     getFormData: () => Promise<AdventureFormValues | null>;
+    getValues: (name?: keyof AdventureFormValues | (keyof AdventureFormValues)[]) => any;
+    setValue: (name: keyof AdventureFormValues, value: any, options?: { shouldValidate?: boolean, shouldDirty?: boolean }) => void;
 }
 
 interface AdventureFormProps {
@@ -175,6 +177,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             });
             return null;
         },
+        getValues: form.getValues,
+        setValue: form.setValue,
     }));
 
     React.useEffect(() => {
