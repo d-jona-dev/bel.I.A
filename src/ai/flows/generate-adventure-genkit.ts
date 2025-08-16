@@ -235,12 +235,12 @@ Combatants (Player team listed first, then Enemies):
 - Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
   {{/if}}
 {{/each}}
-{{#if activeCombat.turnLog}}
-Previous Turn Summary:
-{{#each activeCombat.turnLog}}
-- {{{this}}}
-{{/each}}
-{{/if}}
+**Combat Rules: An external system handles all dice rolls, hits, misses, and damage calculations. Your role is purely NARRATIVE.**
+**Your Task:** For any enemy combatants who are not defeated, narrate their actions for this turn. You MUST NOT determine the outcome of their actions. Simply describe what they *attempt* to do. For example:
+*   'The goblin rushes forward, swinging its club wildly at you.'
+*   'The Orc Shaman chants an incantation, and a dark energy gathers around its hands, aimed at Elara.'
+*   'The cornered wolf snarls and tries to bite your leg.'
+**DO NOT mention hit/miss, damage numbers, or any mechanical results. The external system will calculate that and the result will be seen in the next turn's narrative.**
 --- END COMBAT INFO ---
 {{/if}}
 
@@ -332,13 +332,11 @@ If the 'User Action' implies interaction with a specific service or building typ
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
-    *   **COMBAT LOGIC:** The application has already processed the mechanical results of the last combat turn. The field 'activeCombat.turnLog' contains a summary of these mechanical events (e.g., "{{playerName}} attacks Goblin and hits, dealing 8 damage. Goblin attacks {{playerName}} and misses."). **Your task is to narrate these events in an engaging and descriptive way.**
-    *   **DO NOT** calculate or determine combat outcomes (hit, miss, damage, defeat). Simply narrate the results provided in 'activeCombat.turnLog'.
-    *   **DO NOT** create or manage a 'combatUpdates' field in your output. The application now handles all combat state internally.
-    
+    *   **COMBAT LOGIC:** An external game system handles ALL dice rolls, hit/miss checks, and damage calculation. You DO NOT have access to these results.
+    *   **Your ONLY task in combat** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunges with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
+    *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.).
+    *   **DO NOT** create or manage a 'combatUpdates' field in your output. The external system handles all combat state internally.
     *   **COMBAT INITIATION (Only if not already in combat):**
-        *   **Is it a Territory Attack?** (e.g., userAction is "J'attaque le lieu X").
-            *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the location's defenders as enemies. You MUST also set 'contestedPoiId' to the ID of the location being attacked.
         *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
             *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
         *   **Is it a Capture attempt?** (e.g., userAction is "Je tente de capturer la créature").
@@ -398,7 +396,7 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **The application now handles combat results internally.** However, if the narrative logic outside of combat leads to a territory change (e.g., through diplomacy, betrayal, or a quest reward), you can record it here.
+    *   The game system handles combat results internally. If you narrate a successful conquest or diplomatic takeover of a POI, record the change here.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 {{#if timeManagement.enabled}}
