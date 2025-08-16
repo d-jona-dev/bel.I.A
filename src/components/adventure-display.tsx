@@ -474,7 +474,7 @@ export function AdventureDisplay({
     const cardBorderColor = combatData.team === 'player' ? 'border-green-500' : 'border-red-500';
 
     return (
-        <Card key={combatData.characterId} className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
+        <Card className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
             <CardHeader className="p-3 pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
                     <span className="truncate">{name}</span>
@@ -1239,9 +1239,9 @@ export function AdventureDisplay({
                                 c.characterId !== playerId &&
                                 !c.isDefeated
                             )
-                            .map((ally) => (
+                            .map((ally, index) => (
                                 <NpcCombatantCard
-                                  key={`ally-${ally.characterId}`}
+                                  key={`ally-${ally.characterId}-${index}`}
                                   combatData={ally}
                                 />
                               )
@@ -1265,8 +1265,8 @@ export function AdventureDisplay({
                                 <CardContent className="p-2 pt-0">
                                     {activeCombat.combatants
                                         .filter(c => c.team === 'enemy' && !c.isDefeated)
-                                        .map(enemy => (
-                                            <NpcCombatantCard key={`enemy-${enemy.characterId}`} combatData={enemy} />
+                                        .map((enemy, index) => (
+                                            <NpcCombatantCard key={`enemy-${enemy.characterId}-${index}`} combatData={enemy} />
                                         ))}
                                 </CardContent>
                             </Card>
