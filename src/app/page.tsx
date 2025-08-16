@@ -606,29 +606,48 @@ export default function Home() {
     });
   }, []);
 
-    const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
       if (!changes || changes.length === 0) return;
   
-      setAdventureSettings(prev => {
-          if (!prev.mapPointsOfInterest) return prev;
+      // This function now updates both live and staged states simultaneously.
+      const updater = (prevSettings: AdventureSettings): AdventureSettings => {
+          if (!prevSettings.mapPointsOfInterest) return prevSettings;
   
-          const newPois = prev.mapPointsOfInterest.map(poi => {
-              const change = changes.find(c => c.poiId === poi.id);
-              if (change) {
-                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                  setTimeout(() => {
-                      toast({
-                          title: "Changement de Territoire !",
-                          description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                      });
-                  }, 0);
-                  return { ...poi, ownerId: change.newOwnerId };
+          let pois = [...prevSettings.mapPointsOfInterest];
+          let changed = false;
+  
+          changes.forEach(change => {
+              const poiIndex = pois.findIndex(p => p.id === change.poiId);
+              if (poiIndex !== -1) {
+                  const oldOwnerId = pois[poiIndex].ownerId;
+                  if (oldOwnerId !== change.newOwnerId) {
+                      const poi = pois[poiIndex];
+                      const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                      
+                      pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
+                      changed = true;
+                      
+                      setTimeout(() => {
+                          toast({
+                              title: "Changement de Territoire !",
+                              description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                          });
+                      }, 0);
+                  }
               }
-              return poi;
           });
   
-          return { ...prev, mapPointsOfInterest: newPois };
-      });
+          if (!changed) return prevSettings;
+          return { ...prevSettings, mapPointsOfInterest: pois };
+      };
+      
+      setAdventureSettings(updater);
+      setStagedAdventureSettings(prevStaged => ({
+          ...prevStaged,
+          mapPointsOfInterest: updater(prevStaged as AdventureSettings).mapPointsOfInterest,
+      }));
+      setFormPropKey(k => k + 1); // Force form re-render
+  
   }, [toast, characters]);
 
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
@@ -2580,7 +2599,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
         icon: data.type,
         level: data.level || 1,
-        // No position by default, user has to place it from the map UI
         position: undefined, 
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
@@ -2589,21 +2607,40 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         buildings: data.buildings || [],
     };
     
-    setAdventureSettings(prev => ({
-        ...prev,
-        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    }));
+    const updater = (prev: AdventureSettings): AdventureSettings => ({
+      ...prev,
+      mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+    });
 
-    if (adventureFormRef.current) {
-        const currentPoisInForm = adventureFormRef.current.getValues('mapPointsOfInterest') || [];
-        adventureFormRef.current.setValue('mapPointsOfInterest', [...currentPoisInForm, newPoi]);
-    }
+    setAdventureSettings(updater);
+    setStagedAdventureSettings(prev => ({...prev, mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest}));
     
     toast({
         title: "Point d'Intérêt Créé",
         description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
     });
   }, [toast]);
+  
+  const handleAddPoiToMap = React.useCallback((poiId: string) => {
+    setAdventureSettings(prev => {
+        const pois = prev.mapPointsOfInterest || [];
+        const poiExists = pois.some(p => p.id === poiId && p.position);
+        if (poiExists) {
+            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            return prev;
+        }
+
+        const newPois = pois.map(p => {
+            if (p.id === poiId) {
+                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+            }
+            return p;
+        });
+
+        return { ...prev, mapPointsOfInterest: newPois };
+    });
+}, [toast]);
 
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
@@ -2940,108 +2977,94 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
 
-    const handleAddPoiToMap = React.useCallback((poiId: string) => {
-        setAdventureSettings(prev => {
-            const pois = prev.mapPointsOfInterest || [];
-            const poiExists = pois.some(p => p.id === poiId && p.position);
-            if (poiExists) {
-                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-                return prev;
-            }
-
-            const newPois = pois.map(p => {
-                if (p.id === poiId) {
-                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                    return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
-                }
-                return p;
-            });
-
-            return { ...prev, mapPointsOfInterest: newPois };
-        });
-    }, [toast]);
-
-  const handleDownloadComicDraft = () => {
-        if (comicDraft.length === 0) {
-            toast({ title: "Brouillon Vide", description: "Aucune planche à télécharger.", variant: "default" });
-            return;
-        }
-        const pageToExport = comicDraft[currentComicPageIndex];
-        if (pageToExport) {
-            exportPageAsJpeg(pageToExport, currentComicPageIndex, toast);
-        } else {
-            toast({ title: "Erreur", description: "Planche actuelle introuvable.", variant: "destructive" });
-        }
+  const handleUploadToComicPanel = (pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setComicDraft(prev => prev.map((page, pIndex) => {
+            if (pIndex !== pageIndex) return page;
+            const newPanels = page.panels.map((panel, paIndex) => 
+                paIndex === panelIndex ? { ...panel, imageUrl } : panel
+            );
+            return { ...page, panels: newPanels };
+        }));
     };
+    reader.readAsDataURL(file);
+  };
+    
+  const handleGenerateCover = async () => {
+    setIsGeneratingCover(true);
+    toast({ title: "Génération de la couverture..."});
 
-    const handleSaveToLibrary = async () => {
-        if (!comicTitle.trim()) {
-            toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
-            return;
+    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
+
+    try {
+        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+        if (result.imageUrl) {
+            setComicCoverUrl(result.imageUrl);
+            toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+    } finally {
+        setIsGeneratingCover(false);
+    }
+  };
+    
+  const handleSaveToLibrary = async () => {
+    if (!comicTitle.trim()) {
+        toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
+        return;
+    }
+    
+    try {
+        const compressedDraft: ComicPage[] = await Promise.all(
+            comicDraft.map(async (page) => ({
+                ...page,
+                panels: await Promise.all(page.panels.map(async (panel) => ({
+                    ...panel,
+                    imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
+                }))),
+            }))
+        );
+
+        const newComic = {
+            id: uid(),
+            title: comicTitle,
+            coverUrl: comicCoverUrl,
+            comicDraft: compressedDraft,
+            createdAt: new Date().toISOString(),
+        };
+
+        const existingComicsStr = localStorage.getItem('savedComics_v1');
+        const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
+        
+        const comicIndex = existingComics.findIndex((c: { id: string }) => c.id === newComic.id);
+        if (comicIndex > -1) {
+            existingComics[comicIndex] = newComic;
+        } else {
+            existingComics.push(newComic);
         }
         
-        try {
-            const compressedDraft: ComicPage[] = await Promise.all(
-                comicDraft.map(async (page) => ({
-                    ...page,
-                    panels: await Promise.all(page.panels.map(async (panel) => ({
-                        ...panel,
-                        imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
-                    }))),
-                }))
-            );
-
-            const newComic = {
-                id: uid(),
-                title: comicTitle,
-                coverUrl: comicCoverUrl,
-                comicDraft: compressedDraft,
-                createdAt: new Date().toISOString(),
-            };
-
-            const existingComicsStr = localStorage.getItem('savedComics_v1');
-            const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-            const updatedComics = [...existingComics, newComic];
-            
-            localStorage.setItem('savedComics_v1', JSON.stringify(updatedComics));
-            
-            toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
-            setIsSaveComicDialogOpen(false);
-            setComicTitle("");
-            setComicCoverUrl(null);
-        } catch (e) {
-            console.error("Failed to save comic to library:", e);
-            toast({
-                title: "Erreur de Sauvegarde",
-                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
-                variant: "destructive"
-            });
-        }
-    };
-
-
-    const handleGenerateCover = async () => {
-        setIsGeneratingCover(true);
-        toast({ title: "Génération de la couverture..."});
-
-        const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-        const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-        const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
-
-        try {
-            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-            if (result.imageUrl) {
-                setComicCoverUrl(result.imageUrl);
-                toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
-        } finally {
-            setIsGeneratingCover(false);
-        }
-    };
+        localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
+        
+        toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
+        setIsSaveComicDialogOpen(false);
+        setComicTitle("");
+        setComicCoverUrl(null);
+    } catch (e) {
+        console.error("Failed to save comic to library:", e);
+        toast({
+            title: "Erreur de Sauvegarde",
+            description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
+            variant: "destructive"
+        });
+    }
+  };
 
 
   const handleAddComicPage = () => {
@@ -3067,20 +3090,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     }
   };
 
-  const handleUploadToComicPanel = (pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setComicDraft(prev => prev.map((page, pIndex) => {
-            if (pIndex !== pageIndex) return page;
-            const newPanels = page.panels.map((panel, paIndex) => 
-                paIndex === panelIndex ? { ...panel, imageUrl } : panel
-            );
-            return { ...page, panels: newPanels };
-        }));
-    };
-    reader.readAsDataURL(file);
-  };
     
   const handleAddToComicPage = (dataUrl: string) => {
     setComicDraft(prev => {
@@ -3113,6 +3122,19 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         return draft;
     });
   };
+
+  const handleDownloadComicDraft = React.useCallback(() => {
+    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
+        toast({
+            title: "Rien à télécharger",
+            description: "Il n'y a pas de planche de BD active à télécharger.",
+            variant: "destructive"
+        });
+        return;
+    }
+    const currentPage = comicDraft[currentComicPageIndex];
+    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
+  }, [comicDraft, currentComicPageIndex, toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
