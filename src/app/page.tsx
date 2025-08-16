@@ -622,7 +622,7 @@ export default function Home() {
                 const oldOwnerId = pois[poiIndex].ownerId;
                 if (oldOwnerId !== change.newOwnerId) {
                     const poi = pois[poiIndex];
-                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (prev.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
                     
                     pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
                     changed = true;
@@ -649,7 +649,7 @@ export default function Home() {
     });
     setFormPropKey(k => k + 1);
 
-}, [toast, characters]);
+}, [toast, characters, adventureSettings.playerName]);
 
 const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
@@ -720,10 +720,11 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
     }
     
     if (adventureSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0) {
-        let currentExp = (adventureSettings.playerCurrentExp ?? 0) + combatUpdates.expGained;
-        let currentLevel = adventureSettings.playerLevel ?? 1;
-        let currentExpToNext = adventureSettings.playerExpToNextLevel ?? 100;
-        let currentInitialPoints = adventureSettings.playerInitialAttributePoints || 0;
+        const prevSettings = { ...adventureSettings, ...liveSettingsChanges };
+        let currentExp = (prevSettings.playerCurrentExp ?? 0) + combatUpdates.expGained;
+        let currentLevel = prevSettings.playerLevel ?? 1;
+        let currentExpToNext = prevSettings.playerExpToNextLevel ?? 100;
+        let currentInitialPoints = prevSettings.playerInitialAttributePoints || 0;
         
         toastsToShow.push({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
 
@@ -1352,7 +1353,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             const itemToUpdate = { ...newInventory[itemIndex] };
             itemUsedOrDiscarded = itemToUpdate;
             
-            // This is the state that will be updated. We create a partial object.
             let changes: Partial<AdventureSettings> = {};
 
             if (action === 'use') {
@@ -1368,14 +1368,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                         const match = itemToUpdate.effect.match(/(\d+)\s*PM/i);
                         if (match && match[1]) mpChange = parseInt(match[1], 10);
                     }
-
-                    if (hpChange > 0 && prevSettings.playerCurrentHp !== undefined && prevSettings.playerMaxHp !== undefined) {
-                        changes.playerCurrentHp = Math.min(prevSettings.playerMaxHp, (prevSettings.playerCurrentHp || 0) + hpChange);
-                    }
-                    if (mpChange > 0 && prevSettings.playerCurrentMp !== undefined && prevSettings.playerMaxMp !== undefined && prevSettings.playerMaxMp > 0) {
-                        changes.playerCurrentMp = Math.min(prevSettings.playerMaxMp, (prevSettings.playerCurrentMp || 0) + mpChange);
-                    }
                     
+                    const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
+                    const newPlayerMp = Math.min(prevSettings.playerMaxMp || 0, (prevSettings.playerCurrentMp || 0) + mpChange);
+                    
+                    changes = { playerCurrentHp: newPlayerHp, playerCurrentMp: newPlayerMp };
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
@@ -1508,14 +1505,15 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             const updatedItem = { ...newInventory[itemIndex] };
             updatedItem.quantity -= quantityToSell;
             
-            let equippedIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
-
+            let changes: Partial<AdventureSettings> = {};
+            
             if (updatedItem.quantity <= 0) {
-                if (updatedItem.isEquipped) {
-                    if (equippedIds.weapon === updatedItem.id) equippedIds.weapon = null;
-                    else if (equippedIds.armor === updatedItem.id) equippedIds.armor = null;
-                    else if (equippedIds.jewelry === updatedItem.id) equippedIds.jewelry = null;
-                }
+                 if (updatedItem.isEquipped) {
+                    if (prevSettings.equippedItemIds?.weapon === updatedItem.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), weapon: null };
+                    else if (prevSettings.equippedItemIds?.armor === updatedItem.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), armor: null };
+                    else if (prevSettings.equippedItemIds?.jewelry === updatedItem.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), jewelry: null };
+                    updatedItem.isEquipped = false;
+                 }
                 newInventory.splice(itemIndex, 1);
             } else {
                 newInventory[itemIndex] = updatedItem;
@@ -1524,15 +1522,14 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             itemSoldSuccessfully = true;
             userAction = `Je vends ${quantityToSell} ${itemToProcess.name}${quantityToSell > 1 ? 's' : ''}.`;
             
-            const newSettings = {
+             const newSettings = {
                 ...prevSettings,
+                ...changes,
                 playerInventory: newInventory,
                 playerGold: (prevSettings.playerGold ?? 0) + totalSellPrice,
-                equippedItemIds: equippedIds
             };
             
-            // Recalculate stats only if an equipped item was sold out
-            if (updatedItem.quantity <= 0 && updatedItem.isEquipped) {
+            if(changes.equippedItemIds) {
                 const effectiveStats = calculateEffectiveStats(newSettings);
                 return { ...newSettings, ...effectiveStats };
             }
@@ -3172,7 +3169,6 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3228,5 +3224,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
+    
 
     
