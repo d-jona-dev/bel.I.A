@@ -606,6 +606,31 @@ export default function Home() {
     });
   }, []);
 
+    const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+      if (!changes || changes.length === 0) return;
+  
+      setAdventureSettings(prev => {
+          if (!prev.mapPointsOfInterest) return prev;
+  
+          const newPois = prev.mapPointsOfInterest.map(poi => {
+              const change = changes.find(c => c.poiId === poi.id);
+              if (change) {
+                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                  setTimeout(() => {
+                      toast({
+                          title: "Changement de Territoire !",
+                          description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                      });
+                  }, 0);
+                  return { ...poi, ownerId: change.newOwnerId };
+              }
+              return poi;
+          });
+  
+          return { ...prev, mapPointsOfInterest: newPois };
+      });
+  }, [toast, characters]);
+
   const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
     
@@ -774,11 +799,19 @@ export default function Home() {
       } else if (combatUpdates.combatEnded) {
           setActiveCombat(undefined);
           setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
+          
+          const lastCombat = activeCombat; // Use the state from *before* this update
+          const playerTeamWon = !playerCombatUpdate?.isDefeated;
+          const contestedPoiId = lastCombat?.contestedPoiId;
+          
+          if (playerTeamWon && contestedPoiId) {
+                handlePoiOwnershipChange([{ poiId: contestedPoiId, newOwnerId: PLAYER_ID }]);
+          }
       }
     }
 
     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings, characters]);
+  }, [toast, adventureSettings, characters, activeCombat, handlePoiOwnershipChange]);
 
 
 
@@ -1028,30 +1061,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
      toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
   }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
-  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
-      if (!changes || changes.length === 0) return;
-  
-      setAdventureSettings(prev => {
-          if (!prev.mapPointsOfInterest) return prev;
-  
-          const newPois = prev.mapPointsOfInterest.map(poi => {
-              const change = changes.find(c => c.poiId === poi.id);
-              if (change) {
-                  const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                  setTimeout(() => {
-                      toast({
-                          title: "Changement de Territoire !",
-                          description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                      });
-                  }, 0);
-                  return { ...poi, ownerId: change.newOwnerId };
-              }
-              return poi;
-          });
-  
-          return { ...prev, mapPointsOfInterest: newPois };
-      });
-  }, [toast, characters]);
+
 
   const handleTimeUpdate = React.useCallback((newEvent?: string) => {
     setAdventureSettings(prev => {
@@ -2579,18 +2589,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         buildings: data.buildings || [],
     };
     
-    const updater = (prev: AdventureSettings): AdventureSettings => ({
+    setAdventureSettings(prev => ({
         ...prev,
         mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    });
-
-    setAdventureSettings(updater);
-    setStagedAdventureSettings(prevStaged => ({
-      ...prevStaged,
-      mapPointsOfInterest: updater(prevStaged as AdventureSettings).mapPointsOfInterest,
     }));
-    
-    // Also update the form directly if it's open
+
     if (adventureFormRef.current) {
         const currentPoisInForm = adventureFormRef.current.getValues('mapPointsOfInterest') || [];
         adventureFormRef.current.setValue('mapPointsOfInterest', [...currentPoisInForm, newPoi]);
@@ -2937,26 +2940,26 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
 
-  const handleAddPoiToMap = React.useCallback((poiId: string) => {
-    setAdventureSettings(prev => {
-        const pois = prev.mapPointsOfInterest || [];
-        const poiExists = pois.some(p => p.id === poiId && p.position);
-        if (poiExists) {
-            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-            return prev;
-        }
-
-        const newPois = pois.map(p => {
-            if (p.id === poiId) {
-                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+    const handleAddPoiToMap = React.useCallback((poiId: string) => {
+        setAdventureSettings(prev => {
+            const pois = prev.mapPointsOfInterest || [];
+            const poiExists = pois.some(p => p.id === poiId && p.position);
+            if (poiExists) {
+                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+                return prev;
             }
-            return p;
-        });
 
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [toast]);
+            const newPois = pois.map(p => {
+                if (p.id === poiId) {
+                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                    return { ...p, position: { x: 50, y: 50 } }; // Add at center by default
+                }
+                return p;
+            });
+
+            return { ...prev, mapPointsOfInterest: newPois };
+        });
+    }, [toast]);
 
   const handleDownloadComicDraft = () => {
         if (comicDraft.length === 0) {
@@ -3221,4 +3224,3 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
-
