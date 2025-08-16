@@ -398,6 +398,8 @@ export function AdventureDisplay({
   const PlayerStatusCard = () => {
     if (!adventureSettings.rpgMode) return null;
     const playerCombatData = activeCombat?.isActive ? activeCombat.combatants.find(c => c.characterId === playerId) : undefined;
+    const hpToShow = playerCombatData?.currentHp ?? adventureSettings.playerCurrentHp ?? 0;
+    const maxHpToShow = playerCombatData?.maxHp ?? adventureSettings.playerMaxHp ?? 0;
 
     return (
         <Card className="shadow-md rounded-lg mb-3">
@@ -427,10 +429,11 @@ export function AdventureDisplay({
                     <div className="flex justify-between items-center mb-1">
                         <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
                         <span className="text-xs text-muted-foreground">
-                            {playerCombatData?.currentHp ?? adventureSettings.playerCurrentHp ?? 0} / {playerCombatData?.maxHp ?? adventureSettings.playerMaxHp ?? 0}
+                            {hpToShow} / {maxHpToShow}
+                            {activeCombat && <span className="text-blue-500 ml-1">(dbg: {playerCombatData?.currentHp})</span>}
                         </span>
                     </div>
-                    <Progress id="player-hp" value={((playerCombatData?.currentHp ?? adventureSettings.playerCurrentHp ?? 0) / (playerCombatData?.maxHp ?? adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                    <Progress id="player-hp" value={(hpToShow / (maxHpToShow || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
                 </div>
 
                 {(adventureSettings.playerMaxMp ?? 0) > 0 && (
@@ -489,7 +492,10 @@ export function AdventureDisplay({
                 <div>
                     <div className="flex justify-between items-center mb-0.5">
                         <Label htmlFor={`${combatData.characterId}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                        <span className="text-xs text-muted-foreground">{combatData.currentHp} / {combatData.maxHp}</span>
+                        <span className="text-xs text-muted-foreground">
+                            {combatData.currentHp} / {combatData.maxHp}
+                            {activeCombat && <span className="text-blue-500 ml-1">(dbg: {combatData.currentHp})</span>}
+                        </span>
                     </div>
                     <Progress id={`${combatData.characterId}-hp`} value={(combatData.currentHp / (combatData.maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
                 </div>
