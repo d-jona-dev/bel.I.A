@@ -707,10 +707,10 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
     });
 
     setAdventureSettings(prevSettings => {
-        let newSettings = { ...prevSettings };
+        let newSettings: Partial<AdventureSettings> = {};
 
-        if (newSettings.familiars && (combatUpdates.expGained ?? 0) > 0) {
-            newSettings.familiars = newSettings.familiars.map((fam: Familiar) => {
+        if (prevSettings.familiars && (combatUpdates.expGained ?? 0) > 0) {
+            newSettings.familiars = prevSettings.familiars.map((fam: Familiar) => {
                 let newFam = {...fam};
                 newFam.currentExp += combatUpdates.expGained!;
                 let leveledUp = false;
@@ -732,44 +732,60 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
         }
         
         const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-        if (newSettings.rpgMode && playerCombatUpdate) {
+        if (prevSettings.rpgMode && playerCombatUpdate) {
             newSettings.playerCurrentHp = playerCombatUpdate.newHp;
-            newSettings.playerCurrentMp = playerCombatUpdate.newMp ?? newSettings.playerCurrentMp;
+            newSettings.playerCurrentMp = playerCombatUpdate.newMp ?? prevSettings.playerCurrentMp;
             if (playerCombatUpdate.isDefeated) {
                 toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
             }
         }
         
-        if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
-            newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
+        if (prevSettings.playerMaxMp && (prevSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < prevSettings.playerMaxMp)) {
+            newSettings.playerCurrentMp = Math.min(prevSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
+        } else if (newSettings.playerCurrentMp === undefined && prevSettings.playerMaxMp && (prevSettings.playerMaxMp > 0) && prevSettings.playerCurrentMp !== undefined && (prevSettings.playerCurrentMp < prevSettings.playerMaxMp)) {
+            newSettings.playerCurrentMp = Math.min(prevSettings.playerMaxMp, (prevSettings.playerCurrentMp || 0) + 1);
         }
 
-        if (newSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && newSettings.playerCurrentExp !== undefined && newSettings.playerExpToNextLevel !== undefined && newSettings.playerLevel !== undefined) {
-            newSettings.playerCurrentExp += combatUpdates.expGained;
+        if (prevSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && prevSettings.playerCurrentExp !== undefined && prevSettings.playerExpToNextLevel !== undefined && prevSettings.playerLevel !== undefined) {
+            let currentExp = prevSettings.playerCurrentExp + combatUpdates.expGained;
+            let currentLevel = prevSettings.playerLevel;
+            let currentExpToNext = prevSettings.playerExpToNextLevel;
+            let currentInitialPoints = prevSettings.playerInitialAttributePoints || 0;
+            
             toastsToShow.push({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
 
             let gainedLevel = false;
-            while (newSettings.playerCurrentExp! >= newSettings.playerExpToNextLevel!) {
+            while (currentExp >= currentExpToNext) {
                 gainedLevel = true;
-                newSettings.playerLevel! += 1;
-                newSettings.playerCurrentExp! -= newSettings.playerExpToNextLevel!;
-                newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5);
-                newSettings.playerInitialAttributePoints = (newSettings.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-                
-                const derivedStats = calculateEffectiveStats(newSettings);
-                Object.assign(newSettings, derivedStats);
-                newSettings.playerCurrentHp = newSettings.playerMaxHp;
-                if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
-                    newSettings.playerCurrentMp = newSettings.playerMaxMp;
-                }
+                currentLevel += 1;
+                currentExp -= currentExpToNext;
+                currentExpToNext = Math.floor(currentExpToNext * 1.5);
+                currentInitialPoints += ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
             }
 
+            newSettings.playerCurrentExp = currentExp;
+            newSettings.playerLevel = currentLevel;
+            newSettings.playerExpToNextLevel = currentExpToNext;
+            newSettings.playerInitialAttributePoints = currentInitialPoints;
+
+
             if (gainedLevel) {
+                 const settingsForStatRecalc: AdventureSettings = { ...prevSettings, ...newSettings };
+                 const derivedStats = calculateEffectiveStats(settingsForStatRecalc);
+
+                newSettings.playerMaxHp = derivedStats.playerMaxHp;
+                newSettings.playerMaxMp = derivedStats.playerMaxMp;
+                newSettings.playerCurrentHp = derivedStats.playerMaxHp;
+                if (derivedStats.playerMaxMp && derivedStats.playerMaxMp > 0) {
+                     newSettings.playerCurrentMp = derivedStats.playerMaxMp;
+                }
+                newSettings = {...newSettings, ...derivedStats};
+
                 toastsToShow.push({
                     title: "Niveau Supérieur!",
                     description: (
                         <div>
-                            <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                            <p>Vous avez atteint le niveau {currentLevel}! Vos PV et PM max ont augmenté.</p>
                             <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
                             <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                         </div>
@@ -808,7 +824,7 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
            setTimeout(() => handlePoiOwnershipChange(combatUpdates.poiOwnershipChanges!), 100);
         }
         
-        return newSettings;
+        return { ...prevSettings, ...newSettings };
     });
 
   }, [toast, handlePoiOwnershipChange, characters, adventureSettings.rpgMode]);
@@ -1350,7 +1366,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
                 return prevSettings;
             }
 
-            let newInventory = [...prevSettings.playerInventory];
+            const newInventory = [...prevSettings.playerInventory];
             const itemIndex = newInventory.findIndex(invItem => invItem.id === itemId && invItem.quantity > 0);
 
             if (itemIndex === -1) {
@@ -1362,6 +1378,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
             const itemToUpdate = { ...newInventory[itemIndex] };
             itemUsedOrDiscarded = itemToUpdate;
+            
+            // This is the state that will be updated. We create a partial object.
             let changes: Partial<AdventureSettings> = {};
 
             if (action === 'use') {
@@ -1414,7 +1432,15 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             }
             changes.playerInventory = newInventory;
             
-            return { ...prevSettings, ...changes };
+            const newSettings = { ...prevSettings, ...changes };
+            
+            // If item use or discard could affect stats (e.g. unequipping), recalculate
+            if(changes.equippedItemIds) {
+                const effectiveStats = calculateEffectiveStats(newSettings);
+                return { ...newSettings, ...effectiveStats };
+            }
+            
+            return newSettings;
         });
 
         if (itemActionSuccessful && itemUsedOrDiscarded) {
@@ -1508,7 +1534,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             const newInventory = [...prevSettings.playerInventory];
             const updatedItem = { ...newInventory[itemIndex] };
             updatedItem.quantity -= quantityToSell;
-
+            
             let equippedIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
 
             if (updatedItem.quantity <= 0) {
@@ -1524,12 +1550,21 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
             itemSoldSuccessfully = true;
             userAction = `Je vends ${quantityToSell} ${itemToProcess.name}${quantityToSell > 1 ? 's' : ''}.`;
-            return {
+            
+            const newSettings = {
                 ...prevSettings,
                 playerInventory: newInventory,
                 playerGold: (prevSettings.playerGold ?? 0) + totalSellPrice,
                 equippedItemIds: equippedIds
             };
+            
+            // Recalculate stats only if an equipped item was sold out
+            if (updatedItem.quantity <= 0 && updatedItem.isEquipped) {
+                const effectiveStats = calculateEffectiveStats(newSettings);
+                return { ...newSettings, ...effectiveStats };
+            }
+
+            return newSettings;
         });
 
         if (itemSoldSuccessfully) {
@@ -2570,22 +2605,24 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
         buildings: data.buildings || [],
     };
-
-    setAdventureSettings(prev => ({
+    
+    const updater = (prev: AdventureSettings) => ({
         ...prev,
         mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    }));
-    
+    });
+
+    setAdventureSettings(updater);
     setStagedAdventureSettings(prev => ({
-      ...prev,
-      mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+        ...prev,
+        mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest,
     }));
+    setFormPropKey(prev => prev + 1);
     
     toast({
         title: "Point d'Intérêt Créé",
         description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
     });
-  }, [toast]);
+}, [toast]);
   
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {

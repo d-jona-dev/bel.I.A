@@ -332,6 +332,10 @@ If the 'User Action' implies interaction with a specific service or building typ
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
+    *   **COMBAT LOGIC:** The application has already processed the mechanical results of the last combat turn. The field 'activeCombat.turnLog' contains a summary of these mechanical events (e.g., "{{playerName}} attacks Goblin and hits, dealing 8 damage. Goblin attacks {{playerName}} and misses."). **Your task is to narrate these events in an engaging and descriptive way.**
+    *   **DO NOT** calculate or determine combat outcomes (hit, miss, damage, defeat). Simply narrate the results provided in 'activeCombat.turnLog'.
+    *   **DO NOT** create or manage a 'combatUpdates' field in your output. The application now handles all combat state internally.
+    
     *   **COMBAT INITIATION (Only if not already in combat):**
         *   **Is it a Territory Attack?** (e.g., userAction is "J'attaque le lieu X").
             *   **YES:** Start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the location's defenders as enemies. You MUST also set 'contestedPoiId' to the ID of the location being attacked.
@@ -359,16 +363,7 @@ Tasks:
             2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
             3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
         *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
-    *   **If IN COMBAT (activeCombat.isActive is true) AND rpgModeActive is true - FOLLOW THESE STEPS MANDATORILY:**
-        *   **MANDATORY RULE:** If a combat took place this turn (either starting, continuing, or ending), you **MUST** populate the combatUpdates field in your output. This field is the **ONLY** place for all combat-related information.
-        *   **1. Narrate the turn:** In combatUpdates.turnNarration, describe the player's action, then any allies' actions, then all enemies' actions. Detail the outcomes, damage, and effects. This text will also be used as the main narrative output.
-        *   **2. Update Combatants:** In combatUpdates.updatedCombatants, provide an entry for **every combatant** involved in the turn, with their newHp, newMp, isDefeated status, and any newStatusEffects.
-        *   **3. Handle Combat End:** If the combat is over, set combatUpdates.combatEnded to true.
-        *   **4. Provide Rewards (if any):** If the combat ended and enemies were defeated, you **MUST** populate the reward fields **INSIDE combatUpdates**:
-            *   expGained: The total EXP gained. If none, provide 0.
-            *   itemsObtained: A list of all items looted. If none, provide an empty array [].
-            *   currencyGained: The total gold/currency looted. If none, provide 0.
-        *   **5. Update Combat State:** If combat is NOT over (combatEnded: false), you **MUST** populate combatUpdates.nextActiveCombatState with the full, updated state of all remaining combatants for the next turn.
+
     *   **Item Acquisition (NON-COMBAT):** If the player finds or is given items outside of combat, list these in the top-level itemsObtained field.
     *   **Currency Management (NON-COMBAT):**
         *   If the player finds/is given/PAYS Gold Pieces outside combat: set the top-level currencyGained field (positive for gain, negative for loss).
@@ -403,8 +398,7 @@ Tasks:
 {{/if}}
 
 7.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   **Conquest:** If combat has ended, and the player's team is victorious, AND if the 'activeCombat.contestedPoiId' field was set for this combat, you MUST change the ownership of that POI to the player.
-    *   **Loss:** Similarly, if the narrative results in the player losing a territory they control (e.g., an enemy army retakes it), you MUST change its ownership to the new NPC owner.
+    *   **The application now handles combat results internally.** However, if the narrative logic outside of combat leads to a territory change (e.g., through diplomacy, betrayal, or a quest reward), you can record it here.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 {{#if timeManagement.enabled}}
@@ -412,7 +406,7 @@ Tasks:
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
-[Generate ONLY the narrative text here. If combat occurred this turn, this narrative MUST be the same as the combatUpdates.turnNarration field. Do NOT include any other JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the combatUpdates data.]
+[Generate ONLY the narrative text here. Do NOT include any JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the structured data.]
 `,
 });
 
@@ -444,5 +438,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    
