@@ -607,96 +607,113 @@ export default function Home() {
   }, []);
 
   const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
-      if (!changes || changes.length === 0) return;
-  
-      // This function now updates both live and staged states simultaneously.
-      const updater = (prevSettings: AdventureSettings): AdventureSettings => {
-          if (!prevSettings.mapPointsOfInterest) return prevSettings;
-  
-          let pois = [...prevSettings.mapPointsOfInterest];
-          let changed = false;
-  
-          changes.forEach(change => {
-              const poiIndex = pois.findIndex(p => p.id === change.poiId);
-              if (poiIndex !== -1) {
-                  const oldOwnerId = pois[poiIndex].ownerId;
-                  if (oldOwnerId !== change.newOwnerId) {
-                      const poi = pois[poiIndex];
-                      const newOwnerName = change.newOwnerId === PLAYER_ID ? 'vous' : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                      
-                      pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
-                      changed = true;
-                      
-                      setTimeout(() => {
-                          toast({
-                              title: "Changement de Territoire !",
-                              description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                          });
-                      }, 0);
-                  }
-              }
-          });
-  
-          if (!changed) return prevSettings;
-          return { ...prevSettings, mapPointsOfInterest: pois };
-      };
-      
-      setAdventureSettings(updater);
-      setStagedAdventureSettings(prevStaged => ({
-          ...prevStaged,
-          mapPointsOfInterest: updater(prevStaged as AdventureSettings).mapPointsOfInterest,
-      }));
-      setFormPropKey(k => k + 1); // Force form re-render
-  
-  }, [toast, characters]);
+    if (!changes || changes.length === 0) return;
 
-  const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
-    const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-    
-    // Use a mutable copy of the adventure settings for this turn's logic
-    const adventureSettingsSnapshot = JSON.parse(JSON.stringify(adventureSettings));
-    // Use a mutable copy of characters for this turn's logic
-    let charactersSnapshot = JSON.parse(JSON.stringify(characters));
+    const updater = (prev: AdventureSettings): AdventureSettings => {
+        if (!prev.mapPointsOfInterest) return prev;
 
-    const allExpGainingCharacters = (expGained: number) => {
-        if (!adventureSettingsSnapshot.rpgMode) return;
+        let pois = [...prev.mapPointsOfInterest];
         let changed = false;
 
-        charactersSnapshot = charactersSnapshot.map((char: Character) => {
-            if (!char.isAlly || char.level === undefined) return char;
-            let newChar = {...char};
-            if (newChar.currentExp === undefined) newChar.currentExp = 0;
-            if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
-            
-            newChar.currentExp += expGained;
-            let leveledUp = false;
-            while(newChar.currentExp >= newChar.expToNextLevel!) {
-                leveledUp = true;
-                changed = true;
-                newChar.level! += 1;
-                newChar.currentExp -= newChar.expToNextLevel!;
-                newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
-                newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+        changes.forEach(change => {
+            const poiIndex = pois.findIndex(p => p.id === change.poiId);
+            if (poiIndex !== -1) {
+                const oldOwnerId = pois[poiIndex].ownerId;
+                if (oldOwnerId !== change.newOwnerId) {
+                    const poi = pois[poiIndex];
+                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (prev.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                    
+                    pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
+                    changed = true;
+                    
+                    setTimeout(() => {
+                        toast({
+                            title: "Changement de Territoire !",
+                            description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                        });
+                    }, 0);
+                }
             }
-            if (leveledUp) {
-                toastsToShow.push({
-                    title: `Montée de Niveau: ${newChar.name}!`,
-                    description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
-                    duration: 7000
-                });
-            }
-            return newChar;
         });
 
-        if (changed) {
-            setCharacters(charactersSnapshot);
-            setStagedCharacters(charactersSnapshot); // Sync staged characters
+        if (!changed) return prev;
+        return { ...prev, mapPointsOfInterest: pois };
+    };
+    
+    setAdventureSettings(updater);
+    setStagedAdventureSettings(prevStaged => {
+        const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
+        const finalPois = updater(updatedLiveState).mapPointsOfInterest;
+        return { ...prevStaged, mapPointsOfInterest: finalPois };
+    });
+    setFormPropKey(k => k + 1);
+
+}, [toast, characters]);
+
+const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
+    const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
+    let adventureSettingsSnapshot = adventureSettings; // Start with the current state
+
+    setCharacters(currentChars => {
+        let charactersSnapshot = JSON.parse(JSON.stringify(currentChars));
+
+        const allExpGainingCharacters = (expGained: number) => {
+            if (!adventureSettingsSnapshot.rpgMode) return;
+
+            charactersSnapshot = charactersSnapshot.map((char: Character) => {
+                if (!char.isAlly || char.level === undefined) return char;
+                let newChar = {...char};
+                if (newChar.currentExp === undefined) newChar.currentExp = 0;
+                if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
+                
+                newChar.currentExp += expGained;
+                let leveledUp = false;
+                while(newChar.currentExp >= newChar.expToNextLevel!) {
+                    leveledUp = true;
+                    newChar.level! += 1;
+                    newChar.currentExp -= newChar.expToNextLevel!;
+                    newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
+                    newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                }
+                if (leveledUp) {
+                    toastsToShow.push({
+                        title: `Montée de Niveau: ${newChar.name}!`,
+                        description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
+                        duration: 7000
+                    });
+                }
+                return newChar;
+            });
+        };
+
+        if ((combatUpdates.expGained ?? 0) > 0) {
+            allExpGainingCharacters(combatUpdates.expGained!);
         }
 
-        if (adventureSettingsSnapshot.familiars) {
-            const updatedFamiliars = adventureSettingsSnapshot.familiars.map((fam: Familiar) => {
+        charactersSnapshot = charactersSnapshot.map((char: Character) => {
+            if (!adventureSettingsSnapshot.rpgMode) return char;
+            let currentCharacterState = { ...char };
+            const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
+            if (combatantUpdate) {
+                currentCharacterState.hitPoints = combatantUpdate.newHp;
+                currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
+                currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
+                currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
+            }
+            return currentCharacterState;
+        });
+
+        setStagedCharacters(charactersSnapshot);
+        return charactersSnapshot;
+    });
+
+    setAdventureSettings(prevSettings => {
+        let prevSettingsSnapshot = { ...prevSettings };
+
+        if (prevSettingsSnapshot.familiars && (combatUpdates.expGained ?? 0) > 0) {
+            prevSettingsSnapshot.familiars = prevSettingsSnapshot.familiars.map((fam: Familiar) => {
                 let newFam = {...fam};
-                newFam.currentExp += expGained;
+                newFam.currentExp += combatUpdates.expGained!;
                 let leveledUp = false;
                 while(newFam.currentExp >= newFam.expToNextLevel) {
                     leveledUp = true;
@@ -705,7 +722,7 @@ export default function Home() {
                     newFam.expToNextLevel = Math.floor(newFam.expToNextLevel * 1.5);
                 }
                 if(leveledUp) {
-                     toastsToShow.push({
+                    toastsToShow.push({
                         title: `Montée de Niveau: ${newFam.name}!`,
                         description: `${newFam.name} a atteint le niveau ${newFam.level} et son bonus passif a été amélioré !`,
                         duration: 7000
@@ -713,125 +730,90 @@ export default function Home() {
                 }
                 return newFam;
             });
-            adventureSettingsSnapshot.familiars = updatedFamiliars;
         }
-    };
-
-    if ((combatUpdates.expGained ?? 0) > 0) {
-        allExpGainingCharacters(combatUpdates.expGained!);
-    }
-
-    charactersSnapshot = charactersSnapshot.map((char: Character) => {
-        if (!adventureSettingsSnapshot.rpgMode) {
-             return char;
-        }
-        let currentCharacterState = { ...char };
-        const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
-        if (combatantUpdate) {
-            currentCharacterState.hitPoints = combatantUpdate.newHp;
-            currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
-            currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
-            currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
-        }
-        return currentCharacterState;
-    });
-    setCharacters(charactersSnapshot);
-
-
-    const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-    if (adventureSettingsSnapshot.rpgMode && playerCombatUpdate) {
-        adventureSettingsSnapshot.playerCurrentHp = playerCombatUpdate.newHp;
-        adventureSettingsSnapshot.playerCurrentMp = playerCombatUpdate.newMp ?? adventureSettingsSnapshot.playerCurrentMp;
-        if (playerCombatUpdate.isDefeated) {
-            setTimeout(() => {
+        
+        const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
+        if (prevSettings.rpgMode && playerCombatUpdate) {
+            prevSettingsSnapshot.playerCurrentHp = playerCombatUpdate.newHp;
+            prevSettingsSnapshot.playerCurrentMp = playerCombatUpdate.newMp ?? prevSettings.playerCurrentMp;
+            if (playerCombatUpdate.isDefeated) {
                 toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
-            }, 0);
-        }
-    }
-
-    if (adventureSettingsSnapshot.playerMaxMp && (adventureSettingsSnapshot.playerMaxMp > 0) && adventureSettingsSnapshot.playerCurrentMp !== undefined && (adventureSettingsSnapshot.playerCurrentMp < adventureSettingsSnapshot.playerMaxMp)) {
-        adventureSettingsSnapshot.playerCurrentMp = Math.min(adventureSettingsSnapshot.playerMaxMp, (adventureSettingsSnapshot.playerCurrentMp || 0) + 1);
-    }
-
-    if (adventureSettingsSnapshot.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && adventureSettingsSnapshot.playerCurrentExp !== undefined && adventureSettingsSnapshot.playerExpToNextLevel !== undefined && adventureSettingsSnapshot.playerLevel !== undefined) {
-        adventureSettingsSnapshot.playerCurrentExp += combatUpdates.expGained;
-        setTimeout(() => { toast({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` }); }, 0);
-
-        let gainedLevel = false;
-        while (adventureSettingsSnapshot.playerCurrentExp! >= adventureSettingsSnapshot.playerExpToNextLevel!) {
-            gainedLevel = true;
-            adventureSettingsSnapshot.playerLevel! += 1;
-            adventureSettingsSnapshot.playerCurrentExp! -= adventureSettingsSnapshot.playerExpToNextLevel!;
-            adventureSettingsSnapshot.playerExpToNextLevel = Math.floor(adventureSettingsSnapshot.playerExpToNextLevel! * 1.5);
-            adventureSettingsSnapshot.playerInitialAttributePoints = (adventureSettingsSnapshot.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-            
-            const derivedStats = calculateEffectiveStats(adventureSettingsSnapshot);
-            Object.assign(adventureSettingsSnapshot, derivedStats);
-            adventureSettingsSnapshot.playerCurrentHp = adventureSettingsSnapshot.playerMaxHp;
-            if (adventureSettingsSnapshot.playerMaxMp && adventureSettingsSnapshot.playerMaxMp > 0) {
-                adventureSettingsSnapshot.playerCurrentMp = adventureSettingsSnapshot.playerMaxMp;
             }
         }
+        
+        if (prevSettings.playerMaxMp && (prevSettings.playerMaxMp > 0) && prevSettings.playerCurrentMp !== undefined && (prevSettings.playerCurrentMp < prevSettings.playerMaxMp)) {
+            prevSettingsSnapshot.playerCurrentMp = Math.min(prevSettings.playerMaxMp, (prevSettings.playerCurrentMp || 0) + 1);
+        }
 
-        if (gainedLevel) {
-            setTimeout(() => {
-                toast({
+        if (prevSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && prevSettings.playerCurrentExp !== undefined && prevSettings.playerExpToNextLevel !== undefined && prevSettings.playerLevel !== undefined) {
+            prevSettingsSnapshot.playerCurrentExp += combatUpdates.expGained;
+            toastsToShow.push({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
+
+            let gainedLevel = false;
+            while (prevSettingsSnapshot.playerCurrentExp! >= prevSettingsSnapshot.playerExpToNextLevel!) {
+                gainedLevel = true;
+                prevSettingsSnapshot.playerLevel! += 1;
+                prevSettingsSnapshot.playerCurrentExp! -= prevSettingsSnapshot.playerExpToNextLevel!;
+                prevSettingsSnapshot.playerExpToNextLevel = Math.floor(prevSettingsSnapshot.playerExpToNextLevel! * 1.5);
+                prevSettingsSnapshot.playerInitialAttributePoints = (prevSettingsSnapshot.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                
+                const derivedStats = calculateEffectiveStats(prevSettingsSnapshot);
+                Object.assign(prevSettingsSnapshot, derivedStats);
+                prevSettingsSnapshot.playerCurrentHp = prevSettingsSnapshot.playerMaxHp;
+                if (prevSettingsSnapshot.playerMaxMp && prevSettingsSnapshot.playerMaxMp > 0) {
+                    prevSettingsSnapshot.playerCurrentMp = prevSettingsSnapshot.playerMaxMp;
+                }
+            }
+
+            if (gainedLevel) {
+                toastsToShow.push({
                     title: "Niveau Supérieur!",
                     description: (
                         <div>
-                            <p>Vous avez atteint le niveau {adventureSettingsSnapshot.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                            <p>Vous avez atteint le niveau {prevSettingsSnapshot.playerLevel}! Vos PV et PM max ont augmenté.</p>
                             <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
                             <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                         </div>
                     ),
                     duration: 9000,
                 });
-            }, 0);
-            setFormPropKey(k => k + 1);
-            setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...adventureSettingsSnapshot }));
+                setFormPropKey(k => k + 1);
+                setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...prevSettingsSnapshot }));
+            }
         }
-    }
+        
+        if (combatUpdates.nextActiveCombatState?.isActive) {
+            const nextState = { ...combatUpdates.nextActiveCombatState };
+            const updatedCombatants = nextState.combatants.map(c => {
+                const updateForThisTurn = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
+                if (updateForThisTurn) {
+                    return {
+                        ...c,
+                        currentHp: updateForThisTurn.newHp,
+                        currentMp: updateForThisTurn.newMp ?? c.currentMp,
+                        isDefeated: updateForThisTurn.isDefeated,
+                        statusEffects: updateForThisTurn.newStatusEffects || c.statusEffects
+                    };
+                }
+                return c;
+            });
+            setActiveCombat({ ...nextState, combatants: updatedCombatants });
+        } else if (combatUpdates.combatEnded) {
+            setActiveCombat(undefined);
+            toastsToShow.push({ title: "Combat Terminé!" });
+        }
+        
+        toastsToShow.forEach(toastArgs => setTimeout(() => toast(toastArgs), 0));
+        
+        if (combatUpdates.poiOwnershipChanges && combatUpdates.poiOwnershipChanges.length > 0) {
+           setTimeout(() => handlePoiOwnershipChange(combatUpdates.poiOwnershipChanges!), 100);
+        }
+        
+        adventureSettingsSnapshot = { ...prevSettings, ...prevSettingsSnapshot };
+        return adventureSettingsSnapshot;
+    });
 
-    // Apply accumulated changes to adventureSettings state, preserving map state
-    setAdventureSettings(prevSettings => ({
-        ...adventureSettingsSnapshot, // This now contains all the combat updates for the player
-        mapPointsOfInterest: prevSettings.mapPointsOfInterest, // Explicitly keep current map state from before this function
-    }));
-    
-    if (adventureSettingsSnapshot.rpgMode) {
-      if (combatUpdates.nextActiveCombatState?.isActive) {
-          const nextState = { ...combatUpdates.nextActiveCombatState };
-          const updatedCombatants = nextState.combatants.map(c => {
-              const updateForThisTurn = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
-              if (updateForThisTurn) {
-                  return {
-                      ...c,
-                      currentHp: updateForThisTurn.newHp,
-                      currentMp: updateForThisTurn.newMp ?? c.currentMp,
-                      isDefeated: updateForThisTurn.isDefeated,
-                      statusEffects: updateForThisTurn.newStatusEffects || c.statusEffects
-                  };
-              }
-              return c;
-          });
-          setActiveCombat({ ...nextState, combatants: updatedCombatants });
-      } else if (combatUpdates.combatEnded) {
-          setActiveCombat(undefined);
-          setTimeout(() => { toast({ title: "Combat Terminé!" }); }, 0);
-          
-          const lastCombat = activeCombat; // Use the state from *before* this update
-          const playerTeamWon = !playerCombatUpdate?.isDefeated;
-          const contestedPoiId = lastCombat?.contestedPoiId;
-          
-          if (playerTeamWon && contestedPoiId) {
-                handlePoiOwnershipChange([{ poiId: contestedPoiId, newOwnerId: PLAYER_ID }]);
-          }
-      }
-    }
-
-    toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, adventureSettings, characters, activeCombat, handlePoiOwnershipChange]);
-
+  }, [toast, handlePoiOwnershipChange, characters, adventureSettings]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -1195,7 +1177,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     const input: GenerateAdventureInput = {
         world: settingsForThisTurn.world,
-        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `> ${settingsForThisTurn.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${settingsForThisTurn.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
         characters: presentCharacters, 
         userAction: userActionText,
         currentLanguage: currentLanguage,
@@ -1874,7 +1856,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
          try {
              const input: GenerateAdventureInput = {
                  world: currentTurnSettings.world,
-                 initialSituation: contextMessages.map(msg => msg.type === 'user' ? `> ${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'),
+                 initialSituation: contextMessages.map(msg => msg.type === 'user' ? `${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'),
                  characters: currentGlobalCharactersRegen.filter(c => c.locationId === currentTurnSettings.playerLocationId), 
                  userAction: lastUserAction,
                  currentLanguage: currentLanguage,
@@ -2186,7 +2168,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.createObjectURL(url);
         setTimeout(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
         }, 0);
@@ -2235,7 +2217,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             playerSkills: [],
             familiars: [],
         };
-        setAdventureSettings(newLiveSettings);
+        setAdventureSettings(newLiveAdventureSettings);
         setCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
             ...char,
             currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
@@ -2603,7 +2585,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
-        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
+        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelMap[keyof typeof poiLevelNameMap]]?.resources || [],
         buildings: data.buildings || [],
     };
     
@@ -2613,7 +2595,13 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     });
 
     setAdventureSettings(updater);
-    setStagedAdventureSettings(prev => ({...prev, mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest}));
+    setStagedAdventureSettings(prev => {
+        const updatedLiveState = updater(prev as AdventureSettings);
+        return {
+            ...prev,
+            mapPointsOfInterest: updatedLiveState.mapPointsOfInterest
+        };
+    });
     
     toast({
         title: "Point d'Intérêt Créé",
@@ -2640,7 +2628,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
         return { ...prev, mapPointsOfInterest: newPois };
     });
-}, [toast]);
+  }, [toast]);
 
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
@@ -2977,7 +2965,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
 
-  const handleUploadToComicPanel = (pageIndex: number, panelIndex: number, file: File) => {
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
         const imageUrl = e.target?.result as string;
@@ -2990,7 +2978,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         }));
     };
     reader.readAsDataURL(file);
-  };
+  }, []);
     
   const handleGenerateCover = async () => {
     setIsGeneratingCover(true);
@@ -3041,9 +3029,10 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         };
 
         const existingComicsStr = localStorage.getItem('savedComics_v1');
-        const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
+        const existingComics: any[] = existingComicsStr ? JSON.parse(existingComicsStr) : [];
         
         const comicIndex = existingComics.findIndex((c: { id: string }) => c.id === newComic.id);
+        
         if (comicIndex > -1) {
             existingComics[comicIndex] = newComic;
         } else {
