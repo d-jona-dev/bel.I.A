@@ -2564,33 +2564,41 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
   }, []);
   
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
-    if (!adventureFormRef.current) return;
-    
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: data.name,
         description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
         icon: data.type,
         level: data.level || 1,
-        position: { x: 50, y: 50 },
+        // No position by default, user has to place it from the map UI
+        position: undefined, 
         actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
         buildings: data.buildings || [],
     };
+    
+    const updater = (prev: AdventureSettings): AdventureSettings => ({
+        ...prev,
+        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
+    });
 
-    const currentPois = adventureFormRef.current?.getValues('mapPointsOfInterest') || [];
-    adventureFormRef.current.setValue('mapPointsOfInterest', [...currentPois, newPoi]);
-
+    setAdventureSettings(updater);
     setStagedAdventureSettings(prevStaged => ({
       ...prevStaged,
-      mapPointsOfInterest: [...(prevStaged.mapPointsOfInterest || []), newPoi]
+      mapPointsOfInterest: updater(prevStaged as AdventureSettings).mapPointsOfInterest,
     }));
-
+    
+    // Also update the form directly if it's open
+    if (adventureFormRef.current) {
+        const currentPoisInForm = adventureFormRef.current.getValues('mapPointsOfInterest') || [];
+        adventureFormRef.current.setValue('mapPointsOfInterest', [...currentPoisInForm, newPoi]);
+    }
+    
     toast({
-        title: "Point d'Intérêt Ajouté",
-        description: `"${data.name}" a été ajouté à votre configuration. N'oubliez pas d'enregistrer les modifications.`,
+        title: "Point d'Intérêt Créé",
+        description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
     });
   }, [toast]);
 
@@ -2968,9 +2976,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
             toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
             return;
         }
-
+        
         try {
-            // Compress images in the draft before saving
             const compressedDraft: ComicPage[] = await Promise.all(
                 comicDraft.map(async (page) => ({
                     ...page,
@@ -2991,16 +2998,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
 
             const existingComicsStr = localStorage.getItem('savedComics_v1');
             const existingComics = existingComicsStr ? JSON.parse(existingComicsStr) : [];
+            const updatedComics = [...existingComics, newComic];
             
-            const comicIndex = existingComics.findIndex((c: any) => c.title === newComic.title);
-
-            if (comicIndex > -1) {
-                existingComics[comicIndex] = newComic;
-            } else {
-                existingComics.push(newComic);
-            }
-            
-            localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
+            localStorage.setItem('savedComics_v1', JSON.stringify(updatedComics));
             
             toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
             setIsSaveComicDialogOpen(false);
@@ -3017,7 +3017,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     };
 
 
-    const handleGenerateCover = React.useCallback(async () => {
+    const handleGenerateCover = async () => {
         setIsGeneratingCover(true);
         toast({ title: "Génération de la couverture..."});
 
@@ -3038,7 +3038,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         } finally {
             setIsGeneratingCover(false);
         }
-    }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
+    };
 
 
   const handleAddComicPage = () => {
@@ -3221,3 +3221,4 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     />
   );
 }
+
