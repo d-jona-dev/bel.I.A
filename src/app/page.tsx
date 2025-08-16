@@ -652,13 +652,12 @@ export default function Home() {
 
 const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
     const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-    let adventureSettingsSnapshot = adventureSettings; // Start with the current state
 
     setCharacters(currentChars => {
         let charactersSnapshot = JSON.parse(JSON.stringify(currentChars));
 
         const allExpGainingCharacters = (expGained: number) => {
-            if (!adventureSettingsSnapshot.rpgMode) return;
+            if (!adventureSettings.rpgMode) return;
 
             charactersSnapshot = charactersSnapshot.map((char: Character) => {
                 if (!char.isAlly || char.level === undefined) return char;
@@ -691,7 +690,7 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
         }
 
         charactersSnapshot = charactersSnapshot.map((char: Character) => {
-            if (!adventureSettingsSnapshot.rpgMode) return char;
+            if (!adventureSettings.rpgMode) return char;
             let currentCharacterState = { ...char };
             const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
             if (combatantUpdate) {
@@ -708,10 +707,10 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
     });
 
     setAdventureSettings(prevSettings => {
-        let prevSettingsSnapshot = { ...prevSettings };
+        let newSettings = { ...prevSettings };
 
-        if (prevSettingsSnapshot.familiars && (combatUpdates.expGained ?? 0) > 0) {
-            prevSettingsSnapshot.familiars = prevSettingsSnapshot.familiars.map((fam: Familiar) => {
+        if (newSettings.familiars && (combatUpdates.expGained ?? 0) > 0) {
+            newSettings.familiars = newSettings.familiars.map((fam: Familiar) => {
                 let newFam = {...fam};
                 newFam.currentExp += combatUpdates.expGained!;
                 let leveledUp = false;
@@ -733,35 +732,35 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
         }
         
         const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-        if (prevSettings.rpgMode && playerCombatUpdate) {
-            prevSettingsSnapshot.playerCurrentHp = playerCombatUpdate.newHp;
-            prevSettingsSnapshot.playerCurrentMp = playerCombatUpdate.newMp ?? prevSettings.playerCurrentMp;
+        if (newSettings.rpgMode && playerCombatUpdate) {
+            newSettings.playerCurrentHp = playerCombatUpdate.newHp;
+            newSettings.playerCurrentMp = playerCombatUpdate.newMp ?? newSettings.playerCurrentMp;
             if (playerCombatUpdate.isDefeated) {
                 toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
             }
         }
         
-        if (prevSettings.playerMaxMp && (prevSettings.playerMaxMp > 0) && prevSettings.playerCurrentMp !== undefined && (prevSettings.playerCurrentMp < prevSettings.playerMaxMp)) {
-            prevSettingsSnapshot.playerCurrentMp = Math.min(prevSettings.playerMaxMp, (prevSettings.playerCurrentMp || 0) + 1);
+        if (newSettings.playerMaxMp && (newSettings.playerMaxMp > 0) && newSettings.playerCurrentMp !== undefined && (newSettings.playerCurrentMp < newSettings.playerMaxMp)) {
+            newSettings.playerCurrentMp = Math.min(newSettings.playerMaxMp, (newSettings.playerCurrentMp || 0) + 1);
         }
 
-        if (prevSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && prevSettings.playerCurrentExp !== undefined && prevSettings.playerExpToNextLevel !== undefined && prevSettings.playerLevel !== undefined) {
-            prevSettingsSnapshot.playerCurrentExp += combatUpdates.expGained;
+        if (newSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0 && newSettings.playerCurrentExp !== undefined && newSettings.playerExpToNextLevel !== undefined && newSettings.playerLevel !== undefined) {
+            newSettings.playerCurrentExp += combatUpdates.expGained;
             toastsToShow.push({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
 
             let gainedLevel = false;
-            while (prevSettingsSnapshot.playerCurrentExp! >= prevSettingsSnapshot.playerExpToNextLevel!) {
+            while (newSettings.playerCurrentExp! >= newSettings.playerExpToNextLevel!) {
                 gainedLevel = true;
-                prevSettingsSnapshot.playerLevel! += 1;
-                prevSettingsSnapshot.playerCurrentExp! -= prevSettingsSnapshot.playerExpToNextLevel!;
-                prevSettingsSnapshot.playerExpToNextLevel = Math.floor(prevSettingsSnapshot.playerExpToNextLevel! * 1.5);
-                prevSettingsSnapshot.playerInitialAttributePoints = (prevSettingsSnapshot.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
+                newSettings.playerLevel! += 1;
+                newSettings.playerCurrentExp! -= newSettings.playerExpToNextLevel!;
+                newSettings.playerExpToNextLevel = Math.floor(newSettings.playerExpToNextLevel! * 1.5);
+                newSettings.playerInitialAttributePoints = (newSettings.playerInitialAttributePoints ?? 0) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
                 
-                const derivedStats = calculateEffectiveStats(prevSettingsSnapshot);
-                Object.assign(prevSettingsSnapshot, derivedStats);
-                prevSettingsSnapshot.playerCurrentHp = prevSettingsSnapshot.playerMaxHp;
-                if (prevSettingsSnapshot.playerMaxMp && prevSettingsSnapshot.playerMaxMp > 0) {
-                    prevSettingsSnapshot.playerCurrentMp = prevSettingsSnapshot.playerMaxMp;
+                const derivedStats = calculateEffectiveStats(newSettings);
+                Object.assign(newSettings, derivedStats);
+                newSettings.playerCurrentHp = newSettings.playerMaxHp;
+                if (newSettings.playerMaxMp && newSettings.playerMaxMp > 0) {
+                    newSettings.playerCurrentMp = newSettings.playerMaxMp;
                 }
             }
 
@@ -770,7 +769,7 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
                     title: "Niveau Supérieur!",
                     description: (
                         <div>
-                            <p>Vous avez atteint le niveau {prevSettingsSnapshot.playerLevel}! Vos PV et PM max ont augmenté.</p>
+                            <p>Vous avez atteint le niveau {newSettings.playerLevel}! Vos PV et PM max ont augmenté.</p>
                             <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
                             <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
                         </div>
@@ -778,7 +777,7 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
                     duration: 9000,
                 });
                 setFormPropKey(k => k + 1);
-                setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...prevSettingsSnapshot }));
+                setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...newSettings }));
             }
         }
         
@@ -809,11 +808,10 @@ const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchem
            setTimeout(() => handlePoiOwnershipChange(combatUpdates.poiOwnershipChanges!), 100);
         }
         
-        adventureSettingsSnapshot = { ...prevSettings, ...prevSettingsSnapshot };
-        return adventureSettingsSnapshot;
+        return newSettings;
     });
 
-  }, [toast, handlePoiOwnershipChange, characters, adventureSettings]);
+  }, [toast, handlePoiOwnershipChange, characters, adventureSettings.rpgMode]);
 
 
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
@@ -3196,6 +3194,11 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       isGeneratingItemImage={isGeneratingItemImage}
       handleEquipItem={handleEquipItem}
       handleUnequipItem={handleUnequipItem}
+      itemToSellDetails={itemToSellDetails}
+      sellQuantity={sellQuantity}
+      setSellQuantity={setSellQuantity}
+      confirmSellMultipleItems={confirmSellMultipleItems}
+      onCloseSellDialog={() => setItemToSellDetails(null)}
       handleMapAction={handleMapAction}
       useAestheticFont={useAestheticFont}
       onToggleAestheticFont={handleToggleAestheticFont}
