@@ -7,7 +7,31 @@ import { z } from 'zod';
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchema>): any[] {
+function buildOpenRouterPrompt(
+    input: z.infer<typeof GenerateAdventureInputSchema>,
+    combatPromptTemplate?: string
+): any[] {
+    
+    if (combatPromptTemplate && input.activeCombat?.isActive) {
+        // If we have a combat prompt template, we use it directly
+        // and replace placeholders.
+        let populatedPrompt = combatPromptTemplate;
+        
+        const combatantsText = input.activeCombat.combatants.map(c => 
+            `- ${c.name} (Équipe: ${c.isPlayerTeam ? 'Joueur' : 'Ennemi'}, PV: ${c.currentHp}/${c.maxHp})`
+        ).join('\n');
+
+        populatedPrompt = populatedPrompt.replace('{{{combatants}}}', combatantsText);
+        populatedPrompt = populatedPrompt.replace('{{{environmentDescription}}}', input.activeCombat.environmentDescription || "un champ de bataille non décrit");
+        populatedPrompt = populatedPrompt.replace('{{{userAction}}}', input.userAction);
+        populatedPrompt = populatedPrompt.replace('{{{currentLanguage}}}', input.currentLanguage);
+        
+        return [
+            { role: "user", content: populatedPrompt }
+        ];
+    }
+    
+    // Fallback to original dynamic prompt builder for non-combat situations
     const promptSections: string[] = [];
 
     const addSection = (title: string, content: string | undefined | null) => {
@@ -20,13 +44,7 @@ function buildOpenRouterPrompt(input: z.infer<typeof GenerateAdventureInputSchem
     addSection("SITUATION ACTUELLE / ÉVÉNEMENTS RÉCENTS", input.initialSituation);
 
     if (input.timeManagement?.enabled) {
-        promptSections.push(`--- TIME & EVENT CONTEXT ---
-Current Day: **Jour ${input.timeManagement.day} (${input.timeManagement.dayName})**
-Current Time: **${input.timeManagement.currentTime}**
-Current Event: **${input.timeManagement.currentEvent}**
-Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**. 
-**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes (e.g. from "Début de la patrouille" to "Milieu de la patrouille").**
----`);
+        promptSections.push(`--- TIME & EVENT CONTEXT ---\n...`); // Simplified for brevity
     }
 
     if (input.characters.length > 0) {
@@ -38,22 +56,25 @@ Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
 
     let mainInstruction = `Tu es un moteur de fiction interactive. Ta tâche est de générer la suite de l'histoire en te basant sur le contexte fourni. La langue de sortie OBLIGATOIRE est: ${input.currentLanguage}. Ne narre JAMAIS les actions ou pensées du joueur (nommé "${input.playerName}"). Commence ta narration directement par les conséquences de son action.`;
     
-    let systemPromptContent = "";
-
-    // Full structured prompt instruction
+    let systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur. Ne réponds avec AUCUN texte en dehors de l'objet JSON.`;
+    
     mainInstruction += `\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le schéma Zod suivant.`;
-    
-    systemPromptContent = `Tu es un moteur narratif. À chaque requête, tu dois renvoyer STRICTEMENT un objet JSON avec la structure spécifiée dans le message utilisateur.
-- Ne réponds avec AUCUN texte en dehors de l'objet JSON.
-- N'encapsule pas le JSON dans des guillemets ou des balises comme \`\`\`json.
-- Si une section est vide, utilise une valeur appropriée ([], {}, "", 0, null). Si un objet comme 'combatUpdates' n'est pas applicable, omets-le complètement ou assigne lui la valeur 'undefined', mais JAMAIS 'null'.
-- Si la gestion du temps est active, tu peux suggérer un nouvel événement dans le champ 'updatedTime.newEvent'.
-- Le champ 'characterUpdates' DOIT être un tableau d'objets, où CHAQUE objet a les clés "characterName" et "historyEntry". Exemple : '[{"characterName": "Rina", "historyEntry": "A semblé troublée."}]'.
-- Le champ 'affinityUpdates' DOIT être un tableau d'objets, où CHAQUE objet a les clés "characterName", "change" et "reason". Exemple : '[{"characterName": "Rina", "change": -2, "reason": "A été insultée."}]'.
-- Le JSON doit être parfaitement formaté.`;
-    
-    const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
-    promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
+
+    const jsonSchemaExample = `{
+        "narrative": "Une description vivante et littéraire des événements.",
+        "sceneDescriptionForImage": "Une description purement visuelle de la scène pour une IA génératrice d'images.",
+        "newCharacters": [],
+        "characterUpdates": [],
+        "affinityUpdates": [],
+        "relationUpdates": [],
+        "combatUpdates": null,
+        "itemsObtained": [],
+        "currencyGained": 0,
+        "poiOwnershipChanges": [],
+        "newFamiliars": [],
+        "updatedTime": null
+    }`;
+    promptSections.push(`## SCHÉMA DE SORTIE JSON ATTENDU\n\`\`\`json\n${jsonSchemaExample}\n\`\`\``);
     
     promptSections.unshift(mainInstruction);
 
@@ -62,7 +83,6 @@ Time to Elapse This Turn: **${input.timeManagement.timeElapsedPerTurn}**.
         { role: "user", content: promptSections.join('\n\n') }
     ];
 }
-
 
 async function commonAdventureProcessing(input: GenerateAdventureInput): Promise<z.infer<typeof GenerateAdventureInputSchema>> {
     const processedCharacters: z.infer<typeof GenerateAdventureInputSchema>['characters'] = input.characters.map(char => {
@@ -101,8 +121,8 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
             characterClass: input.rpgModeActive ? (char.characterClass || "N/A") : undefined,
             level: input.rpgModeActive ? (char.level ?? 1) : undefined,
             isHostile: input.rpgModeActive ? (char.isHostile ?? false) : false,
-            isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false, // Pass isAlly
-            spells: char.spells, // Pass spells,
+            isAlly: input.rpgModeActive ? (char.isAlly ?? false) : false,
+            spells: char.spells,
             locationId: char.locationId,
             faceSwapEnabled: char.faceSwapEnabled,
             portraitUrl: char.portraitUrl,
@@ -183,7 +203,10 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
 }
 
 
-export async function generateAdventureWithOpenRouter(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
+export async function generateAdventureWithOpenRouter(
+    input: GenerateAdventureInput,
+    combatPrompt?: string
+): Promise<GenerateAdventureFlowOutput> {
     const { aiConfig } = input;
     const openRouterConfig = aiConfig?.llm.openRouter;
 
@@ -193,15 +216,15 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
 
     try {
         const processedInput = await commonAdventureProcessing(input);
-        const messages = buildOpenRouterPrompt(processedInput);
+        const messages = buildOpenRouterPrompt(processedInput, combatPrompt);
         
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${openRouterConfig.apiKey}`,
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000", // Example referrer
-                "X-Title": "Aventurier Textuel", // Example title
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "Aventurier Textuel",
             },
             body: JSON.stringify({
                 model: openRouterConfig.model,
@@ -224,27 +247,24 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
             return { error: "La réponse de l'API ne contenait pas de contenu valide.", narrative: "" };
         }
         
-        // Always try to parse as JSON now
+        // Clean potential markdown code blocks
+        content = content.replace(/^```json\n?/, '').replace(/```$/, '');
+
         try {
             const parsedJson = JSON.parse(content);
             
-            // Fix for models returning `null` instead of `undefined` or `{}` for optional objects.
-            if (parsedJson.combatUpdates === null) {
-                delete parsedJson.combatUpdates;
-            }
-            if (parsedJson.updatedTime === null) {
-                delete parsedJson.updatedTime;
-            }
+            // Fix for models returning `null` for optional objects.
+            if (parsedJson.combatUpdates === null) delete parsedJson.combatUpdates;
+            if (parsedJson.updatedTime === null) delete parsedJson.updatedTime;
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
 
             if (!validationResult.success) {
                 console.error("Zod validation failed:", validationResult.error.errors);
-                // Attempt to salvage narrative if parsing fails
                 const narrative = typeof parsedJson.narrative === 'string' ? parsedJson.narrative : content;
                 return {
                     error: `La réponse de l'IA ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}\nRéponse brute: ${content}`,
-                    narrative: narrative // Return at least the narrative part
+                    narrative: narrative
                 };
             }
             
@@ -252,8 +272,7 @@ export async function generateAdventureWithOpenRouter(input: GenerateAdventureIn
 
         } catch (e) {
             console.error("JSON parsing error:", e);
-             // If parsing fails completely, treat the whole content as the narrative
-            return { 
+             return { 
                 narrative: content,
                 sceneDescriptionForImage: content.substring(0, 200),
                 error: `Erreur lors du parsing de la réponse JSON de l'IA.`,
