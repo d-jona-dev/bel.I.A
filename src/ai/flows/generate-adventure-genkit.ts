@@ -331,16 +331,11 @@ If the 'User Action' implies interaction with a specific service or building typ
 
 
 Tasks:
-1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
-    *   **COMBAT LOGIC:** An external game system handles ALL dice rolls, hit/miss checks, and damage calculation. You DO NOT have access to these results.
-    *   **Your ONLY task in combat** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunge, with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
-    *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.).
-    *   **DO NOT** create or manage a 'combatUpdates' field in your output. The external system handles all combat state internally.
-    *   **COMBAT INITIATION (Only if not already in combat):**
-        *   **Is it a Travel Action?** (e.g., userAction is "Je voyage vers le lieu X").
-            *   **YES:** Determine if a random encounter occurs. The presence of a 'poste-gardes' building at the *destination* POI reduces this chance by 75%. Default chance is 30%. If an encounter occurs, start combat. You MUST populate 'combatUpdates.nextActiveCombatState'. The 'combatants' list inside it MUST include the player, ALL characters from the 'Known Characters' list who have 'isAlly: true' and positive HP, and the new hostile NPCs you create for this random encounter. You MUST NOT set 'contestedPoiId'.
-        *   **Is it a Capture attempt?** (e.g., userAction is "Je tente de capturer la créature").
-            *   **YES:** If you are NOT in combat and an unowned, non-hostile creature is present, you can attempt to capture it as a familiar. Based on a Charisma check (roll a d20, if result + player's charisma modifier > 15), if successful, populate the 'newFamiliars' field with the details of the newly captured familiar. The rarity should be determined by the context (a simple forest animal would be 'common', a mysterious glowing fox might be 'rare'). Give it a random appropriate passive bonus. If it fails, narrate the creature running away or becoming aggressive.
+1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. The application now handles combat initiation internally. If the user's action was to attack a location, the application will set up the combat state. Your task is simply to narrate the scene based on the context provided.
+    *   **If 'activeCombat.isActive' is true:**
+        *   **Your ONLY task** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunges with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
+        *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.). An external system handles all of that.
+        *   **DO NOT** manage the 'combatUpdates' field. The external system handles all combat state internally.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Player Buying Item from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
