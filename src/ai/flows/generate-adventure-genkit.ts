@@ -1,5 +1,4 @@
 
-      
 'use server';
 
 /**
@@ -227,14 +226,7 @@ Compétences:
 Environment: {{activeCombat.environmentDescription}}
 Combatants (Player team listed first, then Enemies):
 {{#each activeCombat.combatants}}
-  {{#if this.isPlayerTeam}}
-- Name: {{this.name}} (Team: Joueur/Allié) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
-  {{/if}}
-{{/each}}
-{{#each activeCombat.combatants}}
-  {{#if this.isEnemyTeam}}
-- Name: {{this.name}} (Team: Ennemi) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
-  {{/if}}
+- Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
 {{/each}}
 **Combat Rules: An external system handles all dice rolls, hits, misses, and damage calculations. Your role is purely NARRATIVE.**
 **Your Task:** For any enemy combatants who are not defeated, narrate their actions for this turn. You MUST NOT determine the outcome of their actions. Simply describe what they *attempt* to do. For example:
@@ -434,5 +426,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    
