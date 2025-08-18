@@ -84,7 +84,6 @@ export const ActiveCombatSchema = z.object({
     combatants: z.array(CombatantSchema).describe("List of all characters involved in combat, including player, allies, and enemies."),
     environmentDescription: z.string().optional().describe("Brief description of the combat environment (e.g., 'a narrow corridor', 'an open field')."),
     turnLog: z.array(z.string()).optional().describe("Summary of major events from previous combat turns."),
-    playerAttemptedDeescalation: z.boolean().optional().default(false).describe("Has the player attempted to de-escalate this specific encounter before combat began?"),
     contestedPoiId: z.string().optional().describe("The ID of the Point of Interest being fought over, if this is a territory combat. This is CRUCIAL for determining conquest rewards.")
 });
 export type ActiveCombat = z.infer<typeof ActiveCombatSchema>;
@@ -574,13 +573,13 @@ const CombatOutcomeSchema = z.object({
 
 
 export const CombatUpdatesSchema = z.object({
-    updatedCombatants: z.array(CombatOutcomeSchema).describe("HP, MP, status effects, and defeat status updates for all combatants involved in this turn. THIS IS MANDATORY if combat took place."),
+    updatedCombatants: z.array(CombatOutcomeSchema).describe("An array detailing the HP, MP, status, and defeat outcomes for every combatant involved in this turn. This field is MANDATORY if a combat turn occurred. It must reflect the state of combatants *after* this turn's actions."),
     expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
     itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
     currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces looted by the player if combat is won. IF NO CURRENCY CHANGE, PROVIDE 0."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
-    turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. THIS IS MANDATORY if combat took place. This will be part of the main narrative output as well."),
-    nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. If combatEnded is true, this can be omitted or isActive set to false. Ensure this state includes all active combatants: player, allies, and all active enemies."),
+    turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This is MANDATORY if combat took place. This will be part of the main narrative output as well."),
+    nextActiveCombatState: ActiveCombatSchema.optional().describe("The state of combat to be used for the *next* turn, if combat is still ongoing. Ensure combatant IDs and teams are correct. If combatEnded is true, this can be omitted or isActive set to false."),
 });
 export type CombatUpdatesSchema = z.infer<typeof CombatUpdatesSchema>;
 
@@ -635,3 +634,5 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+
+  
