@@ -1,4 +1,5 @@
 
+      
 'use server';
 
 /**
@@ -335,7 +336,7 @@ Tasks:
     *   **If 'activeCombat.isActive' is true:**
         *   **Your ONLY task** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunges with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
         *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.). An external system handles all of that.
-        *   **DO NOT** manage the 'combatUpdates' field. The external system handles all combat state internally.
+        *   **CRITICAL:** The application is now handling all combat mechanics. Your only job is to provide the narrative. You MUST NOT populate the 'combatUpdates' field in the JSON output. The game engine handles it.
     *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Player Buying Item from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
@@ -433,3 +434,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    
