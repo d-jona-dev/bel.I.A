@@ -3218,13 +3218,9 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      onGenerateCover={handleGenerateCover}
       isGeneratingCover={isGeneratingCover}
+      onGenerateCover={handleGenerateCover}
       onSaveToLibrary={handleSaveToLibrary}
     />
   );
 }
-
-    
-
-    

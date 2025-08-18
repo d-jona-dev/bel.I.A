@@ -333,7 +333,7 @@ If the 'User Action' implies interaction with a specific service or building typ
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
     *   **COMBAT LOGIC:** An external game system handles ALL dice rolls, hit/miss checks, and damage calculation. You DO NOT have access to these results.
-    *   **Your ONLY task in combat** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunges with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
+    *   **Your ONLY task in combat** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunge, with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
     *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.).
     *   **DO NOT** create or manage a 'combatUpdates' field in your output. The external system handles all combat state internally.
     *   **COMBAT INITIATION (Only if not already in combat):**
@@ -378,10 +378,12 @@ Tasks:
 
 4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates. **CRITICAL: The format MUST be an array of objects, each with 'characterName' and 'historyEntry' keys.** For example: '[{"characterName": "Rina", "historyEntry": "A semblé troublée par la question de {{../playerName}}."}]'.
 
-{{#if relationsModeActive}}
-5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
+5.  **Status Effect Updates (newStatusEffects in combatUpdates.updatedCombatants):** This field MUST be an array of objects, NOT strings. Example: "newStatusEffects": [{"name": "Mort", "description": "Ne peut plus agir", "duration": -1}].
 
-6.  **Relation Status Updates (in {{currentLanguage}}):**
+{{#if relationsModeActive}}
+6.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
+
+7.  **Relation Status Updates (in {{currentLanguage}}):**
     *   Analyze the narrative for significant shifts in how characters view each other ({{playerName}} or other NPCs).
     *   **If a character's affinity towards {{playerName}} crosses a major threshold** (e.g., from neutral to friendly, friendly to loyal, neutral to wary, wary to hostile), consider if their relationship *status* towards {{playerName}} should change.
     *   **If a significant narrative event occurs** (e.g., betrayal, deep act of trust, declaration, prolonged conflict, new alliance forming), update the relationship *status* between the involved characters (NPC-{{playerName}} or NPC-NPC).
@@ -395,12 +397,12 @@ Tasks:
     *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
 {{/if}}
 
-7.  **Territory Conquest/Loss (poiOwnershipChanges):**
+8.  **Territory Conquest/Loss (poiOwnershipChanges):**
     *   The game system handles combat results internally. If you narrate a successful conquest or diplomatic takeover of a POI, record the change here.
     *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
 
 {{#if timeManagement.enabled}}
-8.  **Time Update:** You can suggest a new event description in 'updatedTime.newEvent' if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
+9.  **Time Update:** You can suggest a new event description in 'updatedTime.newEvent' if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
 {{/if}}
 
 Narrative Continuation (in {{currentLanguage}}):
