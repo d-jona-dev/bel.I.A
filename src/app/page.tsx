@@ -416,25 +416,32 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
-  const resolveCombatTurn = (
+  const resolveCombatTurn = React.useCallback((
       currentCombatState: ActiveCombat,
       playerAction: { type: 'attack', targetId: string } | { type: 'defend' } | { type: 'skill', name: string },
-      settings: AdventureSettings,
+      currentSettings: AdventureSettings,
       allCharacters: Character[]
-  ): { nextCombatState: ActiveCombat; turnLog: string[] } => {
+  ): {
+      nextCombatState: ActiveCombat;
+      updatedCharacters: Character[];
+      updatedSettings: Partial<AdventureSettings>;
+      turnLog: string[];
+  } => {
       let turnLog: string[] = [];
+      // DEEP CLONE of combatants to ensure we don't mutate state
       let combatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
-      const effectivePlayerStats = calculateEffectiveStats(settings);
+      const effectivePlayerStats = calculateEffectiveStats(currentSettings);
   
       // Player's turn
       const player = combatants.find(c => c.characterId === PLAYER_ID);
       if (player && !player.isDefeated) {
           if (playerAction.type === 'attack') {
               const target = combatants.find(c => c.characterId === playerAction.targetId && !c.isDefeated);
-              if (target) {
+              const targetData = allCharacters.find(c => c.id === target?.characterId);
+
+              if (target && targetData) {
                   const attackRoll = Math.floor(Math.random() * 20) + 1;
                   const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
-                  const targetData = allCharacters.find(c => c.id === target.characterId);
                   const targetAC = targetData?.armorClass ?? 10;
                   
                   if (totalAttack >= targetAC) {
@@ -464,7 +471,6 @@ export default function Home() {
                   }
               }
           }
-          // Placeholder for other actions like 'defend' or 'skill'
       }
   
       // Enemies' turn
@@ -505,10 +511,24 @@ export default function Home() {
               }
           }
       });
-  
+      
       const allEnemiesDefeated = combatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
       const allPlayersDefeated = combatants.filter(c => c.team === 'player').every(c => c.isDefeated);
-  
+      
+      // Prepare state updates
+      const updatedPlayerCombatant = combatants.find(c => c.characterId === PLAYER_ID);
+      const updatedSettings: Partial<AdventureSettings> = {
+          playerCurrentHp: updatedPlayerCombatant?.currentHp
+      };
+
+      const updatedCharacters = allCharacters.map(char => {
+          const combatantData = combatants.find(c => c.characterId === char.id);
+          if (combatantData) {
+              return { ...char, hitPoints: combatantData.currentHp };
+          }
+          return char;
+      });
+
       return {
           nextCombatState: {
               ...currentCombatState,
@@ -516,9 +536,11 @@ export default function Home() {
               isActive: !allEnemiesDefeated && !allPlayersDefeated,
               turnLog: [...(currentCombatState.turnLog || []), ...turnLog],
           },
-          turnLog: turnLog
+          updatedCharacters,
+          updatedSettings,
+          turnLog,
       };
-  };
+  }, []);
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -1391,25 +1413,22 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   const handleSendSpecificAction = async (action: string) => {
     if (isLoading) return;
     setIsLoading(true);
-
+    
     if (activeCombat) {
-        const { nextCombatState, turnLog } = resolveCombatTurn(activeCombat, { type: 'attack', targetId: activeCombat.combatants.find(c => c.team === 'enemy' && !c.isDefeated)?.characterId || '' }, adventureSettings, characters);
+        // Resolve the entire combat turn internally first
+        const { nextCombatState, updatedCharacters, updatedSettings, turnLog } = resolveCombatTurn(
+            activeCombat, 
+            { type: 'attack', targetId: activeCombat.combatants.find(c => c.team === 'enemy' && !c.isDefeated)?.characterId || '' }, 
+            adventureSettings, 
+            characters
+        );
         
+        // Immediately update all relevant states with the results of the internal logic
         setActiveCombat(nextCombatState);
-
-        const playerCombatant = nextCombatState.combatants.find(c => c.characterId === PLAYER_ID);
-        setAdventureSettings(prev => ({...prev, playerCurrentHp: playerCombatant?.currentHp }));
-        
-        const updatedCharacters = characters.map(char => {
-            const combatantData = nextCombatState.combatants.find(c => c.characterId === char.id);
-            if (combatantData) {
-                return { ...char, hitPoints: combatantData.currentHp };
-            }
-            return char;
-        });
         setCharacters(updatedCharacters);
-
-        // Now call AI for narration
+        setAdventureSettings(prev => ({ ...prev, ...updatedSettings }));
+        
+        // Now, call the AI for narration only, using the results
         await callGenerateAdventure(turnLog.join('\n'));
 
     } else {
@@ -3255,3 +3274,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
   
+
