@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -70,7 +71,7 @@ interface AdventureDisplayProps {
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     activeCombat?: ActiveCombat;
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => void;
+    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
     handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;

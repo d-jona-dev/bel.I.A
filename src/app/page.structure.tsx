@@ -1,4 +1,5 @@
 
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -88,7 +89,7 @@ interface PageStructureProps {
   playerName: string;
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
-  onCombatUpdates: (combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => void;
+  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
   suggestQuestHookAction: () => Promise<void>;
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;

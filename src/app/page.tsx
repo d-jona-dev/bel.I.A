@@ -428,7 +428,6 @@ export default function Home() {
       turnLog: string[];
   } => {
       let turnLog: string[] = [];
-      // DEEP CLONE of combatants to ensure we don't mutate state
       let combatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
       const effectivePlayerStats = calculateEffectiveStats(currentSettings);
   
@@ -458,7 +457,7 @@ export default function Home() {
                       } else if (!isNaN(parseInt(damageString, 10))) {
                           damage = parseInt(damageString, 10);
                       }
-                      damage = Math.max(1, damage); // Minimum 1 damage
+                      damage = Math.max(1, damage);
                       
                       target.currentHp = Math.max(0, target.currentHp - damage);
                       turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
@@ -534,7 +533,6 @@ export default function Home() {
               ...currentCombatState,
               combatants: combatants,
               isActive: !allEnemiesDefeated && !allPlayersDefeated,
-              turnLog: [...(currentCombatState.turnLog || []), ...turnLog],
           },
           updatedCharacters,
           updatedSettings,
@@ -3274,4 +3272,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
   
+
 
