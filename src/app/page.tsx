@@ -83,7 +83,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
+        const bonusValue = Math.floor(bonus.value * familiar.level);
         if (bonus.type === 'strength') effectiveStrength += bonusValue;
         if (bonus.type === 'dexterity') effectiveDexterity += bonusValue;
         if (bonus.type === 'constitution') effectiveConstitution += bonusValue;
@@ -107,7 +107,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
+        const bonusValue = Math.floor(bonus.value * familiar.level);
         if (bonus.type === 'armor_class') effectiveAC += bonusValue;
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
@@ -416,6 +416,109 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
+  const resolveCombatTurn = (
+      currentCombatState: ActiveCombat,
+      playerAction: { type: 'attack', targetId: string } | { type: 'defend' } | { type: 'skill', name: string },
+      settings: AdventureSettings,
+      allCharacters: Character[]
+  ): { nextCombatState: ActiveCombat; turnLog: string[] } => {
+      let turnLog: string[] = [];
+      let combatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
+      const effectivePlayerStats = calculateEffectiveStats(settings);
+  
+      // Player's turn
+      const player = combatants.find(c => c.characterId === PLAYER_ID);
+      if (player && !player.isDefeated) {
+          if (playerAction.type === 'attack') {
+              const target = combatants.find(c => c.characterId === playerAction.targetId && !c.isDefeated);
+              if (target) {
+                  const attackRoll = Math.floor(Math.random() * 20) + 1;
+                  const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
+                  const targetData = allCharacters.find(c => c.id === target.characterId);
+                  const targetAC = targetData?.armorClass ?? 10;
+                  
+                  if (totalAttack >= targetAC) {
+                      const damageString = effectivePlayerStats.playerDamageBonus || "1";
+                      const match = damageString.match(/(\d+)d(\d+)([+-]\d+)?/);
+                      let damage = 1;
+                      if (match) {
+                          const [_, diceCount, diceSides, bonus] = match;
+                          damage = 0;
+                          for (let i = 0; i < parseInt(diceCount, 10); i++) {
+                              damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
+                          }
+                          if (bonus) damage += parseInt(bonus, 10);
+                      } else if (!isNaN(parseInt(damageString, 10))) {
+                          damage = parseInt(damageString, 10);
+                      }
+                      damage = Math.max(1, damage); // Minimum 1 damage
+                      
+                      target.currentHp = Math.max(0, target.currentHp - damage);
+                      turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
+                      if (target.currentHp === 0) {
+                          target.isDefeated = true;
+                          turnLog.push(`${target.name} est vaincu !`);
+                      }
+                  } else {
+                      turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
+                  }
+              }
+          }
+          // Placeholder for other actions like 'defend' or 'skill'
+      }
+  
+      // Enemies' turn
+      combatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
+          const targetPool = combatants.filter(t => t.team === 'player' && !t.isDefeated);
+          if (targetPool.length > 0) {
+              const target = targetPool[Math.floor(Math.random() * targetPool.length)];
+              const enemyData = allCharacters.find(c => c.id === enemy.characterId);
+              const attackRoll = Math.floor(Math.random() * 20) + 1;
+              const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
+              
+              const targetAC = target.characterId === PLAYER_ID ? (effectivePlayerStats.playerArmorClass || 10) : (allCharacters.find(c => c.id === target.characterId)?.armorClass ?? 10);
+  
+              if (totalAttack >= targetAC) {
+                  const damageString = enemyData?.damageBonus || "1";
+                  const match = damageString.match(/(\d+)d(\d+)([+-]\d+)?/);
+                  let damage = 1;
+                  if (match) {
+                      const [_, diceCount, diceSides, bonus] = match;
+                      damage = 0;
+                      for (let i = 0; i < parseInt(diceCount, 10); i++) {
+                          damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
+                      }
+                      if (bonus) damage += parseInt(bonus, 10);
+                  } else if (!isNaN(parseInt(damageString, 10))) {
+                    damage = parseInt(damageString, 10);
+                  }
+                  damage = Math.max(1, damage);
+                  
+                  target.currentHp = Math.max(0, target.currentHp - damage);
+                  turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
+                  if (target.currentHp === 0) {
+                      target.isDefeated = true;
+                      turnLog.push(`${target.name} est vaincu !`);
+                  }
+              } else {
+                  turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
+              }
+          }
+      });
+  
+      const allEnemiesDefeated = combatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
+      const allPlayersDefeated = combatants.filter(c => c.team === 'player').every(c => c.isDefeated);
+  
+      return {
+          nextCombatState: {
+              ...currentCombatState,
+              combatants: combatants,
+              isActive: !allEnemiesDefeated && !allPlayersDefeated,
+              turnLog: [...(currentCombatState.turnLog || []), ...turnLog],
+          },
+          turnLog: turnLog
+      };
+  };
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -1285,7 +1388,40 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate
   ]);
 
-const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+  const handleSendSpecificAction = async (action: string) => {
+    if (isLoading) return;
+    setIsLoading(true);
+
+    if (activeCombat) {
+        const { nextCombatState, turnLog } = resolveCombatTurn(activeCombat, { type: 'attack', targetId: activeCombat.combatants.find(c => c.team === 'enemy' && !c.isDefeated)?.characterId || '' }, adventureSettings, characters);
+        
+        setActiveCombat(nextCombatState);
+
+        const playerCombatant = nextCombatState.combatants.find(c => c.characterId === PLAYER_ID);
+        setAdventureSettings(prev => ({...prev, playerCurrentHp: playerCombatant?.currentHp }));
+        
+        const updatedCharacters = characters.map(char => {
+            const combatantData = nextCombatState.combatants.find(c => c.characterId === char.id);
+            if (combatantData) {
+                return { ...char, hitPoints: combatantData.currentHp };
+            }
+            return char;
+        });
+        setCharacters(updatedCharacters);
+
+        // Now call AI for narration
+        await callGenerateAdventure(turnLog.join('\n'));
+
+    } else {
+        handleNarrativeUpdate(action, 'user');
+        await callGenerateAdventure(action);
+    }
+
+    setIsLoading(false);
+  };
+
+
+  const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     
     if (!item.type || item.type !== 'misc' || !item.name) {
         setTimeout(() => {
@@ -1307,8 +1443,8 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
 
     const bonus: FamiliarPassiveBonus = {
-        value: effectMatch ? parseInt(effectMatch[1], 10) : 1, // Default value if not found
         type: effectMatch ? (effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type']) : 'strength', // Default type
+        value: effectMatch ? parseInt(effectMatch[1], 10) : 1, // Default value if not found
         description: item.effect || "Bonus Passif",
     };
 
@@ -2836,7 +2972,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     setAiConfig(newConfig);
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
-
+  
   const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -3014,7 +3150,7 @@ const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
       handleToggleRpgMode={handleToggleRpgMode}
       handleToggleRelationsMode={handleToggleRelationsMode}
       handleToggleStrategyMode={handleToggleStrategyMode}
-      handleNarrativeUpdate={handleNarrativeUpdate}
+      onNarrativeChange={handleNarrativeUpdate}
       handleCharacterUpdate={handleCharacterUpdate}
       handleNewCharacters={handleNewCharacters}
       handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
