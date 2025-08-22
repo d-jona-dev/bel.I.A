@@ -121,7 +121,7 @@ interface PageStructureProps {
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onMapImageUrlChange: (url: string) => void; // Nouvelle prop
-  handleNarrativeUpdate: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+  onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
   onAddPoiToMap: (poiId: string) => void;
@@ -158,7 +158,7 @@ export function PageStructure({
   handleToggleRpgMode,
   handleToggleRelationsMode,
   handleToggleStrategyMode,
-  handleNarrativeUpdate,
+  onNarrativeChange,
   handleCharacterUpdate,
   handleNewCharacters,
   handleCharacterHistoryUpdate,
@@ -441,7 +441,7 @@ export function PageStructure({
                 characters={characters}
                 initialMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
-                onNarrativeChange={handleNarrativeUpdate}
+                onNarrativeChange={onNarrativeChange}
                 onEditMessage={handleEditMessage}
                 onRegenerateLastResponse={handleRegenerateLastResponse}
                 onUndoLastMessage={handleUndoLastMessage}
