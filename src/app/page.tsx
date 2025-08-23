@@ -417,62 +417,58 @@ export default function Home() {
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
   const resolveCombatTurn = React.useCallback((
-      currentCombatState: ActiveCombat,
-      playerAction: { type: 'attack', targetId: string } | { type: 'defend' } | { type: 'skill', name: string },
-      currentSettings: AdventureSettings,
-      allCharacters: Character[]
+    currentCombatState: ActiveCombat,
+    playerActionText: string,
+    currentSettings: AdventureSettings,
+    allCharacters: Character[]
   ): {
       nextCombatState: ActiveCombat;
-      updatedCharacters: Character[];
-      updatedSettings: Partial<AdventureSettings>;
       turnLog: string[];
   } => {
       let turnLog: string[] = [];
       let combatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
       const effectivePlayerStats = calculateEffectiveStats(currentSettings);
   
-      // Player's turn
+      const getDamage = (damageBonus: string | undefined): number => {
+          if (!damageBonus) return 1;
+          const match = damageBonus.match(/(\d+)d(\d+)([+-]\d+)?/);
+          let damage = 1;
+          if (match) {
+              const [_, diceCount, diceSides, bonus] = match;
+              damage = 0;
+              for (let i = 0; i < parseInt(diceCount, 10); i++) {
+                  damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
+              }
+              if (bonus) damage += parseInt(bonus, 10);
+          } else if (!isNaN(parseInt(damageBonus, 10))) {
+              damage = parseInt(damageBonus, 10);
+          }
+          return Math.max(1, damage);
+      };
+      
       const player = combatants.find(c => c.characterId === PLAYER_ID);
       if (player && !player.isDefeated) {
-          if (playerAction.type === 'attack') {
-              const target = combatants.find(c => c.characterId === playerAction.targetId && !c.isDefeated);
-              const targetData = allCharacters.find(c => c.id === target?.characterId);
+           const target = combatants.find(c => c.team === 'enemy' && !c.isDefeated);
+           if(target) {
+               const attackRoll = Math.floor(Math.random() * 20) + 1;
+               const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
+               const targetData = allCharacters.find(c => c.id === target.characterId);
+               const targetAC = targetData?.armorClass ?? 10;
 
-              if (target && targetData) {
-                  const attackRoll = Math.floor(Math.random() * 20) + 1;
-                  const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
-                  const targetAC = targetData?.armorClass ?? 10;
-                  
-                  if (totalAttack >= targetAC) {
-                      const damageString = effectivePlayerStats.playerDamageBonus || "1";
-                      const match = damageString.match(/(\d+)d(\d+)([+-]\d+)?/);
-                      let damage = 1;
-                      if (match) {
-                          const [_, diceCount, diceSides, bonus] = match;
-                          damage = 0;
-                          for (let i = 0; i < parseInt(diceCount, 10); i++) {
-                              damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
-                          }
-                          if (bonus) damage += parseInt(bonus, 10);
-                      } else if (!isNaN(parseInt(damageString, 10))) {
-                          damage = parseInt(damageString, 10);
-                      }
-                      damage = Math.max(1, damage);
-                      
-                      target.currentHp = Math.max(0, target.currentHp - damage);
-                      turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
-                      if (target.currentHp === 0) {
-                          target.isDefeated = true;
-                          turnLog.push(`${target.name} est vaincu !`);
-                      }
-                  } else {
-                      turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
-                  }
-              }
-          }
+               if (totalAttack >= targetAC) {
+                   const damage = getDamage(effectivePlayerStats.playerDamageBonus);
+                   target.currentHp = Math.max(0, target.currentHp - damage);
+                   turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
+                   if (target.currentHp === 0) {
+                       target.isDefeated = true;
+                       turnLog.push(`${target.name} est vaincu !`);
+                   }
+               } else {
+                   turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
+               }
+           }
       }
   
-      // Enemies' turn
       combatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
           const targetPool = combatants.filter(t => t.team === 'player' && !t.isDefeated);
           if (targetPool.length > 0) {
@@ -484,21 +480,7 @@ export default function Home() {
               const targetAC = target.characterId === PLAYER_ID ? (effectivePlayerStats.playerArmorClass || 10) : (allCharacters.find(c => c.id === target.characterId)?.armorClass ?? 10);
   
               if (totalAttack >= targetAC) {
-                  const damageString = enemyData?.damageBonus || "1";
-                  const match = damageString.match(/(\d+)d(\d+)([+-]\d+)?/);
-                  let damage = 1;
-                  if (match) {
-                      const [_, diceCount, diceSides, bonus] = match;
-                      damage = 0;
-                      for (let i = 0; i < parseInt(diceCount, 10); i++) {
-                          damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
-                      }
-                      if (bonus) damage += parseInt(bonus, 10);
-                  } else if (!isNaN(parseInt(damageString, 10))) {
-                    damage = parseInt(damageString, 10);
-                  }
-                  damage = Math.max(1, damage);
-                  
+                  const damage = getDamage(enemyData?.damageBonus);
                   target.currentHp = Math.max(0, target.currentHp - damage);
                   turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
                   if (target.currentHp === 0) {
@@ -513,20 +495,6 @@ export default function Home() {
       
       const allEnemiesDefeated = combatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
       const allPlayersDefeated = combatants.filter(c => c.team === 'player').every(c => c.isDefeated);
-      
-      // Prepare state updates
-      const updatedPlayerCombatant = combatants.find(c => c.characterId === PLAYER_ID);
-      const updatedSettings: Partial<AdventureSettings> = {
-          playerCurrentHp: updatedPlayerCombatant?.currentHp
-      };
-
-      const updatedCharacters = allCharacters.map(char => {
-          const combatantData = combatants.find(c => c.characterId === char.id);
-          if (combatantData) {
-              return { ...char, hitPoints: combatantData.currentHp };
-          }
-          return char;
-      });
 
       return {
           nextCombatState: {
@@ -534,8 +502,6 @@ export default function Home() {
               combatants: combatants,
               isActive: !allEnemiesDefeated && !allPlayersDefeated,
           },
-          updatedCharacters,
-          updatedSettings,
           turnLog,
       };
   }, []);
@@ -775,160 +741,7 @@ export default function Home() {
 
 }, [toast, characters, adventureSettings.playerName]);
 
-const handleCombatUpdates = React.useCallback((combatUpdates: CombatUpdatesSchema, itemsObtained: LootedItem[], currencyGained: number) => {
-    const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-
-    // This is a partial update, so we don't want to clone the whole settings object
-    let liveSettingsChanges: Partial<AdventureSettings> = {};
-    let newCharactersState = [...characters];
-
-    const allExpGainingCharacters = (expGained: number) => {
-        if (!adventureSettings.rpgMode) return;
-
-        newCharactersState = newCharactersState.map((char: Character) => {
-            if (!char.isAlly || char.level === undefined) return char;
-            let newChar = {...char};
-            if (newChar.currentExp === undefined) newChar.currentExp = 0;
-            if (newChar.expToNextLevel === undefined) newChar.expToNextLevel = Math.floor(100 * Math.pow(1.5, (newChar.level || 1) - 1));
-            
-            newChar.currentExp += expGained;
-            let leveledUp = false;
-            while(newChar.currentExp >= newChar.expToNextLevel!) {
-                leveledUp = true;
-                newChar.level! += 1;
-                newChar.currentExp -= newChar.expToNextLevel!;
-                newChar.expToNextLevel = Math.floor(newChar.expToNextLevel! * 1.5);
-                newChar.initialAttributePoints = (newChar.initialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) + ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-            }
-            if (leveledUp) {
-                toastsToShow.push({
-                    title: `Montée de Niveau: ${newChar.name}!`,
-                    description: `${newChar.name} a atteint le niveau ${newChar.level} et ses statistiques ont été améliorées !`,
-                    duration: 7000
-                });
-            }
-            return newChar;
-        });
-    };
-
-    if ((combatUpdates.expGained ?? 0) > 0) {
-        allExpGainingCharacters(combatUpdates.expGained!);
-    }
-
-    newCharactersState = newCharactersState.map((char: Character) => {
-        if (!adventureSettings.rpgMode) return char;
-        let currentCharacterState = { ...char };
-        const combatantUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === char.id);
-        if (combatantUpdate) {
-            currentCharacterState.hitPoints = combatantUpdate.newHp;
-            currentCharacterState.manaPoints = combatantUpdate.newMp ?? currentCharacterState.manaPoints;
-            currentCharacterState.isHostile = combatantUpdate.isDefeated ? currentCharacterState.isHostile : (currentCharacterState.isHostile ?? true);
-            currentCharacterState.statusEffects = combatantUpdate.newStatusEffects || currentCharacterState.statusEffects;
-        }
-        return currentCharacterState;
-    });
-
-    const playerCombatUpdate = combatUpdates.updatedCombatants.find(cu => cu.combatantId === PLAYER_ID);
-    if (adventureSettings.rpgMode && playerCombatUpdate) {
-        liveSettingsChanges.playerCurrentHp = playerCombatUpdate.newHp;
-        liveSettingsChanges.playerCurrentMp = playerCombatUpdate.newMp ?? adventureSettings.playerCurrentMp;
-        if (playerCombatUpdate.isDefeated) {
-            toastsToShow.push({ title: "Joueur Vaincu!", description: "L'aventure pourrait prendre un tournant difficile...", variant: "destructive" });
-        }
-    }
-    
-    const currentMp = liveSettingsChanges.playerCurrentMp ?? adventureSettings.playerCurrentMp ?? 0;
-    const maxMp = adventureSettings.playerMaxMp ?? 0;
-    if (maxMp > 0 && currentMp < maxMp) {
-        liveSettingsChanges.playerCurrentMp = Math.min(maxMp, currentMp + 1);
-    }
-    
-    if (adventureSettings.rpgMode && typeof combatUpdates.expGained === 'number' && combatUpdates.expGained > 0) {
-        const prevSettings = { ...adventureSettings, ...liveSettingsChanges };
-        let currentExp = (prevSettings.playerCurrentExp ?? 0) + combatUpdates.expGained;
-        let currentLevel = prevSettings.playerLevel ?? 1;
-        let currentExpToNext = prevSettings.playerExpToNextLevel ?? 100;
-        let currentInitialPoints = prevSettings.playerInitialAttributePoints || 0;
-        
-        toastsToShow.push({ title: "Expérience Gagnée!", description: `Vous avez gagné ${combatUpdates.expGained} EXP.` });
-
-        let gainedLevel = false;
-        while (currentExp >= currentExpToNext) {
-            gainedLevel = true;
-            currentLevel += 1;
-            currentExp -= currentExpToNext;
-            currentExpToNext = Math.floor(currentExpToNext * 1.5);
-            currentInitialPoints += ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM;
-        }
-
-        liveSettingsChanges.playerCurrentExp = currentExp;
-        liveSettingsChanges.playerLevel = currentLevel;
-        liveSettingsChanges.playerExpToNextLevel = currentExpToNext;
-        liveSettingsChanges.playerInitialAttributePoints = currentInitialPoints;
-
-        if (gainedLevel) {
-             const settingsForStatRecalc: AdventureSettings = { ...adventureSettings, ...liveSettingsChanges };
-             const derivedStats = calculateEffectiveStats(settingsForStatRecalc);
-
-            liveSettingsChanges.playerMaxHp = derivedStats.playerMaxHp;
-            liveSettingsChanges.playerMaxMp = derivedStats.playerMaxMp;
-            liveSettingsChanges.playerCurrentHp = derivedStats.playerMaxHp;
-            if (derivedStats.playerMaxMp && derivedStats.playerMaxMp > 0) {
-                 liveSettingsChanges.playerCurrentMp = derivedStats.playerMaxMp;
-            }
-            liveSettingsChanges = {...liveSettingsChanges, ...derivedStats};
-
-            toastsToShow.push({
-                title: "Niveau Supérieur!",
-                description: (
-                    <div>
-                        <p>Vous avez atteint le niveau {currentLevel}! Vos PV et PM max ont augmenté.</p>
-                        <p className="mt-1 font-semibold">Vous pouvez distribuer {ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM} nouveaux points d'attributs !</p>
-                        <p className="text-xs">Rendez-vous dans la configuration de l'aventure pour les assigner.</p>
-                    </div>
-                ),
-                duration: 9000,
-            });
-            setFormPropKey(k => k + 1);
-            setStagedAdventureSettings(prevStaged => ({ ...prevStaged, ...liveSettingsChanges }));
-        }
-    }
-
-    if (combatUpdates.nextActiveCombatState?.isActive) {
-        const nextState = { ...combatUpdates.nextActiveCombatState };
-        const updatedCombatants = nextState.combatants.map(c => {
-            const updateForThisTurn = combatUpdates.updatedCombatants.find(u => u.combatantId === c.characterId);
-            if (updateForThisTurn) {
-                return {
-                    ...c,
-                    currentHp: updateForThisTurn.newHp,
-                    currentMp: updateForThisTurn.newMp ?? c.currentMp,
-                    isDefeated: updateForThisTurn.isDefeated,
-                    statusEffects: updateForThisTurn.newStatusEffects || c.statusEffects
-                };
-            }
-            return c;
-        });
-        setActiveCombat({ ...nextState, combatants: updatedCombatants });
-    } else if (combatUpdates.combatEnded) {
-        setActiveCombat(undefined);
-        toastsToShow.push({ title: "Combat Terminé!" });
-    }
-
-    setAdventureSettings(prev => ({...prev, ...liveSettingsChanges}));
-    setCharacters(newCharactersState);
-    setStagedCharacters(newCharactersState); // Keep form in sync
-    
-    toastsToShow.forEach(toastArgs => setTimeout(() => toast(toastArgs), 0));
-    
-    if (combatUpdates.poiOwnershipChanges && combatUpdates.poiOwnershipChanges.length > 0) {
-       setTimeout(() => handlePoiOwnershipChange(combatUpdates.poiOwnershipChanges!), 100);
-    }
-  }, [toast, handlePoiOwnershipChange, characters, adventureSettings]);
-
-
-
-  const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
+const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
     if (!newChars || newChars.length === 0) return;
 
     // Use functional updates for state setters to ensure we're working with the latest state
@@ -1215,98 +1028,68 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       setIsLoading(true);
     });
 
-    const settingsForThisTurn = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
-    let currentGlobalCharacters = characters;
+    let currentSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
+    let currentGlobalCharacters = [...characters];
+    let currentActiveCombatState = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) as ActiveCombat : undefined;
+    let turnLog: string[] = [];
 
-    // Handle location change from map action
     if (locationIdOverride) {
-        settingsForThisTurn.playerLocationId = locationIdOverride;
-        // Update allies' location as well
-        currentGlobalCharacters = currentGlobalCharacters.map(char => {
-            if (char.isAlly) {
-                return { ...char, locationId: locationIdOverride };
-            }
-            return char;
-        });
+        currentSettings.playerLocationId = locationIdOverride;
+        currentGlobalCharacters = currentGlobalCharacters.map(char => 
+            char.isAlly ? { ...char, locationId: locationIdOverride } : char
+        );
     }
-
-    // Filter characters to only those present at the player's location
-    const presentCharacters = currentGlobalCharacters.filter(
-        char => char.locationId === settingsForThisTurn.playerLocationId
-    );
     
-    // Get the current location details to pass to the AI
-    const currentPlayerLocation = settingsForThisTurn.playerLocationId
-        ? settingsForThisTurn.mapPointsOfInterest?.find(poi => poi.id === settingsForThisTurn.playerLocationId)
-        : undefined;
+    if (currentActiveCombatState?.isActive) {
+        const combatResult = resolveCombatTurn(currentActiveCombatState, userActionText, currentSettings, currentGlobalCharacters);
+        currentActiveCombatState = combatResult.nextCombatState;
+        turnLog = combatResult.turnLog;
+        
+        const playerCombatant = currentActiveCombatState.combatants.find(c => c.characterId === PLAYER_ID);
+        currentSettings.playerCurrentHp = playerCombatant?.currentHp;
+        
+        currentGlobalCharacters = currentGlobalCharacters.map(char => {
+            const combatantData = currentActiveCombatState!.combatants.find(c => c.characterId === char.id);
+            return combatantData ? { ...char, hitPoints: combatantData.currentHp } : char;
+        });
 
-    // Dynamically determine owner name for the prompt
+        setActiveCombat(currentActiveCombatState);
+        setAdventureSettings(currentSettings);
+        setCharacters(currentGlobalCharacters);
+        setStagedCharacters(currentGlobalCharacters);
+    }
+    
+    const presentCharacters = currentGlobalCharacters.filter(char => char.locationId === currentSettings.playerLocationId);
+    
+    const currentPlayerLocation = currentSettings.playerLocationId ? currentSettings.mapPointsOfInterest?.find(poi => poi.id === currentSettings.playerLocationId) : undefined;
+    
     let ownerNameForPrompt = "Inconnu";
     if (currentPlayerLocation?.ownerId) {
-        if (currentPlayerLocation.ownerId === PLAYER_ID) {
-            ownerNameForPrompt = settingsForThisTurn.playerName || "Player";
-        } else {
-            const ownerChar = currentGlobalCharacters.find(c => c.id === currentPlayerLocation!.ownerId);
-            if (ownerChar) {
-                ownerNameForPrompt = ownerChar.name;
-            }
-        }
+        ownerNameForPrompt = currentPlayerLocation.ownerId === PLAYER_ID ? (currentSettings.playerName || "Player") : (currentGlobalCharacters.find(c => c.id === currentPlayerLocation.ownerId)?.name || 'un inconnu');
     }
 
-
-    const effectiveStatsThisTurn = calculateEffectiveStats(settingsForThisTurn);
-    let currentActiveCombatStateForAI: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
-
-    // This logic ensures the combat state sent to the AI is synced with the canonical character/player state
-    // without rebuilding the combatant list, which prevents duplication bugs.
-    if (settingsForThisTurn.rpgMode && currentActiveCombatStateForAI?.isActive) {
-        const updatedCombatants = currentActiveCombatStateForAI.combatants.map(combatant => {
-            if (combatant.characterId === PLAYER_ID) {
-                return {
-                    ...combatant,
-                    currentHp: settingsForThisTurn.playerCurrentHp ?? combatant.maxHp,
-                    maxHp: effectiveStatsThisTurn.playerMaxHp,
-                    currentMp: settingsForThisTurn.playerCurrentMp ?? combatant.maxMp,
-                    maxMp: effectiveStatsThisTurn.playerMaxMp,
-                };
-            }
-            const charData = currentGlobalCharacters.find(gc => gc.id === combatant.characterId);
-            if (charData) {
-                // Syncs stats from the canonical character state into the combat state for the AI
-                return {
-                    ...combatant,
-                    currentHp: charData.hitPoints ?? combatant.maxHp,
-                    maxHp: charData.maxHitPoints ?? combatant.maxHp,
-                    currentMp: charData.manaPoints ?? combatant.maxMp,
-                    maxMp: charData.maxManaPoints ?? combatant.maxMp,
-                };
-            }
-            return combatant; // For enemies not in the global list
-        });
-        currentActiveCombatStateForAI.combatants = updatedCombatants;
-    }
-
+    const effectiveStatsThisTurn = calculateEffectiveStats(currentSettings);
 
     const input: GenerateAdventureInput = {
-        world: settingsForThisTurn.world,
-        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${settingsForThisTurn.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+        world: currentSettings.world,
+        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${currentSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
         characters: presentCharacters, 
-        userAction: userActionText,
-        currentLanguage: currentLanguage,
-        playerName: settingsForThisTurn.playerName || "Player",
-        rpgModeActive: settingsForThisTurn.rpgMode,
-        relationsModeActive: settingsForThisTurn.relationsMode ?? true,
-        activeCombat: currentActiveCombatStateForAI,
-        playerGold: settingsForThisTurn.playerGold,
-        playerSkills: settingsForThisTurn.playerSkills,
-        playerClass: settingsForThisTurn.playerClass,
-        playerLevel: settingsForThisTurn.playerLevel,
-        playerCurrentHp: settingsForThisTurn.playerCurrentHp,
+        userAction: turnLog.length > 0 ? turnLog.join('\n') : userActionText,
+        currentLanguage,
+        playerName: currentSettings.playerName || "Player",
+        rpgModeActive: currentSettings.rpgMode,
+        relationsModeActive: currentSettings.relationsMode ?? true,
+        activeCombat: currentActiveCombatState,
+        playerGold: currentSettings.playerGold,
+        playerSkills: currentSettings.playerSkills,
+        playerClass: currentSettings.playerClass,
+        playerLevel: currentSettings.playerLevel,
+        playerCurrentHp: currentSettings.playerCurrentHp,
         playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
-        playerCurrentMp: settingsForThisTurn.playerCurrentMp,
+        playerCurrentMp: currentSettings.playerCurrentMp,
         playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
-        playerCurrentExp: settingsForThisTurn.playerCurrentExp,
-        playerExpToNextLevel: settingsForThisTurn.playerExpToNextLevel,
+        playerCurrentExp: currentSettings.playerCurrentExp,
+        playerExpToNextLevel: currentSettings.playerExpToNextLevel,
         playerStrength: effectiveStatsThisTurn.playerStrength,
         playerDexterity: effectiveStatsThisTurn.playerDexterity,
         playerConstitution: effectiveStatsThisTurn.playerConstitution,
@@ -1316,73 +1099,46 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
         playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
         playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
-        equippedWeaponName: settingsForThisTurn.equippedItemIds?.weapon ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.weapon)?.name : undefined,
-        equippedArmorName: settingsForThisTurn.equippedItemIds?.armor ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.armor)?.name : undefined,
-        equippedJewelryName: settingsForThisTurn.equippedItemIds?.jewelry ? settingsForThisTurn.playerInventory?.find(i => i.id === settingsForThisTurn.equippedItemIds?.jewelry)?.name : undefined,
-        playerLocationId: settingsForThisTurn.playerLocationId,
-        mapPointsOfInterest: settingsForThisTurn.mapPointsOfInterest,
+        equippedWeaponName: currentSettings.equippedItemIds?.weapon ? currentSettings.playerInventory?.find(i => i.id === currentSettings.equippedItemIds?.weapon)?.name : undefined,
+        equippedArmorName: currentSettings.equippedItemIds?.armor ? currentSettings.playerInventory?.find(i => i.id === currentSettings.equippedItemIds?.armor)?.name : undefined,
+        equippedJewelryName: currentSettings.equippedItemIds?.jewelry ? currentSettings.playerInventory?.find(i => i.id === currentSettings.equippedItemIds?.jewelry)?.name : undefined,
+        playerLocationId: currentSettings.playerLocationId,
+        mapPointsOfInterest: currentSettings.mapPointsOfInterest,
         playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
-        aiConfig: aiConfig,
-        timeManagement: settingsForThisTurn.timeManagement,
-        playerPortraitUrl: settingsForThisTurn.playerPortraitUrl,
-        playerFaceSwapEnabled: settingsForThisTurn.playerFaceSwapEnabled,
+        aiConfig,
+        timeManagement: currentSettings.timeManagement,
+        playerPortraitUrl: currentSettings.playerPortraitUrl,
+        playerFaceSwapEnabled: currentSettings.playerFaceSwapEnabled,
     };
 
     try {
         const result: GenerateAdventureFlowOutput = await generateAdventure(input);
         if (result.error) {
-            setTimeout(() => {
-                toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
-            },0);
+            toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             setIsLoading(false); 
             return;
         }
-
+        
         React.startTransition(() => {
             if (locationIdOverride) {
                 setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
-                setCharacters(currentGlobalCharacters); // Persist the location change for allies
-                setStagedCharacters(currentGlobalCharacters); // Also update staged characters
+                setCharacters(currentGlobalCharacters);
+                setStagedCharacters(currentGlobalCharacters);
             }
             
-            const combatLoot = result.combatUpdates?.itemsObtained;
-            const combatCurrency = result.combatUpdates?.currencyGained;
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, combatLoot);
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
 
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-            if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
-            if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-            if (adventureSettings.rpgMode && result.combatUpdates) {
-                handleCombatUpdates(result.combatUpdates, combatLoot || [], combatCurrency || 0);
-            }
-             if (result.poiOwnershipChanges) {
-                handlePoiOwnershipChange(result.poiOwnershipChanges);
-            }
-            if (settingsForThisTurn.timeManagement?.enabled && result.updatedTime) {
-                handleTimeUpdate(result.updatedTime.newEvent);
-            }
-
-            // Handle NON-combat currency and items
-            if (result.itemsObtained && result.itemsObtained.length > 0) {
-                 handleTakeLoot(`temp-non-combat-loot-${Date.now()}`, result.itemsObtained.map(item => ({
-                    id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-                    name: item.itemName,
-                    quantity: item.quantity,
-                    description: item.description,
-                    effect: item.effect,
-                    type: item.itemType,
-                    goldValue: item.goldValue,
-                    statBonuses: item.statBonuses,
-                    generatedImageUrl: null,
-                    isEquipped: false,
-                })), true); // silent = true
-            }
-
-            if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
+            if (currentSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
+            if (currentSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
+             if (result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
+            if (currentSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
+            
+            if (currentSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
                 addCurrencyToPlayer(result.currencyGained);
-                setTimeout(() => {
+                 setTimeout(() => {
                     toast({
                         title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Dépense Effectuée",
                         description: `Votre trésorerie a été mise à jour.`
@@ -1393,48 +1149,30 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
-        setTimeout(() => {
-           toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
-        },0);
+        toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
     } finally {
          React.startTransition(() => {
            setIsLoading(false);
         });
     }
   }, [
-      currentLanguage, narrativeMessages, toast,
+      currentLanguage, narrativeMessages, toast, resolveCombatTurn,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
+      handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
       adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate
   ]);
 
   const handleSendSpecificAction = async (action: string) => {
     if (isLoading) return;
-    setIsLoading(true);
     
     if (activeCombat) {
-        // Resolve the entire combat turn internally first
-        const { nextCombatState, updatedCharacters, updatedSettings, turnLog } = resolveCombatTurn(
-            activeCombat, 
-            { type: 'attack', targetId: activeCombat.combatants.find(c => c.team === 'enemy' && !c.isDefeated)?.characterId || '' }, 
-            adventureSettings, 
-            characters
-        );
-        
-        // Immediately update all relevant states with the results of the internal logic
-        setActiveCombat(nextCombatState);
-        setCharacters(updatedCharacters);
-        setAdventureSettings(prev => ({ ...prev, ...updatedSettings }));
-        
-        // Now, call the AI for narration only, using the results
-        await callGenerateAdventure(turnLog.join('\n'));
-
+        handleNarrativeUpdate(action, 'user');
+        await callGenerateAdventure(action);
     } else {
         handleNarrativeUpdate(action, 'user');
         await callGenerateAdventure(action);
     }
 
-    setIsLoading(false);
   };
 
 
@@ -2082,15 +1820,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                if(adventureSettings.rpgMode && result.combatUpdates) {
-                    handleCombatUpdates(result.combatUpdates, result.combatUpdates.itemsObtained || [], result.combatUpdates.currencyGained || 0);
-                }
-                 if (result.poiOwnershipChanges) {
-                    handlePoiOwnershipChange(result.poiOwnershipChanges);
-                }
-                if (currentTurnSettings.timeManagement?.enabled && result.updatedTime) {
-                    handleTimeUpdate(result.updatedTime.newEvent);
-                }
+                if (result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
+                if (currentTurnSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
                     if (amount < 0) {
@@ -2126,7 +1857,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNewFamiliar,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-         handleRelationUpdatesFromAI, handleCombatUpdates, addCurrencyToPlayer, handlePoiOwnershipChange,
+         handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
      ]);
 
@@ -3208,7 +2939,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       playerName={adventureSettings.playerName || "Player"}
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
-      onCombatUpdates={handleCombatUpdates}
+      onCombatUpdates={() => {}}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3274,3 +3005,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   
 
 
+
+
+    

@@ -89,7 +89,7 @@ interface PageStructureProps {
   playerName: string;
   onRestartAdventure: () => void;
   activeCombat?: ActiveCombat;
-  onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+  onCombatUpdates: (updates: CombatUpdatesSchema) => void;
   suggestQuestHookAction: () => Promise<void>;
   isSuggestingQuest: boolean;
   showRestartConfirm: boolean;
@@ -981,3 +981,6 @@ export function PageStructure({
     </>
   );
 }
+
+
+    

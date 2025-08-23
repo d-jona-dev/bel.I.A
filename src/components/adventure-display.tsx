@@ -71,7 +71,7 @@ interface AdventureDisplayProps {
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     activeCombat?: ActiveCombat;
-    onCombatUpdates: (combatUpdates: CombatUpdatesSchema) => void;
+    onCombatUpdates: (updates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
     handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
@@ -431,7 +431,6 @@ export function AdventureDisplay({
                         <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
                         <span className="text-xs text-muted-foreground">
                             {hpToShow} / {maxHpToShow}
-                            {activeCombat && <span className="text-blue-500 ml-1">(dbg: {playerCombatData?.currentHp})</span>}
                         </span>
                     </div>
                     <Progress id="player-hp" value={(hpToShow / (maxHpToShow || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
@@ -495,7 +494,6 @@ export function AdventureDisplay({
                         <Label htmlFor={`${combatData.characterId}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
                         <span className="text-xs text-muted-foreground">
                             {combatData.currentHp} / {combatData.maxHp}
-                            {activeCombat && <span className="text-blue-500 ml-1">(dbg: {combatData.currentHp})</span>}
                         </span>
                     </div>
                     <Progress id={`${combatData.characterId}-hp`} value={(combatData.currentHp / (combatData.maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
@@ -1228,7 +1226,7 @@ export function AdventureDisplay({
                          <DialogFooter>
                             <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>Annuler</Button>
                             <Button onClick={onSaveToLibrary}>Sauvegarder</Button>
-                        </DialogFooter>
+                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
@@ -1296,3 +1294,6 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+
+    
