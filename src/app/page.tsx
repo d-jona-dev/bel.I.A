@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -83,7 +82,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * familiar.level);
+        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
         if (bonus.type === 'strength') effectiveStrength += bonusValue;
         if (bonus.type === 'dexterity') effectiveDexterity += bonusValue;
         if (bonus.type === 'constitution') effectiveConstitution += bonusValue;
@@ -107,7 +106,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * familiar.level);
+        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
         if (bonus.type === 'armor_class') effectiveAC += bonusValue;
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
@@ -224,7 +223,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       ...initialPlayerAttributes,
       ...initialBaseDerivedStats,
       playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
-      playerCurrentMp: initialBaseDerivedStats.playerMaxMp,
+      playerCurrentMp: initialBaseDerivedStats.playerMaxManaPoints,
       playerCurrentExp: 0,
       playerExpToNextLevel: 100,
       playerGold: 15,
@@ -236,9 +235,9 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       playerSkills: [],
       familiars: [],
       mapPointsOfInterest: [
-          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'], ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
-          { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
-          { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, actions: ['travel', 'examine', 'attack', 'collect', 'upgrade', 'visit'], ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
+          { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
       ],
       mapImageUrl: null,
       timeManagement: {
@@ -416,18 +415,64 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
+  const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
+    React.startTransition(() => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            
+            const lootMessage = narrativeMessages.find(m => m.id === messageId);
+            let currencyGained = 0;
+             if (lootMessage?.loot) {
+                const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
+                if (currencyItem) {
+                    currencyGained = currencyItem.quantity;
+                }
+             }
+
+            itemsToTake.forEach(item => {
+                if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
+                    console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
+                    return;
+                }
+                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
+                if (existingItemIndex > -1) {
+                    newInventory[existingItemIndex].quantity += item.quantity;
+                } else {
+                    newInventory.push({ ...item, isEquipped: false });
+                }
+            });
+            return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
+        });
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
+    });
+    if (!silent) {
+        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+    }
+  }, [toast, narrativeMessages]);
+
   const resolveCombatTurn = React.useCallback((
     currentCombatState: ActiveCombat,
     playerActionText: string,
-    currentSettings: AdventureSettings,
+    settings: AdventureSettings,
     allCharacters: Character[]
   ): {
       nextCombatState: ActiveCombat;
+      updatedCharacters: Character[];
+      updatedSettings: AdventureSettings;
       turnLog: string[];
+      victoryLoot?: PlayerInventoryItem[];
   } => {
       let turnLog: string[] = [];
       let combatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
-      const effectivePlayerStats = calculateEffectiveStats(currentSettings);
+      let charactersCopy = JSON.parse(JSON.stringify(allCharacters)) as Character[];
+      let settingsCopy = JSON.parse(JSON.stringify(settings)) as AdventureSettings;
+      const effectivePlayerStats = calculateEffectiveStats(settingsCopy);
+      let victoryLoot: PlayerInventoryItem[] = [];
   
       const getDamage = (damageBonus: string | undefined): number => {
           if (!damageBonus) return 1;
@@ -446,13 +491,14 @@ export default function Home() {
           return Math.max(1, damage);
       };
       
+      // Player's turn
       const player = combatants.find(c => c.characterId === PLAYER_ID);
       if (player && !player.isDefeated) {
            const target = combatants.find(c => c.team === 'enemy' && !c.isDefeated);
            if(target) {
                const attackRoll = Math.floor(Math.random() * 20) + 1;
                const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
-               const targetData = allCharacters.find(c => c.id === target.characterId);
+               const targetData = charactersCopy.find(c => c.id === target.characterId);
                const targetAC = targetData?.armorClass ?? 10;
 
                if (totalAttack >= targetAC) {
@@ -469,15 +515,22 @@ export default function Home() {
            }
       }
   
+      // Enemies' turn
       combatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
           const targetPool = combatants.filter(t => t.team === 'player' && !t.isDefeated);
           if (targetPool.length > 0) {
               const target = targetPool[Math.floor(Math.random() * targetPool.length)];
-              const enemyData = allCharacters.find(c => c.id === enemy.characterId);
+              const enemyData = charactersCopy.find(c => c.id === enemy.characterId);
               const attackRoll = Math.floor(Math.random() * 20) + 1;
               const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
               
-              const targetAC = target.characterId === PLAYER_ID ? (effectivePlayerStats.playerArmorClass || 10) : (allCharacters.find(c => c.id === target.characterId)?.armorClass ?? 10);
+              let targetAC = 10;
+              if (target.characterId === PLAYER_ID) {
+                  targetAC = effectivePlayerStats.playerArmorClass || 10;
+              } else {
+                  const allyData = charactersCopy.find(c => c.id === target.characterId);
+                  targetAC = allyData?.armorClass ?? 10;
+              }
   
               if (totalAttack >= targetAC) {
                   const damage = getDamage(enemyData?.damageBonus);
@@ -495,6 +548,45 @@ export default function Home() {
       
       const allEnemiesDefeated = combatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
       const allPlayersDefeated = combatants.filter(c => c.team === 'player').every(c => c.isDefeated);
+      
+      let expGained = 0;
+      let goldGained = 0;
+
+      if (allEnemiesDefeated && !allPlayersDefeated) {
+          turnLog.push("Victoire ! Tous les ennemis ont été vaincus.");
+          combatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(defeatedEnemy => {
+              const enemyData = charactersCopy.find(c => c.id === defeatedEnemy.characterId);
+              if (enemyData) {
+                  expGained += (enemyData.level || 1) * 10;
+                  goldGained += (enemyData.level || 1) * 5;
+              }
+          });
+          
+          if(expGained > 0) turnLog.push(`Vous gagnez ${expGained} points d'expérience.`);
+          if(goldGained > 0) {
+            turnLog.push(`Vous trouvez ${goldGained} pièces d'or.`);
+            victoryLoot.push({ id: `gold-${uid()}`, name: "Pièces d'Or", quantity: goldGained, type: 'misc' });
+          }
+
+          settingsCopy.playerCurrentExp = (settingsCopy.playerCurrentExp || 0) + expGained;
+          settingsCopy.playerGold = (settingsCopy.playerGold || 0) + goldGained;
+          
+          if (currentCombatState.contestedPoiId) {
+             const poiIndex = settingsCopy.mapPointsOfInterest?.findIndex(p => p.id === currentCombatState.contestedPoiId);
+             if (poiIndex !== -1 && settingsCopy.mapPointsOfInterest) {
+                 settingsCopy.mapPointsOfInterest[poiIndex].ownerId = PLAYER_ID;
+                 turnLog.push(`Le territoire de ${settingsCopy.mapPointsOfInterest[poiIndex].name} est conquis !`);
+             }
+          }
+      }
+
+      charactersCopy = charactersCopy.map(char => {
+          const combatant = combatants.find(c => c.characterId === char.id);
+          return combatant ? { ...char, hitPoints: combatant.currentHp } : char;
+      });
+
+      const playerCombatant = combatants.find(c => c.characterId === PLAYER_ID);
+      settingsCopy.playerCurrentHp = playerCombatant?.currentHp;
 
       return {
           nextCombatState: {
@@ -502,9 +594,12 @@ export default function Home() {
               combatants: combatants,
               isActive: !allEnemiesDefeated && !allPlayersDefeated,
           },
+          updatedCharacters: charactersCopy,
+          updatedSettings: settingsCopy,
           turnLog,
+          victoryLoot,
       };
-  }, []);
+  }, [handleTakeLoot, adventureSettings.mapPointsOfInterest]);
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -1023,15 +1118,35 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     });
   }, []);
 
+  const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
+      // This function is now mostly a placeholder, as logic is handled in resolveCombatTurn.
+      // It can be used for things that *only* the AI can provide, like specific status effects.
+      if (!updates || !updates.updatedCombatants) return;
+
+      const updatedCombatants = updates.updatedCombatants;
+
+      setCharacters(prevChars => {
+          return prevChars.map(char => {
+              const combatantUpdate = updatedCombatants.find(u => u.combatantId === char.id);
+              if (combatantUpdate && combatantUpdate.newStatusEffects) {
+                  return { ...char, statusEffects: combatantUpdate.newStatusEffects };
+              }
+              return char;
+          });
+      });
+
+  }, []);
+
   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
       setIsLoading(true);
     });
 
     let currentSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
-    let currentGlobalCharacters = [...characters];
+    let currentGlobalCharacters = JSON.parse(JSON.stringify(characters)) as Character[];
     let currentActiveCombatState = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) as ActiveCombat : undefined;
     let turnLog: string[] = [];
+    let lootToDisplay: PlayerInventoryItem[] = [];
 
     if (locationIdOverride) {
         currentSettings.playerLocationId = locationIdOverride;
@@ -1044,23 +1159,17 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const combatResult = resolveCombatTurn(currentActiveCombatState, userActionText, currentSettings, currentGlobalCharacters);
         currentActiveCombatState = combatResult.nextCombatState;
         turnLog = combatResult.turnLog;
+        lootToDisplay = combatResult.victoryLoot || [];
         
-        const playerCombatant = currentActiveCombatState.combatants.find(c => c.characterId === PLAYER_ID);
-        currentSettings.playerCurrentHp = playerCombatant?.currentHp;
-        
-        currentGlobalCharacters = currentGlobalCharacters.map(char => {
-            const combatantData = currentActiveCombatState!.combatants.find(c => c.characterId === char.id);
-            return combatantData ? { ...char, hitPoints: combatantData.currentHp } : char;
-        });
+        currentSettings = combatResult.updatedSettings;
+        currentGlobalCharacters = combatResult.updatedCharacters;
 
         setActiveCombat(currentActiveCombatState);
         setAdventureSettings(currentSettings);
         setCharacters(currentGlobalCharacters);
-        setStagedCharacters(currentGlobalCharacters);
     }
     
     const presentCharacters = currentGlobalCharacters.filter(char => char.locationId === currentSettings.playerLocationId);
-    
     const currentPlayerLocation = currentSettings.playerLocationId ? currentSettings.mapPointsOfInterest?.find(poi => poi.id === currentSettings.playerLocationId) : undefined;
     
     let ownerNameForPrompt = "Inconnu";
@@ -1126,14 +1235,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 setStagedCharacters(currentGlobalCharacters);
             }
             
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, lootToDisplay.length > 0 ? lootToDisplay : result.itemsObtained);
 
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
             if (currentSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (currentSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-             if (result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
+            if (result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
             if (currentSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
             
             if (currentSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
@@ -1165,13 +1274,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   const handleSendSpecificAction = async (action: string) => {
     if (isLoading) return;
     
-    if (activeCombat) {
-        handleNarrativeUpdate(action, 'user');
-        await callGenerateAdventure(action);
-    } else {
-        handleNarrativeUpdate(action, 'user');
-        await callGenerateAdventure(action);
-    }
+    handleNarrativeUpdate(action, 'user');
+    await callGenerateAdventure(action);
 
   };
 
@@ -1534,47 +1638,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [toast]);
 
 
-    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
-        React.startTransition(() => {
-            setAdventureSettings(prevSettings => {
-                if (!prevSettings.rpgMode) return prevSettings;
-                const newInventory = [...(prevSettings.playerInventory || [])];
-                
-                // Get currency from the message loot if any, and add it
-                const lootMessage = narrativeMessages.find(m => m.id === messageId);
-                let currencyGained = 0;
-                 if (lootMessage?.loot) {
-                    const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
-                    if (currencyItem) {
-                        currencyGained = currencyItem.quantity;
-                    }
-                 }
-
-                itemsToTake.forEach(item => {
-                    if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
-                        console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
-                        return;
-                    }
-                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                    if (existingItemIndex > -1) {
-                        newInventory[existingItemIndex].quantity += item.quantity;
-                    } else {
-                        newInventory.push({ ...item, isEquipped: false });
-                    }
-                });
-                return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
-            });
-            setNarrativeMessages(prevMessages =>
-                prevMessages.map(msg =>
-                    msg.id === messageId ? { ...msg, lootTaken: true } : msg
-                )
-            );
-        });
-        if (!silent) {
-            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
-        }
-    }, [toast, narrativeMessages]);
-
     const handleDiscardLoot = React.useCallback((messageId: string) => {
         React.startTransition(() => {
             setNarrativeMessages(prevMessages =>
@@ -1759,9 +1822,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
                  playerWisdom: effectiveStatsThisTurn.playerWisdom,
                  playerCharisma: effectiveStatsThisTurn.playerCharisma,
-                 playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
-                 playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
-                 playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
+                 playerArmorClass: currentTurnSettings.playerArmorClass,
+                 playerAttackBonus: currentTurnSettings.playerAttackBonus,
+                 playerDamageBonus: currentTurnSettings.playerDamageBonus,
                  equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
                  equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
@@ -1940,7 +2003,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             return;
         }
 
-        const updater = (prev: AdventureSettings): AdventureSettings => ({
+        const updater = (prev: AdventureSettings) => ({
             ...prev,
             familiars: [...(prev.familiars || []), familiarToAdd]
         });
@@ -2081,7 +2144,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             ...initialSettingsFromBase,
             ...effectiveStats,
             playerCurrentHp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxHp : undefined,
-            playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxMp : undefined,
+            playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxManaPoints : undefined,
             playerCurrentExp: initialSettingsFromBase.rpgMode ? 0 : undefined,
             playerInventory: initialSettingsFromBase.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [],
             playerGold: initialSettingsFromBase.playerGold ?? (baseAdventureSettings.playerGold ?? 0),
@@ -2216,6 +2279,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     setIsLoading(true);
 
     if (action === 'attack') {
+        const enemies = characters.filter(c => c.isHostile && c.locationId === poi.id);
+        if (enemies.length === 0) {
+            toast({ title: "Aucun ennemi", description: "Il n'y a personne à combattre ici.", variant: "default" });
+            setIsLoading(false);
+            return;
+        }
+
         const effectiveStats = calculateEffectiveStats(adventureSettings);
         const playerCombatant: Combatant = {
             characterId: PLAYER_ID,
@@ -2243,8 +2313,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 statusEffects: c.statusEffects || [],
             }));
 
-        const enemiesInCombat: Combatant[] = characters
-            .filter(c => c.isHostile && (c.hitPoints ?? 0) > 0 && c.locationId === poi.id)
+        const enemiesInCombat: Combatant[] = enemies
             .map(c => ({
                 characterId: c.id,
                 name: c.name,
@@ -2340,7 +2409,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         icon: data.type,
         level: data.level || 1,
         position: undefined, 
-        actions: ['travel', 'examine', 'collect', 'attack', 'upgrade', 'visit'],
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
         resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
@@ -2939,7 +3007,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       playerName={adventureSettings.playerName || "Player"}
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
-      onCombatUpdates={() => {}}
+      onCombatUpdates={handleCombatUpdates}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -2995,16 +3063,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
-
-
-
-
-
-
-
-  
-
-
-
 
     

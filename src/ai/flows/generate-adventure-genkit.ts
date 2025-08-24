@@ -229,11 +229,8 @@ Combatants (Player team listed first, then Enemies):
 - Name: {{this.name}} (Team: {{this.team}}) - HP: {{this.currentHp}}/{{this.maxHp}} {{#if this.maxMp}}- MP: {{this.currentMp}}/{{this.maxMp}}{{/if}} {{#if this.statusEffects}}(Statuts: {{#each this.statusEffects}}{{this.name}} ({{this.duration}}t){{#unless @last}}, {{/unless}}{{/each}}){{/if}} {{#if this.isDefeated}}(VAINCU){{/if}}
 {{/each}}
 **Combat Rules: An external system handles all dice rolls, hits, misses, and damage calculations. Your role is purely NARRATIVE.**
-**Your Task:** For any enemy combatants who are not defeated, narrate their actions for this turn. You MUST NOT determine the outcome of their actions. Simply describe what they *attempt* to do. For example:
-*   'The goblin rushes forward, swinging its club wildly at you.'
-*   'The Orc Shaman chants an incantation, and a dark energy gathers around its hands, aimed at Elara.'
-*   'The cornered wolf snarls and tries to bite your leg.'
-**DO NOT mention hit/miss, damage numbers, or any mechanical results. The external system will calculate that and the result will be seen in the next turn's narrative.**
+**Your Task:** Narrate the scene based on the 'User Action'. The user action will be a summary of the turn's events (e.g., "Héros touche Gobelin et inflige 5 points de dégâts. Gobelin attaque Héros et rate.").
+**DO NOT invent or describe outcomes. The user action is the source of truth. Just make it sound good. DO NOT mention hit/miss, damage numbers, or any mechanical results. The user action already contains the summary.**
 --- END COMBAT INFO ---
 {{/if}}
 
@@ -297,8 +294,8 @@ If the 'User Action' implies interaction with a specific service or building typ
 *   **STEP 3: Respond.**
     *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
-        *   **Nocturnal Hunt Post (poste-chasse-nocturne):** If the user action is specifically to visit this post, you MUST initiate a combat. Create a unique, rare, and ethereal creature for the player to fight. Examples: 'Loup sombre aux lueurs spectrales', 'Hibou grand duc noir aux yeux étoilés', 'Lapin de la nuit avec une fourrure d'obsidienne'. Describe the creature appearing mysteriously. This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, you MUST generate a new familiar in the 'newFamiliars' field, corresponding to the defeated creature. The rarity MUST be determined by a random roll: common (10% chance), uncommon (15%), rare (20%), epic (25%), legendary (30%).
-        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers an exploration into a dangerous dungeon and a combat. DO NOT narrate a simple meeting with archaeologists. Instead, you MUST narrate the player entering a dangerous part of the dungeon and awakening a powerful creature. **You MUST randomly choose one of the following creatures to be the boss: 'Spectre des Profondeurs', 'Bête de pierre fossilisée', 'Liche Spectrale'.** This initiates combat. You MUST populate 'combatUpdates.nextActiveCombatState'. If the player WINS this specific combat, **you MUST determine the reward by rolling a d5 (a random number from 1 to 5) and award the corresponding item from the list below**. YOU MUST IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be purely random and mechanical. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
+        *   **Nocturnal Hunt Post (poste-chasse-nocturne):** If the user action is specifically to visit this post, you MUST initiate a combat. Create a unique, rare, and ethereal creature for the player to fight. Examples: 'Loup sombre aux lueurs spectrales', 'Hibou grand duc noir aux yeux étoilés', 'Lapin de la nuit avec une fourrure d'obsidienne'. Describe the creature appearing mysteriously. This initiates combat. **This is a special rule. The game engine handles combat, but you MUST populate 'combatUpdates' in the JSON output to tell the engine to start combat.** If the player WINS this specific combat, you MUST generate a new familiar in the 'newFamiliars' field, corresponding to the defeated creature. The rarity MUST be determined by a random roll: common (10% chance), uncommon (15%), rare (20%), epic (25%), legendary (30%).
+        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers an exploration into a dangerous dungeon and a combat. DO NOT narrate a simple meeting with archaeologists. Instead, you MUST narrate the player entering a dangerous part of the dungeon and awakening a powerful creature. **You MUST randomly choose one of the following creatures to be the boss: 'Spectre des Profondeurs', 'Bête de pierre fossilisée', 'Liche Spectrale'.** This initiates combat. **This is a special rule. The game engine handles combat, but you MUST populate 'combatUpdates' in the JSON output to tell the engine to start combat.** If the player WINS this specific combat, **you MUST determine the reward by rolling a d5 (a random number from 1 to 5) and award the corresponding item from the list below**. YOU MUST IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be purely random and mechanical. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
             *   **1 (Legendary Equipment):** Generate ONE legendary item (weapon or armor). Example: 'Lame des Abysses', 'Armure des Titans'. Populate 'itemsObtained'.
             *   **2 (Epic Equipment):** Generate ONE epic item. Example: 'Hache runique', 'Plastron en ébonite'. Populate 'itemsObtained'.
             *   **3 (Gold):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
@@ -324,74 +321,32 @@ If the 'User Action' implies interaction with a specific service or building typ
 
 
 Tasks:
-1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. The application now handles combat initiation internally. If the user's action was to attack a location, the application will set up the combat state. Your task is simply to narrate the scene based on the context provided.
-    *   **If 'activeCombat.isActive' is true:**
-        *   **Your ONLY task** is to describe the *attempted actions* of any active enemies. Narrate what they try to do based on their personality and current situation (e.g., 'The goblin lunges with its knife', 'The wizard begins chanting a spell', 'The wounded wolf tries to flee').
-        *   **DO NOT** invent or describe outcomes (hits, misses, damage, dodges, etc.). An external system handles all of that.
-        *   **CRITICAL:** The application is now handling all combat mechanics. Your only job is to provide the narrative. You MUST NOT populate the 'combatUpdates' field in the JSON output. The game engine handles it.
-    *   **Skill Use:** If the userAction indicates the use of a skill (e.g., "J'utilise ma compétence : Coup Puissant"), the narrative should reflect the attempt to use that skill and its outcome. If it's a combat skill used in combat, follow combat rules. If it's a non-combat skill (social, utility), describe the character's attempt and how the world/NPCs react. The specific mechanical effects of skills are mostly narrative for now, but the AI should make the outcome logical based on the skill's name and description.
+1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. 
+    *   **If 'activeCombat.isActive' is true:** Narrate the turn based on the \`userAction\` which is a turn log.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Player Buying Item from Merchant:** If userAction indicates buying an item previously listed by a merchant (e.g., "J'achète la Potion de Soin Mineure"):
-            1.  Identify the item and its price FROM THE RECENT DIALOGUE HISTORY (initialSituation).
-            2.  Conceptually check if {{playerName}} can afford it (using playerGold context).
-            3.  If affordable: Narrate the successful purchase. Set currencyGained to the NEGATIVE price of the item. Add the purchased item to itemsObtained with quantity 1 and its details (itemName, itemType, description, effect, goldValue, statBonuses if applicable).
-            4.  If not affordable: Narrate that {{playerName}} cannot afford it. Do NOT set currencyGained or itemsObtained for this failed purchase.
-        *   **Player Buying NPC from Slave Market:** If userAction indicates buying an NPC from a list you just provided (e.g., "J'achète Kael le Guerrier"):
-            1.  Identify the NPC and their price FROM THE RECENT DIALOGUE HISTORY.
-            2.  If {{playerName}} can afford it:
-                *   Narrate the transaction.
-                *   **CRITICAL:** Create a new character for this NPC in the 'newCharacters' array. Give them a name, description, and class based on your previous narration. **You MUST set 'isAlly' to 'true' for this new character.** Also provide basic RPG stats (level 1, HP, etc.).
-                *   Set 'currencyGained' to the NEGATIVE price of the NPC.
-                *   **DO NOT** add the NPC to 'itemsObtained'. They are a character, not an item.
-            3.  If not affordable: Narrate that the player cannot afford them.
-        *   **Player Selling to Merchant/NPC:** If userAction indicates selling an item (e.g., "Je vends ma Dague Rouillée"):
-            1.  Identify the item. The game system handles player inventory and gold changes.
-            2.  Narrate the transaction. If a merchant is present, they might comment on the item or offer a price (this price is purely narrative, the system handles the actual gold value). If no merchant, the item is simply discarded or sold abstractly.
-            3.  Do NOT set currencyGained or itemsObtained. This is managed by the game system prior to this call.
-        *   **De-escalation:** If {{playerName}} is trying to talk their way out of a potentially hostile situation (e.g., with bullies, suspicious guards) BEFORE combat begins, assess this based on their userAction. Narrate the NPC's reaction based on their affinity, relations, and details. They might back down, demand something, or attack anyway, potentially initiating combat.
+        *   **Player Buying Item from Merchant:** If userAction indicates buying an item (e.g., "J'achète la Potion"): Identify the item and price from recent dialogue history. If affordable, narrate success, set \`currencyGained\` to the NEGATIVE price, and add item to \`itemsObtained\`. If not affordable, narrate failure.
+        *   **Player Buying NPC from Slave Market:** If userAction indicates buying an NPC, check affordability. If yes, narrate, create the NPC in \`newCharacters\` with \`isAlly: true\`, and set \`currencyGained\` to the NEGATIVE price.
+        *   **Player Selling to Merchant/NPC:** Narrate the transaction. The game system handles inventory/gold changes. Do NOT set \`currencyGained\` or \`itemsObtained\`.
 
-    *   **Item Acquisition (NON-COMBAT):** If the player finds or is given items outside of combat, list these in the top-level itemsObtained field.
-    *   **Currency Management (NON-COMBAT):**
-        *   If the player finds/is given/PAYS Gold Pieces outside combat: set the top-level currencyGained field (positive for gain, negative for loss).
-        *   **If no currency change, set currencyGained to 0.**
+2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in \`newCharacters\`. Include name, details, portraitUrl, biographyNotes, and \`initialHistoryEntry\`. If RPG mode, set \`isHostile\` and base stats. If bought, set \`isAlly: true\`. If relations mode, set \`initialRelations\`.
 
-2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in newCharacters.
-    *   Include 'name', 'details' (with meeting location/circumstance, appearance, perceived role), 'initialHistoryEntry' (e.g. "Rencontré {{../playerName}} à {{location}}.").
-    *   Include 'portraitUrl', a URL to an image for the character's portrait, if one can be inferred from the context or would be appropriate. Leave as null if not applicable.
-    *   Include 'biographyNotes' if any initial private thoughts or observations can be inferred.
-    *   {{#if rpgModeActive}}If introduced as hostile or a potential combatant, set isHostile: true/false and provide estimated RPG stats (hitPoints, maxHitPoints, manaPoints, maxManaPoints, armorClass, attackBonus, damageBonus, characterClass, level). Base stats on their description (e.g., "Thug" vs "Dragon", "Apprentice Mage" might have MP). Set isAlly to false unless explicitly stated otherwise in the introduction context. **If the character was purchased at a slave market, you MUST set isAlly to true.**{{/if}}
-    *   {{#if relationsModeActive}}Provide 'initialRelations' towards player and known NPCs. Infer specific status (e.g., "Client", "Garde", "Passant curieux") if possible, use 'Inconnu' as last resort. **All relation descriptions MUST be in {{currentLanguage}}.** If a relation is "Inconnu", try to define a more specific one based on the context of their introduction. Example: '[{"targetName": "PLAYER_NAME_EXAMPLE", "description": "Curieux"}, {"targetName": "Rina", "description": "Indifférent"}]'.{{/if}}
+3.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe setting, mood, and characters by appearance, not name.
 
-3.  **Describe Scene for Image (English):** For sceneDescriptionForImage, visually describe setting, mood, characters (by appearance/role, not name).
-
-4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in characterUpdates. **CRITICAL: The format MUST be an array of objects, each with 'characterName' and 'historyEntry' keys.** For example: '[{"characterName": "Rina", "historyEntry": "A semblé troublée par la question de {{../playerName}}."}]'.
-
-5.  **Status Effect Updates (newStatusEffects in combatUpdates.updatedCombatants):** This field MUST be an array of objects, NOT strings. Example: "newStatusEffects": [{"name": "Mort", "description": "Ne peut plus agir", "duration": -1}].
+4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in \`characterUpdates\`. Format MUST be \`[{"characterName": "Rina", "historyEntry": "A semblé troublée..."}]\`.
 
 {{#if relationsModeActive}}
-6.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update affinityUpdates for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events) for major events. Justify with 'reason'.
+5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 
-7.  **Relation Status Updates (in {{currentLanguage}}):**
-    *   Analyze the narrative for significant shifts in how characters view each other ({{playerName}} or other NPCs).
-    *   **If a character's affinity towards {{playerName}} crosses a major threshold** (e.g., from neutral to friendly, friendly to loyal, neutral to wary, wary to hostile), consider if their relationship *status* towards {{playerName}} should change.
-    *   **If a significant narrative event occurs** (e.g., betrayal, deep act of trust, declaration, prolonged conflict, new alliance forming), update the relationship *status* between the involved characters (NPC-{{playerName}} or NPC-NPC).
-    *   **Crucially, if an existing relationship status for a character towards any target ({{playerName}} or another NPC) is 'Inconnu' (or its {{currentLanguage}} equivalent), YOU MUST attempt to define a more specific and descriptive relationship status if the current narrative provides sufficient context.** For example, if they just did business, the status could become 'Client' ou 'Vendeur'. If they fought side-by-side, 'Allié temporaire' or 'Compagnon d'armes'. If one helped the other, 'Reconnaissant envers' or 'Débiteur de'.
-    *   Populate relationUpdates with:
-        *   characterName: The name of the character whose perspective of the relationship is changing.
-        *   targetName: The name of the other character involved (or PLAYER_NAME_EXAMPLE).
-        *   newRelation: The NEW, concise relationship status (e.g., 'Ami proche', 'Nouvel Allié', 'Ennemi Déclaré', 'Amant Secret', 'Protecteur', 'Rivale', 'Confident', 'Ex-partenaire', 'Client', 'Employé'). The status MUST be in {{currentLanguage}}. Be creative and contextually appropriate.
-        *   reason: A brief justification for the change.
-    *   **Example (Player-NPC):** If Rina's affinity for {{playerName}} drops significantly due to a misunderstanding and she acts cold, relationUpdates might include: '{ "characterName": "Rina", "targetName": "PLAYER_NAME_EXAMPLE", "newRelation": "Relation tendue", "reason": "Suite à la dispute au sujet de Kentaro." }'
-    *   **Example (NPC-NPC):** If Kentaro openly declares his rivalry with a new character named "Yuki", relationUpdates might include: '{ "characterName": "Kentaro", "targetName": "Yuki", "newRelation": "Rivaux déclarés", "reason": "Confrontation directe au sujet de leurs objectifs opposés." }'
+6.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 {{/if}}
 
-8.  **Territory Conquest/Loss (poiOwnershipChanges):**
-    *   The game system handles combat results internally. If you narrate a successful conquest or diplomatic takeover of a POI, record the change here.
-    *   To record these changes, populate the 'poiOwnershipChanges' array with an object like: '{ "poiId": "ID_OF_THE_POI_FROM_LIST", "newOwnerId": "ID_OF_THE_NEW_OWNER" }'. The new owner's ID is 'player' for the player.
+7.  **Territory Conquest/Loss (poiOwnershipChanges):** If you narrate a successful conquest, record it in \`poiOwnershipChanges\` with \`{ "poiId": "ID_OF_THE_POI", "newOwnerId": "player" }\`.
 
 {{#if timeManagement.enabled}}
-9.  **Time Update:** You can suggest a new event description in 'updatedTime.newEvent' if the narrative context has changed significantly (e.g., from 'Début du cours' to 'Milieu du cours'). The application will handle the time calculation.
+8.  **Time Update:** Suggest a new event description in 'updatedTime.newEvent' if the context has changed significantly.
 {{/if}}
+
+**VERY IMPORTANT: You are no longer responsible for calculating combat outcomes. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` in your JSON response.**
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. Do NOT include any JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the structured data.]
@@ -426,3 +381,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    
