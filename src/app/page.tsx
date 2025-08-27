@@ -415,8 +415,8 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
-  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
-       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItemsFromAI?.map(item => ({
+  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
+       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
            name: item.itemName,
            quantity: item.quantity,
@@ -1263,7 +1263,22 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 setStagedCharacters(liveCharacters);
             }
             
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, result.itemsObtained);
+             // NEW: Handle lootItemsText for OpenRouter
+            const lootItemsFromText = (result.lootItemsText || "")
+                .split(',')
+                .map(name => name.trim())
+                .filter(name => name)
+                .map(name => ({
+                    itemName: name,
+                    quantity: 1,
+                    description: `Un objet obtenu : ${name}`,
+                    itemType: 'misc',
+                    goldValue: 1,
+                } as LootedItem));
+
+            const finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
+            
+            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, finalLoot);
 
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
@@ -1273,7 +1288,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             
             if (liveSettings.strategyMode) {
               const poiOwnershipChanges = result.poiOwnershipChanges || [];
-              const conquestMessage = turnLog.find(log => log.includes("territoire") && log.includes("conquis"));
+              const conquestMessage = (turnLog.find(log => log.includes("territoire") && log.includes("conquis")) || result.narrative.includes("conquis"));
               if (conquestMessage && liveCombat?.contestedPoiId) {
                   poiOwnershipChanges.push({
                       poiId: liveCombat.contestedPoiId,
@@ -2184,7 +2199,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             ...initialSettingsFromBase,
             ...effectiveStats,
             playerCurrentHp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxHp : undefined,
-            playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxManaPoints : undefined,
+            playerCurrentMp: initialSettingsFromBase.rpgMode ? effectiveStats.playerMaxMp : undefined,
             playerCurrentExp: initialSettingsFromBase.rpgMode ? 0 : undefined,
             playerInventory: initialSettingsFromBase.playerInventory?.map((item: PlayerInventoryItem) => ({...item, isEquipped: false})) || [],
             playerGold: initialSettingsFromBase.playerGold ?? (baseAdventureSettings.playerGold ?? 0),
@@ -3089,8 +3104,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={handleGenerateCover}
+      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
     />
   );
 }
+

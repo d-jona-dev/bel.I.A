@@ -24,8 +24,13 @@ function buildOpenRouterPrompt(
             `- ${c.name} (${c.team === 'player' ? 'Équipe du Joueur' : 'Ennemi'}, PV: ${c.currentHp}/${c.maxHp})`
         ).join('\n');
 
+        const contestedPoi = input.activeCombat.contestedPoiId 
+            ? input.mapPointsOfInterest?.find(p => p.id === input.activeCombat!.contestedPoiId) 
+            : null;
+
         populatedPrompt = populatedPrompt.replace('{{{combatants}}}', combatantsText);
         populatedPrompt = populatedPrompt.replace('{{{environmentDescription}}}', input.activeCombat.environmentDescription || "un lieu non décrit");
+        populatedPrompt = populatedPrompt.replace('{{{contestedPoiName}}}', contestedPoi?.name || "Territoire Inconnu");
         // IMPORTANT: The userAction for combat is the turn log.
         populatedPrompt = populatedPrompt.replace('{{{userAction}}}', input.userAction);
         populatedPrompt = populatedPrompt.replace('{{{currentLanguage}}}', input.currentLanguage);
@@ -81,7 +86,8 @@ function buildOpenRouterPrompt(
     ],
     "relationUpdates": [],
     "itemsObtained": [],
-    "currencyGained": 0
+    "currencyGained": 0,
+    "lootItemsText": "Épée rouillée, Potion de soin"
 }
 \`\`\`
 
@@ -276,12 +282,12 @@ export async function generateAdventureWithOpenRouter(
                 characterUpdates: Array.isArray(parsedJson.characterUpdates) ? parsedJson.characterUpdates : [],
                 affinityUpdates: Array.isArray(parsedJson.affinityUpdates) ? parsedJson.affinityUpdates : [],
                 relationUpdates: Array.isArray(parsedJson.relationUpdates) ? parsedJson.relationUpdates : [],
-                itemsObtained: Array.isArray(parsedJson.itemsObtained) ? parsedJson.itemsObtained : [],
+                itemsObtained: [], // This will now be handled by lootItemsText
                 currencyGained: typeof parsedJson.currencyGained === 'number' ? parsedJson.currencyGained : 0,
-                // We let the internal logic handle these now to prevent errors
                 poiOwnershipChanges: [], 
                 combatUpdates: undefined,
                 updatedTime: undefined,
+                lootItemsText: parsedJson.lootItemsText || "", // NEW: Add this field
             };
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(cleanedJson);
@@ -308,6 +314,6 @@ export async function generateAdventureWithOpenRouter(
 
     } catch (error) {
         console.error("Error calling OpenRouter:", error);
-        return { error: `Erreur inattendue lors de l'appel à OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
+        return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
