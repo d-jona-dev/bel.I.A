@@ -442,7 +442,7 @@ export default function Home() {
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
-   
+
   const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
@@ -3089,8 +3089,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
-      handleGenerateCover={handleGenerateCover}
+      isGeneratingCover={handleGenerateCover}
+      onGenerateCover={handleGenerateCover}
     />
   );
 }
