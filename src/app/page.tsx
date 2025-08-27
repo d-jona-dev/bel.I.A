@@ -390,8 +390,8 @@ export default function Home() {
   const [isGeneratingCover, setIsGeneratingCover] = React.useState(false);
 
   // Base state for resets
-  const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
   const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
+  const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
   
   // Staged state for form edits
   const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => {
@@ -415,62 +415,147 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
+  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
+       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItemsFromAI?.map(item => ({
+           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+           name: item.itemName,
+           quantity: item.quantity,
+           description: item.description,
+           effect: item.effect,
+           type: item.itemType,
+           goldValue: item.goldValue,
+           statBonuses: item.statBonuses,
+           generatedImageUrl: null,
+           isEquipped: false,
+       }));
+
+       const newMessage: Message = {
+            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            type: type,
+            content: content,
+            timestamp: Date.now(),
+            sceneDescription: type === 'ai' ? sceneDesc : undefined,
+            imageUrl: type === 'ai' ? imageUrl : undefined,
+            imageTransform: type === 'ai' ? imageTransform : undefined,
+            loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
+            lootTaken: false,
+       };
+       setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
+   }, []);
+
   const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
-    if (!updates || !updates.updatedCombatants) return;
+    if (!updates) return;
   
-    const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
-  
-    // Update main character list
-    setCharacters(prev =>
-      prev.map(char => {
-        const update = combatantsMap.get(char.id);
-        if (update) {
-          return {
-            ...char,
-            hitPoints: update.newHp,
-            manaPoints: update.newMp ?? char.manaPoints,
-            statusEffects: update.newStatusEffects ?? char.statusEffects,
-          };
-        }
-        return char;
-      })
-    );
+    // Update main character list with new stats
+    if (updates.updatedCombatants) {
+        const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
+        setCharacters(prev =>
+          prev.map(char => {
+            const update = combatantsMap.get(char.id);
+            if (update) {
+              return {
+                ...char,
+                hitPoints: update.newHp,
+                manaPoints: update.newMp ?? char.manaPoints,
+                statusEffects: update.newStatusEffects ?? char.statusEffects,
+              };
+            }
+            return char;
+          })
+        );
+    }
   
     // Update player stats
-    setAdventureSettings(prev => {
-      const playerUpdate = combatantsMap.get(PLAYER_ID);
-      if (playerUpdate) {
-        return {
+    const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
+    if (playerUpdate) {
+        setAdventureSettings(prev => ({
           ...prev,
           playerCurrentHp: playerUpdate.newHp,
           playerCurrentMp: playerUpdate.newMp ?? prev.playerCurrentMp,
-        };
-      }
-      return prev;
+        }));
+    }
+    
+    // Handle end of combat rewards
+    if (updates.combatEnded) {
+        let lootMessage = "Le combat est terminé ! ";
+        let newLootItems: PlayerInventoryItem[] = [];
+
+        if (updates.expGained && updates.expGained > 0) {
+            lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
+            setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
+        }
+        if (updates.currencyGained && updates.currencyGained > 0) {
+             lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
+             setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) + updates.currencyGained!}));
+        }
+        if (updates.itemsObtained && updates.itemsObtained.length > 0) {
+             newLootItems = updates.itemsObtained.map(item => ({
+                id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
+                name: item.itemName,
+                quantity: item.quantity,
+                description: item.description,
+                effect: item.effect,
+                type: item.itemType,
+                goldValue: item.goldValue,
+                statBonuses: item.statBonuses,
+                generatedImageUrl: null,
+                isEquipped: false,
+            }));
+        }
+
+        if (lootMessage.trim() !== "Le combat est terminé !") {
+            handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
+        }
+        
+        setActiveCombat(undefined); // Reset combat state
+    }
+    
+    // Update activeCombat state if combat is ongoing
+    else if (updates.nextActiveCombatState) {
+        setActiveCombat(updates.nextActiveCombatState);
+    }
+
+  }, [handleNarrativeUpdate]);
+
+  const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
+    React.startTransition(() => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            
+            const lootMessage = narrativeMessages.find(m => m.id === messageId);
+            let currencyGained = 0;
+             if (lootMessage?.loot) {
+                const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
+                if (currencyItem) {
+                    currencyGained = currencyItem.quantity;
+                }
+             }
+
+            itemsToTake.forEach(item => {
+                if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
+                    console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
+                    return;
+                }
+                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
+                if (existingItemIndex > -1) {
+                    newInventory[existingItemIndex].quantity += item.quantity;
+                } else {
+                    newInventory.push({ ...item, isEquipped: false });
+                }
+            });
+            return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
+        });
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
     });
-  
-    // Update activeCombat state
-    setActiveCombat(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        combatants: prev.combatants.map(c => {
-          const update = combatantsMap.get(c.characterId);
-          if (update) {
-            return {
-              ...c,
-              currentHp: update.newHp,
-              currentMp: update.newMp ?? c.currentMp,
-              isDefeated: update.isDefeated,
-              statusEffects: update.newStatusEffects ?? c.statusEffects,
-            };
-          }
-          return c;
-        }),
-        isActive: !updates.combatEnded,
-      };
-    });
-  }, []);
+    if (!silent) {
+        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+    }
+  }, [toast, narrativeMessages]);
 
   const resolveCombatTurn = React.useCallback((
     currentCombatState: ActiveCombat,
@@ -479,6 +564,7 @@ export default function Home() {
   ): {
       nextCombatState: ActiveCombat;
       turnLog: string[];
+      combatUpdates: CombatUpdatesSchema;
   } => {
       let turnLog: string[] = [];
       let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
@@ -557,15 +643,50 @@ export default function Home() {
       const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
       const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
       
-      return {
-          nextCombatState: {
+      const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
+      let expGained = 0;
+      let currencyGained = 0;
+
+      if (isCombatOver && allEnemiesDefeated) {
+          updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
+              const enemyData = baseCharacters.find(bc => bc.id === enemy.characterId);
+              if (enemyData) {
+                  expGained += (enemyData.level || 1) * 10;
+                  currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
+              }
+          });
+          turnLog.push(`Victoire ! Vous gagnez ${expGained} XP et ${currencyGained} pièces d'or.`);
+          
+          if(currentCombatState.contestedPoiId) {
+             turnLog.push(`Le territoire de ${settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name} est conquis !`);
+          }
+      }
+
+      const combatUpdates: CombatUpdatesSchema = {
+          updatedCombatants: updatedCombatants.map(c => ({
+              combatantId: c.characterId,
+              newHp: c.currentHp,
+              newMp: c.currentMp,
+              isDefeated: c.isDefeated,
+              newStatusEffects: c.statusEffects,
+          })),
+          combatEnded: isCombatOver,
+          expGained: expGained,
+          currencyGained: currencyGained,
+          turnNarration: turnLog.join('\n'), // For AI context
+          nextActiveCombatState: {
               ...currentCombatState,
               combatants: updatedCombatants,
-              isActive: !allEnemiesDefeated && !allPlayersDefeated,
-          },
-          turnLog,
+              isActive: !isCombatOver,
+          }
       };
-  }, [adventureSettings.mapPointsOfInterest]);
+
+      return {
+          nextCombatState: combatUpdates.nextActiveCombatState!,
+          turnLog,
+          combatUpdates,
+      };
+  }, [baseCharacters, adventureSettings.mapPointsOfInterest]);
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -715,34 +836,6 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage]);
 
-
-  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItemsFromAI?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
-       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItemsFromAI?.map(item => ({
-           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-           name: item.itemName,
-           quantity: item.quantity,
-           description: item.description,
-           effect: item.effect,
-           type: item.itemType,
-           goldValue: item.goldValue,
-           statBonuses: item.statBonuses,
-           generatedImageUrl: null,
-           isEquipped: false,
-       }));
-
-       const newMessage: Message = {
-            id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-            type: type,
-            content: content,
-            timestamp: Date.now(),
-            sceneDescription: type === 'ai' ? sceneDesc : undefined,
-            imageUrl: type === 'ai' ? imageUrl : undefined,
-            imageTransform: type === 'ai' ? imageTransform : undefined,
-            loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
-            lootTaken: false,
-       };
-       setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
-   }, []);
 
   const addCurrencyToPlayer = React.useCallback((amount: number) => {
     setAdventureSettings(prevSettings => {
@@ -1076,45 +1169,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     });
   }, []);
 
-  const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
-    React.startTransition(() => {
-        setAdventureSettings(prevSettings => {
-            if (!prevSettings.rpgMode) return prevSettings;
-            const newInventory = [...(prevSettings.playerInventory || [])];
-            
-            const lootMessage = narrativeMessages.find(m => m.id === messageId);
-            let currencyGained = 0;
-             if (lootMessage?.loot) {
-                const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
-                if (currencyItem) {
-                    currencyGained = currencyItem.quantity;
-                }
-             }
-
-            itemsToTake.forEach(item => {
-                if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
-                    console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
-                    return;
-                }
-                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                if (existingItemIndex > -1) {
-                    newInventory[existingItemIndex].quantity += item.quantity;
-                } else {
-                    newInventory.push({ ...item, isEquipped: false });
-                }
-            });
-            return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
-        });
-        setNarrativeMessages(prevMessages =>
-            prevMessages.map(msg =>
-                msg.id === messageId ? { ...msg, lootTaken: true } : msg
-            )
-        );
-    });
-    if (!silent) {
-        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
-    }
-  }, [toast, narrativeMessages]);
+  
 
   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
@@ -1125,6 +1180,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     let liveCharacters = [...characters];
     let liveCombat = activeCombat ? { ...activeCombat } : undefined;
     let turnLog: string[] = [];
+    let internalCombatUpdates: CombatUpdatesSchema | undefined;
 
     if (locationIdOverride) {
         liveSettings.playerLocationId = locationIdOverride;
@@ -1135,50 +1191,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
     if (liveCombat?.isActive) {
         const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
-        liveCombat = combatResult.nextCombatState;
+        internalCombatUpdates = combatResult.combatUpdates;
+        liveCombat = combatResult.nextActiveCombatState;
         turnLog = combatResult.turnLog;
-        
-        const combatantsMap = new Map(liveCombat.combatants.map(c => [c.characterId, c]));
-
-        liveCharacters = liveCharacters.map(char => {
-            const update = combatantsMap.get(char.id);
-            return update ? { ...char, hitPoints: update.currentHp } : char;
-        });
-
-        const playerUpdate = combatantsMap.get(PLAYER_ID);
-        if (playerUpdate) {
-            liveSettings.playerCurrentHp = playerUpdate.currentHp;
-        }
-
-        if (!liveCombat.isActive) { // Combat ended
-            const allEnemiesDefeated = liveCombat.combatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
-            if (allEnemiesDefeated) {
-                let expGained = 0;
-                let goldGained = 0;
-                liveCombat.combatants.filter(c => c.team === 'enemy').forEach(e => {
-                    const enemyData = baseCharacters.find(bc => bc.id === e.characterId);
-                    if (enemyData) {
-                        expGained += (enemyData.level || 1) * 10;
-                        goldGained += (enemyData.level || 1) * 5;
-                    }
-                });
-                liveSettings.playerCurrentExp = (liveSettings.playerCurrentExp || 0) + expGained;
-                liveSettings.playerGold = (liveSettings.playerGold || 0) + goldGained;
-                turnLog.push(`Vous gagnez ${expGained} points d'expérience et trouvez ${goldGained} pièces d'or.`);
-
-                if(liveCombat.contestedPoiId) {
-                    const poiIndex = liveSettings.mapPointsOfInterest?.findIndex(p => p.id === liveCombat.contestedPoiId);
-                    if (poiIndex !== -1 && liveSettings.mapPointsOfInterest) {
-                        liveSettings.mapPointsOfInterest[poiIndex].ownerId = PLAYER_ID;
-                        turnLog.push(`Le territoire de ${liveSettings.mapPointsOfInterest[poiIndex].name} est conquis !`);
-                    }
-                }
-            }
-        }
-        
-        setActiveCombat(liveCombat);
-        setAdventureSettings(liveSettings);
-        setCharacters(liveCharacters);
+        handleCombatUpdates(internalCombatUpdates);
     }
     
     const presentCharacters = liveCharacters.filter(char => char.locationId === liveSettings.playerLocationId);
@@ -1280,7 +1296,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters
+      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates
   ]);
 
   const handleSendSpecificAction = async (action: string) => {
