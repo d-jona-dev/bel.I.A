@@ -442,7 +442,7 @@ export default function Home() {
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
-
+   
   const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
@@ -636,7 +636,7 @@ export default function Home() {
                   }
               } else {
                   turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
-              }
+               }
           }
       });
       
@@ -1270,7 +1270,21 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
             if (liveSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-            if (liveSettings.strategyMode && result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
+            
+            if (liveSettings.strategyMode) {
+              const poiOwnershipChanges = result.poiOwnershipChanges || [];
+              const conquestMessage = turnLog.find(log => log.includes("territoire") && log.includes("conquis"));
+              if (conquestMessage && liveCombat?.contestedPoiId) {
+                  poiOwnershipChanges.push({
+                      poiId: liveCombat.contestedPoiId,
+                      newOwnerId: PLAYER_ID
+                  });
+              }
+              if (poiOwnershipChanges.length > 0) {
+                  handlePoiOwnershipChange(poiOwnershipChanges);
+              }
+            }
+
             if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
             
             if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
@@ -3076,7 +3090,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
-      onGenerateCover={handleGenerateCover}
+      handleGenerateCover={handleGenerateCover}
     />
   );
 }
