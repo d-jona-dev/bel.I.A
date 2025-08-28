@@ -442,7 +442,7 @@ export default function Home() {
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
-
+   
   const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
@@ -557,136 +557,142 @@ export default function Home() {
     }
   }, [toast, narrativeMessages]);
 
-  const resolveCombatTurn = React.useCallback((
-    currentCombatState: ActiveCombat,
-    settings: AdventureSettings,
-    allCharacters: Character[]
-  ): {
-      nextCombatState: ActiveCombat;
-      turnLog: string[];
-      combatUpdates: CombatUpdatesSchema;
-  } => {
-      let turnLog: string[] = [];
-      let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
-      const effectivePlayerStats = calculateEffectiveStats(settings);
+  const resolveCombatTurn = React.useCallback(
+    (
+      currentCombatState: ActiveCombat,
+      settings: AdventureSettings,
+      allCharacters: Character[]
+    ): {
+        nextCombatState: ActiveCombat;
+        turnLog: string[];
+        combatUpdates: CombatUpdatesSchema;
+        conquestHappened: boolean;
+    } => {
+        let turnLog: string[] = [];
+        let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
+        const effectivePlayerStats = calculateEffectiveStats(settings);
+        let conquestHappened = false;
+    
+        const getDamage = (damageBonus: string | undefined): number => {
+            if (!damageBonus) return 1;
+            const match = damageBonus.match(/(\d+)d(\d+)([+-]\d+)?/);
+            let damage = 1;
+            if (match) {
+                const [_, diceCount, diceSides, bonus] = match;
+                damage = 0;
+                for (let i = 0; i < parseInt(diceCount, 10); i++) {
+                    damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
+                }
+                if (bonus) damage += parseInt(bonus, 10);
+            } else if (!isNaN(parseInt(damageBonus, 10))) {
+                damage = parseInt(damageBonus, 10);
+            }
+            return Math.max(1, damage);
+        };
+        
+        const player = updatedCombatants.find(c => c.characterId === PLAYER_ID);
+        if (player && !player.isDefeated) {
+             const target = updatedCombatants.find(c => c.team === 'enemy' && !c.isDefeated);
+             if(target) {
+                 const attackRoll = Math.floor(Math.random() * 20) + 1;
+                 const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
+                 const targetData = allCharacters.find(c => c.id === target.characterId);
+                 const targetAC = targetData?.armorClass ?? 10;
   
-      const getDamage = (damageBonus: string | undefined): number => {
-          if (!damageBonus) return 1;
-          const match = damageBonus.match(/(\d+)d(\d+)([+-]\d+)?/);
-          let damage = 1;
-          if (match) {
-              const [_, diceCount, diceSides, bonus] = match;
-              damage = 0;
-              for (let i = 0; i < parseInt(diceCount, 10); i++) {
-                  damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
-              }
-              if (bonus) damage += parseInt(bonus, 10);
-          } else if (!isNaN(parseInt(damageBonus, 10))) {
-              damage = parseInt(damageBonus, 10);
-          }
-          return Math.max(1, damage);
-      };
-      
-      const player = updatedCombatants.find(c => c.characterId === PLAYER_ID);
-      if (player && !player.isDefeated) {
-           const target = updatedCombatants.find(c => c.team === 'enemy' && !c.isDefeated);
-           if(target) {
-               const attackRoll = Math.floor(Math.random() * 20) + 1;
-               const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
-               const targetData = allCharacters.find(c => c.id === target.characterId);
-               const targetAC = targetData?.armorClass ?? 10;
-
-               if (totalAttack >= targetAC) {
-                   const damage = getDamage(effectivePlayerStats.playerDamageBonus);
-                   target.currentHp = Math.max(0, target.currentHp - damage);
-                   turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
-                   if (target.currentHp === 0) {
-                       target.isDefeated = true;
-                       turnLog.push(`${target.name} est vaincu !`);
-                   }
-               } else {
-                   turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
-               }
-           }
-      }
+                 if (totalAttack >= targetAC) {
+                     const damage = getDamage(effectivePlayerStats.playerDamageBonus);
+                     target.currentHp = Math.max(0, target.currentHp - damage);
+                     turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
+                     if (target.currentHp === 0) {
+                         target.isDefeated = true;
+                         turnLog.push(`${target.name} est vaincu !`);
+                     }
+                 } else {
+                     turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
+                 }
+             }
+        }
+    
+        updatedCombatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
+            const targetPool = updatedCombatants.filter(t => t.team === 'player' && !t.isDefeated);
+            if (targetPool.length > 0) {
+                const target = targetPool[Math.floor(Math.random() * targetPool.length)];
+                const enemyData = allCharacters.find(c => c.id === enemy.characterId);
+                const attackRoll = Math.floor(Math.random() * 20) + 1;
+                const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
+                
+                let targetAC = 10;
+                if (target.characterId === PLAYER_ID) {
+                    targetAC = effectivePlayerStats.playerArmorClass || 10;
+                } else {
+                    const allyData = allCharacters.find(c => c.id === target.characterId);
+                    targetAC = allyData?.armorClass ?? 10;
+                }
+    
+                if (totalAttack >= targetAC) {
+                    const damage = getDamage(enemyData?.damageBonus);
+                    target.currentHp = Math.max(0, target.currentHp - damage);
+                    turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
+                    if (target.currentHp === 0) {
+                        target.isDefeated = true;
+                        turnLog.push(`${target.name} est vaincu !`);
+                    }
+                } else {
+                    turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
+                 }
+            }
+        });
+        
+        const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
+        const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
+        
+        const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
+        let expGained = 0;
+        let currencyGained = 0;
   
-      updatedCombatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
-          const targetPool = updatedCombatants.filter(t => t.team === 'player' && !t.isDefeated);
-          if (targetPool.length > 0) {
-              const target = targetPool[Math.floor(Math.random() * targetPool.length)];
-              const enemyData = allCharacters.find(c => c.id === enemy.characterId);
-              const attackRoll = Math.floor(Math.random() * 20) + 1;
-              const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
-              
-              let targetAC = 10;
-              if (target.characterId === PLAYER_ID) {
-                  targetAC = effectivePlayerStats.playerArmorClass || 10;
-              } else {
-                  const allyData = allCharacters.find(c => c.id === target.characterId);
-                  targetAC = allyData?.armorClass ?? 10;
-              }
+        if (isCombatOver && allEnemiesDefeated) {
+            updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
+                const enemyData = baseCharacters.find(bc => bc.id === enemy.characterId);
+                if (enemyData) {
+                    expGained += (enemyData.level || 1) * 10;
+                    currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
+                }
+            });
+            turnLog.push(`Victoire ! Vous gagnez ${expGained} XP et ${currencyGained} pièces d'or.`);
+            
+            if(currentCombatState.contestedPoiId) {
+                const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
+                turnLog.push(`Le territoire de ${poiName} est conquis !`);
+                conquestHappened = true;
+            }
+        }
   
-              if (totalAttack >= targetAC) {
-                  const damage = getDamage(enemyData?.damageBonus);
-                  target.currentHp = Math.max(0, target.currentHp - damage);
-                  turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
-                  if (target.currentHp === 0) {
-                      target.isDefeated = true;
-                      turnLog.push(`${target.name} est vaincu !`);
-                  }
-              } else {
-                  turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
-               }
-          }
-      });
-      
-      const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
-      const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
-      
-      const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
-      let expGained = 0;
-      let currencyGained = 0;
-
-      if (isCombatOver && allEnemiesDefeated) {
-          updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
-              const enemyData = baseCharacters.find(bc => bc.id === enemy.characterId);
-              if (enemyData) {
-                  expGained += (enemyData.level || 1) * 10;
-                  currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
-              }
-          });
-          turnLog.push(`Victoire ! Vous gagnez ${expGained} XP et ${currencyGained} pièces d'or.`);
-          
-          if(currentCombatState.contestedPoiId) {
-             turnLog.push(`Le territoire de ${settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name} est conquis !`);
-          }
-      }
-
-      const combatUpdates: CombatUpdatesSchema = {
-          updatedCombatants: updatedCombatants.map(c => ({
-              combatantId: c.characterId,
-              newHp: c.currentHp,
-              newMp: c.currentMp,
-              isDefeated: c.isDefeated,
-              newStatusEffects: c.statusEffects,
-          })),
-          combatEnded: isCombatOver,
-          expGained: expGained,
-          currencyGained: currencyGained,
-          turnNarration: turnLog.join('\n'), // For AI context
-          nextActiveCombatState: {
-              ...currentCombatState,
-              combatants: updatedCombatants,
-              isActive: !isCombatOver,
-          }
-      };
-
-      return {
-          nextCombatState: combatUpdates.nextActiveCombatState!,
-          turnLog,
-          combatUpdates,
-      };
-  }, [baseCharacters, adventureSettings.mapPointsOfInterest]);
+        const combatUpdates: CombatUpdatesSchema = {
+            updatedCombatants: updatedCombatants.map(c => ({
+                combatantId: c.characterId,
+                newHp: c.currentHp,
+                newMp: c.currentMp,
+                isDefeated: c.isDefeated,
+                newStatusEffects: c.statusEffects,
+            })),
+            combatEnded: isCombatOver,
+            expGained: expGained,
+            currencyGained: currencyGained,
+            turnNarration: turnLog.join('\n'), // For AI context
+            nextActiveCombatState: {
+                ...currentCombatState,
+                combatants: updatedCombatants,
+                isActive: !isCombatOver,
+            }
+        };
+  
+        return {
+            nextCombatState: combatUpdates.nextActiveCombatState!,
+            turnLog,
+            combatUpdates,
+            conquestHappened,
+        };
+    }, [baseCharacters, adventureSettings.mapPointsOfInterest]);
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -1053,11 +1059,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (affinityUpdate) {
                 changed = true;
                 const currentAffinity = char.affinity ?? 50;
-                const newAffinity = Math.max(0, Math.min(100, currentAffinity + affinityUpdate.change));
+                // Clamp the change value to be within [-10, 10] as a safety measure
+                const clampedChange = Math.max(-10, Math.min(10, affinityUpdate.change));
+                const newAffinity = Math.max(0, Math.min(100, currentAffinity + clampedChange));
 
-                if (Math.abs(affinityUpdate.change) >= 3) {
+                if (Math.abs(clampedChange) >= 3) {
                      const charName = affinityUpdate.characterName;
-                     const direction = affinityUpdate.change > 0 ? 'améliorée' : 'détériorée';
+                     const direction = clampedChange > 0 ? 'améliorée' : 'détériorée';
                      toastsToShow.push({
                          title: `Affinité Modifiée: ${charName}`,
                          description: `Votre relation avec ${charName} s'est significativement ${direction}. Raison: ${affinityUpdate.reason || 'Interaction récente'}`,
@@ -1181,6 +1189,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     let liveCombat = activeCombat ? { ...activeCombat } : undefined;
     let turnLog: string[] = [];
     let internalCombatUpdates: CombatUpdatesSchema | undefined;
+    let conquestHappened = false;
 
     if (locationIdOverride) {
         liveSettings.playerLocationId = locationIdOverride;
@@ -1192,8 +1201,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     if (liveCombat?.isActive) {
         const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
         internalCombatUpdates = combatResult.combatUpdates;
-        liveCombat = combatResult.nextActiveCombatState;
+        liveCombat = combatResult.nextCombatState;
         turnLog = combatResult.turnLog;
+        conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
     }
     
@@ -1286,18 +1296,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (liveSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
             if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             
-            if (liveSettings.strategyMode) {
-              const poiOwnershipChanges = result.poiOwnershipChanges || [];
-              const conquestMessage = (turnLog.find(log => log.includes("territoire") && log.includes("conquis")) || result.narrative.includes("conquis"));
-              if (conquestMessage && liveCombat?.contestedPoiId) {
-                  poiOwnershipChanges.push({
-                      poiId: liveCombat.contestedPoiId,
-                      newOwnerId: PLAYER_ID
-                  });
-              }
-              if (poiOwnershipChanges.length > 0) {
-                  handlePoiOwnershipChange(poiOwnershipChanges);
-              }
+             if (liveSettings.strategyMode && conquestHappened && liveCombat?.contestedPoiId) {
+                handlePoiOwnershipChange([{
+                    poiId: liveCombat.contestedPoiId,
+                    newOwnerId: PLAYER_ID
+                }]);
             }
 
             if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
