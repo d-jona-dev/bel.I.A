@@ -2,6 +2,19 @@
 // src/types/index.ts
 import { z } from 'genkit';
 
+// NEW: Base definition for items in our database
+export interface BaseItem {
+  id: string;
+  name: string;
+  description: string;
+  type: 'weapon' | 'armor' | 'jewelry' | 'consumable' | 'quest' | 'misc';
+  damage?: string; // e.g., "1d6", "2d8"
+  baseGoldValue: number;
+  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
+  // Future fields: requiredLevel, statRequirements...
+}
+
+
 // Déplacé depuis generate-adventure.ts pour éviter les problèmes avec 'use server'
 export const LootedItemSchema = z.object({
   itemName: z.string().describe("Name of the item. e.g., 'Potion de Soin Mineure', 'Dague Rouillée'. CRITICAL: DO NOT include currency (gold, coins, etc.) here; use currencyGained instead."),
@@ -255,6 +268,8 @@ export interface AdventureSettings {
   mapImageUrl?: string | null;
   playerLocationId?: string;
   timeManagement?: TimeManagementSettings;
+  // New: List of item universes to include for loot/merchants
+  activeItemUniverses?: Array<BaseItem['universe']>;
 }
 
 export interface ModelDefinition {
@@ -575,7 +590,8 @@ const CombatOutcomeSchema = z.object({
 export const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("An array detailing the HP, MP, status, and defeat outcomes for every combatant involved in this turn. This field is MANDATORY if a combat turn occurred. It must reflect the state of combatants *after* this turn's actions."),
     expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
-    itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+    itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. **CRITICAL: The AI should provide a simple text list of item names in `lootItemsText` instead of filling this directly.**"),
+    lootItemsText: z.string().optional().describe("A simple, comma-separated string of item names looted by the player if combat is won (e.g., 'Rusty Sword, 15 Gold, Health Potion'). This is preferred over the complex `itemsObtained` field for better AI compatibility."),
     currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces looted by the player if combat is won. IF NO CURRENCY CHANGE, PROVIDE 0."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This is MANDATORY if combat took place. This will be part of the main narrative output as well."),
@@ -615,12 +631,13 @@ export const GenerateAdventureOutputSchema = z.object({
     .array(RelationUpdateSchema)
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
-  combatUpdates: CombatUpdatesSchema.optional().describe("Information about the combat turn if RPG mode is active and combat occurred. This should be present if activeCombat.isActive was true in input, or if combat started this turn."),
+  combatUpdates: CombatUpdatesSchema.optional().describe("This field is deprecated for AI output. Combat results are now handled internally by the application. The AI should not populate this field."),
   itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn through NON-COMBAT means (e.g., finding, gifts, or PURCHASE). **If items are obtained from combat loot, they MUST be returned inside the `combatUpdates` object, not here.** IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
-  poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("A list of Points of Interest that change ownership as a result of the narrative (e.g., after a successful conquest, or if an NPC reconquers a location). Only include POIs whose owner actually changes."),
+  poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("This field is deprecated for AI output. POI ownership changes are now handled internally by the application. The AI should not populate this field."),
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
   updatedTime: UpdatedTimeSchema.optional().describe("The updated time of day if time management is enabled."),
+  lootItemsText: z.string().optional().describe("A simple, comma-separated string of item names looted by the player (e.g., 'Rusty Sword, 15 Gold, Health Potion'). This is preferred over the complex `itemsObtained` field for better AI compatibility."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
@@ -636,3 +653,5 @@ export interface GenerateSceneImageFlowOutput {
 }
 
   
+
+    

@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -127,6 +127,7 @@ const adventureFormSchema = z.object({
   playerGold: z.number().int().min(0).optional().default(0),
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
   timeManagement: timeManagementSchema.optional(),
+  activeItemUniverses: z.array(z.string()).optional(),
 });
 
 
@@ -148,7 +149,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 timeFormat: '24h',
                 currentEvent: '',
                 timeElapsedPerTurn: '00:15',
-            }
+            },
+            activeItemUniverses: initialValues.activeItemUniverses || ['Médiéval-Fantastique'],
         },
         mode: "onBlur",
     });
@@ -232,6 +234,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             playerCharisma: 8,
             playerGold: 50,
             mapPointsOfInterest: [],
+            activeItemUniverses: ['Médiéval-Fantastique'],
         };
         form.reset(loadedData);
         toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
@@ -402,6 +405,61 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
 
                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-config">
+                        <AccordionTrigger>Configuration des Objets</AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-4">
+                            <Card className="p-4 bg-background">
+                                <FormField
+                                    control={form.control}
+                                    name="activeItemUniverses"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="mb-4">
+                                                <FormLabel className="text-base flex items-center gap-2"><Box className="h-5 w-5" /> Univers d'Objets Actifs</FormLabel>
+                                                <FormDescription>
+                                                    Sélectionnez les univers dont les objets pourront apparaître dans les butins et chez les marchands.
+                                                </FormDescription>
+                                            </div>
+                                            {(['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'] as Array<BaseItem['universe']>).map((universe) => (
+                                                <FormField
+                                                    key={universe}
+                                                    control={form.control}
+                                                    name="activeItemUniverses"
+                                                    render={({ field }) => {
+                                                        return (
+                                                            <FormItem
+                                                                key={universe}
+                                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                                            >
+                                                                <FormControl>
+                                                                    <Checkbox
+                                                                        checked={field.value?.includes(universe)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            return checked
+                                                                                ? field.onChange([...(field.value || []), universe])
+                                                                                : field.onChange(
+                                                                                    (field.value || []).filter(
+                                                                                        (value) => value !== universe
+                                                                                    )
+                                                                                )
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormLabel className="font-normal">
+                                                                    {universe}
+                                                                </FormLabel>
+                                                            </FormItem>
+                                                        )
+                                                    }}
+                                                />
+                                            ))}
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </Card>
+                        </AccordionContent>
+                    </AccordionItem>
                     <AccordionItem value="time-management-config">
                         <AccordionTrigger>Gestion avancée du temps</AccordionTrigger>
                         <AccordionContent className="pt-2 space-y-4">
@@ -892,3 +950,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+
+    
