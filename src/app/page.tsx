@@ -692,7 +692,7 @@ export default function Home() {
             combatUpdates,
             conquestHappened,
         };
-    }, [baseCharacters, adventureSettings.mapPointsOfInterest]);
+    }, [baseCharacters]);
 
   const handleToggleAestheticFont = React.useCallback(() => {
     const newFontState = !useAestheticFont;
@@ -1941,7 +1941,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                if (result.poiOwnershipChanges) handlePoiOwnershipChange(result.poiOwnershipChanges);
                 if (currentTurnSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
                     const amount = result.currencyGained;
@@ -3107,9 +3106,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
+      isGeneratingCover={handleGenerateCover}
       onGenerateCover={handleGenerateCover}
     />
   );
 }
+
 
