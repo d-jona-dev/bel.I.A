@@ -661,9 +661,9 @@ export default function Home() {
             turnLog.push(`Victoire ! Vous gagnez ${expGained} XP et ${currencyGained} pièces d'or.`);
             
             if(currentCombatState.contestedPoiId) {
+                conquestHappened = true; // Signal that a conquest happened
                 const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
                 turnLog.push(`Le territoire de ${poiName} est conquis !`);
-                conquestHappened = true;
             }
         }
   
@@ -1206,6 +1206,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
     }
+
+    // This is now purely internal logic and does not depend on the AI's response.
+    if (conquestHappened && liveCombat?.contestedPoiId) {
+        handlePoiOwnershipChange([{
+            poiId: liveCombat.contestedPoiId,
+            newOwnerId: PLAYER_ID
+        }]);
+    }
     
     const presentCharacters = liveCharacters.filter(char => char.locationId === liveSettings.playerLocationId);
     const currentPlayerLocation = liveSettings.playerLocationId ? liveSettings.mapPointsOfInterest?.find(poi => poi.id === liveSettings.playerLocationId) : undefined;
@@ -1260,10 +1268,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     try {
         const result: GenerateAdventureFlowOutput = await generateAdventure(input);
-        if (result.error) {
+        
+        // Use turn log as fallback narrative if AI fails to generate one
+        const narrativeContent = result.narrative || turnLog.join('\n') || "L'action se déroule, mais l'IA n'a pas fourni de description.";
+
+        if (result.error && !result.narrative) {
             toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
-            setIsLoading(false); 
-            return;
         }
         
         React.startTransition(() => {
@@ -1273,7 +1283,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 setStagedCharacters(liveCharacters);
             }
             
-             // NEW: Handle lootItemsText for OpenRouter
             const lootItemsFromText = (result.lootItemsText || "")
                 .split(',')
                 .map(name => name.trim())
@@ -1288,21 +1297,22 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
             const finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
             
-            handleNarrativeUpdate(result.narrative, 'ai', result.sceneDescriptionForImage, finalLoot);
+            handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
 
             if (result.newCharacters) handleNewCharacters(result.newCharacters);
             if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
             if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-            if (liveSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
-            if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             
-             if (liveSettings.strategyMode && conquestHappened && liveCombat?.contestedPoiId) {
-                handlePoiOwnershipChange([{
-                    poiId: liveCombat.contestedPoiId,
-                    newOwnerId: PLAYER_ID
-                }]);
+            if (liveSettings.relationsMode && result.affinityUpdates) {
+                // Clamp affinity updates to safe values before applying
+                const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
+                    ...u,
+                    change: Math.max(-10, Math.min(10, u.change)),
+                }));
+                handleAffinityUpdates(clampedAffinityUpdates);
             }
-
+            
+            if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
             if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
             
             if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
@@ -3106,10 +3116,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={handleGenerateCover}
+      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
     />
   );
 }
-
 

@@ -274,20 +274,29 @@ export async function generateAdventureWithOpenRouter(
 
         try {
             const parsedJson = JSON.parse(content);
+
+            const narrative = parsedJson.narrative || parsedJson.story || parsedJson.histoire || parsedJson.text || parsedJson.content || "";
+            if (!narrative && !input.activeCombat) {
+                 return { 
+                    narrative: input.userAction, // Fallback to user action
+                    error: `La réponse JSON de l'IA ne contient pas de champ narratif valide. Réponse brute: ${content}`,
+                 };
+            }
             
             // Fix for models returning `null` or incorrect types for optional arrays/objects.
             const cleanedJson = {
                 ...parsedJson,
+                narrative: narrative,
                 newCharacters: Array.isArray(parsedJson.newCharacters) ? parsedJson.newCharacters : [],
                 characterUpdates: Array.isArray(parsedJson.characterUpdates) ? parsedJson.characterUpdates : [],
                 affinityUpdates: Array.isArray(parsedJson.affinityUpdates) ? parsedJson.affinityUpdates : [],
                 relationUpdates: Array.isArray(parsedJson.relationUpdates) ? parsedJson.relationUpdates : [],
-                itemsObtained: [], // This will now be handled by lootItemsText
+                itemsObtained: Array.isArray(parsedJson.itemsObtained) ? parsedJson.itemsObtained : [], 
                 currencyGained: typeof parsedJson.currencyGained === 'number' ? parsedJson.currencyGained : 0,
                 poiOwnershipChanges: [], 
                 combatUpdates: undefined,
                 updatedTime: undefined,
-                lootItemsText: parsedJson.lootItemsText || "", // NEW: Add this field
+                lootItemsText: parsedJson.lootItemsText || "",
             };
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(cleanedJson);
@@ -295,7 +304,6 @@ export async function generateAdventureWithOpenRouter(
             if (!validationResult.success) {
                 console.error("Zod validation failed after cleaning:", validationResult.error.errors);
                 // Return the narrative if available, even if other parts fail validation
-                const narrative = typeof parsedJson.narrative === 'string' ? parsedJson.narrative : 'Erreur de narration.';
                 return {
                     error: `La réponse de l'IA ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}\nRéponse brute: ${content}`,
                     narrative: narrative,
