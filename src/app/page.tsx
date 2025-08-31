@@ -652,6 +652,8 @@ export default function Home() {
         const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
         let expGained = 0;
         let currencyGained = 0;
+        let itemsObtained: LootedItem[] = [];
+        let lootItemsText = "";
   
         if (isCombatOver && allEnemiesDefeated) {
             updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
@@ -661,7 +663,7 @@ export default function Home() {
                     currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
                 }
             });
-            turnLog.push(`Victoire ! Vous gagnez ${expGained} XP et ${currencyGained} pièces d'or.`);
+            turnLog.push(`Victoire !`);
             
             if(currentCombatState.contestedPoiId) {
                 conquestHappened = true; // Signal that a conquest happened
@@ -681,6 +683,8 @@ export default function Home() {
             combatEnded: isCombatOver,
             expGained: expGained,
             currencyGained: currencyGained,
+            itemsObtained: itemsObtained,
+            lootItemsText: lootItemsText,
             turnNarration: turnLog.join('\n'), // For AI context
             nextActiveCombatState: {
                 ...currentCombatState,
@@ -2436,6 +2440,57 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             if (!buildingId) { setIsLoading(false); return; }
             const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
             userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
+
+             // Check if it's a merchant building
+            const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
+            if (merchantBuildingIds.includes(buildingId)) {
+                // Generate merchant inventory
+                const poiLevel = poi.level || 1;
+                const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+                
+                const potentialItems = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+                
+                const getRarity = (): SellingItem['rarity'] => {
+                    const rand = Math.random() * 100;
+                    if (poiLevel <= 2) return rand < 90 ? 'Commun' : 'Rare';
+                    if (poiLevel <= 4) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
+                    if (poiLevel === 5) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
+                    // Level 6
+                    return rand < 50 ? 'Epique' : rand < 90 ? 'Légendaire' : 'Divin';
+                }
+
+                const generateItem = (baseItem: (typeof BASE_WEAPONS)[0]): SellingItem => {
+                    const rarity = getRarity();
+                    let finalPrice = baseItem.baseGoldValue;
+                    let finalDamage = baseItem.damage;
+                    
+                     switch (rarity) {
+                        case 'Rare': finalPrice *= 1.5; break;
+                        case 'Epique': finalPrice *= 2.5; break;
+                        case 'Légendaire': finalPrice *= 5; break;
+                        case 'Divin': finalPrice *= 10; break;
+                    }
+
+                    return {
+                        baseItemId: baseItem.id,
+                        name: `${baseItem.name} ${rarity}`,
+                        description: baseItem.description,
+                        type: baseItem.type,
+                        damage: finalDamage,
+                        rarity: rarity,
+                        finalGoldValue: Math.ceil(finalPrice),
+                    };
+                };
+
+                const inventorySize = 5 + (poiLevel - 1) * 2;
+                const generatedInventory = Array.from({ length: inventorySize }, () => {
+                    const randomBaseItem = potentialItems[Math.floor(Math.random() * potentialItems.length)];
+                    return generateItem(randomBaseItem);
+                });
+
+                setMerchantInventory(generatedInventory);
+            }
+
         }
         else {
             setIsLoading(false);
@@ -2563,6 +2618,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       playerGold: stagedAdventureSettings.playerGold,
       familiars: stagedAdventureSettings.familiars || [],
       timeManagement: stagedAdventureSettings.timeManagement,
+      activeItemUniverses: stagedAdventureSettings.activeItemUniverses || ['Médiéval-Fantastique'],
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
 
