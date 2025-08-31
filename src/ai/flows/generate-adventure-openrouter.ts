@@ -58,6 +58,14 @@ function buildOpenRouterPrompt(
         ).join('\n');
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
     }
+    
+    if (input.merchantInventory && input.merchantInventory.length > 0) {
+        const inventoryText = input.merchantInventory.map(item =>
+            `- **${item.name}** (Rareté: ${item.rarity}). ${item.damage ? `Dégâts: ${item.damage}.` : ''} Description: ${item.description}. Prix: ${item.price} Pièces d'Or.`
+        ).join('\n');
+        addSection("INVENTAIRE DU MARCHAND (POUR CONTEXTE)", `Le joueur interagit avec un marchand. Voici les objets en vente. **Tu peux y faire référence dans ta narration, mais N'INVENTE PAS de nouveaux objets ou de nouveaux prix.** Le joueur achètera via l'interface.\n${inventoryText}`);
+    }
+
 
     addSection(`ACTION DU JOUEUR (${input.playerName})`, input.userAction);
 
@@ -219,6 +227,13 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         } : undefined,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,
+        merchantInventory: (input.merchantInventory as any[])?.map(item => ({
+            name: item.name,
+            description: item.description,
+            rarity: item.rarity,
+            price: item.finalGoldValue,
+            damage: item.damage,
+        })),
     };
     return flowInput;
 }
@@ -274,8 +289,8 @@ export async function generateAdventureWithOpenRouter(
 
         try {
             const parsedJson = JSON.parse(content);
+            const narrative = parsedJson.narrative || parsedJson.story || parsedJson.histoire || parsedJson.text || parsedJson.content || parsedJson.argument || "";
 
-            const narrative = parsedJson.narrative || parsedJson.story || parsedJson.histoire || parsedJson.text || parsedJson.content || "";
             if (!narrative && !input.activeCombat) {
                  return { 
                     narrative: input.userAction, // Fallback to user action
@@ -289,14 +304,17 @@ export async function generateAdventureWithOpenRouter(
                 narrative: narrative,
                 newCharacters: Array.isArray(parsedJson.newCharacters) ? parsedJson.newCharacters : [],
                 characterUpdates: Array.isArray(parsedJson.characterUpdates) ? parsedJson.characterUpdates : [],
-                affinityUpdates: Array.isArray(parsedJson.affinityUpdates) ? parsedJson.affinityUpdates : [],
+                affinityUpdates: (Array.isArray(parsedJson.affinityUpdates) ? parsedJson.affinityUpdates : []).map((u: any) => ({
+                    ...u,
+                    change: Math.max(-10, Math.min(10, u.change || 0)), // Clamp affinity change
+                })),
                 relationUpdates: Array.isArray(parsedJson.relationUpdates) ? parsedJson.relationUpdates : [],
                 itemsObtained: Array.isArray(parsedJson.itemsObtained) ? parsedJson.itemsObtained : [], 
                 currencyGained: typeof parsedJson.currencyGained === 'number' ? parsedJson.currencyGained : 0,
                 poiOwnershipChanges: [], 
                 combatUpdates: undefined,
                 updatedTime: undefined,
-                lootItemsText: parsedJson.lootItemsText || "",
+                lootItemsText: parsedJson.lootItemsText || (Array.isArray(parsedJson.itemsObtained) ? parsedJson.itemsObtained.join(', ') : ""),
             };
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(cleanedJson);
@@ -325,3 +343,5 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+      
