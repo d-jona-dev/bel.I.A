@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -20,6 +21,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
+import { BASE_WEAPONS } from "@/lib/items";
 
 
 const PLAYER_ID = "player";
@@ -82,7 +84,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
+        const bonusValue = Math.floor(bonus.value * familiar.level);
         if (bonus.type === 'strength') effectiveStrength += bonusValue;
         if (bonus.type === 'dexterity') effectiveDexterity += bonusValue;
         if (bonus.type === 'constitution') effectiveConstitution += bonusValue;
@@ -106,7 +108,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * activeFamiliar.level);
+        const bonusValue = Math.floor(bonus.value * familiar.level);
         if (bonus.type === 'armor_class') effectiveAC += bonusValue;
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
@@ -380,6 +382,7 @@ export default function Home() {
   const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
   const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
+  const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
 
   // Comic Draft State
   const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
@@ -1264,6 +1267,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         timeManagement: liveSettings.timeManagement,
         playerPortraitUrl: liveSettings.playerPortraitUrl,
         playerFaceSwapEnabled: liveSettings.playerFaceSwapEnabled,
+        merchantInventory,
     };
 
     try {
@@ -1332,13 +1336,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     } finally {
          React.startTransition(() => {
            setIsLoading(false);
+           setMerchantInventory([]); // Clear merchant inventory after interaction
         });
     }
   }, [
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates
+      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory
   ]);
 
   const handleSendSpecificAction = async (action: string) => {
@@ -2339,6 +2344,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     if (!poi) return;
     
     setIsLoading(true);
+    setMerchantInventory([]); // Clear old inventory when taking a new action
 
     if (action === 'attack') {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
@@ -3007,6 +3013,57 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
   }, [comicDraft, currentComicPageIndex, toast]);
 
+  const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
+    setAdventureSettings(prev => {
+        if (!prev.rpgMode) return prev;
+
+        const playerGold = prev.playerGold || 0;
+        if (playerGold < itemToBuy.finalGoldValue) {
+            toast({
+                title: "Fonds insuffisants",
+                description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+                variant: "destructive",
+            });
+            return prev;
+        }
+
+        const newInventoryItem: PlayerInventoryItem = {
+            id: `${itemToBuy.baseItemId}-${Date.now()}`,
+            name: itemToBuy.name,
+            quantity: 1,
+            description: itemToBuy.description,
+            type: itemToBuy.type,
+            goldValue: itemToBuy.finalGoldValue,
+            statBonuses: itemToBuy.statBonuses,
+            isEquipped: false,
+            generatedImageUrl: null,
+        };
+
+        const newInventory = [...(prev.playerInventory || [])];
+        const existingItemIndex = newInventory.findIndex(i => i.name === newInventoryItem.name);
+
+        if(existingItemIndex > -1 && newInventory[existingItemIndex].type !== 'weapon' && newInventory[existingItemIndex].type !== 'armor' && newInventory[existingItemIndex].type !== 'jewelry') {
+            newInventory[existingItemIndex].quantity += 1;
+        } else {
+            newInventory.push(newInventoryItem);
+        }
+        
+        toast({
+            title: "Achat Réussi !",
+            description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
+        });
+        
+        // This will trigger the narrative update
+        setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 10);
+
+        return {
+            ...prev,
+            playerGold: playerGold - itemToBuy.finalGoldValue,
+            playerInventory: newInventory,
+        };
+    });
+  }, [toast]);
+
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3118,7 +3175,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
+      merchantInventory={merchantInventory}
+      onBuyItem={handleBuyItem}
     />
   );
 }
-

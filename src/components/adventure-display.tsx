@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -22,7 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, SellingItem } from "@/ai/flows/generate-adventure";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
@@ -106,6 +106,8 @@ interface AdventureDisplayProps {
     isGeneratingCover: boolean;
     onGenerateCover: () => void;
     onSaveToLibrary: () => void;
+    merchantInventory: SellingItem[]; // NEW
+    onBuyItem: (item: SellingItem) => void; // NEW
 }
 
 interface CustomImageStyle {
@@ -184,6 +186,8 @@ export function AdventureDisplay({
     isGeneratingCover,
     onGenerateCover,
     onSaveToLibrary,
+    merchantInventory,
+    onBuyItem,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -396,6 +400,18 @@ export function AdventureDisplay({
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
   
+  const rarityColorClass = (rarity: SellingItem['rarity']) => {
+    switch (rarity.toLowerCase()) {
+      case 'commun': return 'text-gray-500';
+      case 'rare': return 'text-blue-500';
+      case 'epique': return 'text-purple-500';
+      case 'légendaire': return 'text-orange-500';
+      case 'divin': return 'text-yellow-400';
+      default: return 'text-gray-500';
+    }
+  };
+
+
   const PlayerStatusCard = () => {
     if (!adventureSettings.rpgMode) return null;
     const playerCombatData = activeCombat?.isActive ? activeCombat.combatants.find(c => c.characterId === playerId) : undefined;
@@ -1103,6 +1119,35 @@ export function AdventureDisplay({
                         </div>
                     </CardFooter>
                 </Card>
+                 {merchantInventory.length > 0 && (
+                    <Card>
+                        <CardHeader className="p-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                               <ShoppingCart className="h-5 w-5"/> Marchand Local
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-3 pt-0">
+                            <ScrollArea className="h-48">
+                                <div className="space-y-2">
+                                    {merchantInventory.map((item, idx) => (
+                                        <Card key={`${item.baseItemId}-${idx}`} className="p-2 bg-background shadow-sm">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-semibold text-sm">{item.name}</p>
+                                                    <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
+                                                    {item.damage && <p className="text-xs text-muted-foreground">Dégâts: {item.damage}</p>}
+                                                </div>
+                                                <Button size="sm" variant="secondary" onClick={() => onBuyItem(item)} disabled={isLoading}>
+                                                    {item.finalGoldValue} PO
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                )}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between p-3">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -1294,6 +1339,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-
-    
