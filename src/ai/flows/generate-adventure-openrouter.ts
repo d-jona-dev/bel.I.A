@@ -59,13 +59,16 @@ function buildOpenRouterPrompt(
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
     }
     
+    // This part is now removed to simplify the prompt and avoid confusing the LLM.
+    // The application now handles the display of merchant inventory on its own.
+    /*
     if (input.merchantInventory && input.merchantInventory.length > 0) {
         const inventoryText = input.merchantInventory.map(item =>
             `- **${item.name}** (Rareté: ${item.rarity}). ${item.damage ? `Dégâts: ${item.damage}.` : ''} Description: ${item.description}. Prix: ${item.price} Pièces d'Or.`
         ).join('\n');
         addSection("INVENTAIRE DU MARCHAND (POUR CONTEXTE)", `Le joueur interagit avec un marchand. Voici les objets en vente. **Tu peux y faire référence dans ta narration, mais N'INVENTE PAS de nouveaux objets ou de nouveaux prix.** Le joueur achètera via l'interface.\n${inventoryText}`);
     }
-
+    */
 
     addSection(`ACTION DU JOUEUR (${input.playerName})`, input.userAction);
 
@@ -343,5 +346,3 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-      

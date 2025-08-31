@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -816,7 +815,7 @@ export function AdventureDisplay({
                                         {genericSkills.map(skill => (
                                              <DropdownMenuItem key={skill} onSelect={() => handleSendSpecificAction(skill)}>
                                                 {skill}
-                                            </DropdownMenuItem>
+                                             </DropdownMenuItem>
                                         ))}
                                         {(playerSpells.length > 0 || playerCombatSkills.length > 0 || genericSkills.length > 0) && <DropdownMenuSeparator />}
                                         <DropdownMenuItem onSelect={() => setUserAction("Utiliser compétence/sort : ")}>
