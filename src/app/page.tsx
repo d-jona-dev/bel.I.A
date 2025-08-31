@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -1340,7 +1340,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     } finally {
          React.startTransition(() => {
            setIsLoading(false);
-           setMerchantInventory([]); // Clear merchant inventory after interaction
         });
     }
   }, [
@@ -2348,7 +2347,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     if (!poi) return;
     
     setIsLoading(true);
-    setMerchantInventory([]); // Clear old inventory when taking a new action
+    // Clear merchant inventory when taking any map action to ensure the shop disappears if the player leaves.
+    setMerchantInventory([]); 
 
     if (action === 'attack') {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
