@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -107,6 +107,7 @@ interface AdventureDisplayProps {
     onSaveToLibrary: () => void;
     merchantInventory: SellingItem[]; // NEW
     onBuyItem: (item: SellingItem) => void; // NEW
+    onCloseMerchantPanel: () => void; // NEW
 }
 
 interface CustomImageStyle {
@@ -187,6 +188,7 @@ export function AdventureDisplay({
     onSaveToLibrary,
     merchantInventory,
     onBuyItem,
+    onCloseMerchantPanel,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -1120,10 +1122,20 @@ export function AdventureDisplay({
                 </Card>
                  {merchantInventory.length > 0 && (
                     <Card>
-                        <CardHeader className="p-3">
+                        <CardHeader className="p-3 flex flex-row items-center justify-between">
                             <CardTitle className="text-base flex items-center gap-2">
                                <ShoppingCart className="h-5 w-5"/> Marchand Local
                             </CardTitle>
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCloseMerchantPanel}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Fermer la boutique</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </CardHeader>
                         <CardContent className="p-3 pt-0">
                             <ScrollArea className="h-48">

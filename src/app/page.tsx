@@ -418,6 +418,21 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setComicDraft(prev => prev.map((page, pIndex) => {
+            if (pIndex !== pageIndex) return page;
+            const newPanels = page.panels.map((panel, paIndex) => 
+                paIndex === panelIndex ? { ...panel, imageUrl } : panel
+            );
+            return { ...page, panels: newPanels };
+        }));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -1340,6 +1355,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     } finally {
          React.startTransition(() => {
            setIsLoading(false);
+           setMerchantInventory([]);
         });
     }
   }, [
@@ -2347,8 +2363,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     if (!poi) return;
     
     setIsLoading(true);
-    // Clear merchant inventory when taking any map action to ensure the shop disappears if the player leaves.
-    setMerchantInventory([]); 
+    
+    if (action !== 'visit') {
+        setMerchantInventory([]);
+    }
 
     if (action === 'attack') {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
@@ -2441,34 +2459,45 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
             userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-             // Check if it's a merchant building
             const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
             if (merchantBuildingIds.includes(buildingId)) {
-                // Generate merchant inventory
                 const poiLevel = poi.level || 1;
                 const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
                 
-                const potentialItems = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+                const potentialItems = BASE_WEAPONS.filter(item => 
+                    activeUniverses.includes(item.universe) && item.baseGoldValue < (poiLevel * 10)
+                );
                 
                 const getRarity = (): SellingItem['rarity'] => {
                     const rand = Math.random() * 100;
                     if (poiLevel <= 2) return rand < 90 ? 'Commun' : 'Rare';
                     if (poiLevel <= 4) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
                     if (poiLevel === 5) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
-                    // Level 6
                     return rand < 50 ? 'Epique' : rand < 90 ? 'Légendaire' : 'Divin';
                 }
 
-                const generateItem = (baseItem: (typeof BASE_WEAPONS)[0]): SellingItem => {
+                const generateItem = (baseItem: BaseItem): SellingItem => {
                     const rarity = getRarity();
                     let finalPrice = baseItem.baseGoldValue;
                     let finalDamage = baseItem.damage;
-                    
+
                      switch (rarity) {
-                        case 'Rare': finalPrice *= 1.5; break;
-                        case 'Epique': finalPrice *= 2.5; break;
-                        case 'Légendaire': finalPrice *= 5; break;
-                        case 'Divin': finalPrice *= 10; break;
+                        case 'Rare': 
+                            finalPrice *= 1.5;
+                            if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
+                            break;
+                        case 'Epique': 
+                            finalPrice *= 2.5;
+                            if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 3}`);
+                            break;
+                        case 'Légendaire': 
+                            finalPrice *= 5;
+                            if (finalDamage?.includes('d')) finalDamage = `2d${Number(finalDamage.split('d')[1]) + 5}`;
+                            break;
+                        case 'Divin': 
+                            finalPrice *= 10;
+                            if (finalDamage?.includes('d')) finalDamage = `3d${Number(finalDamage.split('d')[1]) + 5}`;
+                            break;
                     }
 
                     return {
@@ -2482,12 +2511,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     };
                 };
 
-                const inventorySize = 5 + (poiLevel - 1) * 2;
+                const inventorySize = 3 + (poiLevel - 1);
                 const generatedInventory = Array.from({ length: inventorySize }, () => {
                     const randomBaseItem = potentialItems[Math.floor(Math.random() * potentialItems.length)];
                     return generateItem(randomBaseItem);
                 });
-
                 setMerchantInventory(generatedInventory);
             }
 
@@ -2911,20 +2939,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
   
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setComicDraft(prev => prev.map((page, pIndex) => {
-            if (pIndex !== pageIndex) return page;
-            const newPanels = page.panels.map((panel, paIndex) => 
-                paIndex === panelIndex ? { ...panel, imageUrl } : panel
-            );
-            return { ...page, panels: newPanels };
-        }));
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  
     
   const handleGenerateCover = React.useCallback(async () => {
     setIsGeneratingCover(true);
@@ -3089,6 +3104,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             quantity: 1,
             description: itemToBuy.description,
             type: itemToBuy.type,
+            damage: itemToBuy.damage,
             goldValue: itemToBuy.finalGoldValue,
             statBonuses: itemToBuy.statBonuses,
             isEquipped: false,
@@ -3233,6 +3249,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onGenerateCover={handleGenerateCover}
       merchantInventory={merchantInventory}
       onBuyItem={handleBuyItem}
+      onCloseMerchantPanel={() => setMerchantInventory([])}
     />
   );
 }
