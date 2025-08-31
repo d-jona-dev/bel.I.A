@@ -12,7 +12,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, NewCharacterSchema as FlowNewCharacterSchema, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect } from '@/types';
+import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, NewCharacterSchema as FlowNewCharacterSchema, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect, SellingItem } from '@/types';
 import { GenerateAdventureInputSchema, GenerateAdventureOutputSchema, RpgContextSchema, CharacterWithContextSummarySchema, ActiveCombatSchema } from '@/types';
 
 
@@ -149,6 +149,13 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         } : undefined,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,
+        merchantInventory: (input.merchantInventory as SellingItem[])?.map(item => ({
+            name: item.name,
+            description: item.description,
+            rarity: item.rarity,
+            price: item.finalGoldValue,
+            damage: item.damage,
+        })),
     };
     return flowInput;
 }
@@ -244,7 +251,7 @@ Combatants (Player team listed first, then Enemies):
   {{#if ../rpgModeActive}}
   Class: {{this.characterClass}} | Level: {{this.level}}
   HP: {{this.hitPoints}}/{{this.maxHitPoints}} {{#if this.maxManaPoints}}| MP: {{this.manaPoints}}/{{this.maxManaPoints}}{{/if}} | AC: {{this.armorClass}} | Attack: {{this.attackBonus}} | Damage: {{this.damageBonus}}
-  Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}} | Ally: {{#if this.isAlly}}Yes{{else}}No{{/if}}
+  Hostile: {{#if this.isHostile}}Yes{{else}}No{{/if}} | Ally: {{#if this.isAlly}}Yes{{/if}}
   {{#if this.spells}}Spells: {{#each this.spells}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
   {{/if}}
   {{#if ../relationsModeActive}}
@@ -285,6 +292,15 @@ Player is currently travelling or in an unspecified location.
 ---
 {{/if}}
 
+{{#if merchantInventory}}
+--- MERCHANT INVENTORY (for context) ---
+**You are currently in a location with a merchant. The following items are for sale. You can refer to them in your narrative, but DO NOT invent new items or modify these. The player will buy items through the UI.**
+{{#each merchantInventory}}
+- **{{this.name}}** (Rareté: {{this.rarity}}). {{#if this.damage}}Dégâts: {{this.damage}}.{{/if}} Description: {{this.description}}. Prix: {{this.price}} Pièces d'Or.
+{{/each}}
+---
+{{/if}}
+
 User Action (from {{playerName}}): {{{userAction}}}
 
 **CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
@@ -301,13 +317,7 @@ If the 'User Action' implies interaction with a specific service or building typ
             *   **3 (Gold):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
             *   **4 (Ancient Scroll):** Grant a single-use quest item named 'Parchemin Ancien'. Its description should be a powerful, unique spell (e.g., 'Invocation de Golem de Pierre', 'Pluie de Météores'). Populate 'itemsObtained'.
             *   **5 (Lost Familiar):** Generate a new familiar from the depths (e.g., 'Chauve-souris des Cavernes', 'Araignée de Cristal Géante'). Populate 'newFamiliars'.
-        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. Then, **you MUST generate a list of 3-5 thematically appropriate items for sale**. The quality and price of these items MUST depend on the **'Location Level' provided in the 'CURRENT LOCATION CONTEXT'**.
-            *   **MANDATORY ITEM QUALITY TIERS (BY LOCATION LEVEL):**
-            *   **Level 1-2:** 'Basique', 'Commun'. Simple, slightly worn, or basic materials (e.g., 'Dague Rouillée', 'Tunique en cuir simple', 'Potion de soin mineure').
-            *   **Level 3-4:** 'Bonne qualité', 'Solide', 'Efficace'. Well-made, standard materials (e.g., 'Épée en fer', 'Armure de mailles', 'Amulette de vitalité (+5 PV)').
-            *   **Level 5-6:** 'Chef-d'œuvre', 'Magique', 'Rare', 'Épique', 'Légendaire'. Exceptional craftsmanship, enchanted, rare materials (e.g., 'Lame runique de givre', 'Armure en plaques de mithril', 'Anneau de régénération').
-            *   You MUST follow these quality tiers. A level 6 metropolis **CANNOT** sell rusty daggers. A level 1 village **CANNOT** sell legendary items.
-            *   The items MUST be presented in the format: 'NOM_ARTICLE (EFFET) : PRIX Pièces d'Or'. Finally, include the line: 'N'achetez qu'un objet à la fois, Aventurier.'
+        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. **You must then simply state that the merchant displays their wares.** DO NOT list the items in the narrative text. The items are provided to you in the 'MERCHANT INVENTORY' context block above; you can use their names to flavor your narrative, but the player will see them in the UI.
         *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
         *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
@@ -324,7 +334,7 @@ Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. 
     *   **If 'activeCombat.isActive' is true:** Narrate the turn based on the \`userAction\` which is a turn log.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Player Buying Item from Merchant:** If userAction indicates buying an item (e.g., "J'achète la Potion"): Identify the item and price from recent dialogue history. If affordable, narrate success, set \`currencyGained\` to the NEGATIVE price, and add item to \`itemsObtained\`. If not affordable, narrate failure.
+        *   **Player Buying Item:** If userAction indicates buying an item (e.g., "J'achète la Potion"), the transaction is handled by the game system. Simply narrate the successful purchase. The game will automatically deduct gold and add the item. Do NOT set \`currencyGained\` or \`itemsObtained\`.
         *   **Player Buying NPC from Slave Market:** If userAction indicates buying an NPC, check affordability. If yes, narrate, create the NPC in \`newCharacters\` with \`isAlly: true\`, and set \`currencyGained\` to the NEGATIVE price.
         *   **Player Selling to Merchant/NPC:** Narrate the transaction. The game system handles inventory/gold changes. Do NOT set \`currencyGained\` or \`itemsObtained\`.
 
@@ -340,7 +350,7 @@ Tasks:
 6.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 {{/if}}
 
-7.  **Territory Conquest/Loss (poiOwnershipChanges):** If you narrate a successful conquest, record it in \`poiOwnershipChanges\` with \`{ "poiId": "ID_OF_THE_POI", "newOwnerId": "player" }\`.
+7.  **Territory Conquest/Loss (poiOwnershipChanges):** This is now handled internally by the game. DO NOT populate \`poiOwnershipChanges\`.
 
 {{#if timeManagement.enabled}}
 8.  **Time Update:** Suggest a new event description in 'updatedTime.newEvent' if the context has changed significantly.

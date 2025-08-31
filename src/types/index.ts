@@ -14,6 +14,18 @@ export interface BaseItem {
   // Future fields: requiredLevel, statRequirements...
 }
 
+// NEW: Represents an item being sold by a merchant, with its final price.
+export interface SellingItem {
+  baseItemId: string;
+  name: string;
+  description: string;
+  type: BaseItem['type'];
+  damage?: string;
+  rarity: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
+  finalGoldValue: number;
+  statBonuses?: PlayerInventoryItem['statBonuses'];
+}
+
 
 // Déplacé depuis generate-adventure.ts pour éviter les problèmes avec 'use server'
 export const LootedItemSchema = z.object({
@@ -472,6 +484,15 @@ const TimeManagementSchemaForAI = z.object({
 });
 
 
+// NEW: Schema for items for sale, provided to the AI for context
+const SellingItemSchemaForAI = z.object({
+    name: z.string(),
+    description: z.string(),
+    rarity: z.string(),
+    price: z.number(),
+    damage: z.string().optional(),
+});
+
 export const GenerateAdventureInputSchema = z.object({
   world: z.string().describe('Detailed description of the game world.'),
   initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
@@ -514,15 +535,17 @@ export const GenerateAdventureInputSchema = z.object({
   playerLocation: PointOfInterestSchemaForAI.optional().describe("Details of the player's current location. Provided for easy access in the prompt."),
   aiConfig: AiConfigForAdventureInputSchema.optional(),
   timeManagement: TimeManagementSchemaForAI.optional().describe("Advanced time management settings for the story."),
+  merchantInventory: z.array(SellingItemSchemaForAI).optional().describe("A list of items currently being sold by a local merchant. This is for context only; the AI should not invent new items."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig' | 'timeManagement'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig' | 'timeManagement' | 'merchantInventory'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
     playerSkills?: PlayerSkill[];
     mapPointsOfInterest?: MapPointOfInterest[];
     aiConfig?: AiConfig;
     timeManagement?: TimeManagementSettings;
+    merchantInventory?: SellingItem[];
 };
 
 // Represents the output from the flow to the main application, including potential errors.
