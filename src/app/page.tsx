@@ -1353,10 +1353,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
         toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
     } finally {
-         React.startTransition(() => {
-           setIsLoading(false);
-           setMerchantInventory([]);
-        });
+         if (!input.merchantInventory) {
+             setMerchantInventory([]);
+         }
+        setIsLoading(false);
     }
   }, [
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
@@ -2027,7 +2027,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                            charToUpdate.expToNextLevel = Math.floor(100 * Math.pow(1.5, (charToUpdate.level || 1) - 1));
                        }
                        if (charToUpdate.initialAttributePoints === undefined) {
-                           charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC;
+                           charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
                        }
                        const attributesToInit: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
                        attributesToInit.forEach(attr => {
@@ -2119,7 +2119,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     const defaultRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
     const newCharRPGMode = adventureSettings.rpgMode;
     const newCharLevel = newCharRPGMode ? (globalCharToAdd.level ?? 1) : undefined;
-    const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC) : undefined;
+    const newCharInitialPoints = newCharRPGMode ? (globalCharToAdd.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT) : undefined;
     const newCharCurrentExp = newCharRPGMode ? (globalCharToAdd.currentExp ?? 0) : undefined;
     const newCharExpToNext = newCharRPGMode ? (globalCharToAdd.expToNextLevel ?? Math.floor(100 * Math.pow(1.5, (newCharLevel ?? 1) - 1))) : undefined;
 
@@ -3090,11 +3090,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
         const playerGold = prev.playerGold || 0;
         if (playerGold < itemToBuy.finalGoldValue) {
-            toast({
-                title: "Fonds insuffisants",
-                description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
-                variant: "destructive",
-            });
+            setTimeout(() => {
+              toast({
+                  title: "Fonds insuffisants",
+                  description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+                  variant: "destructive",
+              });
+            }, 0);
             return prev;
         }
 
@@ -3120,10 +3122,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             newInventory.push(newInventoryItem);
         }
         
-        toast({
-            title: "Achat Réussi !",
-            description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
-        });
+        setTimeout(() => {
+          toast({
+              title: "Achat Réussi !",
+              description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
+          });
+        }, 0);
         
         // This will trigger the narrative update
         setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 10);
@@ -3134,7 +3138,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             playerInventory: newInventory,
         };
     });
-  }, [toast]);
+  }, [toast, handleSendSpecificAction]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3253,3 +3257,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
