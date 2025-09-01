@@ -1353,9 +1353,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
         toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
     } finally {
-         if (!input.merchantInventory) {
-             setMerchantInventory([]);
-         }
         setIsLoading(false);
     }
   }, [
@@ -1375,8 +1372,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    
-    if (!item.type || item.type !== 'misc' || !item.name) {
+    if (item.type !== 'misc' || !item.name.toLowerCase().includes('familier')) {
         setTimeout(() => {
            toast({
                title: "Utilisation Narrative",
@@ -1390,7 +1386,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         return;
     }
 
-    const familiarName = item.name;
+    const familiarName = item.name.replace(/\(Familier\)/i, '').trim();
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
 
@@ -1401,7 +1397,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     };
 
     const newFamiliar: NewFamiliarSchema = {
-        name: familiarName.trim(),
+        name: familiarName,
         description: item.description || `Un familier nommé ${familiarName}.`,
         rarity: rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common',
         passiveBonus: bonus,
@@ -2364,7 +2360,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
     setIsLoading(true);
     
-    if (action !== 'visit') {
+    // Clear merchant inventory on any map action that is not 'visit'
+    // or if it's a visit to a non-merchant building
+    const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
+    if (action !== 'visit' || (action === 'visit' && buildingId && !merchantBuildingIds.includes(buildingId))) {
         setMerchantInventory([]);
     }
 
@@ -2459,7 +2458,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
             userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-            const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
             if (merchantBuildingIds.includes(buildingId)) {
                 const poiLevel = poi.level || 1;
                 const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
@@ -2482,6 +2480,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     let finalDamage = baseItem.damage;
 
                      switch (rarity) {
+                        case 'Commun':
+                            finalPrice *= 1;
+                            finalDamage = baseItem.damage; // Ensure base damage is copied for Common items
+                            break;
                         case 'Rare': 
                             finalPrice *= 1.5;
                             if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
@@ -3106,9 +3108,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             quantity: 1,
             description: itemToBuy.description,
             type: itemToBuy.type,
-            damage: itemToBuy.damage,
             goldValue: itemToBuy.finalGoldValue,
-            statBonuses: itemToBuy.statBonuses,
+            statBonuses: {
+                damage: itemToBuy.damage
+            },
             isEquipped: false,
             generatedImageUrl: null,
         };
@@ -3257,4 +3260,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
 

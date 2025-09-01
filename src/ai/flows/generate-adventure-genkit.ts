@@ -292,9 +292,9 @@ Player is currently travelling or in an unspecified location.
 ---
 {{/if}}
 
-{{#if merchantInventory}}
+{{#if merchantInventory.length}}
 --- MERCHANT INVENTORY (for context) ---
-**You are currently in a location with a merchant. The following items are for sale. You can refer to them in your narrative, but DO NOT invent new items or modify these. The player will buy items through the UI.**
+**You are currently in a location with a merchant. The following items are for sale. You can refer to them in your narrative for flavor, but DO NOT list them. The player will buy items through a separate UI. DO NOT generate these items in the \`itemsObtained\` field in your response, as the game handles the transaction internally.**
 {{#each merchantInventory}}
 - **{{this.name}}** (Rareté: {{this.rarity}}). {{#if this.damage}}Dégâts: {{this.damage}}.{{/if}} Description: {{this.description}}. Prix: {{this.price}} Pièces d'Or.
 {{/each}}
@@ -317,7 +317,7 @@ If the 'User Action' implies interaction with a specific service or building typ
             *   **3 (Gold):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
             *   **4 (Ancient Scroll):** Grant a single-use quest item named 'Parchemin Ancien'. Its description should be a powerful, unique spell (e.g., 'Invocation de Golem de Pierre', 'Pluie de Météores'). Populate 'itemsObtained'.
             *   **5 (Lost Familiar):** Generate a new familiar from the depths (e.g., 'Chauve-souris des Cavernes', 'Araignée de Cristal Géante'). Populate 'newFamiliars'.
-        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. **You must then simply state that the merchant displays their wares.** DO NOT list the items in the narrative text. The items are provided to you in the 'MERCHANT INVENTORY' context block above; you can use their names to flavor your narrative, but the player will see them in the UI.
+        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. **You must then simply state that the merchant displays their wares.** DO NOT list the items in the narrative text. DO NOT populate \`itemsObtained\` field in the JSON response, the game system handles this.
         *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
         *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
         *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
@@ -391,5 +391,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    
