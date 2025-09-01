@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -27,7 +26,7 @@ import { BASE_WEAPONS } from "@/lib/items";
 const PLAYER_ID = "player";
 const BASE_ATTRIBUTE_VALUE = 8;
 const INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER = 10; // For player
-const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC = 5; // Default for NPCs
+const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT = 5; // Default for NPCs
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 // Calculates base stats derived from attributes, before equipment
@@ -84,7 +83,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * familiar.level);
+        const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
         if (bonus.type === 'strength') effectiveStrength += bonusValue;
         if (bonus.type === 'dexterity') effectiveDexterity += bonusValue;
         if (bonus.type === 'constitution') effectiveConstitution += bonusValue;
@@ -108,7 +107,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
-        const bonusValue = Math.floor(bonus.value * familiar.level);
+        const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
         if (bonus.type === 'armor_class') effectiveAC += bonusValue;
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
@@ -225,7 +224,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       ...initialPlayerAttributes,
       ...initialBaseDerivedStats,
       playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
-      playerCurrentMp: initialBaseDerivedStats.playerMaxManaPoints,
+      playerCurrentMp: initialBaseDerivedStats.maxManaPoints,
       playerCurrentExp: 0,
       playerExpToNextLevel: 100,
       playerGold: 15,
@@ -266,7 +265,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           affinity: 60,
           relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
           isAlly: false, 
-          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
           level: 5, currentExp: 0, expToNextLevel: 800,
           characterClass: "Impératrice", isHostile: false,
           strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
@@ -286,7 +285,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           affinity: 70,
           relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
           isAlly: true,
-          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
           level: 1, currentExp: 0, expToNextLevel: 100,
           characterClass: "Mage de Bataille", isHostile: false,
           strength: 10, dexterity: 12, constitution: 12, intelligence: 15, wisdom: 13, charisma: 11,
@@ -309,7 +308,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           faceSwapEnabled: false,
           affinity: 40,
           relations: { [PLAYER_ID]: "Inconnu" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
           level: 5, currentExp: 0, expToNextLevel: 800,
           characterClass: "Noble Reclus", isHostile: false,
           strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
@@ -328,7 +327,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           faceSwapEnabled: false,
           affinity: 5,
           relations: { [PLAYER_ID]: "Intrus à tuer" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
           level: 2, currentExp: 0, expToNextLevel: 150,
           characterClass: "Chef Gobelin", isHostile: true,
           strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
@@ -347,7 +346,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           faceSwapEnabled: false,
           affinity: 10,
           relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC,
+          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
           level: 1, currentExp: 0, expToNextLevel: 100,
           characterClass: "Fureteur Gobelin", isHostile: true,
           strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
@@ -962,7 +961,7 @@ const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) =
                 affinity: currentSettings.relationsMode ? 50 : undefined,
                 relations: currentSettings.relationsMode ? initialRelations : undefined,
                 isAlly: nc.isAlly ?? false,
-                initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC : undefined,
+                initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
                 currentExp: currentSettings.rpgMode ? 0 : undefined,
                 expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
                 locationId: currentSettings.playerLocationId,
@@ -1362,17 +1361,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory
   ]);
 
-  const handleSendSpecificAction = async (action: string) => {
-    if (isLoading) return;
-    
-    handleNarrativeUpdate(action, 'user');
-    await callGenerateAdventure(action);
-
-  };
-
-
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    if (item.type !== 'misc' || !item.name.toLowerCase().includes('familier')) {
+    const isFamiliarItem = item.description?.toLowerCase().includes('familier');
+
+    if (item.type !== 'misc' || !isFamiliarItem) {
         setTimeout(() => {
            toast({
                title: "Utilisation Narrative",
@@ -1461,13 +1453,25 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     effectAppliedMessage = `${itemToUpdate.name} utilisé. ${hpChange > 0 ? `PV restaurés: ${hpChange}.` : ''} ${mpChange > 0 ? `PM restaurés: ${mpChange}.` : ''}`.trim();
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
-                } else if (itemToUpdate.type === 'misc') {
-                    newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                    itemActionSuccessful = true;
-                } else {
-                     setTimeout(() => {toast({ title: "Action non prise en charge", description: `Vous ne pouvez pas "utiliser" ${itemToUpdate?.name} directement de cette manière.`, variant: "default" });},0);
+                } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
+                    // Prevent "using" equippable items, direct them to equip
+                     setTimeout(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });},0);
                     itemActionSuccessful = false;
                     return prevSettings;
+                } else { // misc or quest items
+                     if (itemToUpdate.description?.toLowerCase().includes('familier')) {
+                         // This path is now taken only for specific familiar items
+                         handleUseFamiliarItem(itemToUpdate);
+                         newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                         itemActionSuccessful = true;
+                         // The handleUseFamiliarItem will create its own narrative
+                         narrativeAction = "";
+                         effectAppliedMessage = "";
+                     } else {
+                        setTimeout(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });},0);
+                        newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                        itemActionSuccessful = true;
+                     }
                 }
             } else if (action === 'discard') {
                 narrativeAction = `Je jette ${itemToUpdate.name}.`;
@@ -1482,7 +1486,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 itemActionSuccessful = true;
             }
 
-            if (newInventory[itemIndex].quantity <= 0) {
+            if (newInventory[itemIndex]?.quantity <= 0) {
                 newInventory.splice(itemIndex, 1);
             }
             changes.playerInventory = newInventory;
@@ -1497,16 +1501,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             return newSettings;
         });
 
-        if (itemActionSuccessful && itemUsedOrDiscarded) {
-             if (action === 'use' && itemUsedOrDiscarded.type === 'misc') {
-                handleUseFamiliarItem(itemUsedOrDiscarded);
-             } else {
-                if(effectAppliedMessage) {
-                    setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
-                }
-                handleNarrativeUpdate(narrativeAction, 'user');
-                callGenerateAdventure(narrativeAction);
-             }
+        if (itemActionSuccessful && narrativeAction) {
+             if(effectAppliedMessage) {
+                setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
+            }
+            handleNarrativeUpdate(narrativeAction, 'user');
+            callGenerateAdventure(narrativeAction);
         }
     });
   }, [
@@ -2352,6 +2352,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
+    // Clear merchant inventory on any map action that is not 'visit' to a merchant building
+    if(action !== 'visit') {
+        setMerchantInventory([]);
+    }
+
+
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
 
@@ -2360,13 +2366,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
     setIsLoading(true);
     
-    // Clear merchant inventory on any map action that is not 'visit'
-    // or if it's a visit to a non-merchant building
-    const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
-    if (action !== 'visit' || (action === 'visit' && buildingId && !merchantBuildingIds.includes(buildingId))) {
-        setMerchantInventory([]);
-    }
-
     if (action === 'attack') {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
 
@@ -2430,9 +2429,81 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         
         await callGenerateAdventure(`Je décris l'engagement du combat à ${poi.name}.`, poi.id);
 
-    } else {
+    } else if (action === 'visit' && buildingId) {
+        const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
         locationIdOverride = poi.id;
-        
+        const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
+        userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
+
+        if (merchantBuildingIds.includes(buildingId)) {
+            const poiLevel = poi.level || 1;
+            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            
+            const potentialItems = BASE_WEAPONS.filter(item => 
+                activeUniverses.includes(item.universe) && item.baseGoldValue < (poiLevel * 10)
+            );
+            
+            const getRarity = (): SellingItem['rarity'] => {
+                const rand = Math.random() * 100;
+                if (poiLevel <= 2) return rand < 90 ? 'Commun' : 'Rare';
+                if (poiLevel <= 4) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
+                if (poiLevel === 5) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
+                return rand < 50 ? 'Epique' : rand < 90 ? 'Légendaire' : 'Divin';
+            }
+
+            const generateItem = (baseItem: BaseItem): SellingItem => {
+                const rarity = getRarity();
+                let finalPrice = baseItem.baseGoldValue;
+                let finalDamage = baseItem.damage;
+
+                 switch (rarity) {
+                    case 'Commun':
+                        finalPrice *= 1;
+                        finalDamage = baseItem.damage;
+                        break;
+                    case 'Rare': 
+                        finalPrice *= 1.5;
+                        if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
+                        break;
+                    case 'Epique': 
+                        finalPrice *= 2.5;
+                        if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 3}`);
+                        break;
+                    case 'Légendaire': 
+                        finalPrice *= 5;
+                        if (finalDamage?.includes('d')) finalDamage = `2d${Number(finalDamage.split('d')[1]) + 5}`;
+                        break;
+                    case 'Divin': 
+                        finalPrice *= 10;
+                        if (finalDamage?.includes('d')) finalDamage = `3d${Number(finalDamage.split('d')[1]) + 5}`;
+                        break;
+                }
+
+                return {
+                    baseItemId: baseItem.id,
+                    name: `${baseItem.name} ${rarity}`,
+                    description: baseItem.description,
+                    type: baseItem.type,
+                    damage: finalDamage,
+                    rarity: rarity,
+                    finalGoldValue: Math.ceil(finalPrice),
+                };
+            };
+
+            const inventorySize = 3 + (poiLevel - 1);
+            const generatedInventory = Array.from({ length: inventorySize }, () => {
+                const randomBaseItem = potentialItems[Math.floor(Math.random() * potentialItems.length)];
+                return generateItem(randomBaseItem);
+            });
+            setMerchantInventory(generatedInventory);
+        } else {
+            setMerchantInventory([]);
+        }
+
+        handleNarrativeUpdate(userActionText, 'user');
+        await callGenerateAdventure(userActionText, locationIdOverride);
+
+    } else {
         if (action === 'upgrade') {
             if (poi.ownerId !== PLAYER_ID) {
                  setTimeout(() => {
@@ -2441,6 +2512,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  setIsLoading(false);
                 return;
             }
+            userActionText = `Je supervise l'amélioration de ${poi.name}.`;
         } else if (action === 'collect') {
             if (poi.ownerId !== PLAYER_ID) {
                 setTimeout(() => {
@@ -2449,78 +2521,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 setIsLoading(false);
                 return;
             }
+             userActionText = `Je collecte les ressources à ${poi.name}.`;
         } else if (action === 'travel') {
             userActionText = `Je me déplace vers ${poi.name}.`;
+            locationIdOverride = poi.id;
         } else if (action === 'examine') {
             userActionText = `J'examine les environs de ${poi.name}.`;
-        } else if (action === 'visit') {
-            if (!buildingId) { setIsLoading(false); return; }
-            const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
-            userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
-
-            if (merchantBuildingIds.includes(buildingId)) {
-                const poiLevel = poi.level || 1;
-                const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
-                
-                const potentialItems = BASE_WEAPONS.filter(item => 
-                    activeUniverses.includes(item.universe) && item.baseGoldValue < (poiLevel * 10)
-                );
-                
-                const getRarity = (): SellingItem['rarity'] => {
-                    const rand = Math.random() * 100;
-                    if (poiLevel <= 2) return rand < 90 ? 'Commun' : 'Rare';
-                    if (poiLevel <= 4) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
-                    if (poiLevel === 5) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
-                    return rand < 50 ? 'Epique' : rand < 90 ? 'Légendaire' : 'Divin';
-                }
-
-                const generateItem = (baseItem: BaseItem): SellingItem => {
-                    const rarity = getRarity();
-                    let finalPrice = baseItem.baseGoldValue;
-                    let finalDamage = baseItem.damage;
-
-                     switch (rarity) {
-                        case 'Commun':
-                            finalPrice *= 1;
-                            finalDamage = baseItem.damage; // Ensure base damage is copied for Common items
-                            break;
-                        case 'Rare': 
-                            finalPrice *= 1.5;
-                            if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
-                            break;
-                        case 'Epique': 
-                            finalPrice *= 2.5;
-                            if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 3}`);
-                            break;
-                        case 'Légendaire': 
-                            finalPrice *= 5;
-                            if (finalDamage?.includes('d')) finalDamage = `2d${Number(finalDamage.split('d')[1]) + 5}`;
-                            break;
-                        case 'Divin': 
-                            finalPrice *= 10;
-                            if (finalDamage?.includes('d')) finalDamage = `3d${Number(finalDamage.split('d')[1]) + 5}`;
-                            break;
-                    }
-
-                    return {
-                        baseItemId: baseItem.id,
-                        name: `${baseItem.name} ${rarity}`,
-                        description: baseItem.description,
-                        type: baseItem.type,
-                        damage: finalDamage,
-                        rarity: rarity,
-                        finalGoldValue: Math.ceil(finalPrice),
-                    };
-                };
-
-                const inventorySize = 3 + (poiLevel - 1);
-                const generatedInventory = Array.from({ length: inventorySize }, () => {
-                    const randomBaseItem = potentialItems[Math.floor(Math.random() * potentialItems.length)];
-                    return generateItem(randomBaseItem);
-                });
-                setMerchantInventory(generatedInventory);
-            }
-
+            locationIdOverride = poi.id;
         }
         else {
             setIsLoading(false);
@@ -3132,8 +3139,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
           });
         }, 0);
         
-        // This will trigger the narrative update
-        setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 10);
+        const userAction = `J'achète ${itemToBuy.name}.`;
+        handleNarrativeUpdate(userAction, 'user');
+        callGenerateAdventure(userAction);
 
         return {
             ...prev,
@@ -3141,7 +3149,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             playerInventory: newInventory,
         };
     });
-  }, [toast, handleSendSpecificAction]);
+  }, [toast, handleNarrativeUpdate, callGenerateAdventure]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3260,5 +3268,3 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
-
-

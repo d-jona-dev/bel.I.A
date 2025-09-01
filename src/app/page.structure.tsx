@@ -145,6 +145,8 @@ interface PageStructureProps {
   onSaveToLibrary: () => void;
   merchantInventory: SellingItem[];
   onBuyItem: (item: SellingItem) => void;
+  isLoading: boolean;
+  onCloseMerchantPanel: () => void;
 }
 
 export function PageStructure({
@@ -239,6 +241,7 @@ export function PageStructure({
   onSaveToLibrary,
   merchantInventory,
   onBuyItem,
+  onCloseMerchantPanel,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -488,6 +491,7 @@ export function PageStructure({
                 onSaveToLibrary={onSaveToLibrary}
                 merchantInventory={merchantInventory}
                 onBuyItem={onBuyItem}
+                onCloseMerchantPanel={onCloseMerchantPanel}
              />
         </main>
       </SidebarInset>
