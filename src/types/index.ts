@@ -9,6 +9,7 @@ export interface BaseItem {
   description: string;
   type: 'weapon' | 'armor' | 'jewelry' | 'consumable' | 'quest' | 'misc';
   damage?: string; // e.g., "1d6", "2d8"
+  ac?: string; // e.g., "11 + Mod.Dex", "14"
   baseGoldValue: number;
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
   // Future fields: requiredLevel, statRequirements...
@@ -21,6 +22,7 @@ export interface SellingItem {
   description: string;
   type: BaseItem['type'];
   damage?: string;
+  ac?: string;
   rarity: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
   finalGoldValue: number;
   statBonuses?: PlayerInventoryItem['statBonuses'];
@@ -491,6 +493,7 @@ const SellingItemSchemaForAI = z.object({
     rarity: z.string(),
     price: z.number(),
     damage: z.string().optional(),
+    ac: z.string().optional(),
 });
 
 export const GenerateAdventureInputSchema = z.object({
@@ -655,7 +658,7 @@ export const GenerateAdventureOutputSchema = z.object({
     .optional()
     .describe("List of relationship status changes between characters OR towards the player based on the narrative. Only if relationsModeActive."),
   combatUpdates: CombatUpdatesSchema.optional().describe("This field is deprecated for AI output. Combat results are now handled internally by the application. The AI should not populate this field."),
-  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn through NON-COMBAT means (e.g., finding, gifts, or PURCHASE). **If items are obtained from combat loot, they MUST be returned inside the `combatUpdates` object, not here.** IF NO ITEMS, PROVIDE EMPTY ARRAY []."),
+  itemsObtained: z.array(LootedItemSchema).optional().describe("Items obtained by the player this turn through NON-COMBAT means (e.g., finding, gifts). **If items are obtained from combat loot, they MUST be returned inside the `combatUpdates` object, not here.** IF NO ITEMS, PROVIDE EMPTY ARRAY []. When a player is visiting a merchant, DO NOT populate this field, as the game system handles purchases."),
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
   poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("This field is deprecated for AI output. POI ownership changes are now handled internally by the application. The AI should not populate this field."),
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
@@ -676,5 +679,7 @@ export interface GenerateSceneImageFlowOutput {
 }
 
   
+
+    
 
     

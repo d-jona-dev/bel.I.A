@@ -143,7 +143,7 @@ export function AdventureDisplay({
     generateSceneImageAction,
     suggestQuestHookAction,
     adventureSettings,
-    characters, // Global list of characters
+    characters, // Global list of all characters
     initialMessages,
     currentLanguage,
     onNarrativeChange,
@@ -1147,6 +1147,7 @@ export function AdventureDisplay({
                                                     <p className="font-semibold text-sm">{item.name}</p>
                                                     <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
                                                     {item.damage && <p className="text-xs text-muted-foreground">Dégâts: {item.damage}</p>}
+                                                    {item.ac && <p className="text-xs text-muted-foreground">CA: {item.ac} {item.statBonuses?.ac ? `(+${item.statBonuses.ac})` : ''}</p>}
                                                 </div>
                                                 <Button size="sm" variant="secondary" onClick={() => onBuyItem(item)} disabled={isLoading}>
                                                     {item.finalGoldValue} PO
@@ -1350,3 +1351,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    

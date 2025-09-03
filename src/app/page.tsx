@@ -20,7 +20,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
-import { BASE_WEAPONS } from "@/lib/items";
+import { BASE_WEAPONS, BASE_ARMORS } from "@/lib/items";
 
 
 const PLAYER_ID = "player";
@@ -417,7 +417,7 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+  const onUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
         const imageUrl = e.target?.result as string;
@@ -2352,8 +2352,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
+    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+    if (!poi) return;
+    
     // Clear merchant inventory on any map action that is not 'visit' to a merchant building
-    if(action !== 'visit') {
+    const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
+    const isVisitingMerchant = action === 'visit' && buildingId && merchantBuildingIds.includes(buildingId);
+    if (!isVisitingMerchant) {
         setMerchantInventory([]);
     }
 
@@ -2361,8 +2366,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
 
-    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi) return;
     
     setIsLoading(true);
     
@@ -2430,7 +2433,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         await callGenerateAdventure(`Je décris l'engagement du combat à ${poi.name}.`, poi.id);
 
     } else if (action === 'visit' && buildingId) {
-        const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
@@ -2439,8 +2441,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const potentialItems = BASE_WEAPONS.filter(item => 
-                activeUniverses.includes(item.universe) && item.baseGoldValue < (poiLevel * 10)
+            const potentialItems: BaseItem[] = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => 
+                activeUniverses.includes(item.universe)
             );
             
             const getRarity = (): SellingItem['rarity'] => {
@@ -2455,27 +2457,31 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 const rarity = getRarity();
                 let finalPrice = baseItem.baseGoldValue;
                 let finalDamage = baseItem.damage;
+                let finalAc = baseItem.ac;
+                let statBonuses: PlayerInventoryItem['statBonuses'] = {};
 
                  switch (rarity) {
-                    case 'Commun':
-                        finalPrice *= 1;
-                        finalDamage = baseItem.damage;
-                        break;
                     case 'Rare': 
                         finalPrice *= 1.5;
                         if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
+                        if(finalAc) statBonuses.ac = 1;
                         break;
                     case 'Epique': 
                         finalPrice *= 2.5;
                         if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 3}`);
+                         if(finalAc) statBonuses.ac = 2;
                         break;
                     case 'Légendaire': 
                         finalPrice *= 5;
                         if (finalDamage?.includes('d')) finalDamage = `2d${Number(finalDamage.split('d')[1]) + 5}`;
+                         if(finalAc) statBonuses.ac = 3;
                         break;
                     case 'Divin': 
                         finalPrice *= 10;
                         if (finalDamage?.includes('d')) finalDamage = `3d${Number(finalDamage.split('d')[1]) + 5}`;
+                         if(finalAc) statBonuses.ac = 5;
+                        break;
+                    default: // Commun
                         break;
                 }
 
@@ -2485,16 +2491,43 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     description: baseItem.description,
                     type: baseItem.type,
                     damage: finalDamage,
+                    ac: finalAc,
                     rarity: rarity,
                     finalGoldValue: Math.ceil(finalPrice),
+                    statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
                 };
             };
+            
+            const itemCounts = { weapon: 0, armor: 0 };
+            if (buildingId === 'forgeron') {
+                itemCounts.weapon = 4;
+                itemCounts.armor = 4;
+            } else if(buildingId === 'bijoutier') {
+                // Future logic for jewelry
+            }
 
-            const inventorySize = 3 + (poiLevel - 1);
-            const generatedInventory = Array.from({ length: inventorySize }, () => {
-                const randomBaseItem = potentialItems[Math.floor(Math.random() * potentialItems.length)];
-                return generateItem(randomBaseItem);
-            });
+            const inventorySize = poiLevel >= 6 ? 15 :
+                                  poiLevel === 5 ? 13 :
+                                  poiLevel === 4 ? 11 :
+                                  poiLevel === 3 ? 9 :
+                                  poiLevel === 2 ? 7 : 5;
+
+            const generatedInventory: SellingItem[] = [];
+            
+            const weaponPool = potentialItems.filter(i => i.type === 'weapon');
+            const armorPool = potentialItems.filter(i => i.type === 'armor');
+
+            for (let i = 0; i < inventorySize; i++) {
+                const itemTypeToGen = Math.random() < 0.5 ? 'weapon' : 'armor';
+                if(itemTypeToGen === 'weapon' && weaponPool.length > 0) {
+                     const randomBaseItem = weaponPool[Math.floor(Math.random() * weaponPool.length)];
+                     generatedInventory.push(generateItem(randomBaseItem));
+                } else if (armorPool.length > 0) {
+                    const randomBaseItem = armorPool[Math.floor(Math.random() * armorPool.length)];
+                     generatedInventory.push(generateItem(randomBaseItem));
+                }
+            }
+            
             setMerchantInventory(generatedInventory);
         } else {
             setMerchantInventory([]);
@@ -3116,9 +3149,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             description: itemToBuy.description,
             type: itemToBuy.type,
             goldValue: itemToBuy.finalGoldValue,
-            statBonuses: {
-                damage: itemToBuy.damage
-            },
+            statBonuses: itemToBuy.statBonuses,
             isEquipped: false,
             generatedImageUrl: null,
         };
@@ -3251,7 +3282,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onAddComicPage={handleAddComicPage}
       onAddComicPanel={handleAddComicPanel}
       onRemoveLastComicPanel={handleRemoveLastComicPanel}
-      onUploadToComicPanel={handleUploadToComicPanel}
+      onUploadToComicPanel={onUploadToComicPanel}
       currentComicPageIndex={currentComicPageIndex}
       onComicPageChange={setCurrentComicPageIndex}
       onAddToComicPage={handleAddToComicPage}
@@ -3268,3 +3299,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
+
+    

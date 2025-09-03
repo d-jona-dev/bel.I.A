@@ -155,6 +155,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
             rarity: item.rarity,
             price: item.finalGoldValue,
             damage: item.damage,
+            ac: item.ac
         })),
     };
     return flowInput;
@@ -294,9 +295,9 @@ Player is currently travelling or in an unspecified location.
 
 {{#if merchantInventory.length}}
 --- MERCHANT INVENTORY (for context) ---
-**You are currently in a location with a merchant. The following items are for sale. You can refer to them in your narrative for flavor, but DO NOT list them. The player will buy items through a separate UI. DO NOT generate these items in the \`itemsObtained\` field in your response, as the game handles the transaction internally.**
+**You are currently in a location with a merchant. The following items are for sale. You can refer to them in your narrative for flavor, but DO NOT list them. The player will buy items through a separate UI. DO NOT populate \`itemsObtained\` field in your response, as the game handles the transaction internally.**
 {{#each merchantInventory}}
-- **{{this.name}}** (Rareté: {{this.rarity}}). {{#if this.damage}}Dégâts: {{this.damage}}.{{/if}} Description: {{this.description}}. Prix: {{this.price}} Pièces d'Or.
+- **{{this.name}}** (Rareté: {{this.rarity}}). {{#if this.damage}}Dégâts: {{this.damage}}.{{/if}} {{#if this.ac}}CA: {{this.ac}}.{{/if}} Description: {{this.description}}. Prix: {{this.price}} Pièces d'Or.
 {{/each}}
 ---
 {{/if}}

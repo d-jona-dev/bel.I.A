@@ -41,4 +41,24 @@ export const BASE_WEAPONS: BaseItem[] = [
   { id: 'weap-037', name: 'Sarbacane', description: 'Un tube utilisé pour souffler de petites fléchettes, souvent empoisonnées.', type: 'weapon', damage: '1d5', baseGoldValue: 10, universe: 'Médiéval-Fantastique' },
 ];
 
+export const BASE_ARMORS: BaseItem[] = [
+    // Armures légères
+    { id: 'arm-001', name: 'Armure matelassée', description: 'Plusieurs couches de tissu matelassé.', type: 'armor', ac: '11 + Mod.Dex', baseGoldValue: 5, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-002', name: 'Armure de cuir', description: 'Une armure faite de cuir traité.', type: 'armor', ac: '11 + Mod.Dex', baseGoldValue: 10, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-003', name: 'Armure de cuir clouté', description: 'Cuir renforcé par des rivets de métal.', type: 'armor', ac: '12 + Mod.Dex', baseGoldValue: 45, universe: 'Médiéval-Fantastique' },
+    // Armures intermédiaires
+    { id: 'arm-004', name: 'Armure de peaux', description: 'Faite de peaux épaisses d\'animaux.', type: 'armor', ac: '12 + Mod.Dex (max +2)', baseGoldValue: 10, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-005', name: 'Chemise de mailles', description: 'Une chemise faite d\'anneaux de métal entrelacés.', type: 'armor', ac: '13 + Mod.Dex (max +2)', baseGoldValue: 50, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-006', name: 'Armure d\'écailles', description: 'Une cotte de cuir sur laquelle sont cousues des écailles de métal.', type: 'armor', ac: '14 + Mod.Dex (max +2)', baseGoldValue: 50, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-007', name: 'Cuirasse', description: 'Un plastron de métal protégeant le torse.', type: 'armor', ac: '14 + Mod.Dex (max +2)', baseGoldValue: 400, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-008', name: 'Demi-plate', description: 'Combine des plaques de métal avec une cotte de mailles flexible.', type: 'armor', ac: '15 + Mod.Dex (max +2)', baseGoldValue: 750, universe: 'Médiéval-Fantastique' },
+    // Armures lourdes
+    { id: 'arm-009', name: 'Broigne', description: 'Des anneaux de métal cousus sur du cuir.', type: 'armor', ac: '14', baseGoldValue: 30, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-010', name: 'Cotte de mailles', description: 'Une armure complète d\'anneaux de métal entrelacés.', type: 'armor', ac: '16', baseGoldValue: 75, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-011', name: 'Clibanion', description: 'Des bandes de métal qui se chevauchent.', type: 'armor', ac: '17', baseGoldValue: 200, universe: 'Médiéval-Fantastique' },
+    { id: 'arm-012', name: 'Harnois', description: 'L\'armure de plaques complète, summum de la protection.', type: 'armor', ac: '18', baseGoldValue: 1500, universe: 'Médiéval-Fantastique' },
+];
+
+    
+
     
