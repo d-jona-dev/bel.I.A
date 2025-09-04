@@ -137,7 +137,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
 
     const strengthModifierValue = Math.floor((effectiveStrength - 10) / 2);
-    let weaponDamageDice = equippedWeapon?.statBonuses?.damage || "1"; // Default to "1" if no weapon
+    let weaponDamageDice = equippedWeapon?.damage || "1"; // Default to "1" if no weapon
     let effectiveDamageBonus = weaponDamageDice;
 
     if (strengthModifierValue !== 0) {
@@ -2449,29 +2449,37 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 const rarity = getRarity();
                 let finalPrice = baseItem.baseGoldValue;
                 let finalDamage = baseItem.damage;
-                let finalAc = baseItem.ac;
+                let finalAcValue = 0;
                 let statBonuses: PlayerInventoryItem['statBonuses'] = {};
+                
+                // Get base AC if it exists
+                if (baseItem.ac) {
+                    const acMatch = baseItem.ac.match(/(\d+)/);
+                    if (acMatch) {
+                        finalAcValue = parseInt(acMatch[0], 10);
+                    }
+                }
 
                  switch (rarity) {
                     case 'Rare': 
                         finalPrice *= 1.5;
                         if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 1}`);
-                        if(finalAc) statBonuses.ac = 1;
+                        if(finalAcValue > 0) statBonuses.ac = 1;
                         break;
                     case 'Epique': 
                         finalPrice *= 2.5;
                         if (finalDamage?.includes('d')) finalDamage = finalDamage.replace(/d(\d+)/, (match, p1) => `d${Number(p1) + 3}`);
-                         if(finalAc) statBonuses.ac = 2;
+                         if(finalAcValue > 0) statBonuses.ac = 2;
                         break;
                     case 'Légendaire': 
                         finalPrice *= 5;
                         if (finalDamage?.includes('d')) finalDamage = `2d${Number(finalDamage.split('d')[1]) + 5}`;
-                         if(finalAc) statBonuses.ac = 3;
+                         if(finalAcValue > 0) statBonuses.ac = 3;
                         break;
                     case 'Divin': 
                         finalPrice *= 10;
                         if (finalDamage?.includes('d')) finalDamage = `3d${Number(finalDamage.split('d')[1]) + 5}`;
-                         if(finalAc) statBonuses.ac = 5;
+                         if(finalAcValue > 0) statBonuses.ac = 5;
                         break;
                     default: // Commun
                         break;
@@ -2483,7 +2491,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     description: baseItem.description,
                     type: baseItem.type,
                     damage: finalDamage,
-                    ac: finalAc,
+                    ac: baseItem.ac,
                     rarity: rarity,
                     finalGoldValue: Math.ceil(finalPrice),
                     statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
