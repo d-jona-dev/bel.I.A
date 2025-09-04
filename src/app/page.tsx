@@ -137,27 +137,19 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
 
     const strengthModifierValue = Math.floor((effectiveStrength - 10) / 2);
-    let weaponDamageDice = "1";
-
-    if (equippedWeapon?.statBonuses?.damage) {
-        weaponDamageDice = equippedWeapon.statBonuses.damage;
-    }
-
+    let weaponDamageDice = equippedWeapon?.statBonuses?.damage || "1"; // Default to "1" if no weapon
     let effectiveDamageBonus = weaponDamageDice;
+
     if (strengthModifierValue !== 0) {
-        if (weaponDamageDice && weaponDamageDice !== "0" && !weaponDamageDice.includes("d")) { 
-            try {
+        if (weaponDamageDice && !weaponDamageDice.includes("d")) {
+             try {
                 const baseDmgNum = parseInt(weaponDamageDice, 10);
-                if (!isNaN(baseDmgNum)) {
-                     effectiveDamageBonus = `${baseDmgNum + strengthModifierValue}`;
-                } else { 
-                    effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
-                }
+                effectiveDamageBonus = `${baseDmgNum + strengthModifierValue}`;
             } catch (e) {
-                 effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
+                effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
             }
-        } else { 
-            effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
+        } else {
+             effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
         }
     }
 
@@ -1291,62 +1283,62 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     try {
         const result: GenerateAdventureFlowOutput = await generateAdventure(input);
         
-        // Use turn log as fallback narrative if AI fails to generate one
-        const narrativeContent = result.narrative || turnLog.join('\n') || "L'action se déroule, mais l'IA n'a pas fourni de description.";
-
         if (result.error && !result.narrative) {
             toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
+        } else {
+             // Use turn log as fallback narrative if AI fails to generate one
+            const narrativeContent = result.narrative || turnLog.join('\n') || "L'action se déroule, mais l'IA n'a pas fourni de description.";
+            
+            React.startTransition(() => {
+                if (locationIdOverride) {
+                    setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
+                    setCharacters(liveCharacters);
+                    setStagedCharacters(liveCharacters);
+                }
+                
+                const lootItemsFromText = (result.lootItemsText || "")
+                    .split(',')
+                    .map(name => name.trim())
+                    .filter(name => name)
+                    .map(name => ({
+                        itemName: name,
+                        quantity: 1,
+                        description: `Un objet obtenu : ${name}`,
+                        itemType: 'misc',
+                        goldValue: 1,
+                    } as LootedItem));
+
+                const finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
+                
+                handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
+
+                if (result.newCharacters) handleNewCharacters(result.newCharacters);
+                if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
+                if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
+                
+                if (liveSettings.relationsMode && result.affinityUpdates) {
+                    // Clamp affinity updates to safe values before applying
+                    const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
+                        ...u,
+                        change: Math.max(-10, Math.min(10, u.change)),
+                    }));
+                    handleAffinityUpdates(clampedAffinityUpdates);
+                }
+                
+                if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
+                if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
+                
+                if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
+                    addCurrencyToPlayer(result.currencyGained);
+                     setTimeout(() => {
+                        toast({
+                            title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Dépense Effectuée",
+                            description: `Votre trésorerie a été mise à jour.`
+                        });
+                    }, 0);
+                }
+            });
         }
-        
-        React.startTransition(() => {
-            if (locationIdOverride) {
-                setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
-                setCharacters(liveCharacters);
-                setStagedCharacters(liveCharacters);
-            }
-            
-            const lootItemsFromText = (result.lootItemsText || "")
-                .split(',')
-                .map(name => name.trim())
-                .filter(name => name)
-                .map(name => ({
-                    itemName: name,
-                    quantity: 1,
-                    description: `Un objet obtenu : ${name}`,
-                    itemType: 'misc',
-                    goldValue: 1,
-                } as LootedItem));
-
-            const finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
-            
-            handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
-
-            if (result.newCharacters) handleNewCharacters(result.newCharacters);
-            if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
-            if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-            
-            if (liveSettings.relationsMode && result.affinityUpdates) {
-                // Clamp affinity updates to safe values before applying
-                const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
-                    ...u,
-                    change: Math.max(-10, Math.min(10, u.change)),
-                }));
-                handleAffinityUpdates(clampedAffinityUpdates);
-            }
-            
-            if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-            if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
-            
-            if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
-                addCurrencyToPlayer(result.currencyGained);
-                 setTimeout(() => {
-                    toast({
-                        title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Dépense Effectuée",
-                        description: `Votre trésorerie a été mise à jour.`
-                    });
-                }, 0);
-            }
-        });
     } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
@@ -2529,8 +2521,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             }
             
             setMerchantInventory(generatedInventory);
-        } else {
-            setMerchantInventory([]);
         }
 
         handleNarrativeUpdate(userActionText, 'user');
@@ -3152,6 +3142,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             statBonuses: itemToBuy.statBonuses,
             isEquipped: false,
             generatedImageUrl: null,
+            damage: itemToBuy.damage,
+            ac: itemToBuy.ac,
         };
 
         const newInventory = [...(prev.playerInventory || [])];
@@ -3300,5 +3292,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   );
 }
 
+
+    
 
     
