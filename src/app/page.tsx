@@ -2346,20 +2346,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
-    
-    let isMerchantVisit = false;
-    if (action === 'visit') {
-        const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
-        isMerchantVisit = !!buildingId && merchantBuildingIds.includes(buildingId);
-    }
 
-    if (!isMerchantVisit) {
-        setMerchantInventory([]);
+    if (action !== 'visit' || !buildingId || !['forgeron', 'bijoutier', 'magicien', 'menagerie'].includes(buildingId)) {
+      setMerchantInventory([]);
     }
-
+  
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
-
     
     setIsLoading(true);
     
@@ -2431,10 +2424,18 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-        if (isMerchantVisit) {
+        if (['forgeron', 'bijoutier', 'magicien', 'menagerie'].includes(buildingId)) {
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
+             const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
+                'Commun': { min: 1, max: 20 },
+                'Rare': { min: 21, max: 100 },
+                'Epique': { min: 101, max: 500 },
+                'Légendaire': { min: 501, max: 2000 },
+                'Divin': { min: 2001, max: 10000 },
+            };
+
             const getRarity = (): SellingItem['rarity'] => {
                 const rand = Math.random() * 100;
                 if (poiLevel <= 1) return 'Commun';
@@ -2442,46 +2443,43 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
                 if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
                 if (poiLevel === 5) return rand < 20 ? 'Commun' : rand < 60 ? 'Rare' : rand < 90 ? 'Epique' : 'Légendaire';
-                return rand < 50 ? 'Epique' : 'Légendaire'; // Level 6+
-            };
-
-            const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
-                'Commun': { min: 1, max: 20 },
-                'Rare': { min: 20, max: 100 },
-                'Epique': { min: 100, max: 500 },
-                'Légendaire': { min: 500, max: 2000 },
-                'Divin': { min: 2000, max: 10000 },
+                return rand < 50 ? 'Epique' : (rand < 85 ? 'Légendaire' : 'Divin');
             };
             
             const generateItem = (baseItem: BaseItem, rarity: SellingItem['rarity']): SellingItem => {
                 let finalPrice = baseItem.baseGoldValue;
                 let statBonuses: PlayerInventoryItem['statBonuses'] = {};
+                let finalDamage = baseItem.damage;
 
                  switch (rarity) {
                     case 'Rare': 
                         finalPrice *= 1.5;
                         if(baseItem.ac) statBonuses.ac = 1;
+                        if(baseItem.damage) finalDamage = `${baseItem.damage}+1`;
                         break;
                     case 'Epique': 
                         finalPrice *= 2.5;
                         if(baseItem.ac) statBonuses.ac = 2;
+                        if(baseItem.damage) finalDamage = `${baseItem.damage}+2`;
                         break;
                     case 'Légendaire': 
                         finalPrice *= 5;
                          if(baseItem.ac) statBonuses.ac = 3;
+                         if(baseItem.damage) finalDamage = `${baseItem.damage}+3`;
                         break;
                     case 'Divin': 
                         finalPrice *= 10;
                          if(baseItem.ac) statBonuses.ac = 5;
+                         if(baseItem.damage) finalDamage = `${baseItem.damage}+5`;
                         break;
                 }
 
                 return {
                     baseItemId: baseItem.id,
-                    name: baseItem.name,
+                    name: `${baseItem.name} ${rarity}`,
                     description: baseItem.description,
                     type: baseItem.type,
-                    damage: baseItem.damage,
+                    damage: finalDamage,
                     ac: baseItem.ac,
                     rarity: rarity,
                     finalGoldValue: Math.ceil(finalPrice),
@@ -2507,7 +2505,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     item.type === itemTypeToGenerate &&
                     item.baseGoldValue >= priceRange.min && item.baseGoldValue <= priceRange.max
                 );
-
+                
                 const baseItem = eligibleItems.length > 0
                     ? eligibleItems[Math.floor(Math.random() * eligibleItems.length)]
                     : allItemsPool.find(item => item.type === itemTypeToGenerate && item.baseGoldValue >= 1 && item.baseGoldValue <= 10);
@@ -3114,61 +3112,59 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [comicDraft, currentComicPageIndex, toast]);
 
   const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
-    setAdventureSettings(prev => {
-        if (!prev.rpgMode) return prev;
+    setTimeout(() => {
+        setAdventureSettings(prev => {
+            if (!prev.rpgMode) return prev;
 
-        const playerGold = prev.playerGold || 0;
-        if (playerGold < itemToBuy.finalGoldValue) {
-            setTimeout(() => {
-              toast({
-                  title: "Fonds insuffisants",
-                  description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
-                  variant: "destructive",
-              });
-            }, 0);
-            return prev;
-        }
+            const playerGold = prev.playerGold || 0;
+            if (playerGold < itemToBuy.finalGoldValue) {
+                toast({
+                    title: "Fonds insuffisants",
+                    description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+                    variant: "destructive",
+                });
+                return prev;
+            }
 
-        const newInventoryItem: PlayerInventoryItem = {
-            id: `${itemToBuy.baseItemId}-${Date.now()}`,
-            name: itemToBuy.name,
-            quantity: 1,
-            description: itemToBuy.description,
-            type: itemToBuy.type,
-            goldValue: itemToBuy.finalGoldValue,
-            statBonuses: itemToBuy.statBonuses,
-            isEquipped: false,
-            generatedImageUrl: null,
-            damage: itemToBuy.damage,
-            ac: itemToBuy.ac,
-        };
+            const newInventoryItem: PlayerInventoryItem = {
+                id: `${itemToBuy.baseItemId}-${Date.now()}`,
+                name: itemToBuy.name,
+                quantity: 1,
+                description: itemToBuy.description,
+                type: itemToBuy.type,
+                goldValue: itemToBuy.finalGoldValue,
+                statBonuses: itemToBuy.statBonuses,
+                isEquipped: false,
+                generatedImageUrl: null,
+                damage: itemToBuy.damage,
+                ac: itemToBuy.ac,
+            };
 
-        const newInventory = [...(prev.playerInventory || [])];
-        const existingItemIndex = newInventory.findIndex(i => i.name === newInventoryItem.name);
+            const newInventory = [...(prev.playerInventory || [])];
+            const existingItemIndex = newInventory.findIndex(i => i.name === newInventoryItem.name);
 
-        if(existingItemIndex > -1 && newInventory[existingItemIndex].type !== 'weapon' && newInventory[existingItemIndex].type !== 'armor' && newInventory[existingItemIndex].type !== 'jewelry') {
-            newInventory[existingItemIndex].quantity += 1;
-        } else {
-            newInventory.push(newInventoryItem);
-        }
-        
-        setTimeout(() => {
-          toast({
-              title: "Achat Réussi !",
-              description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
-          });
-        }, 0);
-        
-        const userAction = `J'achète ${itemToBuy.name}.`;
-        handleNarrativeUpdate(userAction, 'user');
-        callGenerateAdventure(userAction);
+            if (existingItemIndex > -1 && newInventory[existingItemIndex].type !== 'weapon' && newInventory[existingItemIndex].type !== 'armor' && newInventory[existingItemIndex].type !== 'jewelry') {
+                newInventory[existingItemIndex].quantity += 1;
+            } else {
+                newInventory.push(newInventoryItem);
+            }
+            
+            toast({
+                title: "Achat Réussi !",
+                description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
+            });
+            
+            const userAction = `J'achète ${itemToBuy.name}.`;
+            handleNarrativeUpdate(userAction, 'user');
+            callGenerateAdventure(userAction);
 
-        return {
-            ...prev,
-            playerGold: playerGold - itemToBuy.finalGoldValue,
-            playerInventory: newInventory,
-        };
-    });
+            return {
+                ...prev,
+                playerGold: playerGold - itemToBuy.finalGoldValue,
+                playerInventory: newInventory,
+            };
+        });
+    }, 0);
   }, [toast, handleNarrativeUpdate, callGenerateAdventure]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
