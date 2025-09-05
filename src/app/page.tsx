@@ -2347,10 +2347,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
     
-    // Clear merchant inventory on any map action that is not 'visit' to a merchant building
-    const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
-    const isVisitingMerchant = action === 'visit' && buildingId && merchantBuildingIds.includes(buildingId);
-    if (!isVisitingMerchant) {
+    let isMerchantVisit = false;
+    if (action === 'visit') {
+        const merchantBuildingIds = ['forgeron', 'bijoutier', 'magicien', 'menagerie'];
+        isMerchantVisit = !!buildingId && merchantBuildingIds.includes(buildingId);
+    }
+
+    if (!isMerchantVisit) {
         setMerchantInventory([]);
     }
 
@@ -2428,7 +2431,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-        if (merchantBuildingIds.includes(buildingId)) {
+        if (isMerchantVisit) {
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
@@ -2496,17 +2499,18 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const allItemsPool: BaseItem[] = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => activeUniverses.includes(item.universe));
             
             for (let i = 0; i < inventorySize; i++) {
+                const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                 const rarity = getRarity();
                 const priceRange = rarityPriceRanges[rarity];
 
-                const eligibleItems = allItemsPool.filter(item => 
-                    (item.type === 'weapon' || item.type === 'armor') && // Only weapons/armors for forgeron
+                const eligibleItems = allItemsPool.filter(item =>
+                    item.type === itemTypeToGenerate &&
                     item.baseGoldValue >= priceRange.min && item.baseGoldValue <= priceRange.max
                 );
-                
+
                 const baseItem = eligibleItems.length > 0
                     ? eligibleItems[Math.floor(Math.random() * eligibleItems.length)]
-                    : allItemsPool.find(item => item.baseGoldValue >= 1 && item.baseGoldValue <= 10); // Fallback to a cheap item
+                    : allItemsPool.find(item => item.type === itemTypeToGenerate && item.baseGoldValue >= 1 && item.baseGoldValue <= 10);
                 
                 if (baseItem) {
                     generatedInventory.push(generateItem(baseItem, rarity));
