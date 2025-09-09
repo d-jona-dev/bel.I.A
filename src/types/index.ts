@@ -13,6 +13,8 @@ export interface BaseItem {
   baseGoldValue: number;
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
   // Future fields: requiredLevel, statRequirements...
+  effectType?: 'stat' | 'narrative'; // Added for jewelry
+  statBonuses?: PlayerInventoryItem['statBonuses']; // Added for jewelry
 }
 
 // NEW: Represents an item being sold by a merchant, with its final price.
@@ -47,6 +49,7 @@ export const LootedItemSchema = z.object({
     int: z.number().optional().describe("Intelligence bonus."),
     wis: z.number().optional().describe("Wisdom bonus."),
     cha: z.number().optional().describe("Charisma bonus."),
+    hp: z.number().optional().describe("Hit Points bonus."),
   }).optional().describe("Stat bonuses provided by the item if equipped."),
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
@@ -187,14 +190,16 @@ export interface PlayerInventoryItem {
   statBonuses?: {
     ac?: number;
     attack?: number;
-    damage?: string; // e.g. "1d8", "+2"
+    damage?: string;
     str?: number;
     dex?: number;
     con?: number;
     int?: number;
     wis?: number;
     cha?: number;
+    hp?: number;
   };
+  effectType?: 'stat' | 'narrative'; // Added for jewelry
 }
 
 export interface PlayerSkill {
@@ -683,3 +688,5 @@ export interface GenerateSceneImageFlowOutput {
     
 
     
+
+  

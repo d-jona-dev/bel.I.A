@@ -59,6 +59,32 @@ export const BASE_ARMORS: BaseItem[] = [
     { id: 'arm-012', name: 'Harnois', description: 'L\'armure de plaques complète, summum de la protection.', type: 'armor', ac: '18', baseGoldValue: 1500, universe: 'Médiéval-Fantastique' },
 ];
 
+export const BASE_JEWELRY: BaseItem[] = [
+    // Narrative Jewelry
+    { id: 'jew-narr-001', name: 'Anneau de barrière mentale', description: "Vous êtes immunisé aux magies qui permettent à d'autres créatures de lire dans vos pensées.", type: 'jewelry', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-002', name: 'Anneau de marche sur l\'eau', description: "Vous pouvez vous déplacer sur les surfaces liquides comme si vous étiez sur la terre ferme.", type: 'jewelry', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-003', name: 'Anneau de rayons X', description: "Vous pouvez voir à l'intérieur et au travers des matières solides.", type: 'jewelry', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-004', name: 'Amulette de bonne santé', description: "Votre Constitution passe à 19 tant que vous portez cette amulette. N'a aucun effet si votre Constitution est déjà de 19 ou plus.", type: 'jewelry', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-005', name: 'Anneau de télékinésie', description: "Vous pouvez utiliser la télékinésie et déplacer des objets par la pensée.", type: 'jewelry', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-006', name: 'Anneau d\'invisibilité', description: "Vous pouvez devenir invisible.", type: 'jewelry', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-007', name: 'Anneau de convocation de djinn', description: "Prononcez son mot de commande pour invoquer un djinn qui obéira à vos ordres.", type: 'jewelry', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-008', name: 'Anneau de séduction', description: "Facilité de séduction lors des échanges avec le genre opposé.", type: 'jewelry', baseGoldValue: 200, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+
+    // Stat Jewelry
+    ...['Force', 'Dextérité', 'Constitution', 'Intelligence', 'Sagesse', 'Charisme'].flatMap((stat, i) => {
+        const key = stat.slice(0, 3).toLowerCase() as 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+        return [
+            { id: `jew-stat-${key}-c`, name: `Amulette de ${stat} Commune`, description: `Cette amulette augmente votre ${stat}.`, type: 'jewelry', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 1 } },
+            { id: `jew-stat-${key}-r`, name: `Anneau de ${stat} Rare`, description: `Cet anneau augmente votre ${stat}.`, type: 'jewelry', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 2 } },
+            { id: `jew-stat-${key}-e`, name: `Amulette de ${stat} Epique`, description: `Cette amulette augmente considérablement votre ${stat}.`, type: 'jewelry', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 3 } },
+            { id: `jew-stat-${key}-l`, name: `Anneau de ${stat} Légendaire`, description: `Cet anneau augmente votre ${stat} à un niveau remarquable.`, type: 'jewelry', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 4 } },
+            { id: `jew-stat-${key}-d`, name: `Amulette de ${stat} Divine`, description: `Cette amulette imprègne son porteur d'une ${stat} quasi divine.`, type: 'jewelry', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 5 } },
+        ]
+    }),
+    { id: 'jew-stat-hp-c', name: 'Amulette de vitalité Commune', description: 'Augmente légèrement vos points de vie maximum.', type: 'jewelry', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 5 } },
+    { id: 'jew-stat-hp-r', name: 'Anneau de vitalité Rare', description: 'Augmente vos points de vie maximum.', type: 'jewelry', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 10 } },
+    { id: 'jew-stat-hp-e', name: 'Amulette de vitalité Epique', description: 'Augmente considérablement vos points de vie maximum.', type: 'jewelry', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 20 } },
+];
     
 
-    
+  
