@@ -122,9 +122,30 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
     const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
 
-    if (equippedArmor?.statBonuses?.ac) {
-        effectiveAC += equippedArmor.statBonuses.ac;
+    if (equippedArmor) {
+        if (equippedArmor.ac?.includes('+')) {
+            // For armors like "11 + Mod.Dex", we just take the base
+            const baseAC = parseInt(equippedArmor.ac, 10);
+            const dexMod = Math.floor((effectiveDexterity - 10) / 2);
+            
+            // Handle max dex bonus for medium armors
+            let maxDex = Infinity;
+            const maxMatch = equippedArmor.ac.match(/\(max \+(\d+)\)/);
+            if (maxMatch) {
+                maxDex = parseInt(maxMatch[1], 10);
+            }
+            
+            effectiveAC = baseAC + Math.min(dexMod, maxDex);
+        } else if (equippedArmor.ac) {
+            // For heavy armors with fixed AC
+            effectiveAC = parseInt(equippedArmor.ac, 10);
+        }
+
+        if (equippedArmor?.statBonuses?.ac) {
+             effectiveAC += equippedArmor.statBonuses.ac;
+        }
     }
+   
     if (equippedJewelry?.statBonuses?.ac) {
         effectiveAC += equippedJewelry.statBonuses.ac;
     }
@@ -137,11 +158,11 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
 
     const strengthModifierValue = Math.floor((effectiveStrength - 10) / 2);
-    let weaponDamageDice = equippedWeapon?.damage || "1";
-    let effectiveDamageBonus = weaponDamageDice;
+    let weaponDamageDice = equippedWeapon?.damage;
+    let effectiveDamageBonus = equippedWeapon?.damage || "1";
     
-    if (strengthModifierValue !== 0) {
-        if (weaponDamageDice && !weaponDamageDice.includes("d")) {
+    if (strengthModifierValue !== 0 && weaponDamageDice) {
+        if (!weaponDamageDice.includes("d")) {
              try {
                 const baseDmgNum = parseInt(weaponDamageDice, 10);
                 effectiveDamageBonus = `${baseDmgNum + strengthModifierValue}`;
@@ -243,6 +264,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
         currentEvent: "",
         timeElapsedPerTurn: "00:15",
       },
+      activeItemUniverses: ['Médiéval-Fantastique'],
     };
   
     const initialCharacters: Character[] = [
@@ -2346,10 +2368,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
-
-    if (action !== 'visit' || !buildingId || !['forgeron', 'bijoutier', 'magicien', 'menagerie'].includes(buildingId)) {
-      setMerchantInventory([]);
-    }
+  
+    setMerchantInventory([]);
   
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
@@ -2431,54 +2451,81 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
             const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
 
-             const getRarity = (): SellingItem['rarity'] => {
-                const rand = Math.random() * 100;
-                if (poiLevel <= 1) return 'Commun';
-                if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
-                if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
-                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
-                if (poiLevel === 5) return rand < 20 ? 'Commun' : rand < 60 ? 'Rare' : 'Epique';
-                return rand < 50 ? 'Epique' : (rand < 85 ? 'Légendaire' : 'Divin');
+            const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
+                'Commun': { min: 1, max: 9 },
+                'Rare': { min: 10, max: 29 },
+                'Epique': { min: 30, max: 99 },
+                'Légendaire': { min: 100, max: 499 },
+                'Divin': { min: 500, max: Infinity },
             };
             
+            const getRarityForLevel = (): SellingItem['rarity'] => {
+                const rand = Math.random() * 100;
+                 if (poiLevel >= 6) return rand < 50 ? 'Epique' : (rand < 85 ? 'Légendaire' : 'Divin');
+                 if (poiLevel === 5) return rand < 20 ? 'Commun' : rand < 60 ? 'Rare' : 'Epique';
+                 if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
+                 if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
+                 if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
+                 return 'Commun';
+            };
+            
+             const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
+                const match = damage.match(/(\d+)d(\d+)(?:\s*\+\s*(\d+))?/);
+                if (match) {
+                    return { diceCount: parseInt(match[1]), diceType: parseInt(match[2]), bonus: parseInt(match[3]) || 0 };
+                }
+                return { diceCount: 0, diceType: 0, bonus: 0 };
+            };
+            
+            const getNextDie = (currentDie: number) => {
+                const diceProgression = [4, 6, 8, 10, 12, 20];
+                const currentIndex = diceProgression.indexOf(currentDie);
+                return currentIndex !== -1 && currentIndex < diceProgression.length - 1 
+                    ? diceProgression[currentIndex + 1] 
+                    : currentDie;
+            };
+
             const generateItem = (baseItem: BaseItem, rarity: SellingItem['rarity']): SellingItem => {
                 let finalPrice = baseItem.baseGoldValue;
-                let statBonuses: PlayerInventoryItem['statBonuses'] = {};
                 let finalDamage = baseItem.damage;
                 let finalAc = baseItem.ac;
-                let bonusValue = 0;
-                
-                 switch (rarity) {
-                    case 'Rare': 
+                let statBonuses: PlayerInventoryItem['statBonuses'] = {};
+            
+                switch (rarity) {
+                    case 'Rare':
                         finalPrice *= 1.5;
-                        bonusValue = 1;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 1}d${diceType}${bonus > 0 ? `+${bonus}` : ''}`;
+                        }
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 1;
                         break;
-                    case 'Epique': 
+                    case 'Epique':
                         finalPrice *= 2.5;
-                        bonusValue = 2;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 1}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}` : ''}`;
+                        }
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 2;
                         break;
-                    case 'Légendaire': 
+                    case 'Légendaire':
                         finalPrice *= 5;
-                        bonusValue = 3;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 2}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}` : ''}`;
+                        }
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 3;
                         break;
-                    case 'Divin': 
+                    case 'Divin':
                         finalPrice *= 10;
-                        bonusValue = 5;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 2}d${getNextDie(getNextDie(diceType))}+${bonus + 5}`;
+                        }
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 5;
                         break;
                 }
-
-                if (baseItem.type === 'weapon' && bonusValue > 0 && finalDamage) {
-                    finalDamage = `${finalDamage}+${bonusValue}`;
-                }
-                if (baseItem.type === 'armor' && bonusValue > 0 && finalAc) {
-                    if (finalAc.includes('+')) {
-                        finalAc = `${finalAc} (+${bonusValue})`;
-                    } else {
-                        finalAc = `${Number(finalAc) + bonusValue}`;
-                    }
-                    statBonuses.ac = bonusValue;
-                }
-
+            
                 return {
                     baseItemId: baseItem.id,
                     name: `${baseItem.name} ${rarity}`,
@@ -2501,13 +2548,25 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const generatedInventory: SellingItem[] = [];
             
             for (let i = 0; i < inventorySize; i++) {
-                const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
-                const rarity = getRarity();
+                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
+                 const rarity = getRarityForLevel();
+                 const priceRange = rarityPriceRanges[rarity];
 
-                const pool = itemTypeToGenerate === 'weapon' ? weaponsPool : armorsPool;
+                 const pool = itemTypeToGenerate === 'weapon' ? weaponsPool : armorsPool;
+                 
+                 const eligibleItems = pool.filter(item => 
+                    item.baseGoldValue >= priceRange.min && item.baseGoldValue <= priceRange.max
+                 );
                 
-                if (pool.length > 0) {
-                    const baseItem = pool[Math.floor(Math.random() * pool.length)];
+                let baseItem: BaseItem | undefined;
+                if (eligibleItems.length > 0) {
+                    baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
+                } else {
+                    const sortedPool = [...pool].sort((a,b) => a.baseGoldValue - b.baseGoldValue);
+                    baseItem = sortedPool.find(item => item.baseGoldValue >= priceRange.min) || sortedPool[sortedPool.length -1];
+                }
+
+                if (baseItem) {
                     generatedInventory.push(generateItem(baseItem, rarity));
                 }
             }
@@ -3108,61 +3167,25 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
   }, [comicDraft, currentComicPageIndex, toast]);
 
+  const handleSendSpecificAction = React.useCallback(async (action: string) => {
+    if (!action || isLoading) return;
+
+    setIsLoading(true);
+    handleNarrativeUpdate(action, 'user');
+
+    try {
+        await callGenerateAdventure(action);
+    } catch (error) { 
+        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
+         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
+
   const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
-    setTimeout(() => {
-        setAdventureSettings(prev => {
-            if (!prev.rpgMode) return prev;
-
-            const playerGold = prev.playerGold || 0;
-            if (playerGold < itemToBuy.finalGoldValue) {
-                toast({
-                    title: "Fonds insuffisants",
-                    description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
-                    variant: "destructive",
-                });
-                return prev;
-            }
-
-            const newInventoryItem: PlayerInventoryItem = {
-                id: `${itemToBuy.baseItemId}-${Date.now()}`,
-                name: itemToBuy.name,
-                quantity: 1,
-                description: itemToBuy.description,
-                type: itemToBuy.type,
-                goldValue: itemToBuy.finalGoldValue,
-                statBonuses: itemToBuy.statBonuses,
-                isEquipped: false,
-                generatedImageUrl: null,
-                damage: itemToBuy.damage,
-                ac: itemToBuy.ac,
-            };
-
-            const newInventory = [...(prev.playerInventory || [])];
-            const existingItemIndex = newInventory.findIndex(i => i.name === newInventoryItem.name);
-
-            if (existingItemIndex > -1 && newInventory[existingItemIndex].type !== 'weapon' && newInventory[existingItemIndex].type !== 'armor' && newInventory[existingItemIndex].type !== 'jewelry') {
-                newInventory[existingItemIndex].quantity += 1;
-            } else {
-                newInventory.push(newInventoryItem);
-            }
-            
-            toast({
-                title: "Achat Réussi !",
-                description: `Vous avez acheté ${itemToBuy.name} pour ${itemToBuy.finalGoldValue} PO.`
-            });
-            
-            const userAction = `J'achète ${itemToBuy.name}.`;
-            handleNarrativeUpdate(userAction, 'user');
-            callGenerateAdventure(userAction);
-
-            return {
-                ...prev,
-                playerGold: playerGold - itemToBuy.finalGoldValue,
-                playerInventory: newInventory,
-            };
-        });
-    }, 0);
-  }, [toast, handleNarrativeUpdate, callGenerateAdventure]);
+    handleSendSpecificAction(`J'achète ${itemToBuy.name}.`);
+  }, [handleSendSpecificAction]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3223,6 +3246,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
+      suggestQuestHookAction={callSuggestQuestHook}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
