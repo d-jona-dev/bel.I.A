@@ -2428,21 +2428,16 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-             const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
-                'Commun': { min: 1, max: 20 },
-                'Rare': { min: 21, max: 100 },
-                'Epique': { min: 101, max: 500 },
-                'Légendaire': { min: 501, max: 2000 },
-                'Divin': { min: 2001, max: 10000 },
-            };
+            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
 
-            const getRarity = (): SellingItem['rarity'] => {
+             const getRarity = (): SellingItem['rarity'] => {
                 const rand = Math.random() * 100;
                 if (poiLevel <= 1) return 'Commun';
                 if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
                 if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
-                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : rand < 95 ? 'Epique' : 'Légendaire';
-                if (poiLevel === 5) return rand < 20 ? 'Commun' : rand < 60 ? 'Rare' : rand < 90 ? 'Epique' : 'Légendaire';
+                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
+                if (poiLevel === 5) return rand < 20 ? 'Commun' : rand < 60 ? 'Rare' : 'Epique';
                 return rand < 50 ? 'Epique' : (rand < 85 ? 'Légendaire' : 'Divin');
             };
             
@@ -2450,28 +2445,38 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 let finalPrice = baseItem.baseGoldValue;
                 let statBonuses: PlayerInventoryItem['statBonuses'] = {};
                 let finalDamage = baseItem.damage;
-
+                let finalAc = baseItem.ac;
+                let bonusValue = 0;
+                
                  switch (rarity) {
                     case 'Rare': 
                         finalPrice *= 1.5;
-                        if(baseItem.ac) statBonuses.ac = 1;
-                        if(baseItem.damage) finalDamage = `${baseItem.damage}+1`;
+                        bonusValue = 1;
                         break;
                     case 'Epique': 
                         finalPrice *= 2.5;
-                        if(baseItem.ac) statBonuses.ac = 2;
-                        if(baseItem.damage) finalDamage = `${baseItem.damage}+2`;
+                        bonusValue = 2;
                         break;
                     case 'Légendaire': 
                         finalPrice *= 5;
-                         if(baseItem.ac) statBonuses.ac = 3;
-                         if(baseItem.damage) finalDamage = `${baseItem.damage}+3`;
+                        bonusValue = 3;
                         break;
                     case 'Divin': 
                         finalPrice *= 10;
-                         if(baseItem.ac) statBonuses.ac = 5;
-                         if(baseItem.damage) finalDamage = `${baseItem.damage}+5`;
+                        bonusValue = 5;
                         break;
+                }
+
+                if (baseItem.type === 'weapon' && bonusValue > 0 && finalDamage) {
+                    finalDamage = `${finalDamage}+${bonusValue}`;
+                }
+                if (baseItem.type === 'armor' && bonusValue > 0 && finalAc) {
+                    if (finalAc.includes('+')) {
+                        finalAc = `${finalAc} (+${bonusValue})`;
+                    } else {
+                        finalAc = `${Number(finalAc) + bonusValue}`;
+                    }
+                    statBonuses.ac = bonusValue;
                 }
 
                 return {
@@ -2480,7 +2485,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     description: baseItem.description,
                     type: baseItem.type,
                     damage: finalDamage,
-                    ac: baseItem.ac,
+                    ac: finalAc,
                     rarity: rarity,
                     finalGoldValue: Math.ceil(finalPrice),
                     statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
@@ -2494,23 +2499,15 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                                   poiLevel === 2 ? 7 : 5;
 
             const generatedInventory: SellingItem[] = [];
-            const allItemsPool: BaseItem[] = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => activeUniverses.includes(item.universe));
             
             for (let i = 0; i < inventorySize; i++) {
                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                 const rarity = getRarity();
-                const priceRange = rarityPriceRanges[rarity];
 
-                const eligibleItems = allItemsPool.filter(item =>
-                    item.type === itemTypeToGenerate &&
-                    item.baseGoldValue >= priceRange.min && item.baseGoldValue <= priceRange.max
-                );
+                const pool = itemTypeToGenerate === 'weapon' ? weaponsPool : armorsPool;
                 
-                const baseItem = eligibleItems.length > 0
-                    ? eligibleItems[Math.floor(Math.random() * eligibleItems.length)]
-                    : allItemsPool.find(item => item.type === itemTypeToGenerate && item.baseGoldValue >= 1 && item.baseGoldValue <= 10);
-                
-                if (baseItem) {
+                if (pool.length > 0) {
+                    const baseItem = pool[Math.floor(Math.random() * pool.length)];
                     generatedInventory.push(generateItem(baseItem, rarity));
                 }
             }
@@ -3257,6 +3254,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       handleAddStagedFamiliar={handleAddStagedFamiliar}
       onMapImageUpload={handleMapImageUpload}
       onMapImageUrlChange={handleMapImageUrlChange}
+      onUploadToComicPanel={onUploadToComicPanel}
       isLoading={isUiLocked}
       onSaveToLibrary={handleSaveToLibrary}
       aiConfig={aiConfig}
@@ -3267,7 +3265,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onAddComicPage={handleAddComicPage}
       onAddComicPanel={handleAddComicPanel}
       onRemoveLastComicPanel={handleRemoveLastComicPanel}
-      onUploadToComicPanel={onUploadToComicPanel}
       currentComicPageIndex={currentComicPageIndex}
       onComicPageChange={setCurrentComicPageIndex}
       onAddToComicPage={handleAddToComicPage}
