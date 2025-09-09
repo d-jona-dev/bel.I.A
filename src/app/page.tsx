@@ -20,7 +20,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
-import { BASE_WEAPONS, BASE_ARMORS } from "@/lib/items";
+import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY } from "@/lib/items";
 
 
 const PLAYER_ID = "player";
@@ -57,8 +57,10 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Charact
 
   const strengthModifierValue = Math.floor(((strength) - 10) / 2);
   let baseDamageBonusString = "1"; // Base damage for unarmed
-  if (strengthModifierValue !== 0) {
-    baseDamageBonusString = `1${strengthModifierValue > 0 ? '+' : ''}${strengthModifierValue}`;
+  if (strengthModifierValue > 0) {
+    baseDamageBonusString = `1+${strengthModifierValue}`;
+  } else if (strengthModifierValue < 0) {
+     baseDamageBonusString = `1${strengthModifierValue}`;
   }
 
 
@@ -92,6 +94,16 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         if (bonus.type === 'charisma') effectiveCharisma += bonusValue;
     }
 
+    const inventory = settings.playerInventory || [];
+    const equippedJewelry = settings.equippedItemIds?.jewelry ? inventory.find(item => item.id === settings.equippedItemIds?.jewelry) : null;
+
+    if (equippedJewelry?.statBonuses?.str) effectiveStrength += equippedJewelry.statBonuses.str;
+    if (equippedJewelry?.statBonuses?.dex) effectiveDexterity += equippedJewelry.statBonuses.dex;
+    if (equippedJewelry?.statBonuses?.con) effectiveConstitution += equippedJewelry.statBonuses.con;
+    if (equippedJewelry?.statBonuses?.int) effectiveIntelligence += equippedJewelry.statBonuses.int;
+    if (equippedJewelry?.statBonuses?.wis) effectiveWisdom += equippedJewelry.statBonuses.wis;
+    if (equippedJewelry?.statBonuses?.cha) effectiveCharisma += equippedJewelry.statBonuses.cha;
+
     const basePlayerStats = {
         strength: effectiveStrength,
         dexterity: effectiveDexterity,
@@ -101,8 +113,14 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         playerLevel: settings.playerLevel,
     };
     const baseDerived = calculateBaseDerivedStats(basePlayerStats as any);
+    let effectiveMaxHp = baseDerived.maxHitPoints;
 
-    let effectiveAC = baseDerived.armorClass;
+    if (equippedJewelry?.statBonuses?.hp) {
+        effectiveMaxHp += equippedJewelry.statBonuses.hp;
+    }
+
+
+    let effectiveAC = 10 + Math.floor((effectiveDexterity - 10) / 2); // Agile AC
     let effectiveAttackBonus = baseDerived.attackBonus;
     
     if (activeFamiliar) {
@@ -112,15 +130,11 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
     }
 
-
-    const inventory = settings.playerInventory || [];
     const weaponId = settings.equippedItemIds?.weapon;
     const armorId = settings.equippedItemIds?.armor;
-    const jewelryId = settings.equippedItemIds?.jewelry;
 
     const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
     const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
-    const equippedJewelry = jewelryId ? inventory.find(item => item.id === jewelryId) : null;
 
     if (equippedArmor) {
         let armorBasedAC = 0;
@@ -162,24 +176,20 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     let effectiveDamageBonus = baseDerived.damageBonus;
     
     if (equippedWeapon && weaponDamageDice) {
+        let bonusFromStrength = strengthModifierValue;
+        if (equippedWeapon.statBonuses?.damage?.startsWith('+')) {
+           bonusFromStrength += parseInt(equippedWeapon.statBonuses.damage.substring(1), 10);
+        }
+        
         effectiveDamageBonus = weaponDamageDice;
-        if (strengthModifierValue !== 0) {
-            if (!weaponDamageDice.includes("d")) {
-                 try {
-                    const baseDmgNum = parseInt(weaponDamageDice, 10);
-                    effectiveDamageBonus = `${baseDmgNum + strengthModifierValue}`;
-                } catch (e) {
-                    effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
-                }
-            } else {
-                 effectiveDamageBonus = `${weaponDamageDice}${strengthModifierValue >= 0 ? '+' : ''}${strengthModifierValue}`;
-            }
+        if (bonusFromStrength !== 0) {
+            effectiveDamageBonus = `${weaponDamageDice}${bonusFromStrength > 0 ? '+' : ''}${bonusFromStrength}`;
         }
     }
 
 
     return {
-        playerMaxHp: baseDerived.maxHitPoints,
+        playerMaxHp: effectiveMaxHp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: effectiveAC,
         playerAttackBonus: effectiveAttackBonus,
@@ -2447,15 +2457,19 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-        if (['forgeron', 'bijoutier', 'magicien', 'menagerie'].includes(buildingId)) {
+        if (buildingId === 'forgeron') {
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const allItemsPool = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => activeUniverses.includes(item.universe));
-            let availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            let availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
+            const availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            const availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
+
+            const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             
-            const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
+            const generatedInventory: SellingItem[] = [];
+            const usedBaseItemIds = new Set<string>();
+
+            const rarityPriceRanges: Record<string, { min: number; max: number }> = {
                 'Commun': { min: 1, max: 9 },
                 'Rare': { min: 10, max: 29 },
                 'Epique': { min: 30, max: 99 },
@@ -2476,9 +2490,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const getNextDie = (currentDie: number) => {
                 const diceProgression = [4, 6, 8, 10, 12, 20];
                 const currentIndex = diceProgression.indexOf(currentDie);
-                return currentIndex !== -1 && currentIndex < diceProgression.length - 1 
-                    ? diceProgression[currentIndex + 1] 
-                    : currentDie;
+                return currentIndex !== -1 && currentIndex < diceProgression.length - 1 ? diceProgression[currentIndex + 1] : currentDie;
             };
 
             const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
@@ -2489,54 +2501,45 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 return { diceCount: 0, diceType: 0, bonus: 0 };
             };
 
-
             const generateItem = (baseItem: BaseItem, rarity: SellingItem['rarity']): SellingItem => {
                 let finalPrice = baseItem.baseGoldValue;
                 let finalDamage = baseItem.damage;
                 let finalAc = baseItem.ac;
                 let statBonuses: PlayerInventoryItem['statBonuses'] = {};
-                let finalDescription = baseItem.description;
+
+                let rarityMultiplier = 1;
+                let damageDiceToAdd = 0;
+                let damageDieTypeIncrease = 0;
+                let flatDamageBonus = 0;
+                let acBonus = 0;
 
                 switch (rarity) {
-                    case 'Rare':
-                        finalPrice *= 1.5;
-                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 1;
-                        if (finalDamage) {
-                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 1}d${diceType}${bonus > 0 ? `+${bonus}`:''}`;
-                        }
-                        break;
-                    case 'Epique':
-                        finalPrice *= 2.5;
-                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 2;
-                        if (finalDamage) {
-                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 1}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
-                        }
-                        break;
-                    case 'Légendaire':
-                        finalPrice *= 5;
-                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 3;
-                        if (finalDamage) {
-                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 2}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
-                        }
-                        break;
-                    case 'Divin':
-                        finalPrice *= 10;
-                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 5;
-                        if (finalDamage) {
-                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            const newBonus = bonus + 5;
-                            finalDamage = `${diceCount + 2}d${getNextDie(getNextDie(diceType))}${newBonus > 0 ? `+${newBonus}`:''}`;
-                        }
-                        break;
+                    case 'Rare': rarityMultiplier = 2; damageDiceToAdd = 1; acBonus = 1; break;
+                    case 'Epique': rarityMultiplier = 5; damageDiceToAdd = 1; damageDieTypeIncrease = 1; acBonus = 2; break;
+                    case 'Légendaire': rarityMultiplier = 25; damageDiceToAdd = 2; damageDieTypeIncrease = 1; acBonus = 3; break;
+                    case 'Divin': rarityMultiplier = 100; damageDiceToAdd = 2; damageDieTypeIncrease = 2; flatDamageBonus = 5; acBonus = 5; break;
+                }
+                finalPrice *= rarityMultiplier;
+
+                if (finalDamage) {
+                    let { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                    diceCount += damageDiceToAdd;
+                    for (let i = 0; i < damageDieTypeIncrease; i++) {
+                        diceType = getNextDie(diceType);
+                    }
+                    bonus += flatDamageBonus;
+                    finalDamage = `${diceCount}d${diceType}`;
+                    if(bonus > 0) finalDamage += `+${bonus}`;
                 }
 
+                if (finalAc) {
+                    statBonuses.ac = acBonus;
+                }
+                
                 return {
                     baseItemId: baseItem.id,
                     name: `${baseItem.name} ${rarity}`,
-                    description: finalDescription,
+                    description: baseItem.description,
                     type: baseItem.type,
                     damage: finalDamage,
                     ac: finalAc,
@@ -2545,45 +2548,87 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
                 };
             };
-
-
-            const inventorySize = poiLevel >= 6 ? 15 :
-                                  poiLevel === 5 ? 13 :
-                                  poiLevel === 4 ? 11 :
-                                  poiLevel === 3 ? 9 :
-                                  poiLevel === 2 ? 7 : 5;
-
-            const generatedInventory: SellingItem[] = [];
-            const usedBaseItemIds = new Set<string>();
             
             for (let i = 0; i < inventorySize; i++) {
                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                 const rarity = getRarityForLevel();
-                const priceRange = rarityPriceRanges[rarity];
-
-                let pool: BaseItem[];
-                if (itemTypeToGenerate === 'weapon') {
-                    pool = availableWeapons;
-                } else {
-                    pool = availableArmors;
-                }
+                const priceRange = rarityPriceRanges[rarity.toString()];
+            
+                let pool: BaseItem[] = itemTypeToGenerate === 'weapon' ? availableWeapons : availableArmors;
                 
-                let eligibleItems = pool.filter(item => 
-                    item.baseGoldValue >= priceRange.min && 
-                    item.baseGoldValue <= priceRange.max &&
+                let eligibleItems = pool.filter(item => {
+                    const price = item.baseGoldValue;
+                    return price >= priceRange.min && price <= priceRange.max && !usedBaseItemIds.has(item.id);
+                });
+            
+                if (eligibleItems.length === 0) {
+                     eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id)).sort((a,b) => b.baseGoldValue - a.baseGoldValue);
+                     if (eligibleItems.length === 0) continue;
+                }
+
+                const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
+                if (baseItem) {
+                    usedBaseItemIds.add(baseItem.id);
+                    generatedInventory.push(generateItem(baseItem, rarity));
+                }
+            }
+            setMerchantInventory(generatedInventory);
+        } else if (buildingId === 'bijoutier') {
+            const poiLevel = poi.level || 1;
+            const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
+
+            const usedBaseItemIds = new Set<string>();
+            const generatedInventory: SellingItem[] = [];
+
+            const rarityPriceMap: Record<string, number> = {
+                'Commun': 5, 'Rare': 25, 'Epique': 100, 'Légendaire': 500, 'Divin': 1000,
+            };
+
+            const getRarityForJeweler = (): BaseItem['rarity'] => {
+                const rand = Math.random() * 100;
+                if (poiLevel >= 6) return rand < 50 ? 'Légendaire' : 'Divin';
+                if (poiLevel === 5) return rand < 20 ? 'Epique' : rand < 60 ? 'Légendaire' : 'Divin';
+                if (poiLevel === 4) return rand < 40 ? 'Rare' : rand < 75 ? 'Epique' : 'Légendaire';
+                if (poiLevel === 3) return rand < 60 ? 'Rare' : 'Epique';
+                if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
+                return 'Commun';
+            };
+
+            const generateJewelry = (baseItem: BaseItem): SellingItem => {
+                const itemType = Math.random() < 0.5 ? 'Anneau' : 'Amulette';
+                const finalName = baseItem.name.replace(/Anneau|Amulette/i, itemType).trim();
+                
+                return {
+                    baseItemId: baseItem.id,
+                    name: finalName,
+                    description: baseItem.description,
+                    type: 'jewelry',
+                    rarity: baseItem.rarity || 'Commun',
+                    finalGoldValue: baseItem.baseGoldValue,
+                    statBonuses: baseItem.statBonuses
+                };
+            };
+            
+            const jewelryPool = [...BASE_JEWELRY];
+
+            for (let i = 0; i < inventorySize; i++) {
+                const rarity = getRarityForJeweler();
+                const price = rarityPriceMap[rarity.toString()];
+                
+                let eligibleItems = jewelryPool.filter(item => 
+                    item.baseGoldValue === price &&
                     !usedBaseItemIds.has(item.id)
                 );
                
                if (eligibleItems.length === 0) {
-                   eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
-                   if (eligibleItems.length === 0) continue; // No more unique items of this type
+                   continue;
                }
                
                const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
 
                if (baseItem) {
                    usedBaseItemIds.add(baseItem.id);
-                   generatedInventory.push(generateItem(baseItem, rarity));
+                   generatedInventory.push(generateJewelry(baseItem));
                }
             }
             setMerchantInventory(generatedInventory);
