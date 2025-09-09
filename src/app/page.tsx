@@ -2378,80 +2378,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     let locationIdOverride: string | undefined = undefined;
     
     setIsLoading(true);
-    
-    // Helper function to get the next die in the progression
-    const getNextDie = (currentDie: number) => {
-        const diceProgression = [4, 6, 8, 10, 12, 20];
-        const currentIndex = diceProgression.indexOf(currentDie);
-        return currentIndex !== -1 && currentIndex < diceProgression.length - 1 
-            ? diceProgression[currentIndex + 1] 
-            : currentDie;
-    };
-    
-    const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
-        const match = damage.match(/(\d+)d(\d+)(?:\s*\+\s*(\d+))?/);
-        if (match) {
-            return { diceCount: parseInt(match[1]), diceType: parseInt(match[2]), bonus: parseInt(match[3]) || 0 };
-        }
-        return { diceCount: 0, diceType: 0, bonus: 0 };
-    };
-
-
-    const generateItem = (baseItem: BaseItem, rarity: SellingItem['rarity']): SellingItem => {
-        let finalPrice = baseItem.baseGoldValue;
-        let finalDamage = baseItem.damage;
-        let finalAc = baseItem.ac;
-        let statBonuses: PlayerInventoryItem['statBonuses'] = {};
-        let finalDescription = baseItem.description;
-
-        switch (rarity) {
-            case 'Rare':
-                finalPrice *= 1.5;
-                if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 1;
-                if (finalDamage) {
-                    const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                    finalDamage = `${diceCount + 1}d${diceType}${bonus > 0 ? `+${bonus}`:''}`;
-                }
-                break;
-            case 'Epique':
-                finalPrice *= 2.5;
-                if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 2;
-                if (finalDamage) {
-                    const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                    finalDamage = `${diceCount + 1}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
-                }
-                break;
-            case 'Légendaire':
-                finalPrice *= 5;
-                if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 3;
-                if (finalDamage) {
-                    const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                    finalDamage = `${diceCount + 2}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
-                }
-                break;
-            case 'Divin':
-                finalPrice *= 10;
-                if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 5;
-                if (finalDamage) {
-                    const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                    const newBonus = bonus + 5;
-                    finalDamage = `${diceCount + 2}d${getNextDie(getNextDie(diceType))}${newBonus > 0 ? `+${newBonus}`:''}`;
-                }
-                break;
-        }
-
-        return {
-            baseItemId: baseItem.id,
-            name: `${baseItem.name} ${rarity}`,
-            description: finalDescription,
-            type: baseItem.type,
-            damage: finalDamage,
-            ac: finalAc,
-            rarity: rarity,
-            finalGoldValue: Math.ceil(finalPrice),
-            statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
-        };
-    };
 
     if (action === 'attack') {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
@@ -2525,8 +2451,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
+            const allItemsPool = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => activeUniverses.includes(item.universe));
+            let availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            let availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
             
             const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
                 'Commun': { min: 1, max: 9 },
@@ -2546,6 +2473,80 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  return 'Commun';
             };
 
+            const getNextDie = (currentDie: number) => {
+                const diceProgression = [4, 6, 8, 10, 12, 20];
+                const currentIndex = diceProgression.indexOf(currentDie);
+                return currentIndex !== -1 && currentIndex < diceProgression.length - 1 
+                    ? diceProgression[currentIndex + 1] 
+                    : currentDie;
+            };
+
+            const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
+                const match = damage.match(/(\d+)d(\d+)(?:\s*\+\s*(\d+))?/);
+                if (match) {
+                    return { diceCount: parseInt(match[1]), diceType: parseInt(match[2]), bonus: parseInt(match[3]) || 0 };
+                }
+                return { diceCount: 0, diceType: 0, bonus: 0 };
+            };
+
+
+            const generateItem = (baseItem: BaseItem, rarity: SellingItem['rarity']): SellingItem => {
+                let finalPrice = baseItem.baseGoldValue;
+                let finalDamage = baseItem.damage;
+                let finalAc = baseItem.ac;
+                let statBonuses: PlayerInventoryItem['statBonuses'] = {};
+                let finalDescription = baseItem.description;
+
+                switch (rarity) {
+                    case 'Rare':
+                        finalPrice *= 1.5;
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 1;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 1}d${diceType}${bonus > 0 ? `+${bonus}`:''}`;
+                        }
+                        break;
+                    case 'Epique':
+                        finalPrice *= 2.5;
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 2;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 1}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
+                        }
+                        break;
+                    case 'Légendaire':
+                        finalPrice *= 5;
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 3;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            finalDamage = `${diceCount + 2}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}`:''}`;
+                        }
+                        break;
+                    case 'Divin':
+                        finalPrice *= 10;
+                        if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 5;
+                        if (finalDamage) {
+                            const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
+                            const newBonus = bonus + 5;
+                            finalDamage = `${diceCount + 2}d${getNextDie(getNextDie(diceType))}${newBonus > 0 ? `+${newBonus}`:''}`;
+                        }
+                        break;
+                }
+
+                return {
+                    baseItemId: baseItem.id,
+                    name: `${baseItem.name} ${rarity}`,
+                    description: finalDescription,
+                    type: baseItem.type,
+                    damage: finalDamage,
+                    ac: finalAc,
+                    rarity: rarity,
+                    finalGoldValue: Math.ceil(finalPrice),
+                    statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
+                };
+            };
+
+
             const inventorySize = poiLevel >= 6 ? 15 :
                                   poiLevel === 5 ? 13 :
                                   poiLevel === 4 ? 11 :
@@ -2553,34 +2554,37 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                                   poiLevel === 2 ? 7 : 5;
 
             const generatedInventory: SellingItem[] = [];
+            const usedBaseItemIds = new Set<string>();
             
             for (let i = 0; i < inventorySize; i++) {
-                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
-                 const rarity = getRarityForLevel();
-                 const priceRange = rarityPriceRanges[rarity];
+                const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
+                const rarity = getRarityForLevel();
+                const priceRange = rarityPriceRanges[rarity];
 
-                 let pool: BaseItem[];
-                 if (itemTypeToGenerate === 'weapon') {
-                     pool = weaponsPool;
-                 } else {
-                     pool = armorsPool;
-                 }
-                 
-                 const eligibleItems = pool.filter(item => 
-                    item.baseGoldValue >= priceRange.min && item.baseGoldValue <= priceRange.max
-                 );
-                
-                let baseItem: BaseItem | undefined;
-                if (eligibleItems.length > 0) {
-                    baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
+                let pool: BaseItem[];
+                if (itemTypeToGenerate === 'weapon') {
+                    pool = availableWeapons;
                 } else {
-                    const sortedPool = [...pool].sort((a,b) => a.baseGoldValue - b.baseGoldValue);
-                    baseItem = sortedPool.find(item => item.baseGoldValue >= priceRange.min) || sortedPool[sortedPool.length -1];
+                    pool = availableArmors;
                 }
+                
+                let eligibleItems = pool.filter(item => 
+                    item.baseGoldValue >= priceRange.min && 
+                    item.baseGoldValue <= priceRange.max &&
+                    !usedBaseItemIds.has(item.id)
+                );
+               
+               if (eligibleItems.length === 0) {
+                   eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
+                   if (eligibleItems.length === 0) continue; // No more unique items of this type
+               }
+               
+               const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
 
-                if (baseItem) {
-                    generatedInventory.push(generateItem(baseItem, rarity));
-                }
+               if (baseItem) {
+                   usedBaseItemIds.add(baseItem.id);
+                   generatedInventory.push(generateItem(baseItem, rarity));
+               }
             }
             setMerchantInventory(generatedInventory);
         }
@@ -3357,4 +3361,3 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
-
