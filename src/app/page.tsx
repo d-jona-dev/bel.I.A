@@ -159,7 +159,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
 
     const strengthModifierValue = Math.floor((effectiveStrength - 10) / 2);
     let weaponDamageDice = equippedWeapon?.damage;
-    let effectiveDamageBonus = equippedWeapon?.damage || "1";
+    let effectiveDamageBonus = equippedWeapon?.damage || baseDerived.damageBonus;
     
     if (strengthModifierValue !== 0 && weaponDamageDice) {
         if (!weaponDamageDice.includes("d")) {
@@ -2445,12 +2445,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
         if (['forgeron', 'bijoutier', 'magicien', 'menagerie'].includes(buildingId)) {
-            const poiLevel = poi.level || 1;
+             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
-
+            const allItemsPool = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => activeUniverses.includes(item.universe));
+            
             const rarityPriceRanges: Record<SellingItem['rarity'], {min: number, max: number}> = {
                 'Commun': { min: 1, max: 9 },
                 'Rare': { min: 10, max: 29 },
@@ -2458,7 +2457,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 'Légendaire': { min: 100, max: 499 },
                 'Divin': { min: 500, max: Infinity },
             };
-            
+
             const getRarityForLevel = (): SellingItem['rarity'] => {
                 const rand = Math.random() * 100;
                  if (poiLevel >= 6) return rand < 50 ? 'Epique' : (rand < 85 ? 'Légendaire' : 'Divin');
@@ -2468,11 +2467,15 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
                  return 'Commun';
             };
-            
-             const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
+
+            const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
                 const match = damage.match(/(\d+)d(\d+)(?:\s*\+\s*(\d+))?/);
                 if (match) {
                     return { diceCount: parseInt(match[1]), diceType: parseInt(match[2]), bonus: parseInt(match[3]) || 0 };
+                }
+                const bonusMatch = damage.match(/\+(\d+)/);
+                if (bonusMatch) {
+                    return {diceCount: 0, diceType: 0, bonus: parseInt(bonusMatch[1])};
                 }
                 return { diceCount: 0, diceType: 0, bonus: 0 };
             };
@@ -2496,7 +2499,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                         finalPrice *= 1.5;
                         if (finalDamage) {
                             const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 1}d${diceType}${bonus > 0 ? `+${bonus}` : ''}`;
+                            finalDamage = `${diceCount + 1}d${diceType}+${bonus}`;
                         }
                         if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 1;
                         break;
@@ -2504,7 +2507,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                         finalPrice *= 2.5;
                         if (finalDamage) {
                             const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 1}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}` : ''}`;
+                            finalDamage = `${diceCount + 1}d${getNextDie(diceType)}+${bonus}`;
                         }
                         if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 2;
                         break;
@@ -2512,7 +2515,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                         finalPrice *= 5;
                         if (finalDamage) {
                             const { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                            finalDamage = `${diceCount + 2}d${getNextDie(diceType)}${bonus > 0 ? `+${bonus}` : ''}`;
+                            finalDamage = `${diceCount + 2}d${getNextDie(diceType)}+${bonus}`;
                         }
                         if (finalAc) statBonuses.ac = (statBonuses.ac || 0) + 3;
                         break;
@@ -2546,7 +2549,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                                   poiLevel === 2 ? 7 : 5;
 
             const generatedInventory: SellingItem[] = [];
-            
+            const weaponsPool = allItemsPool.filter(item => item.type === 'weapon');
+            const armorsPool = allItemsPool.filter(item => item.type === 'armor');
+
             for (let i = 0; i < inventorySize; i++) {
                  const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                  const rarity = getRarityForLevel();
@@ -2570,7 +2575,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     generatedInventory.push(generateItem(baseItem, rarity));
                 }
             }
-            
             setMerchantInventory(generatedInventory);
         }
 
@@ -3022,7 +3026,72 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     toast({ title: "Configuration IA mise à jour" });
   }, [toast]);
   
+  const handleSendSpecificAction = React.useCallback(async (action: string) => {
+    if (!action || isLoading) return;
+
+    setIsLoading(true);
+    handleNarrativeUpdate(action, 'user');
+
+    try {
+        await callGenerateAdventure(action);
+    } catch (error) { 
+        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
+         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
   
+  const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
+    if ((adventureSettings.playerGold || 0) < itemToBuy.finalGoldValue) {
+        toast({
+            title: "Fonds insuffisants",
+            description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+            variant: "destructive",
+        });
+        return;
+    }
+
+    React.startTransition(() => {
+        // Deduct gold
+        setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) - itemToBuy.finalGoldValue }));
+        
+        // Add item to inventory
+        const newItemForInventory: PlayerInventoryItem = {
+            id: `${itemToBuy.baseItemId}-${uid()}`,
+            name: itemToBuy.name,
+            quantity: 1,
+            description: itemToBuy.description,
+            type: itemToBuy.type,
+            goldValue: itemToBuy.finalGoldValue,
+            damage: itemToBuy.damage,
+            ac: itemToBuy.ac,
+            statBonuses: itemToBuy.statBonuses,
+            generatedImageUrl: null,
+            isEquipped: false
+        };
+        
+        setAdventureSettings(prev => {
+            const newInventory = [...(prev.playerInventory || [])];
+            const existingItemIndex = newInventory.findIndex(i => i.name === newItemForInventory.name);
+            if (existingItemIndex > -1) {
+                newInventory[existingItemIndex].quantity += 1;
+            } else {
+                newInventory.push(newItemForInventory);
+            }
+            return {...prev, playerInventory: newInventory};
+        });
+
+        toast({
+            title: "Achat Effectué !",
+            description: `${itemToBuy.name} a été ajouté à votre inventaire.`
+        });
+
+        // Send narrative action to AI
+        handleSendSpecificAction(`J'achète ${itemToBuy.name}.`);
+    });
+
+  }, [adventureSettings.playerGold, handleSendSpecificAction, toast]);
     
   const handleGenerateCover = React.useCallback(async () => {
     setIsGeneratingCover(true);
@@ -3166,26 +3235,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     const currentPage = comicDraft[currentComicPageIndex];
     exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
   }, [comicDraft, currentComicPageIndex, toast]);
-
-  const handleSendSpecificAction = React.useCallback(async (action: string) => {
-    if (!action || isLoading) return;
-
-    setIsLoading(true);
-    handleNarrativeUpdate(action, 'user');
-
-    try {
-        await callGenerateAdventure(action);
-    } catch (error) { 
-        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
-         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
-    } finally {
-        setIsLoading(false);
-    }
-  }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
-
-  const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
-    handleSendSpecificAction(`J'achète ${itemToBuy.name}.`);
-  }, [handleSendSpecificAction]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
