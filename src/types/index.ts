@@ -13,6 +13,7 @@ export interface BaseItem {
   baseGoldValue: number;
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
   // Future fields: requiredLevel, statRequirements...
+  rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin'; // Added for jewelry
   effectType?: 'stat' | 'narrative'; // Added for jewelry
   statBonuses?: PlayerInventoryItem['statBonuses']; // Added for jewelry
 }

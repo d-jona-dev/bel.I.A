@@ -120,24 +120,19 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     }
 
 
-    let effectiveAC = 10 + Math.floor((effectiveDexterity - 10) / 2); // Agile AC
-    let effectiveAttackBonus = baseDerived.attackBonus;
+    const agileAC = 10 + Math.floor((effectiveDexterity - 10) / 2);
+    let armorBasedAC = 0;
     
     if (activeFamiliar) {
         const bonus = activeFamiliar.passiveBonus;
         const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
-        if (bonus.type === 'armor_class') effectiveAC += bonusValue;
-        if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
+        if (bonus.type === 'armor_class') armorBasedAC += bonusValue;
     }
 
-    const weaponId = settings.equippedItemIds?.weapon;
     const armorId = settings.equippedItemIds?.armor;
-
-    const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
     const equippedArmor = armorId ? inventory.find(item => item.id === armorId) : null;
 
     if (equippedArmor) {
-        let armorBasedAC = 0;
         if (equippedArmor.ac?.includes('+')) {
             const baseAC = parseInt(equippedArmor.ac, 10);
             const dexMod = Math.floor((effectiveDexterity - 10) / 2);
@@ -148,21 +143,31 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
                 maxDex = parseInt(maxMatch[1], 10);
             }
             
-            armorBasedAC = baseAC + Math.min(dexMod, maxDex);
+            armorBasedAC += baseAC + Math.min(dexMod, maxDex);
         } else if (equippedArmor.ac) {
-            armorBasedAC = parseInt(equippedArmor.ac, 10);
+            armorBasedAC += parseInt(equippedArmor.ac, 10);
         }
 
         if (equippedArmor?.statBonuses?.ac) {
              armorBasedAC += equippedArmor.statBonuses.ac;
         }
-
-        effectiveAC = Math.max(effectiveAC, armorBasedAC);
     }
    
     if (equippedJewelry?.statBonuses?.ac) {
-        effectiveAC += equippedJewelry.statBonuses.ac;
+        armorBasedAC += equippedJewelry.statBonuses.ac;
     }
+
+    const effectiveAC = Math.max(agileAC, armorBasedAC);
+    let effectiveAttackBonus = baseDerived.attackBonus;
+    
+    if (activeFamiliar) {
+        const bonus = activeFamiliar.passiveBonus;
+        const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
+        if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
+    }
+
+    const weaponId = settings.equippedItemIds?.weapon;
+    const equippedWeapon = weaponId ? inventory.find(item => item.id === weaponId) : null;
 
     if (equippedWeapon?.statBonuses?.attack) {
         effectiveAttackBonus += equippedWeapon.statBonuses.attack;
@@ -182,8 +187,10 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         }
         
         effectiveDamageBonus = weaponDamageDice;
-        if (bonusFromStrength !== 0) {
-            effectiveDamageBonus = `${weaponDamageDice}${bonusFromStrength > 0 ? '+' : ''}${bonusFromStrength}`;
+        if (bonusFromStrength > 0) {
+            effectiveDamageBonus = `${weaponDamageDice}+${bonusFromStrength}`;
+        } else if (bonusFromStrength < 0) {
+            effectiveDamageBonus = `${weaponDamageDice}${bonusFromStrength}`;
         }
     }
 
@@ -2461,8 +2468,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            const availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
+            const allItemsPool = [...BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe)), ...BASE_ARMORS.filter(item => activeUniverses.includes(item.universe))];
 
             const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             
@@ -2516,7 +2522,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 switch (rarity) {
                     case 'Rare': rarityMultiplier = 2; damageDiceToAdd = 1; acBonus = 1; break;
                     case 'Epique': rarityMultiplier = 5; damageDiceToAdd = 1; damageDieTypeIncrease = 1; acBonus = 2; break;
-                    case 'Légendaire': rarityMultiplier = 25; damageDiceToAdd = 2; damageDieTypeIncrease = 1; acBonus = 3; break;
+                    case 'Légendaire': rarityMultiplier = 25; damageDiceToAdd = 2; damageDieTypeIncrease = 1; flatDamageBonus = 3; acBonus = 3; break;
                     case 'Divin': rarityMultiplier = 100; damageDiceToAdd = 2; damageDieTypeIncrease = 2; flatDamageBonus = 5; acBonus = 5; break;
                 }
                 finalPrice *= rarityMultiplier;
@@ -2549,21 +2555,24 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 };
             };
             
+            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
+
             for (let i = 0; i < inventorySize; i++) {
                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                 const rarity = getRarityForLevel();
-                const priceRange = rarityPriceRanges[rarity.toString()];
-            
-                let pool: BaseItem[] = itemTypeToGenerate === 'weapon' ? availableWeapons : availableArmors;
                 
-                let eligibleItems = pool.filter(item => {
-                    const price = item.baseGoldValue;
-                    return price >= priceRange.min && price <= priceRange.max && !usedBaseItemIds.has(item.id);
-                });
+                let pool: BaseItem[];
+                if(itemTypeToGenerate === 'weapon') {
+                    pool = weaponsPool;
+                } else {
+                    pool = armorsPool;
+                }
+                
+                let eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
             
                 if (eligibleItems.length === 0) {
-                     eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id)).sort((a,b) => b.baseGoldValue - a.baseGoldValue);
-                     if (eligibleItems.length === 0) continue;
+                     continue;
                 }
 
                 const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
@@ -2580,16 +2589,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const usedBaseItemIds = new Set<string>();
             const generatedInventory: SellingItem[] = [];
 
-            const rarityPriceMap: Record<string, number> = {
-                'Commun': 5, 'Rare': 25, 'Epique': 100, 'Légendaire': 500, 'Divin': 1000,
-            };
-
             const getRarityForJeweler = (): BaseItem['rarity'] => {
                 const rand = Math.random() * 100;
                 if (poiLevel >= 6) return rand < 50 ? 'Légendaire' : 'Divin';
-                if (poiLevel === 5) return rand < 20 ? 'Epique' : rand < 60 ? 'Légendaire' : 'Divin';
-                if (poiLevel === 4) return rand < 40 ? 'Rare' : rand < 75 ? 'Epique' : 'Légendaire';
-                if (poiLevel === 3) return rand < 60 ? 'Rare' : 'Epique';
+                if (poiLevel === 5) return rand < 20 ? 'Rare' : rand < 60 ? 'Epique' : 'Légendaire';
+                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
+                if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
                 if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
                 return 'Commun';
             };
@@ -2613,11 +2618,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
             for (let i = 0; i < inventorySize; i++) {
                 const rarity = getRarityForJeweler();
-                const price = rarityPriceMap[rarity.toString()];
                 
                 let eligibleItems = jewelryPool.filter(item => 
-                    item.baseGoldValue === price &&
-                    !usedBaseItemIds.has(item.id)
+                    item.rarity === rarity && !usedBaseItemIds.has(item.id)
                 );
                
                if (eligibleItems.length === 0) {
@@ -3099,49 +3102,52 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
   
   const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
-    setAdventureSettings(prev => {
-        if ((prev.playerGold || 0) < itemToBuy.finalGoldValue) {
+    React.startTransition(() => {
+        setAdventureSettings(prev => {
+            if ((prev.playerGold || 0) < itemToBuy.finalGoldValue) {
+                toast({
+                    title: "Fonds insuffisants",
+                    description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+                    variant: "destructive",
+                });
+                return prev;
+            }
+
+            const newGold = (prev.playerGold || 0) - itemToBuy.finalGoldValue;
+
+            const newItemForInventory: PlayerInventoryItem = {
+                id: `${itemToBuy.baseItemId}-${uid()}`,
+                name: itemToBuy.name,
+                quantity: 1,
+                description: itemToBuy.description,
+                type: itemToBuy.type,
+                goldValue: itemToBuy.finalGoldValue,
+                damage: itemToBuy.damage,
+                ac: itemToBuy.ac,
+                statBonuses: itemToBuy.statBonuses,
+                generatedImageUrl: null,
+                isEquipped: false
+            };
+
+            const newInventory = [...(prev.playerInventory || [])];
+            const existingItemIndex = newInventory.findIndex(i => i.name === newItemForInventory.name);
+
+            if (existingItemIndex > -1) {
+                newInventory[existingItemIndex].quantity += 1;
+            } else {
+                newInventory.push(newItemForInventory);
+            }
+
             toast({
-                title: "Fonds insuffisants",
-                description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
-                variant: "destructive",
+                title: "Achat Effectué !",
+                description: `${itemToBuy.name} a été ajouté à votre inventaire.`
             });
-            return prev;
-        }
+            
+            // Send narrative action after state update
+            setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 0);
 
-        const newGold = (prev.playerGold || 0) - itemToBuy.finalGoldValue;
-
-        const newItemForInventory: PlayerInventoryItem = {
-            id: `${itemToBuy.baseItemId}-${uid()}`,
-            name: itemToBuy.name,
-            quantity: 1,
-            description: itemToBuy.description,
-            type: itemToBuy.type,
-            goldValue: itemToBuy.finalGoldValue,
-            damage: itemToBuy.damage,
-            ac: itemToBuy.ac,
-            statBonuses: itemToBuy.statBonuses,
-            generatedImageUrl: null,
-            isEquipped: false
-        };
-
-        const newInventory = [...(prev.playerInventory || [])];
-        const existingItemIndex = newInventory.findIndex(i => i.name === newItemForInventory.name);
-
-        if (existingItemIndex > -1) {
-            newInventory[existingItemIndex].quantity += 1;
-        } else {
-            newInventory.push(newItemForInventory);
-        }
-
-        toast({
-            title: "Achat Effectué !",
-            description: `${itemToBuy.name} a été ajouté à votre inventaire.`
+            return { ...prev, playerGold: newGold, playerInventory: newInventory };
         });
-        
-        handleSendSpecificAction(`J'achète ${itemToBuy.name}.`);
-
-        return { ...prev, playerGold: newGold, playerInventory: newInventory };
     });
   }, [handleSendSpecificAction, toast]);
     
@@ -3406,3 +3412,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
