@@ -68,7 +68,7 @@ export const BASE_JEWELRY: BaseItem[] = [
     { id: 'jew-narr-005', name: 'Anneau de télékinésie', description: "Vous pouvez utiliser la télékinésie et déplacer des objets par la pensée.", type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
     { id: 'jew-narr-006', name: 'Anneau d\'invisibilité', description: "Vous pouvez devenir invisible.", type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
     { id: 'jew-narr-007', name: 'Anneau de convocation de djinn', description: "Prononcez son mot de commande pour invoquer un djinn qui obéira à vos ordres.", type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
-    { id: 'jew-narr-008', name: 'Anneau de séduction', description: "Facilité de séduction lors des échanges avec le genre opposé.", type: 'jewelry', rarity: 'Epique', baseGoldValue: 200, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'jew-narr-008', name: 'Anneau de séduction', description: "Facilité de séduction lors des échanges avec le genre opposer.", type: 'jewelry', rarity: 'Epique', baseGoldValue: 200, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
 
     // Stat Jewelry
     ...['Force', 'Dextérité', 'Constitution', 'Intelligence', 'Sagesse', 'Charisme'].flatMap((stat, i) => {
@@ -79,10 +79,71 @@ export const BASE_JEWELRY: BaseItem[] = [
             { id: `jew-stat-${key}-e`, name: `Amulette de ${stat}`, description: `Cette amulette augmente considérablement votre ${stat}.`, type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 3 } },
             { id: `jew-stat-${key}-l`, name: `Anneau de ${stat}`, description: `Cet anneau augmente votre ${stat} à un niveau remarquable.`, type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 4 } },
             { id: `jew-stat-${key}-d`, name: `Amulette de ${stat}`, description: `Cette amulette imprègne son porteur d'une ${stat} quasi divine.`, type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 5 } },
-        ]
+        ] as BaseItem[]
     }),
     { id: 'jew-stat-hp-c', name: 'Amulette de vitalité', description: 'Augmente légèrement vos points de vie maximum.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 5 } },
     { id: 'jew-stat-hp-r', name: 'Anneau de vitalité', description: 'Augmente vos points de vie maximum.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 10 } },
     { id: 'jew-stat-hp-e', name: 'Amulette de vitalité', description: 'Augmente considérablement vos points de vie maximum.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 20 } },
+];
+
+export const BASE_CONSUMABLES: BaseItem[] = [
+    // Narrative Potions & Scrolls
+    { id: 'cons-narr-001', name: 'Potion de respiration aquatique', description: 'Vous pouvez respirer sous l\'eau.', type: 'consumable', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'cons-narr-002', name: 'Parchemin de lecture des pensées', description: 'Vous bénéficiez de la capacité à lire les pensées.', type: 'consumable', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'cons-narr-003', name: 'Potion de forme gazeuse', description: 'Votre corps se transforme en une forme gazeuse.', type: 'consumable', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'cons-narr-004', name: 'Potion de diminution', description: 'Vous devenez minuscule.', type: 'consumable', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'cons-narr-005', name: 'Parchemin d\'invisibilité', description: 'Vous pouvez devenir invisible.', type: 'consumable', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+    { id: 'cons-narr-006', name: 'Potion d\'amitié avec les animaux', description: 'Vous pouvez communiquer avec un animal.', type: 'consumable', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
+  
+    // Healing Potions
+    ...(['Commun', 'Rare', 'Epique', 'Légendaire', 'Divin'] as const).map(rarity => {
+      const values = { 'Commun': 10, 'Rare': 15, 'Epique': 25, 'Légendaire': 50, 'Divin': 2000 };
+      const prices = { 'Commun': 5, 'Rare': 25, 'Epique': 100, 'Légendaire': 500, 'Divin': 1000 };
+      return {
+        id: `cons-combat-heal-${rarity.toLowerCase()}`,
+        name: `Potion de guérison`,
+        description: `Restaure ${values[rarity]} PV.`,
+        type: 'consumable',
+        rarity: rarity,
+        baseGoldValue: prices[rarity],
+        universe: 'Médiéval-Fantastique',
+        effectType: 'combat',
+        effectDetails: { type: 'heal', amount: values[rarity] }
+      }
+    }),
+  
+    // Fireball Scrolls
+    ...(['Commun', 'Rare', 'Epique', 'Légendaire', 'Divin'] as const).map(rarity => {
+      const values = { 'Commun': 5, 'Rare': 15, 'Epique': 25, 'Légendaire': 50, 'Divin': 5000 };
+      const prices = { 'Commun': 5, 'Rare': 25, 'Epique': 100, 'Légendaire': 500, 'Divin': 1000 };
+      return {
+        id: `cons-combat-fireball-${rarity.toLowerCase()}`,
+        name: `Parchemin de boule de feu`,
+        description: `Provoque ${values[rarity]} dégâts à un ennemi.`,
+        type: 'consumable',
+        rarity: rarity,
+        baseGoldValue: prices[rarity],
+        universe: 'Médiéval-Fantastique',
+        effectType: 'combat',
+        effectDetails: { type: 'damage_single', amount: values[rarity] }
+      }
+    }),
+  
+    // Wind Scrolls
+    ...(['Commun', 'Rare', 'Epique', 'Légendaire', 'Divin'] as const).map(rarity => {
+      const values = { 'Commun': 2, 'Rare': 5, 'Epique': 15, 'Légendaire': 25, 'Divin': 100 };
+      const prices = { 'Commun': 5, 'Rare': 25, 'Epique': 100, 'Légendaire': 500, 'Divin': 1000 };
+      return {
+        id: `cons-combat-wind-${rarity.toLowerCase()}`,
+        name: `Parchemin de vent`,
+        description: `Provoque ${values[rarity]} dégâts à tous les ennemis.`,
+        type: 'consumable',
+        rarity: rarity,
+        baseGoldValue: prices[rarity],
+        universe: 'Médiéval-Fantastique',
+        effectType: 'combat',
+        effectDetails: { type: 'damage_all', amount: values[rarity] }
+      }
+    }),
 ];
     

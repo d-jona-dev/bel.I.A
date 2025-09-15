@@ -12,10 +12,13 @@ export interface BaseItem {
   ac?: string; // e.g., "11 + Mod.Dex", "14"
   baseGoldValue: number;
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
-  // Future fields: requiredLevel, statRequirements...
-  rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin'; // Added for jewelry
-  effectType?: 'stat' | 'narrative'; // Added for jewelry
-  statBonuses?: PlayerInventoryItem['statBonuses']; // Added for jewelry
+  rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
+  effectType?: 'stat' | 'narrative' | 'combat';
+  statBonuses?: PlayerInventoryItem['statBonuses'];
+  effectDetails?: {
+    type: 'heal' | 'damage_single' | 'damage_all';
+    amount: number;
+  };
 }
 
 // NEW: Represents an item being sold by a merchant, with its final price.
@@ -29,6 +32,8 @@ export interface SellingItem {
   rarity: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
   finalGoldValue: number;
   statBonuses?: PlayerInventoryItem['statBonuses'];
+  effectType?: 'stat' | 'narrative' | 'combat';
+  effectDetails?: BaseItem['effectDetails'];
 }
 
 
@@ -200,7 +205,11 @@ export interface PlayerInventoryItem {
     cha?: number;
     hp?: number;
   };
-  effectType?: 'stat' | 'narrative'; // Added for jewelry
+  effectType?: 'stat' | 'narrative' | 'combat';
+  effectDetails?: {
+    type: 'heal' | 'damage_single' | 'damage_all';
+    amount: number;
+  };
 }
 
 export interface PlayerSkill {

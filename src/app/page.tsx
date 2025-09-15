@@ -20,7 +20,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
-import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY } from "@/lib/items";
+import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
 
 
 const PLAYER_ID = "player";
@@ -2468,20 +2468,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const poiLevel = poi.level || 1;
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const allItemsPool = [...BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe)), ...BASE_ARMORS.filter(item => activeUniverses.includes(item.universe))];
+            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
 
             const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             
             const generatedInventory: SellingItem[] = [];
             const usedBaseItemIds = new Set<string>();
-
-            const rarityPriceRanges: Record<string, { min: number; max: number }> = {
-                'Commun': { min: 1, max: 9 },
-                'Rare': { min: 10, max: 29 },
-                'Epique': { min: 30, max: 99 },
-                'Légendaire': { min: 100, max: 499 },
-                'Divin': { min: 500, max: Infinity },
-            };
 
             const getRarityForLevel = (): SellingItem['rarity'] => {
                 const rand = Math.random() * 100;
@@ -2535,7 +2528,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     }
                     bonus += flatDamageBonus;
                     finalDamage = `${diceCount}d${diceType}`;
-                    if(bonus > 0) finalDamage += `+${bonus}`;
+                    if (bonus > 0) finalDamage += `+${bonus}`;
                 }
 
                 if (finalAc) {
@@ -2555,9 +2548,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 };
             };
             
-            const weaponsPool = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            const armorsPool = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
-
             for (let i = 0; i < inventorySize; i++) {
                 const itemTypeToGenerate: BaseItem['type'] = i % 2 === 0 ? 'weapon' : 'armor';
                 const rarity = getRarityForLevel();
@@ -2598,21 +2588,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
                 return 'Commun';
             };
-
-            const generateJewelry = (baseItem: BaseItem): SellingItem => {
-                const itemType = Math.random() < 0.5 ? 'Anneau' : 'Amulette';
-                const finalName = baseItem.name.replace(/Anneau|Amulette/i, itemType).trim();
-                
-                return {
-                    baseItemId: baseItem.id,
-                    name: finalName,
-                    description: baseItem.description,
-                    type: 'jewelry',
-                    rarity: baseItem.rarity || 'Commun',
-                    finalGoldValue: baseItem.baseGoldValue,
-                    statBonuses: baseItem.statBonuses
-                };
-            };
             
             const jewelryPool = [...BASE_JEWELRY];
 
@@ -2630,8 +2605,19 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
 
                if (baseItem) {
+                    const itemType = Math.random() < 0.5 ? 'Anneau' : 'Amulette';
+                    const finalName = baseItem.name.replace(/Anneau|Amulette/i, itemType).trim();
                    usedBaseItemIds.add(baseItem.id);
-                   generatedInventory.push(generateJewelry(baseItem));
+                   generatedInventory.push({
+                        baseItemId: baseItem.id,
+                        name: finalName,
+                        description: baseItem.description,
+                        type: 'jewelry',
+                        rarity: baseItem.rarity || 'Commun',
+                        finalGoldValue: baseItem.baseGoldValue,
+                        statBonuses: baseItem.statBonuses,
+                        effectType: baseItem.effectType,
+                    });
                }
             }
             setMerchantInventory(generatedInventory);
@@ -2696,7 +2682,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     });
   }, []);
   
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; }) => {
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[] }) => {
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: data.name,
@@ -3102,7 +3088,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
   
   const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
-    React.startTransition(() => {
         setAdventureSettings(prev => {
             if ((prev.playerGold || 0) < itemToBuy.finalGoldValue) {
                 toast({
@@ -3125,6 +3110,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 damage: itemToBuy.damage,
                 ac: itemToBuy.ac,
                 statBonuses: itemToBuy.statBonuses,
+                effectType: itemToBuy.effectType,
+                effectDetails: itemToBuy.effectDetails,
                 generatedImageUrl: null,
                 isEquipped: false
             };
@@ -3143,12 +3130,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 description: `${itemToBuy.name} a été ajouté à votre inventaire.`
             });
             
-            // Send narrative action after state update
             setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 0);
 
             return { ...prev, playerGold: newGold, playerInventory: newInventory };
         });
-    });
   }, [handleSendSpecificAction, toast]);
     
   const handleGenerateCover = React.useCallback(async () => {
@@ -3412,4 +3397,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
 
