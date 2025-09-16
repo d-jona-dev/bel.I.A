@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -558,7 +559,7 @@ export default function Home() {
             }));
         }
 
-        if (lootMessage.trim() !== "Le combat est terminé !") {
+        if (lootMessage.trim() !== "Le combat est terminé!") {
             handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
         }
         
@@ -660,7 +661,7 @@ export default function Home() {
                      turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
                      if (target.currentHp === 0) {
                          target.isDefeated = true;
-                         turnLog.push(`${target.name} est vaincu !`);
+                         turnLog.push(`${target.name} est vaincu!`);
                      }
                  } else {
                      turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
@@ -690,7 +691,7 @@ export default function Home() {
                     turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
                     if (target.currentHp === 0) {
                         target.isDefeated = true;
-                        turnLog.push(`${target.name} est vaincu !`);
+                        turnLog.push(`${target.name} est vaincu!`);
                     }
                 } else {
                     turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
@@ -715,12 +716,12 @@ export default function Home() {
                     currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
                 }
             });
-            turnLog.push(`Victoire !`);
+            turnLog.push(`Victoire!`);
             
             if(currentCombatState.contestedPoiId) {
                 conquestHappened = true; // Signal that a conquest happened
                 const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
-                turnLog.push(`Le territoire de ${poiName} est conquis !`);
+                turnLog.push(`Le territoire de ${poiName} est conquis!`);
             }
         }
   
@@ -934,7 +935,7 @@ export default function Home() {
                     
                     setTimeout(() => {
                         toast({
-                            title: "Changement de Territoire !",
+                            title: "Changement de Territoire!",
                             description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
                         });
                     }, 0);
@@ -1074,8 +1075,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         
         setTimeout(() => {
             toast({
-                title: "Nouveau Familier !",
-                description: `${newFamiliar.name} a rejoint votre groupe ! Allez le voir dans l'onglet Familiers pour l'activer.`,
+                title: "Nouveau Familier!",
+                description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
             });
         }, 0);
 
@@ -1236,24 +1237,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     });
   }, []);
 
-  
-  const handleSendSpecificAction = React.useCallback(async (action: string) => {
-    if (!action || isLoading) return;
-
-    setIsLoading(true);
-    handleNarrativeUpdate(action, 'user');
-
-    try {
-        await generateAdventure(action);
-    } catch (error) { 
-        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
-         toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
-    } finally {
-        setIsLoading(false);
-    }
-  }, [isLoading, handleNarrativeUpdate, generateAdventure, toast]);
-
-
   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
       setIsLoading(true);
@@ -1319,7 +1302,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         playerCurrentMp: liveSettings.playerCurrentMp,
         playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
         playerCurrentExp: liveSettings.playerCurrentExp,
-        playerExpToNextLevel: liveSettings.playerExpToNextLevel,
+        playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
         playerStrength: effectiveStatsThisTurn.playerStrength,
         playerDexterity: effectiveStatsThisTurn.playerDexterity,
         playerConstitution: effectiveStatsThisTurn.playerConstitution,
@@ -1365,7 +1348,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     .map(name => ({
                         itemName: name,
                         quantity: 1,
-                        description: `Un objet obtenu : ${name}`,
+                        description: `Un objet obtenu: ${name}`,
                         itemType: 'misc',
                         goldValue: 1,
                     } as LootedItem));
@@ -1394,7 +1377,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     addCurrencyToPlayer(result.currencyGained);
                      setTimeout(() => {
                         toast({
-                            title: result.currencyGained! > 0 ? "Pièces d'Or Reçues !" : "Dépense Effectuée",
+                            title: result.currencyGained! > 0 ? "Pièces d'Or Reçues!" : "Dépense Effectuée",
                             description: `Votre trésorerie a été mise à jour.`
                         });
                     }, 0);
@@ -1403,7 +1386,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         }
     } catch (error) { 
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error: ", error);
+        console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error:", error);
         toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
     } finally {
         setIsLoading(false);
@@ -1414,6 +1397,26 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
       adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory
   ]);
+  
+  const handleSendSpecificAction = React.useCallback(async (action: string) => {
+    if (!action || isLoading) return;
+
+    React.startTransition(() => {
+        setIsLoading(true);
+        handleNarrativeUpdate(action, 'user');
+    });
+
+    try {
+        await callGenerateAdventure(action);
+    } catch (error) { 
+        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
+        toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+    } finally {
+        React.startTransition(() => {
+            setIsLoading(false);
+        });
+    }
+  }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
@@ -1426,7 +1429,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                variant: "default",
            });
         }, 0);
-        const narrativeAction = `J'utilise l'objet : ${item.name}.`;
+        const narrativeAction = `J'utilise l'objet: ${item.name}.`;
         handleNarrativeUpdate(narrativeAction, 'user');
         callGenerateAdventure(narrativeAction);
         return;
@@ -1909,7 +1912,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     const allyCombatantRegen: Combatant = {
                         characterId: char.id, name: char.name,
                         currentHp: existingCombatantData?.currentHp ?? char.hitPoints!,
-                        maxHp: existingCombatantData?.maxHp ?? char.maxHitPoints!,
+                        maxHp: existingCombatantData?.maxHitPoints!,
                         currentMp: existingCombatantData?.currentMp ?? char.manaPoints,
                         maxMp: existingCombatantData?.maxManaPoints,
                         team: 'player', isDefeated: existingCombatantData ? existingCombatantData.isDefeated : (char.hitPoints! <= 0),
@@ -2473,7 +2476,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         };
 
         setActiveCombat(combatState);
-        userActionText = `Le combat s'engage à ${poi.name} !`;
+        userActionText = `Le combat s'engage à ${poi.name}!`;
         handleNarrativeUpdate(userActionText, 'system');
         
         await callGenerateAdventure(`Je décris l'engagement du combat à ${poi.name}.`, poi.id);
@@ -2892,7 +2895,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
             if (result.imageUrl) {
                 setAdventureSettings(prev => ({ ...prev, mapImageUrl: result.imageUrl }));
-                toast({ title: "Carte Générée !", description: "Le fond de la carte a été mis à jour." });
+                toast({ title: "Carte Générée!", description: "Le fond de la carte a été mis à jour." });
             }
         } catch (error) {
             console.error("Error generating map image:", error);
@@ -2947,7 +2950,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
       setTimeout(() => {
           toast({
-            title: "Image d'Objet Générée !",
+            title: "Image d'Objet Générée!",
             description: (
               <div className="flex flex-col gap-2">
                 <p>{item.name} visualisé.</p>
@@ -3022,7 +3025,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         };
     });
 
-    toast({ title: "Bâtiment Construit !", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
+    toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
   }, [adventureSettings, toast]);
     
   const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
@@ -3108,19 +3111,19 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [toast]);
   
   const handleBuyItem = React.useCallback((itemToBuy: SellingItem) => {
+    let canBuy = false;
+    let newSettings: AdventureSettings | null = null;
+  
     setAdventureSettings(prev => {
         if ((prev.playerGold || 0) < itemToBuy.finalGoldValue) {
-            toast({
-                title: "Fonds insuffisants",
-                description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
-                variant: "destructive",
-            });
+            canBuy = false;
             return prev;
         }
-
+  
+        canBuy = true;
         const newGold = (prev.playerGold || 0) - itemToBuy.finalGoldValue;
         const newInventory = [...(prev.playerInventory || [])];
-
+  
         const newItemForInventory: PlayerInventoryItem = {
             id: `${itemToBuy.baseItemId}-${uid()}`,
             name: itemToBuy.name,
@@ -3136,25 +3139,36 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             generatedImageUrl: null,
             isEquipped: false
         };
-
+  
         const existingItemIndex = newInventory.findIndex(i => i.name === newItemForInventory.name);
-
+  
         if (existingItemIndex > -1) {
             newInventory[existingItemIndex].quantity += 1;
         } else {
             newInventory.push(newItemForInventory);
         }
-
-        toast({
-            title: "Achat Effectué !",
-            description: `${itemToBuy.name} a été ajouté à votre inventaire.`
-        });
-
-        // Trigger narrative action after state update
-        setTimeout(() => handleSendSpecificAction(`J'achète ${itemToBuy.name}.`), 0);
-
-        return { ...prev, playerGold: newGold, playerInventory: newInventory };
+  
+        newSettings = { ...prev, playerGold: newGold, playerInventory: newInventory };
+        return newSettings;
     });
+  
+    if (canBuy) {
+        setTimeout(() => {
+            toast({
+                title: "Achat Effectué!",
+                description: `${itemToBuy.name} a été ajouté à votre inventaire.`
+            });
+            handleSendSpecificAction(`J'achète ${itemToBuy.name}.`);
+        }, 0);
+    } else {
+        setTimeout(() => {
+            toast({
+                title: "Fonds insuffisants",
+                description: `Vous n'avez pas assez d'or pour acheter ${itemToBuy.name}.`,
+                variant: "destructive",
+            });
+        }, 0);
+    }
   }, [toast, handleSendSpecificAction]);
 
     
@@ -3170,7 +3184,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
         if (result.imageUrl) {
             setComicCoverUrl(result.imageUrl);
-            toast({ title: "Couverture Générée !", description: "La couverture de votre BD est prête." });
+            toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
         } else {
             throw new Error(result.error);
         }
@@ -3219,7 +3233,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         
         localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
         
-        toast({ title: "BD Sauvegardée !", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
+        toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
         setIsSaveComicDialogOpen(false);
         setComicTitle("");
         setComicCoverUrl(null);
@@ -3419,6 +3433,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
 
 
 
