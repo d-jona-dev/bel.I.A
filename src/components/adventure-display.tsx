@@ -288,7 +288,7 @@ export function AdventureDisplay({
     if (!action || isLoading) return;
 
     setIsLoading(true);
-    onNarrativeChange(action, 'user');
+    handleNarrativeUpdate(action, 'user');
 
     try {
         await generateAdventureAction(action);
@@ -1352,4 +1352,5 @@ export function AdventureDisplay({
   );
 }
 
+    
     
