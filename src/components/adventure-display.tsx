@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -108,6 +109,7 @@ interface AdventureDisplayProps {
     merchantInventory: SellingItem[]; // NEW
     onBuyItem: (item: SellingItem) => void; // NEW
     onCloseMerchantPanel: () => void; // NEW
+    isLoading: boolean; // Add isLoading prop
 }
 
 interface CustomImageStyle {
@@ -189,10 +191,10 @@ export function AdventureDisplay({
     merchantInventory,
     onBuyItem,
     onCloseMerchantPanel,
+    isLoading, // Destructure isLoading
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
   const [imageStyle, setImageStyle] = React.useState<string>("");
@@ -287,16 +289,13 @@ export function AdventureDisplay({
   const handleSendSpecificAction = async (action: string) => {
     if (!action || isLoading) return;
 
-    setIsLoading(true);
-    handleNarrativeUpdate(action, 'user');
+    onNarrativeChange(action, 'user');
 
     try {
         await generateAdventureAction(action);
     } catch (error) { 
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
          toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
-    } finally {
-        setIsLoading(false);
     }
   };
 
