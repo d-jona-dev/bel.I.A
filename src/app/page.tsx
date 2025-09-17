@@ -458,6 +458,10 @@ export default function Home() {
   const [useAestheticFont, setUseAestheticFont] = React.useState(true);
   const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
 
+  // NEW: State for item targeting in combat
+  const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
+  const [isTargeting, setIsTargeting] = React.useState(false);
+
   const onUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1487,6 +1491,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             let changes: Partial<AdventureSettings> = {};
 
             if (action === 'use') {
+                if (itemToUpdate.effectType === 'combat' && activeCombat?.isActive) {
+                    // Logic for combat items is now handled via setItemToUse/setIsTargeting
+                    setItemToUse(itemToUpdate);
+                    setIsTargeting(true);
+                    itemActionSuccessful = false; // Don't proceed with narrative action yet
+                    return prevSettings;
+                }
+                
                 narrativeAction = `J'utilise ${itemToUpdate.name}.`;
                 if (itemToUpdate.type === 'consumable') {
                     if (itemToUpdate.effectDetails) {
@@ -1495,13 +1507,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                             const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
                             changes = { playerCurrentHp: newPlayerHp };
                             effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
-                        }
-                        // Combat effect items without a specific handler will now trigger a narrative action
-                        else {
-                           setTimeout(() => {toast({ title: "Utilisation en Combat Requise", description: `L'effet de ${itemToUpdate.name} est destiné au combat. L'IA décrira le résultat.`, variant: "default" });},0);
+                        } else {
+                           toast({ title: "Utilisation en Combat Requise", description: `L'effet de ${itemToUpdate.name} est destiné au combat.`, variant: "default" });
                         }
                     } else if (itemToUpdate.effectType === 'narrative') {
-                        setTimeout(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });},0);
+                        toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });
                     }
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
@@ -1563,8 +1573,69 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         }
     });
   }, [
-    callGenerateAdventure, handleNarrativeUpdate, toast, handleUseFamiliarItem
+    callGenerateAdventure, handleNarrativeUpdate, toast, handleUseFamiliarItem, activeCombat
   ]);
+
+    const applyCombatItemEffect = React.useCallback((targetId?: string) => {
+        if (!itemToUse || !activeCombat?.isActive) return;
+
+        const { effectDetails } = itemToUse;
+        let narrativeAction = `J'utilise ${itemToUse.name}`;
+        let effectAppliedMessage = "";
+
+        setAdventureSettings(prevSettings => {
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            const itemIndex = newInventory.findIndex(invItem => invItem.id === itemToUse.id);
+            if (itemIndex > -1) {
+                newInventory[itemIndex].quantity -= 1;
+                if (newInventory[itemIndex].quantity <= 0) {
+                    newInventory.splice(itemIndex, 1);
+                }
+            }
+            return { ...prevSettings, playerInventory: newInventory };
+        });
+
+        if (effectDetails?.type === 'heal') {
+            const hpChange = effectDetails.amount;
+            setAdventureSettings(prev => ({
+                ...prev,
+                playerCurrentHp: Math.min(prev.playerMaxHp || 0, (prev.playerCurrentHp || 0) + hpChange)
+            }));
+            narrativeAction += `, restaurant ${hpChange} PV.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} et restauré ${hpChange} PV.`;
+        } else if (effectDetails?.type === 'damage_single' && targetId) {
+            const target = activeCombat.combatants.find(c => c.characterId === targetId);
+            narrativeAction += ` sur ${target?.name}, lui infligeant ${effectDetails.amount} points de dégâts.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} sur ${target?.name} pour ${effectDetails.amount} dégâts.`;
+            setActiveCombat(prev => {
+                if (!prev) return prev;
+                const newCombatants = prev.combatants.map(c =>
+                    c.characterId === targetId ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
+                );
+                return { ...prev, combatants: newCombatants };
+            });
+        } else if (effectDetails?.type === 'damage_all') {
+            narrativeAction += `, infligeant ${effectDetails.amount} points de dégâts à tous les ennemis.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name}, infligeant ${effectDetails.amount} dégâts à tous les ennemis.`;
+            setActiveCombat(prev => {
+                if (!prev) return prev;
+                const newCombatants = prev.combatants.map(c =>
+                    c.team === 'enemy' ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
+                );
+                return { ...prev, combatants: newCombatants };
+            });
+        }
+        
+        toast({ title: "Action en Combat", description: effectAppliedMessage });
+        handleNarrativeUpdate(narrativeAction, 'user');
+        callGenerateAdventure(narrativeAction);
+
+        // Reset targeting state
+        setIsTargeting(false);
+        setItemToUse(null);
+
+    }, [itemToUse, activeCombat, toast, handleNarrativeUpdate, callGenerateAdventure]);
+
 
   const handleSellItem = React.useCallback((itemId: string) => {
         const currentSettings = adventureSettings;
@@ -2409,8 +2480,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     if (!poi) return;
   
     setIsLoading(true);
-    setMerchantInventory([]);
-    setShoppingCart([]); // Clear cart when moving
+    setShoppingCart([]);
   
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
@@ -2483,13 +2553,13 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
+        let generatedInventory: SellingItem[] = [];
         if (buildingId === 'forgeron') {
             const availableWeapons = [...BASE_WEAPONS];
             const availableArmors = [...BASE_ARMORS];
             const poiLevel = poi.level || 1;
             const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             const usedBaseItemIds = new Set<string>();
-            const generatedInventory: SellingItem[] = [];
 
             const getRarityForLevel = (): BaseItem['rarity'] => {
                 const rand = Math.random() * 100;
@@ -2575,13 +2645,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
                 });
             }
-            setMerchantInventory(generatedInventory);
         } else if (buildingId === 'bijoutier') {
             const poiLevel = poi.level || 1;
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
-            const generatedInventory: SellingItem[] = [];
-
+            
             const getRarityForJeweler = (): BaseItem['rarity'] => {
                 const rand = Math.random() * 100;
                 if (poiLevel >= 6) return rand < 50 ? 'Légendaire' : 'Divin';
@@ -2616,12 +2684,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     });
                }
             }
-            setMerchantInventory(generatedInventory);
         } else if (buildingId === 'magicien') {
             const poiLevel = poi.level || 1;
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
-            const generatedInventory: SellingItem[] = [];
 
             const getRarityForMage = (): BaseItem['rarity'] => {
                 if (poiLevel >= 6) return Math.random() < 0.5 ? 'Légendaire' : 'Divin';
@@ -2655,10 +2721,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                     });
                 }
             }
-            setMerchantInventory(generatedInventory);
         }
-
-
+        setMerchantInventory(generatedInventory);
         handleNarrativeUpdate(userActionText, 'user');
         await callGenerateAdventure(userActionText, locationIdOverride);
 
@@ -3328,6 +3392,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
+    <>
     <PageStructure
       adventureSettings={adventureSettings}
       characters={characters}
@@ -3444,6 +3509,29 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onFinalizePurchase={handleFinalizePurchase}
       onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
     />
+     {isTargeting && itemToUse && (
+        <AlertDialog open={isTargeting} onOpenChange={setIsTargeting}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Choisir une cible pour {itemToUse.name}</AlertDialogTitle>
+              <AlertDialogDescription>
+                Quel ennemi souhaitez-vous viser ?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4 space-y-2">
+              {(activeCombat?.combatants || []).filter(c => c.team === 'enemy' && !c.isDefeated).map(enemy => (
+                <Button key={enemy.characterId} variant="outline" className="w-full justify-start" onClick={() => applyCombatItemEffect(enemy.characterId)}>
+                    {enemy.name} (PV: {enemy.currentHp}/{enemy.maxHp})
+                </Button>
+              ))}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => { setIsTargeting(false); setItemToUse(null); }}>Annuler</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }
 
@@ -3454,3 +3542,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
 
+
+
+    

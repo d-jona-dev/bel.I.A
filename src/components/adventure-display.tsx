@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -879,7 +880,7 @@ export function AdventureDisplay({
                                                                 </DropdownMenuItem>
                                                             )
                                                         )}
-                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'use')} disabled={item.type !== 'consumable'}>
+                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'use')} disabled={item.type !== 'consumable' && item.type !== 'misc'}>
                                                             <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
@@ -1169,7 +1170,7 @@ export function AdventureDisplay({
                                 <div className="mt-3 pt-3 border-t">
                                     <h4 className="text-sm font-semibold mb-2">Panier</h4>
                                     <ScrollArea className="h-24">
-                                        {shoppingCart.map((item, idx) => (
+                                        {(shoppingCart || []).map((item, idx) => (
                                             <div key={`cart-${item.baseItemId}-${idx}`} className="flex justify-between items-center text-xs mb-1">
                                                 <span>{item.name} (x{item.quantity || 1})</span>
                                                 <div className="flex items-center gap-1">
@@ -1392,5 +1393,7 @@ export function AdventureDisplay({
     
 
 
+
+    
 
     
