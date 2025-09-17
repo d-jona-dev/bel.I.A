@@ -1415,63 +1415,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     }
   }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
-  const handleBuyItem = React.useCallback((item: SellingItem) => {
-    if (isLoading) return;
-    const itemCost = item.finalGoldValue;
-    if (adventureSettings.rpgMode && (adventureSettings.playerGold || 0) < itemCost) {
-        setTimeout(() => {
-            toast({
-                title: "Fonds insuffisants",
-                description: `Vous n'avez pas assez d'or pour acheter ${item.name}.`,
-                variant: "destructive"
-            });
-        }, 0);
-        return;
-    }
-
-    React.startTransition(() => {
-        setAdventureSettings(prev => {
-            const newItem: PlayerInventoryItem = {
-                id: `${item.baseItemId}-${uid()}`,
-                name: item.name,
-                quantity: 1,
-                description: item.description,
-                type: item.type,
-                goldValue: item.finalGoldValue,
-                damage: item.damage,
-                ac: item.ac,
-                statBonuses: item.statBonuses,
-                effectType: item.effectType,
-                effectDetails: item.effectDetails,
-                generatedImageUrl: null,
-                isEquipped: false
-            };
-
-            const newInventory = [...(prev.playerInventory || [])];
-            const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
-            if (existingIndex > -1) {
-                newInventory[existingIndex].quantity += 1;
-            } else {
-                newInventory.push(newItem);
-            }
-            
-            const newGold = prev.rpgMode ? (prev.playerGold || 0) - itemCost : prev.playerGold;
-            
-            setTimeout(() => {
-                toast({
-                    title: "Achat Effectué!",
-                    description: `${item.name} a été ajouté à votre inventaire.`
-                });
-            }, 0);
-
-            return { ...prev, playerGold: newGold, playerInventory: newInventory };
-        });
-    });
-
-    handleSendSpecificAction(`J'achète ${item.name}.`);
-    
-  }, [isLoading, adventureSettings.rpgMode, adventureSettings.playerGold, toast, handleSendSpecificAction]);
-
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
 
@@ -3473,12 +3416,12 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       handleAddStagedFamiliar={handleAddStagedFamiliar}
       onMapImageUpload={handleMapImageUpload}
       onMapImageUrlChange={handleMapImageUrlChange}
+      onAddPoiToMap={handleAddPoiToMap}
       onUploadToComicPanel={onUploadToComicPanel}
       isLoading={isUiLocked}
       onSaveToLibrary={handleSaveToLibrary}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
-      onAddPoiToMap={handleAddPoiToMap}
       comicDraft={comicDraft}
       onDownloadComicDraft={handleDownloadComicDraft}
       onAddComicPage={handleAddComicPage}
@@ -3503,6 +3446,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     />
   );
 }
+
 
 
 

@@ -144,9 +144,12 @@ interface PageStructureProps {
   onGenerateCover: () => void;
   onSaveToLibrary: () => void;
   merchantInventory: SellingItem[];
-  onBuyItem: (item: SellingItem) => void;
-  isLoading: boolean;
+  shoppingCart: SellingItem[];
+  onAddToCart: (item: SellingItem) => void;
+  onRemoveFromCart: (itemName: string) => void;
+  onFinalizePurchase: () => void;
   onCloseMerchantPanel: () => void;
+  isLoading: boolean;
 }
 
 export function PageStructure({
@@ -240,7 +243,10 @@ export function PageStructure({
   onGenerateCover,
   onSaveToLibrary,
   merchantInventory,
-  onBuyItem,
+  shoppingCart,
+  onAddToCart,
+  onRemoveFromCart,
+  onFinalizePurchase,
   onCloseMerchantPanel,
 }: PageStructureProps) {
 
@@ -490,8 +496,12 @@ export function PageStructure({
                 onGenerateCover={onGenerateCover}
                 onSaveToLibrary={onSaveToLibrary}
                 merchantInventory={merchantInventory}
-                onBuyItem={onBuyItem}
+                shoppingCart={shoppingCart}
+                onAddToCart={onAddToCart}
+                onRemoveFromCart={onRemoveFromCart}
+                onFinalizePurchase={onFinalizePurchase}
                 onCloseMerchantPanel={onCloseMerchantPanel}
+                isLoading={isLoading}
              />
         </main>
       </SidebarInset>
