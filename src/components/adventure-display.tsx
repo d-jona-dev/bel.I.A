@@ -1165,7 +1165,7 @@ export function AdventureDisplay({
                                     ))}
                                 </div>
                             </ScrollArea>
-                            {shoppingCart.length > 0 && (
+                            {(shoppingCart || []).length > 0 && (
                                 <div className="mt-3 pt-3 border-t">
                                     <h4 className="text-sm font-semibold mb-2">Panier</h4>
                                     <ScrollArea className="h-24">
@@ -1391,3 +1391,6 @@ export function AdventureDisplay({
     
     
 
+
+
+    
