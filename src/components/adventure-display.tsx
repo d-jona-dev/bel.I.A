@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -106,10 +105,13 @@ interface AdventureDisplayProps {
     isGeneratingCover: boolean;
     onGenerateCover: () => void;
     onSaveToLibrary: () => void;
-    merchantInventory: SellingItem[]; // NEW
-    onBuyItem: (item: SellingItem) => void; // NEW
-    onCloseMerchantPanel: () => void; // NEW
-    isLoading: boolean; // Add isLoading prop
+    merchantInventory: SellingItem[];
+    shoppingCart: SellingItem[];
+    onAddToCart: (item: SellingItem) => void;
+    onRemoveFromCart: (itemName: string) => void;
+    onFinalizePurchase: () => void;
+    onCloseMerchantPanel: () => void;
+    isLoading: boolean;
 }
 
 interface CustomImageStyle {
@@ -189,7 +191,10 @@ export function AdventureDisplay({
     onGenerateCover,
     onSaveToLibrary,
     merchantInventory,
-    onBuyItem,
+    shoppingCart,
+    onAddToCart,
+    onRemoveFromCart,
+    onFinalizePurchase,
     onCloseMerchantPanel,
     isLoading, // Destructure isLoading
 }: AdventureDisplayProps) {
@@ -410,6 +415,10 @@ export function AdventureDisplay({
       default: return 'text-gray-500';
     }
   };
+
+  const cartTotal = React.useMemo(() => {
+    return (shoppingCart || []).reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
+  }, [shoppingCart]);
 
 
   const PlayerStatusCard = () => {
@@ -1137,7 +1146,7 @@ export function AdventureDisplay({
                             </TooltipProvider>
                         </CardHeader>
                         <CardContent className="p-3 pt-0">
-                            <ScrollArea className="h-48">
+                             <ScrollArea className="h-32">
                                 <div className="space-y-2">
                                     {merchantInventory.map((item, idx) => (
                                         <Card key={`${item.baseItemId}-${idx}`} className="p-2 bg-background shadow-sm">
@@ -1148,7 +1157,7 @@ export function AdventureDisplay({
                                                     {item.damage && <p className="text-xs text-muted-foreground">Dégâts: {item.damage}</p>}
                                                     {item.ac && <p className="text-xs text-muted-foreground">CA: {item.ac} {item.statBonuses?.ac ? `(+${item.statBonuses.ac})` : ''}</p>}
                                                 </div>
-                                                <Button size="sm" variant="secondary" onClick={() => onBuyItem(item)} disabled={isLoading}>
+                                                <Button size="sm" variant="secondary" onClick={() => onAddToCart(item)} disabled={isLoading}>
                                                     {item.finalGoldValue} PO
                                                 </Button>
                                             </div>
@@ -1156,6 +1165,34 @@ export function AdventureDisplay({
                                     ))}
                                 </div>
                             </ScrollArea>
+                            {shoppingCart.length > 0 && (
+                                <div className="mt-3 pt-3 border-t">
+                                    <h4 className="text-sm font-semibold mb-2">Panier</h4>
+                                    <ScrollArea className="h-24">
+                                        {shoppingCart.map((item, idx) => (
+                                            <div key={`cart-${item.baseItemId}-${idx}`} className="flex justify-between items-center text-xs mb-1">
+                                                <span>{item.name} (x{item.quantity || 1})</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span>{item.finalGoldValue * (item.quantity || 1)} PO</span>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onRemoveFromCart(item.name)}><Trash2Icon className="h-3 w-3 text-destructive"/></Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </ScrollArea>
+                                    <Separator className="my-2"/>
+                                    <div className="text-xs space-y-1">
+                                        <div className="flex justify-between font-semibold"><span>Total:</span><span>{cartTotal} PO</span></div>
+                                        <div className="flex justify-between text-muted-foreground"><span>Votre Or:</span><span>{adventureSettings.playerGold || 0} PO</span></div>
+                                        <div className={`flex justify-between font-semibold ${(adventureSettings.playerGold || 0) < cartTotal ? 'text-destructive' : 'text-primary'}`}>
+                                            <span>Restant:</span>
+                                            <span>{(adventureSettings.playerGold || 0) - cartTotal} PO</span>
+                                        </div>
+                                    </div>
+                                    <Button className="w-full mt-2" onClick={onFinalizePurchase} disabled={isLoading || (adventureSettings.playerGold || 0) < cartTotal}>
+                                        Effectuer la Transaction
+                                    </Button>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -1353,3 +1390,4 @@ export function AdventureDisplay({
 
     
     
+
