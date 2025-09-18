@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,6 +34,9 @@ import { poiLevelNameMap, poiLevelConfig } from "@/lib/buildings";
 import { Slider } from "./ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS } from "@/lib/items";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 
 export type FormCharacterDefinition = {
@@ -136,6 +139,12 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
+    // State for item management
+    const [consumables, setConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
+    const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
+    const [isItemEditorOpen, setIsItemEditorOpen] = React.useState(false);
+
+
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
         defaultValues: {
@@ -155,16 +164,64 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         mode: "onBlur",
     });
 
-    React.useEffect(() => {
+     React.useEffect(() => {
         try {
             const storedAvatars = localStorage.getItem('playerAvatars_v2');
-            if (storedAvatars) {
-                setSavedAvatars(JSON.parse(storedAvatars));
-            }
+            if (storedAvatars) setSavedAvatars(JSON.parse(storedAvatars));
+
+            const storedConsumables = localStorage.getItem('custom_consumables');
+            if (storedConsumables) setConsumables(JSON.parse(storedConsumables));
+
         } catch (error) {
-            console.error("Failed to load player avatars", error);
+            console.error("Failed to load data from localStorage", error);
         }
     }, []);
+
+    const saveConsumables = (items: BaseItem[]) => {
+        setConsumables(items);
+        localStorage.setItem('custom_consumables', JSON.stringify(items));
+    }
+
+    const handleSaveItem = () => {
+        if (!editingItem || !editingItem.name.trim() || !editingItem.description.trim()) {
+            toast({ title: "Erreur", description: "Le nom et la description de l'objet sont requis.", variant: "destructive" });
+            return;
+        }
+
+        const isNew = !consumables.some(item => item.id === editingItem.id);
+        let updatedItems;
+
+        if (isNew) {
+            updatedItems = [...consumables, editingItem];
+        } else {
+            updatedItems = consumables.map(item => item.id === editingItem.id ? editingItem : item);
+        }
+        
+        saveConsumables(updatedItems);
+        toast({ title: "Objet sauvegardé", description: `"${editingItem.name}" a été mis à jour.` });
+        setIsItemEditorOpen(false);
+        setEditingItem(null);
+    };
+
+    const handleAddNewItem = () => {
+        setEditingItem({
+            id: `cons-${Date.now()}`,
+            name: "",
+            description: "",
+            type: 'consumable',
+            baseGoldValue: 5,
+            universe: 'Médiéval-Fantastique',
+            rarity: 'Commun',
+            effectType: 'narrative',
+        });
+        setIsItemEditorOpen(true);
+    };
+
+    const handleDeleteItem = (itemId: string) => {
+        const updatedItems = consumables.filter(item => item.id !== itemId);
+        saveConsumables(updatedItems);
+        toast({ title: "Objet supprimé" });
+    };
 
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
@@ -457,6 +514,39 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         </FormItem>
                                     )}
                                 />
+                                 <Separator className="my-4" />
+                                <Tabs defaultValue="consumables">
+                                    <TabsList>
+                                        <TabsTrigger value="consumables">Consommables</TabsTrigger>
+                                        <TabsTrigger value="equipment" disabled>Équipement (Bientôt)</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="consumables" className="mt-4">
+                                         <div className="flex justify-between items-center mb-2">
+                                            <CardDescription>Gérez la liste des potions et parchemins.</CardDescription>
+                                            <Button size="sm" variant="outline" onClick={handleAddNewItem}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+                                         </div>
+                                        <ScrollArea className="h-64 border rounded-md p-2">
+                                            <div className="space-y-2">
+                                            {consumables.map(item => (
+                                                <Card key={item.id} className="p-2 flex justify-between items-center bg-muted/20">
+                                                    <div>
+                                                        <p className="font-semibold text-sm">{item.name}</p>
+                                                        <p className="text-xs text-muted-foreground">{item.description}</p>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id)}>
+                                                            <Trash2 className="h-4 w-4"/>
+                                                         </Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true);}}>
+                                                            <FilePenLine className="h-4 w-4"/>
+                                                        </Button>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                            </div>
+                                        </ScrollArea>
+                                    </TabsContent>
+                                </Tabs>
                             </Card>
                         </AccordionContent>
                     </AccordionItem>
@@ -945,11 +1035,80 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </AccordionItem>
                 </Accordion>
             </div>
+             <Dialog open={isItemEditorOpen} onOpenChange={setIsItemEditorOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingItem?.id.startsWith('cons-') ? "Modifier l'objet" : "Créer un nouvel objet"}</DialogTitle>
+                    </DialogHeader>
+                    {editingItem && (
+                        <div className="space-y-4 py-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="item-name">Nom</Label>
+                                <Input id="item-name" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
+                             </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="item-desc">Description</Label>
+                                <Textarea id="item-desc" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} />
+                             </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-2">
+                                    <Label htmlFor="item-rarity">Rareté</Label>
+                                    <Select value={editingItem.rarity} onValueChange={(v: BaseItem['rarity']) => setEditingItem({...editingItem, rarity: v})}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Commun">Commun</SelectItem>
+                                            <SelectItem value="Rare">Rare</SelectItem>
+                                            <SelectItem value="Epique">Épique</SelectItem>
+                                            <SelectItem value="Légendaire">Légendaire</SelectItem>
+                                            <SelectItem value="Divin">Divin</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                 </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="item-value">Valeur (PO)</Label>
+                                    <Input id="item-value" type="number" value={editingItem.baseGoldValue} onChange={e => setEditingItem({...editingItem, baseGoldValue: parseInt(e.target.value) || 0})} />
+                                 </div>
+                             </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="item-effect-type">Type d'effet</Label>
+                                <Select value={editingItem.effectType} onValueChange={(v: BaseItem['effectType']) => setEditingItem({...editingItem, effectType: v, effectDetails: undefined })}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="narrative">Narratif</SelectItem>
+                                        <SelectItem value="combat">Combat</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                             {editingItem.effectType === 'combat' && (
+                                <Card className="p-4 bg-muted/50">
+                                    <div className="space-y-2">
+                                        <Label>Détails de l'effet de combat</Label>
+                                        <Select value={editingItem.effectDetails?.type} onValueChange={(v: BaseItem['effectDetails']['type']) => setEditingItem({...editingItem, effectDetails: { type: v, amount: editingItem.effectDetails?.amount || 0}})}>
+                                            <SelectTrigger><SelectValue placeholder="Choisir un effet..."/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="heal">Soin (cible: joueur)</SelectItem>
+                                                <SelectItem value="damage_single">Dégâts (cible unique)</SelectItem>
+                                                <SelectItem value="damage_all">Dégâts (tous les ennemis)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {editingItem.effectDetails?.type && (
+                                            <Input type="number" placeholder="Quantité (ex: 10)" value={editingItem.effectDetails.amount} onChange={e => setEditingItem({...editingItem, effectDetails: {...editingItem.effectDetails!, amount: parseInt(e.target.value) || 0}})} />
+                                        )}
+                                    </div>
+                                </Card>
+                             )}
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setIsItemEditorOpen(false); setEditingItem(null); }}>Annuler</Button>
+                        <Button onClick={handleSaveItem}>Sauvegarder</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </form>
         </Form>
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
 
     

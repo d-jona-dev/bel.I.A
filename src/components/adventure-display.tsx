@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -406,8 +405,8 @@ export function AdventureDisplay({
   const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
   
-  const rarityColorClass = (rarity: SellingItem['rarity']) => {
-    switch (rarity.toLowerCase()) {
+  const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
+    switch (rarity?.toLowerCase()) {
       case 'commun': return 'text-gray-500';
       case 'rare': return 'text-blue-500';
       case 'epique': return 'text-purple-500';
@@ -1393,6 +1392,8 @@ export function AdventureDisplay({
     
 
 
+
+    
 
     
 

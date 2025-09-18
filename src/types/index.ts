@@ -692,11 +692,3 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
-
-  
-
-    
-
-    
-
-  
