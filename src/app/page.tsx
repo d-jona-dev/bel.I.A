@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -834,35 +833,35 @@ export default function Home() {
 
 
   React.useEffect(() => {
-    const shouldLoad = localStorage.getItem('loadStoryOnMount');
-    if (shouldLoad === 'true') {
-        const stateString = localStorage.getItem('currentAdventureState');
-        if (stateString) {
-            try {
-                const loadedState: SaveData = JSON.parse(stateString);
-                loadAdventureState(loadedState);
-            } catch (e) {
-                console.error("Failed to parse adventure state from localStorage", e);
-                toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
-            }
-        }
-        localStorage.removeItem('loadStoryOnMount');
-        localStorage.removeItem('currentAdventureState');
-    }
+      const shouldLoad = localStorage.getItem('loadStoryOnMount');
+      if (shouldLoad === 'true') {
+          const stateString = localStorage.getItem('currentAdventureState');
+          if (stateString) {
+              try {
+                  const loadedState: SaveData = JSON.parse(stateString);
+                  loadAdventureState(loadedState);
+              } catch (e) {
+                  console.error("Failed to parse adventure state from localStorage", e);
+                  toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
+              }
+          }
+          localStorage.removeItem('loadStoryOnMount');
+          localStorage.removeItem('currentAdventureState');
+      }
 
-    try {
-        const storedConsumables = localStorage.getItem('custom_consumables');
-        if (storedConsumables) {
-            const customConsumables: BaseItem[] = JSON.parse(storedConsumables);
-            // Merge and remove duplicates, giving precedence to custom items
-            const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
-            const customMap = new Map(customConsumables.map(item => [item.id, item]));
-            const mergedMap = new Map([...baseMap, ...customMap]);
-            setAllConsumables(Array.from(mergedMap.values()));
-        }
-    } catch (error) {
-        console.error("Failed to load custom consumables:", error);
-    }
+      try {
+          const storedConsumables = localStorage.getItem('custom_consumables');
+          if (storedConsumables) {
+              const customConsumables: BaseItem[] = JSON.parse(storedConsumables);
+              // Merge and remove duplicates, giving precedence to custom items
+              const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
+              const customMap = new Map(customConsumables.map(item => [item.id, item]));
+              const mergedMap = new Map([...baseMap, ...customMap]);
+              setAllConsumables(Array.from(mergedMap.values()));
+          }
+      } catch (error) {
+          console.error("Failed to load custom consumables:", error);
+      }
   }, [loadAdventureState, toast]);
 
   React.useEffect(() => {
@@ -2050,16 +2049,16 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  playerLevel: currentTurnSettings.playerLevel,
                  playerCurrentHp: currentTurnSettings.playerCurrentHp,
                  playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
-                 playerCurrentMp: currentTurnSettings.playerCurrentMp,
+                 playerCurrentMp: effectiveStatsThisTurn.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
                  playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
                  playerDexterity: effectiveStatsThisTurn.playerDexterity,
-                 playerConstitution: effectiveStatsThisTurn.playerConstitution,
-                 playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
-                 playerWisdom: effectiveStatsThisTurn.playerWisdom,
-                 playerCharisma: effectiveStatsThisTurn.playerCharisma,
+                 playerConstitution: currentTurnSettings.playerConstitution,
+                 playerIntelligence: currentTurnSettings.playerIntelligence,
+                 playerWisdom: currentTurnSettings.playerWisdom,
+                 playerCharisma: currentTurnSettings.playerCharisma,
                  playerArmorClass: currentTurnSettings.playerArmorClass,
                  playerAttackBonus: currentTurnSettings.playerAttackBonus,
                  playerDamageBonus: currentTurnSettings.playerDamageBonus,
@@ -2714,17 +2713,10 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
             const consumablesPool = [...allConsumables]; // Use the combined list
             for (let i = 0; i < inventorySize; i++) {
-                const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
-                   poiLevel === 5 ? (Math.random() < 0.2 ? 'Rare' : (Math.random() < 0.6 ? 'Epique' : 'Légendaire')) :
-                   poiLevel === 4 ? (Math.random() < 0.4 ? 'Commun' : (Math.random() < 0.75 ? 'Rare' : 'Epique')) :
-                   poiLevel === 3 ? (Math.random() < 0.6 ? 'Commun' : (Math.random() < 0.9 ? 'Rare' : 'Epique')) :
-                   poiLevel === 2 ? (Math.random() < 0.8 ? 'Commun' : 'Rare') :
-                   'Commun';
-
-                let eligibleItems = consumablesPool.filter(item => item.rarity === rarity && !usedBaseItemIds.has(item.id));
-                if (eligibleItems.length === 0) continue;
-
-                const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
+                if (consumablesPool.filter(item => !usedBaseItemIds.has(item.id)).length === 0) break;
+                
+                const baseItem = consumablesPool.filter(item => !usedBaseItemIds.has(item.id))[Math.floor(Math.random() * consumablesPool.filter(item => !usedBaseItemIds.has(item.id)).length)];
+                
                 if (baseItem) {
                     usedBaseItemIds.add(baseItem.id);
                     generatedInventory.push({
@@ -3121,7 +3113,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const newEffectiveStats = calculateEffectiveStats(newSettings);
             const finalSettings = { ...newSettings, ...newEffectiveStats };
             
-            setStagedAdventureSettings(prevStaged => ({...prevStaged, ...finalSettings}));
+            setStagedAdventureSettings(prevStaged => ({...prevStaged, familiars: finalSettings.familiars }));
             
             return finalSettings;
         });
@@ -3468,7 +3460,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook}
+      suggestQuestHookAction={suggestQuestHook}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3554,15 +3546,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   );
 }
 
-
-
-
-
-
-
-
-
-
     
-
-
