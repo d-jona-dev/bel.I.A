@@ -433,6 +433,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
+  const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
 
 
   // Comic Draft State
@@ -847,6 +848,20 @@ export default function Home() {
         }
         localStorage.removeItem('loadStoryOnMount');
         localStorage.removeItem('currentAdventureState');
+    }
+
+    try {
+        const storedConsumables = localStorage.getItem('custom_consumables');
+        if (storedConsumables) {
+            const customConsumables: BaseItem[] = JSON.parse(storedConsumables);
+            // Merge and remove duplicates, giving precedence to custom items
+            const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
+            const customMap = new Map(customConsumables.map(item => [item.id, item]));
+            const mergedMap = new Map([...baseMap, ...customMap]);
+            setAllConsumables(Array.from(mergedMap.values()));
+        }
+    } catch (error) {
+        console.error("Failed to load custom consumables:", error);
     }
   }, [loadAdventureState, toast]);
 
@@ -2697,7 +2712,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
 
-            const consumablesPool = [...BASE_CONSUMABLES];
+            const consumablesPool = [...allConsumables]; // Use the combined list
             for (let i = 0; i < inventorySize; i++) {
                 const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
                    poiLevel === 5 ? (Math.random() < 0.2 ? 'Rare' : (Math.random() < 0.6 ? 'Epique' : 'Légendaire')) :
@@ -2774,7 +2789,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3549,4 +3564,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
     
+
 
