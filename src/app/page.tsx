@@ -22,6 +22,17 @@ import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
 import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 
 const PLAYER_ID = "player";
@@ -1461,6 +1472,66 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 }, [handleNewFamiliar, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
+  const applyCombatItemEffect = React.useCallback((targetId?: string) => {
+        if (!itemToUse || !activeCombat?.isActive) return;
+
+        const { effectDetails } = itemToUse;
+        let narrativeAction = `J'utilise ${itemToUse.name}`;
+        let effectAppliedMessage = "";
+
+        setAdventureSettings(prevSettings => {
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            const itemIndex = newInventory.findIndex(invItem => invItem.id === itemToUse.id);
+            if (itemIndex > -1) {
+                newInventory[itemIndex].quantity -= 1;
+                if (newInventory[itemIndex].quantity <= 0) {
+                    newInventory.splice(itemIndex, 1);
+                }
+            }
+            return { ...prevSettings, playerInventory: newInventory };
+        });
+
+        if (effectDetails?.type === 'heal') {
+            const hpChange = effectDetails.amount;
+            setAdventureSettings(prev => ({
+                ...prev,
+                playerCurrentHp: Math.min(prev.playerMaxHp || 0, (prev.playerCurrentHp || 0) + hpChange)
+            }));
+            narrativeAction += `, restaurant ${hpChange} PV.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} et restauré ${hpChange} PV.`;
+        } else if (effectDetails?.type === 'damage_single' && targetId) {
+            const target = activeCombat.combatants.find(c => c.characterId === targetId);
+            narrativeAction += ` sur ${target?.name}, lui infligeant ${effectDetails.amount} points de dégâts.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} sur ${target?.name} pour ${effectDetails.amount} dégâts.`;
+            setActiveCombat(prev => {
+                if (!prev) return prev;
+                const newCombatants = prev.combatants.map(c =>
+                    c.characterId === targetId ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
+                );
+                return { ...prev, combatants: newCombatants };
+            });
+        } else if (effectDetails?.type === 'damage_all') {
+            narrativeAction += `, infligeant ${effectDetails.amount} points de dégâts à tous les ennemis.`;
+            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name}, infligeant ${effectDetails.amount} dégâts à tous les ennemis.`;
+            setActiveCombat(prev => {
+                if (!prev) return prev;
+                const newCombatants = prev.combatants.map(c =>
+                    c.team === 'enemy' ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
+                );
+                return { ...prev, combatants: newCombatants };
+            });
+        }
+        
+        toast({ title: "Action en Combat", description: effectAppliedMessage });
+        handleNarrativeUpdate(narrativeAction, 'user');
+        callGenerateAdventure(narrativeAction);
+
+        // Reset targeting state
+        setIsTargeting(false);
+        setItemToUse(null);
+
+    }, [itemToUse, activeCombat, toast, handleNarrativeUpdate, callGenerateAdventure]);
+
   const handlePlayerItemAction = React.useCallback((itemId: string, action: 'use' | 'discard') => {
     React.startTransition(() => {
         let itemActionSuccessful = false;
@@ -1575,66 +1646,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   }, [
     callGenerateAdventure, handleNarrativeUpdate, toast, handleUseFamiliarItem, activeCombat
   ]);
-
-    const applyCombatItemEffect = React.useCallback((targetId?: string) => {
-        if (!itemToUse || !activeCombat?.isActive) return;
-
-        const { effectDetails } = itemToUse;
-        let narrativeAction = `J'utilise ${itemToUse.name}`;
-        let effectAppliedMessage = "";
-
-        setAdventureSettings(prevSettings => {
-            const newInventory = [...(prevSettings.playerInventory || [])];
-            const itemIndex = newInventory.findIndex(invItem => invItem.id === itemToUse.id);
-            if (itemIndex > -1) {
-                newInventory[itemIndex].quantity -= 1;
-                if (newInventory[itemIndex].quantity <= 0) {
-                    newInventory.splice(itemIndex, 1);
-                }
-            }
-            return { ...prevSettings, playerInventory: newInventory };
-        });
-
-        if (effectDetails?.type === 'heal') {
-            const hpChange = effectDetails.amount;
-            setAdventureSettings(prev => ({
-                ...prev,
-                playerCurrentHp: Math.min(prev.playerMaxHp || 0, (prev.playerCurrentHp || 0) + hpChange)
-            }));
-            narrativeAction += `, restaurant ${hpChange} PV.`;
-            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} et restauré ${hpChange} PV.`;
-        } else if (effectDetails?.type === 'damage_single' && targetId) {
-            const target = activeCombat.combatants.find(c => c.characterId === targetId);
-            narrativeAction += ` sur ${target?.name}, lui infligeant ${effectDetails.amount} points de dégâts.`;
-            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name} sur ${target?.name} pour ${effectDetails.amount} dégâts.`;
-            setActiveCombat(prev => {
-                if (!prev) return prev;
-                const newCombatants = prev.combatants.map(c =>
-                    c.characterId === targetId ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
-                );
-                return { ...prev, combatants: newCombatants };
-            });
-        } else if (effectDetails?.type === 'damage_all') {
-            narrativeAction += `, infligeant ${effectDetails.amount} points de dégâts à tous les ennemis.`;
-            effectAppliedMessage = `Vous avez utilisé ${itemToUse.name}, infligeant ${effectDetails.amount} dégâts à tous les ennemis.`;
-            setActiveCombat(prev => {
-                if (!prev) return prev;
-                const newCombatants = prev.combatants.map(c =>
-                    c.team === 'enemy' ? { ...c, currentHp: Math.max(0, c.currentHp - effectDetails.amount) } : c
-                );
-                return { ...prev, combatants: newCombatants };
-            });
-        }
-        
-        toast({ title: "Action en Combat", description: effectAppliedMessage });
-        handleNarrativeUpdate(narrativeAction, 'user');
-        callGenerateAdventure(narrativeAction);
-
-        // Reset targeting state
-        setIsTargeting(false);
-        setItemToUse(null);
-
-    }, [itemToUse, activeCombat, toast, handleNarrativeUpdate, callGenerateAdventure]);
 
 
   const handleSellItem = React.useCallback((itemId: string) => {
@@ -2549,6 +2560,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         await callGenerateAdventure(`Je décris l'engagement du combat à ${poi.name}.`, poi.id);
 
     } else if (action === 'visit' && buildingId) {
+        setIsLoading(true);
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
@@ -2650,20 +2662,16 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
             
-            const getRarityForJeweler = (): BaseItem['rarity'] => {
-                const rand = Math.random() * 100;
-                if (poiLevel >= 6) return rand < 50 ? 'Légendaire' : 'Divin';
-                if (poiLevel === 5) return rand < 20 ? 'Rare' : rand < 60 ? 'Epique' : 'Légendaire';
-                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
-                if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
-                if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
-                return 'Commun';
-            };
-            
             const jewelryPool = [...BASE_JEWELRY];
 
             for (let i = 0; i < inventorySize; i++) {
-               const rarity = getRarityForJeweler();
+               const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
+                   poiLevel === 5 ? (Math.random() < 0.2 ? 'Rare' : (Math.random() < 0.6 ? 'Epique' : 'Légendaire')) :
+                   poiLevel === 4 ? (Math.random() < 0.4 ? 'Commun' : (Math.random() < 0.75 ? 'Rare' : 'Epique')) :
+                   poiLevel === 3 ? (Math.random() < 0.6 ? 'Commun' : (Math.random() < 0.9 ? 'Rare' : 'Epique')) :
+                   poiLevel === 2 ? (Math.random() < 0.8 ? 'Commun' : 'Rare') :
+                   'Commun';
+
                let eligibleItems = jewelryPool.filter(item => item.rarity === rarity && !usedBaseItemIds.has(item.id));
                if (eligibleItems.length === 0) continue;
                
@@ -2689,24 +2697,20 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
 
-            const getRarityForMage = (): BaseItem['rarity'] => {
-                if (poiLevel >= 6) return Math.random() < 0.5 ? 'Légendaire' : 'Divin';
-                if (poiLevel === 5) { const r = Math.random(); return r < 0.2 ? 'Rare' : r < 0.6 ? 'Epique' : 'Légendaire'; }
-                if (poiLevel === 4) { const r = Math.random(); return r < 0.4 ? 'Commun' : r < 0.75 ? 'Rare' : 'Epique'; }
-                if (poiLevel === 3) { const r = Math.random(); return r < 0.6 ? 'Commun' : r < 0.9 ? 'Rare' : 'Epique'; }
-                if (poiLevel === 2) return Math.random() < 0.8 ? 'Commun' : 'Rare';
-                return 'Commun';
-            };
-
             const consumablesPool = [...BASE_CONSUMABLES];
             for (let i = 0; i < inventorySize; i++) {
-                const rarity = getRarityForMage();
+                const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
+                   poiLevel === 5 ? (Math.random() < 0.2 ? 'Rare' : (Math.random() < 0.6 ? 'Epique' : 'Légendaire')) :
+                   poiLevel === 4 ? (Math.random() < 0.4 ? 'Commun' : (Math.random() < 0.75 ? 'Rare' : 'Epique')) :
+                   poiLevel === 3 ? (Math.random() < 0.6 ? 'Commun' : (Math.random() < 0.9 ? 'Rare' : 'Epique')) :
+                   poiLevel === 2 ? (Math.random() < 0.8 ? 'Commun' : 'Rare') :
+                   'Commun';
+
                 let eligibleItems = consumablesPool.filter(item => item.rarity === rarity && !usedBaseItemIds.has(item.id));
                 if (eligibleItems.length === 0) continue;
 
                 const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
                 if (baseItem) {
-                    const itemType = baseItem.name.includes("Potion") ? 'Potion' : 'Parchemin';
                     usedBaseItemIds.add(baseItem.id);
                     generatedInventory.push({
                         baseItemId: baseItem.id,
@@ -3545,3 +3549,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
     
+
