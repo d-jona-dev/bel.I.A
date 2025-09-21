@@ -1592,8 +1592,15 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                             const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
                             changes = { playerCurrentHp: newPlayerHp };
                             effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
+                        } else if(activeCombat?.isActive) {
+                           setItemToUse(itemToUpdate);
+                           setIsTargeting(true);
+                           itemActionSuccessful = false;
+                           return prevSettings;
                         } else {
                            toast({ title: "Utilisation en Combat Requise", description: `L'effet de ${itemToUpdate.name} est destiné au combat.`, variant: "default" });
+                           itemActionSuccessful = false;
+                           return prevSettings;
                         }
                     } else if (itemToUpdate.effectType === 'narrative') {
                         toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });
@@ -2049,7 +2056,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  playerLevel: currentTurnSettings.playerLevel,
                  playerCurrentHp: currentTurnSettings.playerCurrentHp,
                  playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
-                 playerCurrentMp: effectiveStatsThisTurn.playerCurrentMp,
+                 playerCurrentMp: currentTurnSettings.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
                  playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
@@ -2711,11 +2718,21 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
 
-            const consumablesPool = [...allConsumables]; // Use the combined list
+            const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
+
+            const availableConsumables = allConsumables.filter(item => {
+                const itemRarityValue = rarityOrder[item.rarity || 'Commun'];
+                return itemRarityValue <= maxRarityValue;
+            });
+            
+            const consumablesPool = [...availableConsumables];
+
             for (let i = 0; i < inventorySize; i++) {
-                if (consumablesPool.filter(item => !usedBaseItemIds.has(item.id)).length === 0) break;
+                 const availablePool = consumablesPool.filter(item => !usedBaseItemIds.has(item.id));
+                if (availablePool.length === 0) break;
                 
-                const baseItem = consumablesPool.filter(item => !usedBaseItemIds.has(item.id))[Math.floor(Math.random() * consumablesPool.filter(item => !usedBaseItemIds.has(item.id)).length)];
+                const baseItem = availablePool[Math.floor(Math.random() * availablePool.length)];
                 
                 if (baseItem) {
                     usedBaseItemIds.add(baseItem.id);
@@ -3460,7 +3477,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={suggestQuestHook}
+      suggestQuestHookAction={callSuggestQuestHook}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3545,5 +3562,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     </>
   );
 }
+
+    
 
     
