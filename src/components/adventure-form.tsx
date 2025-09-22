@@ -143,6 +143,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const [consumables, setConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
     const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
     const [isItemEditorOpen, setIsItemEditorOpen] = React.useState(false);
+    
+    // State for new POI form
+    const [newPoiName, setNewPoiName] = React.useState("");
+    const [newPoiDescription, setNewPoiDescription] = React.useState("");
+    const [newPoiType, setNewPoiType] = React.useState<MapPointOfInterest['icon']>("Village");
+    const [newPoiOwnerId, setNewPoiOwnerId] = React.useState(initialValues.playerName || 'player');
+    const [newPoiLevel, setNewPoiLevel] = React.useState(1);
+    const [newPoiBuildings, setNewPoiBuildings] = React.useState<string[]>([]);
 
 
     const form = useForm<AdventureFormValues>({
@@ -370,6 +378,42 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             toast({ title: "Avatar Chargé", description: `Les informations de ${selectedAvatar.name} ont été appliquées.` });
         }
     };
+
+    const { availableLevelsForType, buildingSlotsForLevel, availableBuildingsForType } = React.useMemo(() => {
+        const typeConfig = poiLevelConfig[newPoiType as keyof typeof poiLevelConfig];
+        const levels = Object.keys(typeConfig || {}).map(Number);
+        const slots = BUILDING_SLOTS[newPoiType]?.[newPoiLevel] ?? 0;
+        const buildings = BUILDING_DEFINITIONS.filter(def => def.applicablePoiTypes.includes(newPoiType));
+        return { availableLevelsForType: levels, buildingSlotsForLevel: slots, availableBuildingsForType: buildings };
+    }, [newPoiType, newPoiLevel]);
+
+    const handleBuildingSelection = (buildingId: string, checked: boolean) => {
+        setNewPoiBuildings(prev => {
+            const newSelection = checked ? [...prev, buildingId] : prev.filter(id => id !== buildingId);
+            if (newSelection.length > buildingSlotsForLevel) {
+                toast({
+                    title: "Limite de bâtiments atteinte",
+                    description: `Vous ne pouvez sélectionner que ${buildingSlotsForLevel} bâtiment(s) pour ce niveau.`,
+                    variant: "destructive"
+                });
+                return prev;
+            }
+            return newSelection;
+        });
+    };
+    
+    React.useEffect(() => {
+        // Reset level and buildings if type changes
+        setNewPoiLevel(1);
+        setNewPoiBuildings([]);
+    }, [newPoiType]);
+    
+    React.useEffect(() => {
+        // Prune selected buildings if they exceed the new slot limit
+        if (newPoiBuildings.length > buildingSlotsForLevel) {
+            setNewPoiBuildings(prev => prev.slice(0, buildingSlotsForLevel));
+        }
+    }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings]);
 
 
     return (
@@ -802,8 +846,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                         <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={String(field.value || 1)}>
                                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                             <SelectContent>
-                                                                {Object.keys(poiLevelConfig[currentPoiType] || {}).map(level => (
-                                                                    <SelectItem key={level} value={level}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
+                                                                {Object.keys(poiLevelConfig[currentPoiType as keyof typeof poiLevelConfig] || {}).map(Number).map(level => (
+                                                                    <SelectItem key={level} value={level.toString()}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -1068,6 +1112,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     <Label htmlFor="item-value">Valeur (PO)</Label>
                                     <Input id="item-value" type="number" value={editingItem.baseGoldValue} onChange={e => setEditingItem({...editingItem, baseGoldValue: parseInt(e.target.value) || 0})} />
                                  </div>
+                             </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="item-universe">Univers</Label>
+                                <Select value={editingItem.universe} onValueChange={(v: BaseItem['universe']) => setEditingItem({...editingItem, universe: v})}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Médiéval-Fantastique">Médiéval-Fantastique</SelectItem>
+                                        <SelectItem value="Post-Apo">Post-Apo</SelectItem>
+                                        <SelectItem value="Futuriste">Futuriste</SelectItem>
+                                        <SelectItem value="Space-Opéra">Space-Opéra</SelectItem>
+                                    </SelectContent>
+                                </Select>
                              </div>
                              <div className="space-y-2">
                                 <Label htmlFor="item-effect-type">Type d'effet</Label>

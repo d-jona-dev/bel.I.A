@@ -2587,9 +2587,11 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
         let generatedInventory: SellingItem[] = [];
+        const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+
         if (buildingId === 'forgeron') {
-            const availableWeapons = [...BASE_WEAPONS];
-            const availableArmors = [...BASE_ARMORS];
+            const availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
+            const availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             const usedBaseItemIds = new Set<string>();
@@ -2624,7 +2626,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 let eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
                 
                 if (eligibleItems.length === 0) {
-                     pool = itemTypeToGenerate === 'weapon' ? [...BASE_WEAPONS] : [...BASE_ARMORS];
+                     pool = itemTypeToGenerate === 'weapon' ? [...availableWeapons] : [...availableArmors];
                      eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
                      if(eligibleItems.length === 0) continue;
                 }
@@ -2683,7 +2685,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
             const usedBaseItemIds = new Set<string>();
             
-            const jewelryPool = [...BASE_JEWELRY];
+            const jewelryPool = BASE_JEWELRY.filter(item => activeUniverses.includes(item.universe));
 
             for (let i = 0; i < inventorySize; i++) {
                const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
@@ -2721,15 +2723,15 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
 
-            const availableConsumables = allConsumables.filter(item => {
+            const consumablesInUniverse = allConsumables.filter(item => activeUniverses.includes(item.universe));
+
+            const availableConsumables = consumablesInUniverse.filter(item => {
                 const itemRarityValue = rarityOrder[item.rarity || 'Commun'];
                 return itemRarityValue <= maxRarityValue;
             });
             
-            const consumablesPool = [...availableConsumables];
-
             for (let i = 0; i < inventorySize; i++) {
-                 const availablePool = consumablesPool.filter(item => !usedBaseItemIds.has(item.id));
+                 const availablePool = availableConsumables.filter(item => !usedBaseItemIds.has(item.id));
                 if (availablePool.length === 0) break;
                 
                 const baseItem = availablePool[Math.floor(Math.random() * availablePool.length)];
@@ -3562,7 +3564,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     </>
   );
 }
-
-    
 
     
