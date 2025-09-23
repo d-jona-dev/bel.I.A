@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -433,10 +434,10 @@ export default function Home() {
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
   
-  const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
-  const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>(BASE_WEAPONS);
-  const [allArmors, setAllArmors] = React.useState<BaseItem[]>(BASE_ARMORS);
-  const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>(BASE_JEWELRY);
+  const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
+  const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
+  const [allArmors, setAllArmors] = React.useState<BaseItem[]>([]);
+  const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
 
 
   // Comic Draft State
@@ -853,47 +854,32 @@ export default function Home() {
           localStorage.removeItem('currentAdventureState');
       }
 
-      const loadCustomItems = () => {
-        try {
-            const storedConsumables = localStorage.getItem('custom_consumables');
-            if (storedConsumables) {
-                const customItems: BaseItem[] = JSON.parse(storedConsumables);
-                const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
-                const customMap = new Map(customItems.map(item => [item.id, item]));
-                setAllConsumables(Array.from(new Map([...baseMap, ...customMap]).values()));
-            }
-            const storedWeapons = localStorage.getItem('custom_weapons');
-             if (storedWeapons) {
-                const customItems: BaseItem[] = JSON.parse(storedWeapons);
-                const baseMap = new Map(BASE_WEAPONS.map(item => [item.id, item]));
-                const customMap = new Map(customItems.map(item => [item.id, item]));
-                setAllWeapons(Array.from(new Map([...baseMap, ...customMap]).values()));
-            }
-            const storedArmors = localStorage.getItem('custom_armors');
-             if (storedArmors) {
-                const customItems: BaseItem[] = JSON.parse(storedArmors);
-                const baseMap = new Map(BASE_ARMORS.map(item => [item.id, item]));
-                const customMap = new Map(customItems.map(item => [item.id, item]));
-                setAllArmors(Array.from(new Map([...baseMap, ...customMap]).values()));
-            }
-            const storedJewelry = localStorage.getItem('custom_jewelry');
-             if (storedJewelry) {
-                const customItems: BaseItem[] = JSON.parse(storedJewelry);
-                const baseMap = new Map(BASE_JEWELRY.map(item => [item.id, item]));
-                const customMap = new Map(customItems.map(item => [item.id, item]));
-                setAllJewelry(Array.from(new Map([...baseMap, ...customMap]).values()));
-            }
-
-        } catch (error) {
-            console.error("Failed to load custom items:", error);
-        }
+      const loadAllItemTypes = () => {
+          const loadType = (key: string, defaultItems: BaseItem[]) => {
+              try {
+                  const storedItems = localStorage.getItem(key);
+                  if (storedItems) {
+                      const customItems: BaseItem[] = JSON.parse(storedItems);
+                      const baseMap = new Map(defaultItems.map(item => [item.id, item]));
+                      const customMap = new Map(customItems.map(item => [item.id, item]));
+                      return Array.from(new Map([...baseMap, ...customMap]).values());
+                  }
+              } catch (error) {
+                  console.error(`Failed to load custom items for ${key}:`, error);
+              }
+              return defaultItems;
+          }
+          setAllConsumables(loadType('custom_consumables', BASE_CONSUMABLES));
+          setAllWeapons(loadType('custom_weapons', BASE_WEAPONS));
+          setAllArmors(loadType('custom_armors', BASE_ARMORS));
+          setAllJewelry(loadType('custom_jewelry', BASE_JEWELRY));
       };
 
-      loadCustomItems();
+      loadAllItemTypes();
       // Listen for storage changes from other components/tabs
-      window.addEventListener('storage', loadCustomItems);
+      window.addEventListener('storage', loadAllItemTypes);
       return () => {
-          window.removeEventListener('storage', loadCustomItems);
+          window.removeEventListener('storage', loadAllItemTypes);
       };
   }, [loadAdventureState, toast]);
 
@@ -2621,8 +2607,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
         let generatedInventory: SellingItem[] = [];
         const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+        
         let sourcePool: BaseItem[] = [];
-
         if (buildingId === 'forgeron') {
             sourcePool = [...allWeapons, ...allArmors];
         } else if (buildingId === 'bijoutier') {
@@ -2635,7 +2621,9 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const poiLevel = poi.level || 1;
         const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
         const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
+        
         const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
+        
         const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
         const usedBaseItemIds = new Set<string>();
 
@@ -2670,14 +2658,42 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     } else {
         if (action === 'upgrade') {
-            if (poi.ownerId !== PLAYER_ID) {
+            const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
+            const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
+            const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
+            const canAfford = upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
+
+            if (poi.ownerId !== PLAYER_ID || !isUpgradable || !canAfford) {
                  setTimeout(() => {
-                    toast({ title: "Amélioration Impossible", description: "Vous ne pouvez améliorer que les lieux que vous possédez.", variant: "destructive" });
+                    toast({
+                        title: "Amélioration Impossible",
+                        description: poi.ownerId !== PLAYER_ID
+                            ? "Vous ne pouvez améliorer que les lieux que vous possédez."
+                            : !isUpgradable
+                            ? "Ce lieu a atteint son niveau maximum."
+                            : "Fonds insuffisants pour cette amélioration.",
+                        variant: "destructive"
+                    });
                  }, 0);
                  setIsLoading(false);
                 return;
             }
+
+            setAdventureSettings(prev => {
+                const newPois = prev.mapPointsOfInterest?.map(p => {
+                    if (p.id === poiId) {
+                        const newLevel = (p.level || 1) + 1;
+                        const newResources = poiLevelConfig[p.icon as keyof typeof poiLevelConfig]?.[newLevel]?.resources || [];
+                        return { ...p, level: newLevel, resources: newResources };
+                    }
+                    return p;
+                });
+                return { ...prev, playerGold: (prev.playerGold || 0) - upgradeCost!, mapPointsOfInterest: newPois };
+            });
+            toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${upgradeCost} PO.` });
+            
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
+
         } else if (action === 'collect') {
             if (poi.ownerId !== PLAYER_ID) {
                 setTimeout(() => {
@@ -3205,7 +3221,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             throw new Error(result.error);
         }
     } catch (error) {
-        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
     } finally {
         setIsGeneratingCover(false);
     }
@@ -3479,3 +3495,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     
 
+
+
+    
