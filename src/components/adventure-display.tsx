@@ -1047,6 +1047,10 @@ export function AdventureDisplay({
                                             </Button>
                                         </DialogTrigger>
                                         <DialogContent className="max-w-4xl h-[90vh] p-2">
+                                            <DialogHeader>
+                                                <DialogTitle className="sr-only">Image de la Scène en Plein Écran</DialogTitle>
+                                                <DialogDescription className="sr-only">Agrandissement de l'image générée pour la scène actuelle.</DialogDescription>
+                                            </DialogHeader>
                                             <div className="relative w-full h-full">
                                                 <Image
                                                     src={messages.find(m=>m.imageUrl)!.imageUrl!}
