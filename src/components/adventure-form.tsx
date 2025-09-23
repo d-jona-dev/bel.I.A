@@ -139,6 +139,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
+    const [allUniverses, setAllUniverses] = React.useState<string[]>(['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra']);
+    const [newUniverse, setNewUniverse] = React.useState('');
+
     const [consumables, setConsumables] = React.useState<BaseItem[]>([]);
     const [weapons, setWeapons] = React.useState<BaseItem[]>([]);
     const [armors, setArmors] = React.useState<BaseItem[]>([]);
@@ -179,6 +182,12 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         try {
             const storedAvatars = localStorage.getItem('playerAvatars_v2');
             if (storedAvatars) setSavedAvatars(JSON.parse(storedAvatars));
+
+            const storedUniverses = localStorage.getItem('custom_universes');
+            if (storedUniverses) {
+                const customUniverses = JSON.parse(storedUniverses);
+                setAllUniverses(prev => Array.from(new Set([...prev, ...customUniverses])));
+            }
 
             const storedConsumables = localStorage.getItem('custom_consumables');
             setConsumables(storedConsumables ? JSON.parse(storedConsumables) : BASE_CONSUMABLES);
@@ -273,6 +282,31 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         const updatedItems = items.filter(item => item.id !== itemId);
         saveItems(type, updatedItems);
         toast({ title: "Objet supprimé" });
+    };
+
+    const handleAddUniverse = () => {
+        if (newUniverse && !allUniverses.includes(newUniverse)) {
+            const updatedUniverses = [...allUniverses, newUniverse];
+            setAllUniverses(updatedUniverses);
+            const customUniverses = updatedUniverses.filter(u => !['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'].includes(u));
+            localStorage.setItem('custom_universes', JSON.stringify(customUniverses));
+            setNewUniverse('');
+            toast({ title: 'Univers ajouté', description: `L'univers "${newUniverse}" est maintenant disponible.`});
+        }
+    };
+    
+    const handleDeleteUniverse = (universeToDelete: string) => {
+        const defaultUniverses = ['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'];
+        if (defaultUniverses.includes(universeToDelete)) {
+            toast({ title: 'Suppression impossible', description: 'Vous ne pouvez pas supprimer un univers par défaut.', variant: 'destructive'});
+            return;
+        }
+        const updatedUniverses = allUniverses.filter(u => u !== universeToDelete);
+        setAllUniverses(updatedUniverses);
+        const customUniverses = updatedUniverses.filter(u => !defaultUniverses.includes(u));
+        localStorage.setItem('custom_universes', JSON.stringify(customUniverses));
+        form.setValue('activeItemUniverses', form.getValues('activeItemUniverses')?.filter(u => u !== universeToDelete));
+        toast({ title: 'Univers supprimé', description: `L'univers "${universeToDelete}" a été retiré.`});
     };
 
     React.useImperativeHandle(ref, () => ({
@@ -586,47 +620,56 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <div className="mb-4">
                                                 <FormLabel className="text-base flex items-center gap-2"><Box className="h-5 w-5" /> Univers d'Objets Actifs</FormLabel>
                                                 <FormDescription>
-                                                    Sélectionnez les univers dont les objets pourront apparaître dans les butins et chez les marchands.
+                                                    Sélectionnez les univers dont les objets pourront apparaître. Vous pouvez en ajouter ci-dessous.
                                                 </FormDescription>
                                             </div>
-                                            {(['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'] as Array<BaseItem['universe']>).map((universe) => (
-                                                <FormField
-                                                    key={universe}
-                                                    control={form.control}
-                                                    name="activeItemUniverses"
-                                                    render={({ field }) => {
-                                                        return (
-                                                            <FormItem
-                                                                key={universe}
-                                                                className="flex flex-row items-start space-x-3 space-y-0"
-                                                            >
-                                                                <FormControl>
-                                                                    <Checkbox
-                                                                        checked={field.value?.includes(universe)}
-                                                                        onCheckedChange={(checked) => {
-                                                                            return checked
-                                                                                ? field.onChange([...(field.value || []), universe])
-                                                                                : field.onChange(
-                                                                                    (field.value || []).filter(
-                                                                                        (value) => value !== universe
-                                                                                    )
-                                                                                )
-                                                                        }}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormLabel className="font-normal">
-                                                                    {universe}
-                                                                </FormLabel>
-                                                            </FormItem>
-                                                        )
-                                                    }}
-                                                />
-                                            ))}
+                                            <div className="space-y-2">
+                                                {allUniverses.map((universe) => (
+                                                    <div key={universe} className="flex items-center justify-between">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="activeItemUniverses"
+                                                            render={({ field: checkboxField }) => {
+                                                                return (
+                                                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                                        <FormControl>
+                                                                            <Checkbox
+                                                                                checked={checkboxField.value?.includes(universe)}
+                                                                                onCheckedChange={(checked) => {
+                                                                                    return checked
+                                                                                        ? checkboxField.onChange([...(checkboxField.value || []), universe])
+                                                                                        : checkboxField.onChange((checkboxField.value || []).filter((value) => value !== universe))
+                                                                                }}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormLabel className="font-normal">
+                                                                            {universe}
+                                                                        </FormLabel>
+                                                                    </FormItem>
+                                                                )
+                                                            }}
+                                                        />
+                                                        {!['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'].includes(universe) && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteUniverse(universe)}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                 <Separator className="my-4" />
+                                <div className="flex gap-2 mt-4">
+                                    <Input
+                                        value={newUniverse}
+                                        onChange={(e) => setNewUniverse(e.target.value)}
+                                        placeholder="Nom du nouvel univers..."
+                                    />
+                                    <Button onClick={handleAddUniverse} type="button">Ajouter</Button>
+                                </div>
+                                <Separator className="my-4" />
                                 <Tabs defaultValue="consumables">
                                     <TabsList className="grid w-full grid-cols-4">
                                         <TabsTrigger value="consumables">Consommables</TabsTrigger>
@@ -1176,10 +1219,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 <Select value={editingItem.universe} onValueChange={(v: BaseItem['universe']) => setEditingItem({...editingItem, universe: v})}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Médiéval-Fantastique">Médiéval-Fantastique</SelectItem>
-                                        <SelectItem value="Post-Apo">Post-Apo</SelectItem>
-                                        <SelectItem value="Futuriste">Futuriste</SelectItem>
-                                        <SelectItem value="Space-Opéra">Space-Opéra</SelectItem>
+                                        {allUniverses.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                              </div>
@@ -1218,14 +1258,66 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
                             {editingItemType === 'weapon' && (
                                 <div className="space-y-2">
-                                    <Label htmlFor="item-damage">Dégâts</Label>
-                                    <Input id="item-damage" value={editingItem.damage || ''} onChange={e => setEditingItem({...editingItem, damage: e.target.value})} placeholder="Ex: 1d8, 2d6+2..."/>
+                                    <Label>Dégâts</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input type="number" value={editingItem.damage?.split('d')[0] || 1} onChange={e => {
+                                            const parts = editingItem.damage?.split('d') || ['1', '6'];
+                                            const bonusMatch = parts[1]?.match(/([+-]\d+)/);
+                                            const diceType = parts[1]?.replace(bonusMatch?.[0] || '', '');
+                                            setEditingItem({...editingItem, damage: `${e.target.value}d${diceType}${bonusMatch?.[0] || ''}`})
+                                        }} className="w-16" />
+                                        <Select value={editingItem.damage?.split('d')[1]?.replace(/[+-]\d+/, '') || '6'} onValueChange={v => {
+                                            const parts = editingItem.damage?.split('d') || ['1', '6'];
+                                            const bonusMatch = parts[1]?.match(/([+-]\d+)/);
+                                            setEditingItem({...editingItem, damage: `${parts[0]}d${v}${bonusMatch?.[0] || ''}`});
+                                        }}>
+                                            <SelectTrigger className="w-[80px]"><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                {[4,6,8,10,12,20,100].map(d => <SelectItem key={d} value={String(d)}>d{d}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <Input type="number" placeholder="+/-" value={editingItem.damage?.match(/([+-]\d+)/)?.[0] || ''} onChange={e => {
+                                            const parts = editingItem.damage?.split('d') || ['1', '6'];
+                                            const dicePart = parts[1]?.replace(/[+-]\d+/, '');
+                                            let bonus = e.target.value;
+                                            if (bonus && !bonus.startsWith('+') && !bonus.startsWith('-')) bonus = `+${bonus}`;
+                                            if (bonus === '+' || bonus === '-') bonus = '';
+                                            setEditingItem({...editingItem, damage: `${parts[0]}d${dicePart}${bonus}`});
+                                        }} className="w-20" />
+                                    </div>
                                 </div>
                             )}
-                            {editingItemType === 'armor' && (
+                           {editingItemType === 'armor' && (
                                 <div className="space-y-2">
-                                    <Label htmlFor="item-ac">Classe d'Armure (CA)</Label>
-                                    <Input id="item-ac" value={editingItem.ac || ''} onChange={e => setEditingItem({...editingItem, ac: e.target.value})} placeholder="Ex: 14, 12 + Mod.Dex (max +2)..."/>
+                                    <Label>Classe d'Armure (CA)</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input type="number" placeholder="CA de base" value={editingItem.ac?.match(/^\d+/)?.[0] || ''} onChange={e => {
+                                            const dexMatch = editingItem.ac?.match(/\s*\+\s*Mod.Dex(\s*\(max\s*\+\d+\))?/);
+                                            setEditingItem({...editingItem, ac: `${e.target.value}${dexMatch?.[0] || ''}`});
+                                        }} className="flex-1"/>
+                                         <Select value={editingItem.ac?.includes('Mod.Dex') ? (editingItem.ac.includes('max') ? 'max' : 'yes') : 'no'} onValueChange={v => {
+                                            const baseAc = editingItem.ac?.match(/^\d+/)?.[0] || '10';
+                                            if (v === 'no') setEditingItem({...editingItem, ac: baseAc});
+                                            else if (v === 'yes') setEditingItem({...editingItem, ac: `${baseAc} + Mod.Dex`});
+                                            else if (v === 'max') {
+                                                const maxVal = editingItem.ac?.match(/\(max\s*\+(\d+)\)/)?.[1] || '2';
+                                                setEditingItem({...editingItem, ac: `${baseAc} + Mod.Dex (max +${maxVal})`});
+                                            }
+                                        }}>
+                                            <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="no">Non applicable</SelectItem>
+                                                <SelectItem value="yes">+ Mod.Dex</SelectItem>
+                                                <SelectItem value="max">+ Mod.Dex (avec max)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {editingItem.ac?.includes('(max') && (
+                                            <Input type="number" placeholder="Max" className="w-16" value={editingItem.ac?.match(/\(max\s*\+(\d+)\)/)?.[1] || '2'} onChange={e => {
+                                                const basePart = editingItem.ac?.match(/(\d+\s*\+\s*Mod.Dex)/)?.[0] || '10 + Mod.Dex';
+                                                setEditingItem({...editingItem, ac: `${basePart} (max +${e.target.value})`})
+                                            }}/>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -1242,5 +1334,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
 
     
