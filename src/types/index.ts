@@ -11,7 +11,7 @@ export interface BaseItem {
   damage?: string; // e.g., "1d6", "2d8"
   ac?: string; // e.g., "11 + Mod.Dex", "14"
   baseGoldValue: number;
-  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra';
+  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string;
   rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
   effectType?: 'stat' | 'narrative' | 'combat';
   statBonuses?: PlayerInventoryItem['statBonuses'];
@@ -20,6 +20,16 @@ export interface BaseItem {
     amount: number;
   };
 }
+
+export interface BaseFamiliar {
+    id: string;
+    name: string;
+    description: string;
+    universe: string;
+    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+    basePassiveBonus: FamiliarPassiveBonus;
+}
+
 
 // NEW: Represents an item being sold by a merchant, with its final price.
 export interface SellingItem {
@@ -61,9 +71,9 @@ export const LootedItemSchema = z.object({
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
 export const FamiliarPassiveBonusSchema = z.object({
-    type: z.enum(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'gold_find', 'exp_gain', 'armor_class', 'attack_bonus']).describe("The type of passive bonus the familiar provides."),
-    value: z.number().describe("The base value of the bonus per level (e.g., if value is 1, at level 3 the bonus is +3)."),
-    description: z.string().describe("A template for the bonus description, using 'X' as a placeholder for the calculated value (e.g., '+X en Force'). MUST be in {{currentLanguage}}."),
+    type: z.enum(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'gold_find', 'exp_gain', 'armor_class', 'attack_bonus', 'narrative']).describe("The type of passive bonus the familiar provides."),
+    value: z.number().describe("The base value of the bonus per level (e.g., if value is 1, at level 3 the bonus is +3). For narrative bonuses, this can be 0."),
+    description: z.string().describe("A template for the bonus description, using 'X' as a placeholder for the calculated value (e.g., '+X en Force'). For narrative bonuses, this is the full description of the effect. MUST be in {{currentLanguage}}."),
 });
 export type FamiliarPassiveBonus = z.infer<typeof FamiliarPassiveBonusSchema>;
 
@@ -693,4 +703,3 @@ export interface GenerateSceneImageFlowOutput {
   error?: string;
 }
 
-    
