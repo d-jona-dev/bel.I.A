@@ -2605,54 +2605,109 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
-        let generatedInventory: SellingItem[] = [];
-        const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
-        
-        let sourcePool: BaseItem[] = [];
-        if (buildingId === 'forgeron') {
-            sourcePool = [...allWeapons, ...allArmors];
-        } else if (buildingId === 'bijoutier') {
-            sourcePool = allJewelry;
-        } else if (buildingId === 'magicien') {
-            sourcePool = allConsumables;
+        if (buildingId === 'poste-chasse-nocturne') {
+            const nocturnalCreatures = [
+                { name: 'Loup Spectral', level: 3, hp: 30, ac: 14, attack: 4, damage: '1d8+2' },
+                { name: 'Hibou Stellaire', level: 4, hp: 40, ac: 15, attack: 5, damage: '1d6+3' },
+                { name: 'Lapin d\'Obsidienne', level: 2, hp: 20, ac: 13, attack: 3, damage: '1d4+1' }
+            ];
+            const creature = nocturnalCreatures[Math.floor(Math.random() * nocturnalCreatures.length)];
+            const tempEnemyId = `nocturnal-${creature.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`;
+            
+            const tempEnemyCharacter: Character = {
+                id: tempEnemyId,
+                name: creature.name,
+                details: "Une créature de la nuit, nimbée d'une lueur éthérée.",
+                isHostile: true,
+                level: creature.level, hitPoints: creature.hp, maxHitPoints: creature.hp,
+                armorClass: creature.ac, attackBonus: creature.attack, damageBonus: creature.damage,
+                locationId: poi.id,
+            };
+             setCharacters(prev => [...prev, tempEnemyCharacter]);
+
+            const combatants: Combatant[] = [
+                 { characterId: PLAYER_ID, name: adventureSettings.playerName || 'Player', team: 'player', currentHp: adventureSettings.playerCurrentHp!, maxHp: adventureSettings.playerMaxHp! },
+                 { characterId: tempEnemyId, name: creature.name, team: 'enemy', currentHp: creature.hp, maxHp: creature.hp }
+            ];
+            const combatState: ActiveCombat = {
+                isActive: true,
+                combatants: combatants,
+                environmentDescription: `Dans les profondeurs sombres de la ${poi.name}.`,
+                turnLog: [],
+            };
+            
+            setActiveCombat(combatState);
+
+            const familiarRarityRoll = Math.random();
+            let rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' = 'common';
+            if (familiarRarityRoll < 0.1) rarity = 'legendary';
+            else if (familiarRarityRoll < 0.25) rarity = 'epic';
+            else if (familiarRarityRoll < 0.5) rarity = 'rare';
+            else if (familiarRarityRoll < 0.75) rarity = 'uncommon';
+            
+            const newFamiliarReward: NewFamiliarSchema = {
+                name: creature.name,
+                description: `Un ${creature.name.toLowerCase()} capturé lors d'une chasse nocturne.`,
+                rarity: rarity,
+                passiveBonus: { type: 'narrative', value: 0, description: 'Une présence mystique vous accompagne.' }
+            };
+            
+            setTimeout(() => handleNewFamiliar(newFamiliarReward), 10);
+            
+            userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
         }
-        
-        const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
-        const poiLevel = poi.level || 1;
-        const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
-        const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
-        
-        const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
-        
-        const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
-        const usedBaseItemIds = new Set<string>();
 
-        if (availableItems.length > 0) {
-            for (let i = 0; i < inventorySize; i++) {
-                const availablePool = availableItems.filter(item => !usedBaseItemIds.has(item.id));
-                if (availablePool.length === 0) break;
-                
-                const baseItem = availablePool[Math.floor(Math.random() * availablePool.length)];
-                if (!baseItem) continue;
-
-                usedBaseItemIds.add(baseItem.id);
-                generatedInventory.push({
-                    baseItemId: baseItem.id,
-                    name: baseItem.name,
-                    description: baseItem.description,
-                    type: baseItem.type,
-                    damage: baseItem.damage,
-                    ac: baseItem.ac,
-                    rarity: baseItem.rarity || 'Commun',
-                    finalGoldValue: baseItem.baseGoldValue,
-                    statBonuses: baseItem.statBonuses,
-                    effectType: baseItem.effectType,
-                    effectDetails: baseItem.effectDetails,
-                });
+        else {
+            let generatedInventory: SellingItem[] = [];
+            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            
+            let sourcePool: BaseItem[] = [];
+            if (buildingId === 'forgeron') {
+                sourcePool = [...allWeapons, ...allArmors];
+            } else if (buildingId === 'bijoutier') {
+                sourcePool = allJewelry;
+            } else if (buildingId === 'magicien') {
+                sourcePool = allConsumables;
             }
+            
+            const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
+            const poiLevel = poi.level || 1;
+            const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
+            
+            const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
+            
+            const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
+            const usedBaseItemIds = new Set<string>();
+
+            if (availableItems.length > 0) {
+                for (let i = 0; i < inventorySize; i++) {
+                    const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+                    if (!baseItem || usedBaseItemIds.has(baseItem.id)) {
+                        i--; // try again
+                        continue;
+                    };
+
+                    usedBaseItemIds.add(baseItem.id);
+                    generatedInventory.push({
+                        baseItemId: baseItem.id,
+                        name: baseItem.name,
+                        description: baseItem.description,
+                        type: baseItem.type,
+                        damage: baseItem.damage,
+                        ac: baseItem.ac,
+                        rarity: baseItem.rarity || 'Commun',
+                        finalGoldValue: baseItem.baseGoldValue,
+                        statBonuses: baseItem.statBonuses,
+                        effectType: baseItem.effectType,
+                        effectDetails: baseItem.effectDetails,
+                    });
+                }
+            }
+            
+            setMerchantInventory(generatedInventory);
         }
-        
-        setMerchantInventory(generatedInventory);
+
         handleNarrativeUpdate(userActionText, 'user');
         await callGenerateAdventure(userActionText, locationIdOverride);
 
@@ -2729,7 +2784,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3499,4 +3554,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
     
+
 
