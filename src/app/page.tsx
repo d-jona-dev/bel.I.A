@@ -2658,6 +2658,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     } else {
         if (action === 'upgrade') {
+            const isPlayerOwned = poi.ownerId === PLAYER_ID;
             const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
@@ -3498,3 +3499,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
 
     
+
