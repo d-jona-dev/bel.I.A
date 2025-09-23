@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -707,7 +706,7 @@ export default function Home() {
                     targetAC = allyData?.armorClass ?? 10;
                 }
     
-                if (totalAttack >= targetAC) {
+                if (totalAttack >= totalAttack) {
                     const damage = getDamage(enemyData?.damageBonus);
                     target.currentHp = Math.max(0, target.currentHp - damage);
                     turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
@@ -2525,6 +2524,46 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       setAdventureSettings(prev => ({ ...prev, relationsMode: !prev.relationsMode }));
   };
 
+  const generateDynamicFamiliarBonus = React.useCallback((rarity: Familiar['rarity']): FamiliarPassiveBonus => {
+    const statTypes: Array<FamiliarPassiveBonus['type']> = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'armor_class', 'attack_bonus'];
+    
+    const bonusValues: Record<Familiar['rarity'], number> = {
+        'common': 1,
+        'uncommon': 2,
+        'rare': 5,
+        'epic': 10,
+        'legendary': 15,
+    };
+    
+    if (Math.random() < 0.2) {
+        return {
+            type: 'narrative',
+            value: 0,
+            description: "Rend les PNJ plus enclins à discuter.",
+        };
+    }
+    
+    const bonusType = statTypes[Math.floor(Math.random() * statTypes.length)];
+    const bonusValue = bonusValues[rarity] || 1;
+    let description = `+${bonusValue} en ${bonusType}`;
+
+    switch(bonusType) {
+        case 'strength': description = `+${bonusValue} en Force`; break;
+        case 'dexterity': description = `+${bonusValue} en Dextérité`; break;
+        case 'constitution': description = `+${bonusValue} en Constitution`; break;
+        case 'intelligence': description = `+${bonusValue} en Intelligence`; break;
+        case 'wisdom': description = `+${bonusValue} en Sagesse`; break;
+        case 'charisma': description = `+${bonusValue} en Charisme`; break;
+        case 'armor_class': description = `+${bonusValue} en Classe d'Armure`; break;
+        case 'attack_bonus': description = `+${bonusValue} au Bonus d'Attaque`; break;
+    }
+
+    return {
+        type: bonusType,
+        value: bonusValue,
+        description: description,
+    };
+}, []);
 
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
@@ -2639,17 +2678,17 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             setActiveCombat(combatState);
 
             const familiarRarityRoll = Math.random();
-            let rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' = 'common';
-            if (familiarRarityRoll < 0.1) rarity = 'legendary';
-            else if (familiarRarityRoll < 0.25) rarity = 'epic';
-            else if (familiarRarityRoll < 0.5) rarity = 'rare';
-            else if (familiarRarityRoll < 0.75) rarity = 'uncommon';
+            let rarity: Familiar['rarity'] = 'common';
+            if (familiarRarityRoll < 0.05) rarity = 'legendary';
+            else if (familiarRarityRoll < 0.15) rarity = 'epic';
+            else if (familiarRarityRoll < 0.4) rarity = 'rare';
+            else if (familiarRarityRoll < 0.7) rarity = 'uncommon';
             
             const newFamiliarReward: NewFamiliarSchema = {
                 name: creature.name,
                 description: `Un ${creature.name.toLowerCase()} capturé lors d'une chasse nocturne.`,
                 rarity: rarity,
-                passiveBonus: { type: 'narrative', value: 0, description: 'Une présence mystique vous accompagne.' }
+                passiveBonus: generateDynamicFamiliarBonus(rarity),
             };
             
             setTimeout(() => handleNewFamiliar(newFamiliarReward), 10);
@@ -2673,7 +2712,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
-            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
+            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel === 5 ? 4 : poiLevel === 4 ? 3 : poiLevel === 3 ? 2 : 2;
             
             const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
             
@@ -2713,17 +2752,17 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     } else {
         if (action === 'upgrade') {
-            const isPlayerOwned = poi.ownerId === PLAYER_ID;
+            const isPlayerOwned = poi.ownerId === playerId;
             const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
             const canAfford = upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
 
-            if (poi.ownerId !== PLAYER_ID || !isUpgradable || !canAfford) {
+            if (!isUpgradable || !canAfford) {
                  setTimeout(() => {
                     toast({
                         title: "Amélioration Impossible",
-                        description: poi.ownerId !== PLAYER_ID
+                        description: poi.ownerId !== playerId
                             ? "Vous ne pouvez améliorer que les lieux que vous possédez."
                             : !isUpgradable
                             ? "Ce lieu a atteint son niveau maximum."
@@ -2751,7 +2790,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
 
         } else if (action === 'collect') {
-            if (poi.ownerId !== PLAYER_ID) {
+            if (poi.ownerId !== playerId) {
                 setTimeout(() => {
                     toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
                 }, 0);
@@ -2784,7 +2823,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3054,7 +3093,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi || poi.ownerId !== PLAYER_ID) {
+    if (!poi || poi.ownerId !== playerId) {
         toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
         return;
     }
@@ -3548,11 +3587,3 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     </>
   );
 }
-
-    
-
-
-
-    
-
-
