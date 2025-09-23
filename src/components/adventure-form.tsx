@@ -139,12 +139,15 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
-    // State for item management
-    const [consumables, setConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
+    const [consumables, setConsumables] = React.useState<BaseItem[]>([]);
+    const [weapons, setWeapons] = React.useState<BaseItem[]>([]);
+    const [armors, setArmors] = React.useState<BaseItem[]>([]);
+    const [jewelry, setJewelry] = React.useState<BaseItem[]>([]);
+
     const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
     const [isItemEditorOpen, setIsItemEditorOpen] = React.useState(false);
+    const [editingItemType, setEditingItemType] = React.useState<BaseItem['type']>('consumable');
     
-    // State for new POI form
     const [newPoiName, setNewPoiName] = React.useState("");
     const [newPoiDescription, setNewPoiDescription] = React.useState("");
     const [newPoiType, setNewPoiType] = React.useState<MapPointOfInterest['icon']>("Village");
@@ -178,45 +181,85 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             if (storedAvatars) setSavedAvatars(JSON.parse(storedAvatars));
 
             const storedConsumables = localStorage.getItem('custom_consumables');
-            if (storedConsumables) setConsumables(JSON.parse(storedConsumables));
+            setConsumables(storedConsumables ? JSON.parse(storedConsumables) : BASE_CONSUMABLES);
+            
+            const storedWeapons = localStorage.getItem('custom_weapons');
+            setWeapons(storedWeapons ? JSON.parse(storedWeapons) : BASE_WEAPONS);
+            
+            const storedArmors = localStorage.getItem('custom_armors');
+            setArmors(storedArmors ? JSON.parse(storedArmors) : BASE_ARMORS);
+            
+            const storedJewelry = localStorage.getItem('custom_jewelry');
+            setJewelry(storedJewelry ? JSON.parse(storedJewelry) : BASE_JEWELRY);
 
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
         }
     }, []);
 
-    const saveConsumables = (items: BaseItem[]) => {
-        setConsumables(items);
-        localStorage.setItem('custom_consumables', JSON.stringify(items));
+    const saveItems = (type: BaseItem['type'], items: BaseItem[]) => {
+        const keyMap = {
+            consumable: 'custom_consumables',
+            weapon: 'custom_weapons',
+            armor: 'custom_armors',
+            jewelry: 'custom_jewelry',
+        };
+        const stateSetterMap = {
+            consumable: setConsumables,
+            weapon: setWeapons,
+            armor: setArmors,
+            jewelry: setJewelry,
+        };
+        
+        const key = keyMap[type as keyof typeof keyMap];
+        const setter = stateSetterMap[type as keyof typeof stateSetterMap];
+
+        if (key && setter) {
+            setter(items);
+            localStorage.setItem(key, JSON.stringify(items));
+        }
+    };
+    
+    const getItemsForType = (type: BaseItem['type']): BaseItem[] => {
+        switch(type) {
+            case 'consumable': return consumables;
+            case 'weapon': return weapons;
+            case 'armor': return armors;
+            case 'jewelry': return jewelry;
+            default: return [];
+        }
     }
 
+
     const handleSaveItem = () => {
-        if (!editingItem || !editingItem.name.trim() || !editingItem.description.trim()) {
-            toast({ title: "Erreur", description: "Le nom et la description de l'objet sont requis.", variant: "destructive" });
+        if (!editingItem || !editingItem.name.trim()) {
+            toast({ title: "Erreur", description: "Le nom de l'objet est requis.", variant: "destructive" });
             return;
         }
 
-        const isNew = !consumables.some(item => item.id === editingItem.id);
+        const items = getItemsForType(editingItem.type);
+        const isNew = !items.some(item => item.id === editingItem.id);
         let updatedItems;
 
         if (isNew) {
-            updatedItems = [...consumables, editingItem];
+            updatedItems = [...items, editingItem];
         } else {
-            updatedItems = consumables.map(item => item.id === editingItem.id ? editingItem : item);
+            updatedItems = items.map(item => item.id === editingItem.id ? editingItem : item);
         }
         
-        saveConsumables(updatedItems);
+        saveItems(editingItem.type, updatedItems);
         toast({ title: "Objet sauvegardé", description: `"${editingItem.name}" a été mis à jour.` });
         setIsItemEditorOpen(false);
         setEditingItem(null);
     };
 
-    const handleAddNewItem = () => {
+    const handleAddNewItem = (type: BaseItem['type']) => {
+        setEditingItemType(type);
         setEditingItem({
-            id: `cons-${Date.now()}`,
+            id: `${type.slice(0,4)}-${Date.now()}`,
             name: "",
             description: "",
-            type: 'consumable',
+            type: type,
             baseGoldValue: 5,
             universe: 'Médiéval-Fantastique',
             rarity: 'Commun',
@@ -225,9 +268,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         setIsItemEditorOpen(true);
     };
 
-    const handleDeleteItem = (itemId: string) => {
-        const updatedItems = consumables.filter(item => item.id !== itemId);
-        saveConsumables(updatedItems);
+    const handleDeleteItem = (itemId: string, type: BaseItem['type']) => {
+        const items = getItemsForType(type);
+        const updatedItems = items.filter(item => item.id !== itemId);
+        saveItems(type, updatedItems);
         toast({ title: "Objet supprimé" });
     };
 
@@ -344,7 +388,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleAvatarSelection = (avatarId: string) => {
         if (avatarId === 'custom') {
-            // Reset to default custom hero if user wants to create a new one
             form.reset({
                 ...form.getValues(),
                 playerName: "Héros",
@@ -354,7 +397,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 playerDescription: "",
                 playerOrientation: "",
                 playerPortraitUrl: null,
-                // Reset stats if you want a completely fresh start
                 playerStrength: BASE_ATTRIBUTE_VALUE_FORM,
                 playerDexterity: BASE_ATTRIBUTE_VALUE_FORM,
                 playerConstitution: BASE_ATTRIBUTE_VALUE_FORM,
@@ -374,7 +416,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             form.setValue('playerDescription', selectedAvatar.description);
             form.setValue('playerOrientation', selectedAvatar.orientation);
             form.setValue('playerPortraitUrl', selectedAvatar.portraitUrl);
-            // Here you might want to also load stats if they are saved with the avatar
             toast({ title: "Avatar Chargé", description: `Les informations de ${selectedAvatar.name} ont été appliquées.` });
         }
     };
@@ -403,18 +444,45 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     };
     
     React.useEffect(() => {
-        // Reset level and buildings if type changes
         setNewPoiLevel(1);
         setNewPoiBuildings([]);
     }, [newPoiType]);
     
     React.useEffect(() => {
-        // Prune selected buildings if they exceed the new slot limit
         if (newPoiBuildings.length > buildingSlotsForLevel) {
             setNewPoiBuildings(prev => prev.slice(0, buildingSlotsForLevel));
         }
     }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings]);
 
+
+    const renderItemManager = (type: BaseItem['type'], title: string, items: BaseItem[]) => (
+        <>
+            <div className="flex justify-between items-center mb-2">
+                <CardDescription>Gérez la liste des {title.toLowerCase()}.</CardDescription>
+                <Button size="sm" variant="outline" onClick={() => handleAddNewItem(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+            </div>
+            <ScrollArea className="h-64 border rounded-md p-2">
+                <div className="space-y-2">
+                {items.map(item => (
+                    <Card key={item.id} className="p-2 flex justify-between items-center bg-muted/20">
+                        <div>
+                            <p className="font-semibold text-sm">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                        </div>
+                        <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id, type)}>
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItemType(type); setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true);}}>
+                                <FilePenLine className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    </Card>
+                ))}
+                </div>
+            </ScrollArea>
+        </>
+    );
 
     return (
         <Form {...form}>
@@ -560,35 +628,23 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 />
                                  <Separator className="my-4" />
                                 <Tabs defaultValue="consumables">
-                                    <TabsList>
+                                    <TabsList className="grid w-full grid-cols-4">
                                         <TabsTrigger value="consumables">Consommables</TabsTrigger>
-                                        <TabsTrigger value="equipment" disabled>Équipement (Bientôt)</TabsTrigger>
+                                        <TabsTrigger value="weapons">Armes</TabsTrigger>
+                                        <TabsTrigger value="armors">Armures</TabsTrigger>
+                                        <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="consumables" className="mt-4">
-                                         <div className="flex justify-between items-center mb-2">
-                                            <CardDescription>Gérez la liste des potions et parchemins.</CardDescription>
-                                            <Button size="sm" variant="outline" onClick={handleAddNewItem}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
-                                         </div>
-                                        <ScrollArea className="h-64 border rounded-md p-2">
-                                            <div className="space-y-2">
-                                            {consumables.map(item => (
-                                                <Card key={item.id} className="p-2 flex justify-between items-center bg-muted/20">
-                                                    <div>
-                                                        <p className="font-semibold text-sm">{item.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{item.description}</p>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id)}>
-                                                            <Trash2 className="h-4 w-4"/>
-                                                         </Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true);}}>
-                                                            <FilePenLine className="h-4 w-4"/>
-                                                        </Button>
-                                                    </div>
-                                                </Card>
-                                            ))}
-                                            </div>
-                                        </ScrollArea>
+                                        {renderItemManager('consumable', 'Consommables', consumables)}
+                                    </TabsContent>
+                                    <TabsContent value="weapons" className="mt-4">
+                                        {renderItemManager('weapon', 'Armes', weapons)}
+                                    </TabsContent>
+                                     <TabsContent value="armors" className="mt-4">
+                                        {renderItemManager('armor', 'Armures', armors)}
+                                    </TabsContent>
+                                     <TabsContent value="jewelry" className="mt-4">
+                                        {renderItemManager('jewelry', 'Bijoux', jewelry)}
                                     </TabsContent>
                                 </Tabs>
                             </Card>
@@ -1082,7 +1138,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
              <Dialog open={isItemEditorOpen} onOpenChange={setIsItemEditorOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingItem?.id.startsWith('cons-') ? "Modifier l'objet" : "Créer un nouvel objet"}</DialogTitle>
+                        <DialogTitle>
+                            {editingItem?.id.startsWith(editingItemType.slice(0,4)) ? "Modifier l'objet" : "Créer un nouvel objet"}
+                        </DialogTitle>
                     </DialogHeader>
                     {editingItem && (
                         <div className="space-y-4 py-4">
@@ -1125,16 +1183,20 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </SelectContent>
                                 </Select>
                              </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="item-effect-type">Type d'effet</Label>
-                                <Select value={editingItem.effectType} onValueChange={(v: BaseItem['effectType']) => setEditingItem({...editingItem, effectType: v, effectDetails: undefined })}>
-                                    <SelectTrigger><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="narrative">Narratif</SelectItem>
-                                        <SelectItem value="combat">Combat</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                             </div>
+
+                             {editingItemType === 'consumable' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="item-effect-type">Type d'effet</Label>
+                                    <Select value={editingItem.effectType} onValueChange={(v: BaseItem['effectType']) => setEditingItem({...editingItem, effectType: v, effectDetails: undefined })}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="narrative">Narratif</SelectItem>
+                                            <SelectItem value="combat">Combat</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                             )}
+
                              {editingItem.effectType === 'combat' && (
                                 <Card className="p-4 bg-muted/50">
                                     <div className="space-y-2">
@@ -1153,6 +1215,20 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </div>
                                 </Card>
                              )}
+
+                            {editingItemType === 'weapon' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="item-damage">Dégâts</Label>
+                                    <Input id="item-damage" value={editingItem.damage || ''} onChange={e => setEditingItem({...editingItem, damage: e.target.value})} placeholder="Ex: 1d8, 2d6+2..."/>
+                                </div>
+                            )}
+                            {editingItemType === 'armor' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="item-ac">Classe d'Armure (CA)</Label>
+                                    <Input id="item-ac" value={editingItem.ac || ''} onChange={e => setEditingItem({...editingItem, ac: e.target.value})} placeholder="Ex: 14, 12 + Mod.Dex (max +2)..."/>
+                                </div>
+                            )}
+
                         </div>
                     )}
                     <DialogFooter>
