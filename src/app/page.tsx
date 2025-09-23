@@ -432,7 +432,11 @@ export default function Home() {
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
+  
   const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>(BASE_CONSUMABLES);
+  const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>(BASE_WEAPONS);
+  const [allArmors, setAllArmors] = React.useState<BaseItem[]>(BASE_ARMORS);
+  const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>(BASE_JEWELRY);
 
 
   // Comic Draft State
@@ -849,19 +853,48 @@ export default function Home() {
           localStorage.removeItem('currentAdventureState');
       }
 
-      try {
-          const storedConsumables = localStorage.getItem('custom_consumables');
-          if (storedConsumables) {
-              const customConsumables: BaseItem[] = JSON.parse(storedConsumables);
-              // Merge and remove duplicates, giving precedence to custom items
-              const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
-              const customMap = new Map(customConsumables.map(item => [item.id, item]));
-              const mergedMap = new Map([...baseMap, ...customMap]);
-              setAllConsumables(Array.from(mergedMap.values()));
-          }
-      } catch (error) {
-          console.error("Failed to load custom consumables:", error);
-      }
+      const loadCustomItems = () => {
+        try {
+            const storedConsumables = localStorage.getItem('custom_consumables');
+            if (storedConsumables) {
+                const customItems: BaseItem[] = JSON.parse(storedConsumables);
+                const baseMap = new Map(BASE_CONSUMABLES.map(item => [item.id, item]));
+                const customMap = new Map(customItems.map(item => [item.id, item]));
+                setAllConsumables(Array.from(new Map([...baseMap, ...customMap]).values()));
+            }
+            const storedWeapons = localStorage.getItem('custom_weapons');
+             if (storedWeapons) {
+                const customItems: BaseItem[] = JSON.parse(storedWeapons);
+                const baseMap = new Map(BASE_WEAPONS.map(item => [item.id, item]));
+                const customMap = new Map(customItems.map(item => [item.id, item]));
+                setAllWeapons(Array.from(new Map([...baseMap, ...customMap]).values()));
+            }
+            const storedArmors = localStorage.getItem('custom_armors');
+             if (storedArmors) {
+                const customItems: BaseItem[] = JSON.parse(storedArmors);
+                const baseMap = new Map(BASE_ARMORS.map(item => [item.id, item]));
+                const customMap = new Map(customItems.map(item => [item.id, item]));
+                setAllArmors(Array.from(new Map([...baseMap, ...customMap]).values()));
+            }
+            const storedJewelry = localStorage.getItem('custom_jewelry');
+             if (storedJewelry) {
+                const customItems: BaseItem[] = JSON.parse(storedJewelry);
+                const baseMap = new Map(BASE_JEWELRY.map(item => [item.id, item]));
+                const customMap = new Map(customItems.map(item => [item.id, item]));
+                setAllJewelry(Array.from(new Map([...baseMap, ...customMap]).values()));
+            }
+
+        } catch (error) {
+            console.error("Failed to load custom items:", error);
+        }
+      };
+
+      loadCustomItems();
+      // Listen for storage changes from other components/tabs
+      window.addEventListener('storage', loadCustomItems);
+      return () => {
+          window.removeEventListener('storage', loadCustomItems);
+      };
   }, [loadAdventureState, toast]);
 
   React.useEffect(() => {
@@ -2588,170 +2621,49 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
         let generatedInventory: SellingItem[] = [];
         const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+        let sourcePool: BaseItem[] = [];
 
         if (buildingId === 'forgeron') {
-            const availableWeapons = BASE_WEAPONS.filter(item => activeUniverses.includes(item.universe));
-            const availableArmors = BASE_ARMORS.filter(item => activeUniverses.includes(item.universe));
-            const poiLevel = poi.level || 1;
-            const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
-            const usedBaseItemIds = new Set<string>();
-
-            const getRarityForLevel = (): BaseItem['rarity'] => {
-                const rand = Math.random() * 100;
-                if (poiLevel >= 6) return rand < 50 ? 'Légendaire' : 'Divin';
-                if (poiLevel === 5) return rand < 20 ? 'Rare' : rand < 60 ? 'Epique' : 'Légendaire';
-                if (poiLevel === 4) return rand < 40 ? 'Commun' : rand < 75 ? 'Rare' : 'Epique';
-                if (poiLevel === 3) return rand < 60 ? 'Commun' : rand < 90 ? 'Rare' : 'Epique';
-                if (poiLevel === 2) return rand < 80 ? 'Commun' : 'Rare';
-                return 'Commun';
-            };
-            
-            const getNextDie = (currentDie: number) => {
-                const diceProgression = [4, 6, 8, 10, 12, 20];
-                const currentIndex = diceProgression.indexOf(currentDie);
-                return currentIndex !== -1 && currentIndex < diceProgression.length - 1 ? diceProgression[currentIndex + 1] : currentDie;
-            };
-
-            const parseDamageString = (damage: string): { diceCount: number, diceType: number, bonus: number } => {
-                const match = damage.match(/(\d+)d(\d+)(?:\s*\+\s*(\d+))?/);
-                if (match) {
-                    return { diceCount: parseInt(match[1]), diceType: parseInt(match[2]), bonus: parseInt(match[3]) || 0 };
-                }
-                return { diceCount: 0, diceType: 0, bonus: 0 };
-            };
-
-            for (let i = 0; i < inventorySize; i++) {
-                const itemTypeToGenerate = i % 2 === 0 ? 'weapon' : 'armor';
-                let pool: BaseItem[] = itemTypeToGenerate === 'weapon' ? availableWeapons : availableArmors;
-                let eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
-                
-                if (eligibleItems.length === 0) {
-                     pool = itemTypeToGenerate === 'weapon' ? [...availableWeapons] : [...availableArmors];
-                     eligibleItems = pool.filter(item => !usedBaseItemIds.has(item.id));
-                     if(eligibleItems.length === 0) continue;
-                }
-
-                const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
-                usedBaseItemIds.add(baseItem.id);
-                
-                const rarity = getRarityForLevel();
-                let finalPrice = baseItem.baseGoldValue;
-                let finalDamage = baseItem.damage;
-                let finalAc = baseItem.ac;
-                let statBonuses: PlayerInventoryItem['statBonuses'] = {};
-                let rarityMultiplier = 1, acBonus = 0;
-
-                switch (rarity) {
-                    case 'Rare': rarityMultiplier = 5; acBonus = 1; break;
-                    case 'Epique': rarityMultiplier = 20; acBonus = 2; break;
-                    case 'Légendaire': rarityMultiplier = 50; acBonus = 3; break;
-                    case 'Divin': rarityMultiplier = 100; acBonus = 5; break;
-                }
-                finalPrice *= rarityMultiplier;
-
-                if (finalDamage) {
-                    let { diceCount, diceType, bonus } = parseDamageString(finalDamage);
-                    let damageDieTypeIncrease = 0, flatDamageBonus = 0;
-                    if (rarity === 'Rare') diceCount += 1;
-                    if (rarity === 'Epique') { diceCount += 1; damageDieTypeIncrease = 1; }
-                    if (rarity === 'Légendaire') { diceCount += 2; damageDieTypeIncrease = 1; }
-                    if (rarity === 'Divin') { diceCount += 2; damageDieTypeIncrease = 2; flatDamageBonus = 5; }
-                    
-                    for (let i = 0; i < damageDieTypeIncrease; i++) { diceType = getNextDie(diceType); }
-                    bonus += flatDamageBonus;
-                    
-                    finalDamage = `${diceCount}d${diceType}`;
-                    if (bonus > 0) finalDamage += `+${bonus}`;
-                }
-                
-                if (finalAc) {
-                    statBonuses.ac = acBonus;
-                }
-                
-                generatedInventory.push({
-                    baseItemId: baseItem.id,
-                    name: `${baseItem.name} ${rarity}`,
-                    description: baseItem.description,
-                    type: baseItem.type,
-                    damage: finalDamage,
-                    ac: finalAc,
-                    rarity: rarity,
-                    finalGoldValue: Math.ceil(finalPrice),
-                    statBonuses: Object.keys(statBonuses).length > 0 ? statBonuses : undefined,
-                });
-            }
+            sourcePool = [...allWeapons, ...allArmors];
         } else if (buildingId === 'bijoutier') {
-            const poiLevel = poi.level || 1;
-            const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
-            const usedBaseItemIds = new Set<string>();
-            
-            const jewelryPool = BASE_JEWELRY.filter(item => activeUniverses.includes(item.universe));
-
-            for (let i = 0; i < inventorySize; i++) {
-               const rarity = poiLevel >= 6 ? (Math.random() < 0.5 ? 'Légendaire' : 'Divin') :
-                   poiLevel === 5 ? (Math.random() < 0.2 ? 'Rare' : (Math.random() < 0.6 ? 'Epique' : 'Légendaire')) :
-                   poiLevel === 4 ? (Math.random() < 0.4 ? 'Commun' : (Math.random() < 0.75 ? 'Rare' : 'Epique')) :
-                   poiLevel === 3 ? (Math.random() < 0.6 ? 'Commun' : (Math.random() < 0.9 ? 'Rare' : 'Epique')) :
-                   poiLevel === 2 ? (Math.random() < 0.8 ? 'Commun' : 'Rare') :
-                   'Commun';
-
-               let eligibleItems = jewelryPool.filter(item => item.rarity === rarity && !usedBaseItemIds.has(item.id));
-               if (eligibleItems.length === 0) continue;
-               
-               const baseItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
-               if (baseItem) {
-                   const itemType = Math.random() < 0.5 ? 'Anneau' : 'Amulette';
-                   const finalName = baseItem.name.replace(/Amulette|Anneau/i, itemType).trim();
-                   usedBaseItemIds.add(baseItem.id);
-                   generatedInventory.push({
-                        baseItemId: baseItem.id,
-                        name: finalName,
-                        description: baseItem.description,
-                        type: 'jewelry',
-                        rarity: baseItem.rarity || 'Commun',
-                        finalGoldValue: baseItem.baseGoldValue,
-                        statBonuses: baseItem.statBonuses,
-                        effectType: baseItem.effectType,
-                    });
-               }
-            }
+            sourcePool = allJewelry;
         } else if (buildingId === 'magicien') {
-            const poiLevel = poi.level || 1;
-            const inventorySize = poiLevel >= 6 ? 10 : poiLevel === 5 ? 7 : poiLevel === 4 ? 6 : poiLevel === 3 ? 5 : poiLevel === 2 ? 4 : 3;
-            const usedBaseItemIds = new Set<string>();
+            sourcePool = allConsumables;
+        }
+        
+        const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
+        const poiLevel = poi.level || 1;
+        const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+        const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
+        const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
+        const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
+        const usedBaseItemIds = new Set<string>();
 
-            const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
-            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel >= 4 ? 4 : poiLevel >= 2 ? 3 : 2;
-
-            const consumablesInUniverse = allConsumables.filter(item => activeUniverses.includes(item.universe));
-
-            const availableConsumables = consumablesInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[item.rarity || 'Commun'];
-                return itemRarityValue <= maxRarityValue;
-            });
-            
+        if (availableItems.length > 0) {
             for (let i = 0; i < inventorySize; i++) {
-                 const availablePool = availableConsumables.filter(item => !usedBaseItemIds.has(item.id));
+                const availablePool = availableItems.filter(item => !usedBaseItemIds.has(item.id));
                 if (availablePool.length === 0) break;
                 
                 const baseItem = availablePool[Math.floor(Math.random() * availablePool.length)];
-                
-                if (baseItem) {
-                    usedBaseItemIds.add(baseItem.id);
-                    generatedInventory.push({
-                        baseItemId: baseItem.id,
-                        name: baseItem.name,
-                        description: baseItem.description,
-                        type: 'consumable',
-                        rarity: baseItem.rarity || 'Commun',
-                        finalGoldValue: baseItem.baseGoldValue,
-                        statBonuses: baseItem.statBonuses,
-                        effectType: baseItem.effectType,
-                        effectDetails: baseItem.effectDetails,
-                    });
-                }
+                if (!baseItem) continue;
+
+                usedBaseItemIds.add(baseItem.id);
+                generatedInventory.push({
+                    baseItemId: baseItem.id,
+                    name: baseItem.name,
+                    description: baseItem.description,
+                    type: baseItem.type,
+                    damage: baseItem.damage,
+                    ac: baseItem.ac,
+                    rarity: baseItem.rarity || 'Commun',
+                    finalGoldValue: baseItem.baseGoldValue,
+                    statBonuses: baseItem.statBonuses,
+                    effectType: baseItem.effectType,
+                    effectDetails: baseItem.effectDetails,
+                });
             }
         }
+        
         setMerchantInventory(generatedInventory);
         handleNarrativeUpdate(userActionText, 'user');
         await callGenerateAdventure(userActionText, locationIdOverride);
@@ -2800,7 +2712,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3566,3 +3478,4 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 }
 
     
+
