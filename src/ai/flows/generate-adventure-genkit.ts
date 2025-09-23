@@ -290,7 +290,6 @@ There are no special buildings or services in this location.
 {{else}}
 --- CURRENT LOCATION CONTEXT ---
 Player is currently travelling or in an unspecified location.
----
 {{/if}}
 
 {{#if merchantInventory.length}}
@@ -312,7 +311,7 @@ If the 'User Action' implies interaction with a specific service or building typ
     *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
     *   **If the required building ID IS found:** Proceed with the interaction.
         *   **Nocturnal Hunt Post (poste-chasse-nocturne):** The game system handles combat initiation for this. Your role is simply to narrate the appearance of the creature as the fight begins.
-        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers an exploration into a dangerous dungeon and a combat. DO NOT narrate a simple meeting with archaeologists. Instead, you MUST narrate the player entering a dangerous part of the dungeon and awakening a powerful creature. **You MUST randomly choose one of the following creatures to be the boss: 'Spectre des Profondeurs', 'Bête de pierre fossilisée', 'Liche Spectrale'.** The game engine will initiate combat based on this narrative. If the player WINS this specific combat, **you MUST determine the reward by rolling a d5 (a random number from 1 to 5) and award the corresponding item from the list below**. YOU MUST IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be purely random and mechanical. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
+        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers an exploration into a dangerous dungeon and a combat. The game engine initiates this. Your role is simply to narrate the player entering a dangerous part of the dungeon and awakening a powerful creature. **You MUST randomly choose one of the following creatures to be the boss: 'Spectre des Profondeurs', 'Bête de pierre fossilisée', 'Liche Spectrale'.** If the player WINS this specific combat, **you MUST determine the reward by rolling a d5 (a random number from 1 to 5) and award the corresponding item from the list below**. YOU MUST IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be purely random and mechanical. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
             *   **1 (Legendary Equipment):** Generate ONE legendary item (weapon or armor). Example: 'Lame des Abysses', 'Armure des Titans'. Populate 'itemsObtained'.
             *   **2 (Epic Equipment):** Generate ONE epic item. Example: 'Hache runique', 'Plastron en ébonite'. Populate 'itemsObtained'.
             *   **3 (Gold):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
@@ -392,3 +391,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    

@@ -102,7 +102,8 @@ function buildOpenRouterPrompt(
 **Règles importantes pour le JSON :**
 - Remplis chaque champ avec le type de donnée approprié (texte, nombre, tableau d'objets).
 - Si un champ n'a pas de contenu pertinent (par exemple, pas de nouveaux personnages), fournis un tableau vide \`[]\` ou une valeur par défaut (0 pour \`currencyGained\`, "" pour les textes). NE PAS utiliser \`null\`.
-- Les champs \`narrative\` et \`sceneDescriptionForImage\` doivent toujours contenir du texte.`;
+- Les champs \`narrative\` et \`sceneDescriptionForImage\` doivent toujours contenir du texte.
+- Le jeu gère la logique métier (combat, achats, etc.) en interne. Ton rôle est de narrer les événements. Ne tente pas d'initier des combats ou de manipuler l'inventaire directement.`;
 
     promptSections.unshift(mainInstruction);
 
@@ -343,3 +344,5 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    
