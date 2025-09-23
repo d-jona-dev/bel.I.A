@@ -109,7 +109,7 @@ export const BASE_CONSUMABLES: BaseItem[] = [
         universe: 'Médiéval-Fantastique',
         effectType: 'combat',
         effectDetails: { type: 'heal', amount: values[rarity] }
-      }
+      } as BaseItem
     }),
   
     // Fireball Scrolls
@@ -126,7 +126,7 @@ export const BASE_CONSUMABLES: BaseItem[] = [
         universe: 'Médiéval-Fantastique',
         effectType: 'combat',
         effectDetails: { type: 'damage_single', amount: values[rarity] }
-      }
+      } as BaseItem
     }),
   
     // Wind Scrolls
@@ -143,7 +143,7 @@ export const BASE_CONSUMABLES: BaseItem[] = [
         universe: 'Médiéval-Fantastique',
         effectType: 'combat',
         effectDetails: { type: 'damage_all', amount: values[rarity] }
-      }
+      } as BaseItem
     }),
 ];
     
