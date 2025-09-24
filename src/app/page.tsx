@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -828,7 +829,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
     // Handle end of combat rewards
     if (updates.combatEnded) {
         let lootMessage = "Le combat est terminé ! ";
-        let newLootItems: PlayerInventoryItem[] = [];
+        let newLootItems: LootedItem[] = [];
 
         if (updates.expGained && updates.expGained > 0) {
             lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
@@ -836,20 +837,17 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
         }
         if (updates.currencyGained && updates.currencyGained > 0) {
              lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
-             setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) + updates.currencyGained!}));
+             addCurrencyToPlayer(updates.currencyGained);
         }
         if (updates.itemsObtained && updates.itemsObtained.length > 0) {
              newLootItems = updates.itemsObtained.map(item => ({
-                id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
-                name: item.itemName,
+                itemName: item.itemName,
                 quantity: item.quantity,
                 description: item.description,
                 effect: item.effect,
-                type: item.itemType,
+                itemType: item.itemType,
                 goldValue: item.goldValue,
-                statBonuses: item.statBonuses,
-                generatedImageUrl: null,
-                isEquipped: false,
+                statBonuses: item.statBonuses
             }));
         }
 
@@ -865,7 +863,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
         setActiveCombat(updates.nextActiveCombatState);
     }
 
-  }, [handleNarrativeUpdate]);
+  }, [handleNarrativeUpdate, addCurrencyToPlayer]);
   
   const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
     if (!changes || changes.length === 0) return;
@@ -3635,5 +3633,3 @@ const resolveCombatTurn = React.useCallback(
     </>
   );
 }
-
-    
