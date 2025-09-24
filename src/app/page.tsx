@@ -2752,7 +2752,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
     } else {
         if (action === 'upgrade') {
-            const isPlayerOwned = poi.ownerId === playerId;
+            const isPlayerOwned = poi.ownerId === PLAYER_ID;
             const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
@@ -2790,7 +2790,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
 
         } else if (action === 'collect') {
-            if (poi.ownerId !== playerId) {
+            if (poi.ownerId !== PLAYER_ID) {
                 setTimeout(() => {
                     toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
                 }, 0);
@@ -3093,7 +3093,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi || poi.ownerId !== playerId) {
+    if (!poi || poi.ownerId !== PLAYER_ID) {
         toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
         return;
     }
