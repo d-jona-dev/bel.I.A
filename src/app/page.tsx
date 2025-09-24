@@ -2612,7 +2612,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     const bonusType = statTypes[Math.floor(Math.random() * statTypes.length)];
     const bonusValue = bonusValues[rarity] || 1;
     const bonusName = statNames[bonusType as keyof typeof statNames] || bonusType;
-    let description = `+${bonusValue} en ${bonusName}`;
+    let description = `+X en ${bonusName}`;
 
     return {
         type: bonusType,
@@ -2750,33 +2750,35 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             setNocturnalHuntReward(newFamiliarReward);
             
             userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
-        }
-
-        else {
+        } else {
             let generatedInventory: SellingItem[] = [];
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
-            
             let sourcePool: BaseItem[] = [];
-            if (buildingId === 'forgeron') {
-                sourcePool = [...allWeapons, ...allArmors];
-            } else if (buildingId === 'bijoutier') {
-                sourcePool = allJewelry;
-            } else if (buildingId === 'magicien') {
-                sourcePool = allConsumables;
+
+            switch (buildingId) {
+                case 'forgeron':
+                    sourcePool = [...allWeapons, ...allArmors];
+                    break;
+                case 'bijoutier':
+                    sourcePool = allJewelry;
+                    break;
+                case 'magicien':
+                    sourcePool = allConsumables;
+                    break;
             }
-            
+
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             
             const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
             const inventoryConfig = {
-                1: { size: 3, minRarity: 1, maxRarity: 1 }, // Commun
-                2: { size: 4, minRarity: 1, maxRarity: 2 }, // Commun -> Rare
-                3: { size: 5, minRarity: 1, maxRarity: 3 }, // Commun -> Epique
-                4: { size: 6, minRarity: 1, maxRarity: 4 }, // Commun -> Légendaire
-                5: { size: 7, minRarity: 1, maxRarity: 5 }, // Commun -> Divin
-                6: { size: 10, minRarity: 4, maxRarity: 5 } // Légendaire -> Divin
+                1: { size: 3, minRarity: 1, maxRarity: 1 },
+                2: { size: 4, minRarity: 1, maxRarity: 2 },
+                3: { size: 5, minRarity: 1, maxRarity: 3 },
+                4: { size: 6, minRarity: 1, maxRarity: 4 },
+                5: { size: 7, minRarity: 1, maxRarity: 5 },
+                6: { size: 10, minRarity: 4, maxRarity: 5 }
             };
 
             const config = inventoryConfig[poiLevel as keyof typeof inventoryConfig] || inventoryConfig[1];
@@ -2787,15 +2789,15 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             });
             
             const usedBaseItemIds = new Set<string>();
+            let safetyBreak = 0;
 
             if (availableItems.length > 0) {
-                for (let i = 0; i < config.size; i++) {
+                while (generatedInventory.length < config.size && safetyBreak < 100) {
                     const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)];
                     if (!baseItem || usedBaseItemIds.has(baseItem.id)) {
-                        i--; // try again
+                        safetyBreak++;
                         continue;
-                    };
-
+                    }
                     usedBaseItemIds.add(baseItem.id);
                     generatedInventory.push({
                         baseItemId: baseItem.id,
@@ -3611,4 +3613,3 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     </>
   );
 }
-
