@@ -936,7 +936,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
 
 }, [toast, characters, adventureSettings.playerName]);
 
-  const resolveCombatTurn = React.useCallback(
+const resolveCombatTurn = React.useCallback(
     (
       currentCombatState: ActiveCombat,
       settings: AdventureSettings,
@@ -2747,8 +2747,8 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
             
             userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
         } else {
-            let sourcePool: BaseItem[];
-            switch (buildingId) {
+             let sourcePool: BaseItem[];
+             switch (buildingId) {
                 case 'forgeron':
                     sourcePool = [...allWeapons, ...allArmors];
                     break;
@@ -2777,8 +2777,8 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
                 2: { size: 4, minRarity: 1, maxRarity: 2 },
                 3: { size: 5, minRarity: 1, maxRarity: 3 },
-                4: { size: 6, minRarity: 1, maxRarity: 4 },
-                5: { size: 7, minRarity: 1, maxRarity: 5 },
+                4: { size: 6, minRarity: 2, maxRarity: 4 },
+                5: { size: 7, minRarity: 3, maxRarity: 5 },
                 6: { size: 10, minRarity: 4, maxRarity: 5 }
             };
 
@@ -2835,7 +2835,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
             const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
-            const canAfford = upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
+            const canAfford = isUpgradable && canAfford;
 
             if (!isUpgradable || !canAfford) {
                  setTimeout(() => {
@@ -3350,7 +3350,11 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
             throw new Error(result.error);
         }
     } catch (error) {
-        toast({ title: "Erreur de Génération", description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+        toast({
+            title: "Erreur de Génération",
+            description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
+            variant: "destructive"
+        });
     } finally {
         setIsGeneratingCover(false);
     }
@@ -3621,3 +3625,6 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
     </>
   );
 }
+
+
+    
