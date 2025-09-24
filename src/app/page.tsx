@@ -830,6 +830,18 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
     if (updates.combatEnded) {
         let lootMessage = "Le combat est terminé ! ";
         let newLootItems: LootedItem[] = [];
+        
+        const itemsFromText = (updates.lootItemsText || "")
+            .split(',')
+            .map(name => name.trim())
+            .filter(name => name)
+            .map(name => ({
+                itemName: name,
+                quantity: 1,
+                description: `Un objet obtenu: ${name}`,
+                itemType: 'misc',
+                goldValue: 1,
+            } as LootedItem));
 
         if (updates.expGained && updates.expGained > 0) {
             lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
@@ -840,15 +852,10 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
              addCurrencyToPlayer(updates.currencyGained);
         }
         if (updates.itemsObtained && updates.itemsObtained.length > 0) {
-             newLootItems = updates.itemsObtained.map(item => ({
-                itemName: item.itemName,
-                quantity: item.quantity,
-                description: item.description,
-                effect: item.effect,
-                itemType: item.itemType,
-                goldValue: item.goldValue,
-                statBonuses: item.statBonuses
-            }));
+             newLootItems.push(...updates.itemsObtained);
+        }
+        if (itemsFromText.length > 0) {
+             newLootItems.push(...itemsFromText);
         }
 
         if (lootMessage.trim() !== "Le combat est terminé!") {
@@ -981,7 +988,7 @@ const resolveCombatTurn = React.useCallback(
                     targetAC = allyData?.armorClass ?? 10;
                 }
     
-                if (totalAttack >= totalAttack) {
+                if (totalAttack >= targetAC) {
                     const damage = getDamage(enemyData?.damageBonus);
                     target.currentHp = Math.max(0, target.currentHp - damage);
                     turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
@@ -1002,7 +1009,6 @@ const resolveCombatTurn = React.useCallback(
         let expGained = 0;
         let currencyGained = 0;
         let itemsObtained: LootedItem[] = [];
-        let lootItemsText = "";
   
         if (isCombatOver && allEnemiesDefeated) {
             updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
@@ -1039,7 +1045,6 @@ const resolveCombatTurn = React.useCallback(
             expGained: expGained,
             currencyGained: currencyGained,
             itemsObtained: itemsObtained,
-            lootItemsText: lootItemsText,
             turnNarration: turnLog.join('\n'), // For AI context
             nextActiveCombatState: {
                 ...currentCombatState,
@@ -1078,7 +1083,7 @@ const resolveCombatTurn = React.useCallback(
     if (liveCombat?.isActive) {
         const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
         internalCombatUpdates = combatResult.combatUpdates;
-        liveCombat = combatResult.nextCombatState;
+        liveCombat = combatResult.nextActiveCombatState;
         turnLog = combatResult.turnLog;
         conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
@@ -1122,7 +1127,7 @@ const resolveCombatTurn = React.useCallback(
         playerCurrentMp: liveSettings.playerCurrentMp,
         playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
         playerCurrentExp: liveSettings.playerCurrentExp,
-        playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
+        playerExpToNextLevel: liveSettings.playerExpToNextLevel,
         playerStrength: effectiveStatsThisTurn.playerStrength,
         playerDexterity: effectiveStatsThisTurn.playerDexterity,
         playerConstitution: effectiveStatsThisTurn.playerConstitution,
@@ -1658,7 +1663,7 @@ const resolveCombatTurn = React.useCallback(
                            itemActionSuccessful = false;
                            return prevSettings;
                         }
-                    } else if (itemToUpdate.description?.toLowerCase().includes('familier')) {
+                    } else if (itemToUpdate.description?.toLowerCase().includes('familier') || itemToUpdate.name.toLowerCase().includes('crocs de') || itemToUpdate.name.toLowerCase().includes('griffe de')) {
                          handleUseFamiliarItem(itemToUpdate);
                          narrativeAction = "";
                          effectAppliedMessage = "";
@@ -2119,7 +2124,7 @@ const resolveCombatTurn = React.useCallback(
                  playerCurrentMp: currentTurnSettings.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
-                 playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
+                 playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
                  playerDexterity: effectiveStatsThisTurn.playerDexterity,
                  playerConstitution: currentTurnSettings.playerConstitution,
@@ -2168,7 +2173,7 @@ const resolveCombatTurn = React.useCallback(
                            effect: item.effect,
                            type: item.itemType,
                            goldValue: item.goldValue,
-                           statBonuses,
+                           statBonuses: item.statBonuses,
                            generatedImageUrl: null,
                            isEquipped: false,
                         })),
@@ -2701,7 +2706,7 @@ const resolveCombatTurn = React.useCallback(
                 details: "Une créature de la nuit, nimbée d'une lueur éthérée.",
                 isHostile: true,
                 level: creature.level, hitPoints: creature.hp, maxHitPoints: creature.hp,
-                armorClass: creature.ac, attackBonus: creature.attack, damage: '1d8+2',
+                armorClass: creature.ac, attackBonus: creature.attack, damageBonus: '1d8+2',
                 locationId: poi.id,
             };
              setCharacters(prev => [...prev, tempEnemyCharacter]);
@@ -3633,3 +3638,6 @@ const resolveCombatTurn = React.useCallback(
     </>
   );
 }
+
+
+    

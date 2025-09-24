@@ -1,4 +1,5 @@
 
+
 'use server';
 
 /**
@@ -304,39 +305,21 @@ Player is currently travelling or in an unspecified location.
 User Action (from {{playerName}}): {{{userAction}}}
 
 **CRITICAL RULE: BUILDING AND SERVICE AVAILABILITY CHECK:**
-If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit', 'Je visite le bijoutier', 'Je vais au marché aux esclaves', 'Je visite la ménagerie', 'Je visite le poste de chasse nocturne', 'Je visite l'équipe d'archéologues'):
-*   **STEP 1: Identify Required Building.** Determine the required building ID (e.g., 'forgeron', 'auberge', 'quartier-esclaves', 'menagerie', 'poste-chasse-nocturne', 'equipe-archeologues').
-*   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section above.** Check if the required building ID is listed under 'Available Services'.
+If the 'User Action' implies interaction with a specific service or building type (e.g., 'Je vais chez le forgeron', 'Je cherche une auberge pour la nuit'):
+*   **STEP 1: Identify Required Building.** Determine the building ID from the user action (e.g., 'forgeron', 'auberge', etc.).
+*   **STEP 2: Check for Building.** **You MUST strictly refer to the 'CURRENT LOCATION CONTEXT' section.** Check if the required building ID is listed under 'Available Services'.
 *   **STEP 3: Respond.**
-    *   **If the required building ID IS NOT found:** You MUST state that the service is unavailable and why. For example: 'Il n'y a pas de forgeron ici à Bourgenval.', 'Vous ne trouvez aucune auberge dans ce village.' Then, stop. Do not proceed to narrate the interaction.
-    *   **If the required building ID IS found:** Proceed with the interaction.
-        *   **Nocturnal Hunt Post (poste-chasse-nocturne):** The game system handles combat initiation for this. Your role is simply to narrate the appearance of the creature as the fight begins.
-        *   **Archaeology Team (equipe-archeologues):** If the user action is specifically to visit this team, this action IMPERATIVELY triggers an exploration into a dangerous dungeon and a combat. The game engine initiates this. Your role is simply to narrate the player entering a dangerous part of the dungeon and awakening a powerful creature. **You MUST randomly choose one of the following creatures to be the boss: 'Spectre des Profondeurs', 'Bête de pierre fossilisée', 'Liche Spectrale'.** If the player WINS this specific combat, **you MUST determine the reward by rolling a d5 (a random number from 1 to 5) and award the corresponding item from the list below**. YOU MUST IGNORE ANY THEMATIC LINK between the creature and the reward; the choice must be purely random and mechanical. YOU MUST IMMEDIATELY place the reward in the appropriate structured output field. Narrate that the player finds and takes this reward. DO NOT make the player take another action to get the reward.
-            *   **1 (Legendary Equipment):** Generate ONE legendary item (weapon or armor). Example: 'Lame des Abysses', 'Armure des Titans'. Populate 'itemsObtained'.
-            *   **2 (Epic Equipment):** Generate ONE epic item. Example: 'Hache runique', 'Plastron en ébonite'. Populate 'itemsObtained'.
-            *   **3 (Gold):** Grant a large sum of gold between 1000 and 5000. Populate 'currencyGained'.
-            *   **4 (Ancient Scroll):** Grant a single-use quest item named 'Parchemin Ancien'. Its description should be a powerful, unique spell (e.g., 'Invocation de Golem de Pierre', 'Pluie de Météores'). Populate 'itemsObtained'.
-            *   **5 (Lost Familiar):** Generate a new familiar from the depths (e.g., 'Chauve-souris des Cavernes', 'Araignée de Cristal Géante'). Populate 'newFamiliars'.
-        *   **Merchant Interaction (forgeron, bijoutier, magicien):** If the user is visiting a merchant, you MUST create a unique NPC merchant for this interaction if one is not already present. Narrate the encounter with this merchant. **You must then simply state that the merchant displays their wares.** DO NOT list the items in the narrative text. DO NOT populate \`itemsObtained\` field in the JSON response, the game system handles this.
-        *   **Resting (auberge):** If the user rests, narrate it. Set 'currencyGained' to -10 (the cost of the room). This should fully restore HP and MP.
-        *   **Healing (poste-guerisseur):** Narrate the healing. This is for narrative flavor, the mechanical healing from using items is handled elsewhere.
-        *   **Slave Market (quartier-esclaves):** If the user is visiting the slave market, **you MUST create 1 to 3 unique NPCs for sale**. Each NPC MUST have a name, a brief description (e.g., 'Guerrier vétéran', 'Mage agile'), a character class, and a price in Gold Pieces. Present them in the format: 'NOM (CLASSE - DESCRIPTION) : PRIX Pièces d'Or'.
-        *   **Ménagerie (menagerie):** If the user is visiting a menagerie, you MUST create a unique NPC handler/owner. Narrate the encounter. Then, you MUST generate a list of 1-3 unique **familiars for sale**. The rarity of the familiar (common, uncommon, rare, epic, legendary) and its associated bonus MUST depend on the **'Location Level'**.
-            *   **MANDATORY FAMILIAR RARITY/QUALITY TIERS (BY LOCATION LEVEL):**
-            *   **Level 1-2:** 'Common'. Basic creatures (e.g., Chat de ferme, Chien loyal). Bonus is simple (e.g., +1 à une stat).
-            *   **Level 3-4:** 'Uncommon' or 'Rare'. More capable creatures (e.g., Loup des neiges, Faucon dressé, Familier élémentaire mineur). Bonus is more significant (e.g., +3 à une stat, +5% d'or trouvé).
-            *   **Level 5-6:** 'Epic' or 'Legendary'. Powerful, mythical creatures (e.g., Bébé dragon, Golem runique, Phénix naissant). Bonus is strong and unique (e.g., +5 à toutes les stats, régénération de PM).
-            *   **CRITICAL:** The item for sale MUST be the familiar itself, NOT a container. The item name should be the familiar's name (e.g., 'Bébé Griffon'). The item's description and effect MUST detail the familiar's rarity and passive bonus. For example, for a 'Chat de Ferme' item, its description could be 'Un familier de type Chat de ferme. Rareté: common.' and its effect could be 'Bonus passif : +1 en Dextérité.'. The item's type must be 'misc'.
-            *   The items MUST be presented in the format: 'NOM_ARTICLE : PRIX Pièces d'Or'. The price MUST reflect the rarity.
+    *   **If the building IS NOT found:** You MUST state that the service is unavailable. For example: 'Il n'y a pas de forgeron ici à Bourgenval.' Do not proceed.
+    *   **If the building IS found:** Proceed with the interaction. The game system handles combat initiation, item rewards, and transactions. Your role is purely to narrate the encounter and dialogue.
+        *   **Merchant (forgeron, bijoutier, etc.):** Create a unique NPC merchant if one isn't present. Narrate the encounter and state that the merchant displays their wares. DO NOT list items.
+        *   **Other services (poste-chasse-nocturne, equipe-archeologues, auberge, etc.):** Narrate the interaction based on the user's action. The game will handle any special mechanics (like starting a fight or giving a reward).
 
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. 
     *   **If 'activeCombat.isActive' is true:** Narrate the turn based on the \`userAction\` which is a turn log.
     *   **If NOT in combat AND rpgModeActive is true:**
-        *   **Player Buying Item:** If userAction indicates buying an item (e.g., "J'achète la Potion"), the transaction is handled by the game system. Simply narrate the successful purchase. The game will automatically deduct gold and add the item. Do NOT set \`currencyGained\` or \`itemsObtained\`.
-        *   **Player Buying NPC from Slave Market:** If userAction indicates buying an NPC, check affordability. If yes, narrate, create the NPC in \`newCharacters\` with \`isAlly: true\`, and set \`currencyGained\` to the NEGATIVE price.
-        *   **Player Selling to Merchant/NPC:** Narrate the transaction. The game system handles inventory/gold changes. Do NOT set \`currencyGained\` or \`itemsObtained\`.
+        *   **Player Buying/Selling:** If userAction indicates buying or selling, simply narrate the successful transaction. The game system handles all inventory and gold changes. Do NOT set \`currencyGained\` or \`itemsObtained\`.
 
 2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in \`newCharacters\`. Include name, details, portraitUrl, biographyNotes, and \`initialHistoryEntry\`. If RPG mode, set \`isHostile\` and base stats. If bought, set \`isAlly: true\`. If relations mode, set \`initialRelations\`.
 
@@ -356,7 +339,7 @@ Tasks:
 8.  **Time Update:** Suggest a new event description in 'updatedTime.newEvent' if the context has changed significantly.
 {{/if}}
 
-**VERY IMPORTANT: You are no longer responsible for calculating combat outcomes. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` in your JSON response.**
+**VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. Do NOT include any JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the structured data.]
@@ -391,5 +374,7 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    
 
     

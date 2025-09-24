@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { GenerateAdventureInput, GenerateAdventureFlowOutput } from '@/types';
@@ -94,8 +95,7 @@ function buildOpenRouterPrompt(
     ],
     "relationUpdates": [],
     "itemsObtained": [],
-    "currencyGained": 0,
-    "lootItemsText": "Épée rouillée, Potion de soin"
+    "currencyGained": 0
 }
 \`\`\`
 
@@ -103,7 +103,7 @@ function buildOpenRouterPrompt(
 - Remplis chaque champ avec le type de donnée approprié (texte, nombre, tableau d'objets).
 - Si un champ n'a pas de contenu pertinent (par exemple, pas de nouveaux personnages), fournis un tableau vide \`[]\` ou une valeur par défaut (0 pour \`currencyGained\`, "" pour les textes). NE PAS utiliser \`null\`.
 - Les champs \`narrative\` et \`sceneDescriptionForImage\` doivent toujours contenir du texte.
-- Le jeu gère la logique métier (combat, achats, etc.) en interne. Ton rôle est de narrer les événements. Ne tente pas d'initier des combats ou de manipuler l'inventaire directement.`;
+- Le jeu gère la logique métier (combat, achats, récompenses, etc.) en interne. Ton rôle est de narrer les événements. N'invente pas de récompenses ou de changements de statistiques.`;
 
     promptSections.unshift(mainInstruction);
 
@@ -345,4 +345,5 @@ export async function generateAdventureWithOpenRouter(
     }
 }
 
+    
     

@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { GenerateAdventureInput, GenerateAdventureFlowOutput } from '@/types';
@@ -28,7 +29,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     let mainInstruction = `You are an interactive fiction engine. Your task is to generate the continuation of the story based on the provided context. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object that adheres to the following Zod schema. Do NOT provide any text outside the JSON object. Do not wrap the JSON in quotes or markdown backticks.`;
     
     // We are now removing the detailed rules from the prompt as they are handled by the main app logic
-    mainInstruction += "\nFocus on narrative and character consistency.";
+    mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
 
     const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
 
@@ -104,4 +105,5 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
     }
 }
 
+    
     
