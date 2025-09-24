@@ -478,29 +478,16 @@ export default function Home() {
   const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
   const [isTargeting, setIsTargeting] = React.useState(false);
 
-  const handleToggleAestheticFont = React.useCallback(() => {
-    const newFontState = !useAestheticFont;
-    setUseAestheticFont(newFontState);
-    toast({
-        title: "Police de la carte changée",
-        description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
+  const addCurrencyToPlayer = React.useCallback((amount: number) => {
+    setAdventureSettings(prevSettings => {
+        if (!prevSettings.rpgMode) return prevSettings;
+        let currentGold = prevSettings.playerGold ?? 0;
+        let newGold = currentGold + amount;
+        if (newGold < 0) newGold = 0;
+        return { ...prevSettings, playerGold: newGold };
     });
-  }, [useAestheticFont, toast]);
-
-  const onUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setComicDraft(prev => prev.map((page, pIndex) => {
-            if (pIndex !== pageIndex) return page;
-            const newPanels = page.panels.map((panel, paIndex) => 
-                paIndex === panelIndex ? { ...panel, imageUrl } : panel
-            );
-            return { ...page, panels: newPanels };
-        }));
-    };
-    reader.readAsDataURL(file);
   }, []);
+
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -528,16 +515,7 @@ export default function Home() {
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
-  const addCurrencyToPlayer = React.useCallback((amount: number) => {
-    setAdventureSettings(prevSettings => {
-        if (!prevSettings.rpgMode) return prevSettings;
-        let currentGold = prevSettings.playerGold ?? 0;
-        let newGold = currentGold + amount;
-        if (newGold < 0) newGold = 0;
-        return { ...prevSettings, playerGold: newGold };
-    });
-  }, []);
-  
+   
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
     if (!newChars || newChars.length === 0) return;
 
@@ -814,6 +792,7 @@ export default function Home() {
         return { ...prevSettings, familiars: updatedFamiliars };
     });
 }, [toast]);
+
 const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
@@ -887,6 +866,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
     }
 
   }, [handleNarrativeUpdate]);
+  
   const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
     if (!changes || changes.length === 0) return;
 
@@ -1078,7 +1058,7 @@ const resolveCombatTurn = React.useCallback(
         };
     }, [baseCharacters, nocturnalHuntRewardItem]);
 
-   const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
+    const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
       setIsLoading(true);
     });
@@ -1504,9 +1484,22 @@ const resolveCombatTurn = React.useCallback(
     }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage, toast]);
     
     React.useEffect(() => {
-        fetchInitialSkill();
+      const callFetchInitialSkill = async () => {
+        await fetchInitialSkill();
+      };
+      if (typeof window !== 'undefined') {
+        callFetchInitialSkill();
+      }
     }, [fetchInitialSkill]);
 
+    const handleToggleAestheticFont = React.useCallback(() => {
+        const newFontState = !useAestheticFont;
+        setUseAestheticFont(newFontState);
+        toast({
+            title: "Police de la carte changée",
+            description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
+        });
+      }, [useAestheticFont, toast]);
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
@@ -2177,7 +2170,7 @@ const resolveCombatTurn = React.useCallback(
                            effect: item.effect,
                            type: item.itemType,
                            goldValue: item.goldValue,
-                           statBonuses: item.statBonuses,
+                           statBonuses,
                            generatedImageUrl: null,
                            isEquipped: false,
                         })),
@@ -2245,7 +2238,7 @@ const resolveCombatTurn = React.useCallback(
                        if (charToUpdate.level === undefined) charToUpdate.level = 1;
                        if (charToUpdate.currentExp === undefined) charToUpdate.currentExp = 0;
                        if (charToUpdate.expToNextLevel === undefined || charToUpdate.expToNextLevel <= 0) {
-                           charToUpdate.expToNextLevel = Math.floor(100 * Math.pow(1.5, (charToUpdate.level || 1) - 1));
+                           charToUpdate.expToNextLevel = Math.floor(100 * Math.pow(1.5, ((charToUpdate.level ?? 1) || 1) - 1));
                        }
                        if (charToUpdate.initialAttributePoints === undefined) {
                            charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
@@ -2669,7 +2662,7 @@ const resolveCombatTurn = React.useCallback(
                 currentHp: c.hitPoints!,
                 maxHp: c.maxHitPoints!,
                 currentMp: c.manaPoints,
-                maxMp: c.maxManaPoints,
+                maxMp: c.manaPoints,
                 team: 'enemy',
                 isDefeated: false,
                 statusEffects: c.statusEffects || [],
@@ -2710,7 +2703,7 @@ const resolveCombatTurn = React.useCallback(
                 details: "Une créature de la nuit, nimbée d'une lueur éthérée.",
                 isHostile: true,
                 level: creature.level, hitPoints: creature.hp, maxHitPoints: creature.hp,
-                armorClass: creature.ac, attackBonus: creature.attack, damageBonus: creature.damage,
+                armorClass: creature.ac, attackBonus: creature.attack, damage: '1d8+2',
                 locationId: poi.id,
             };
              setCharacters(prev => [...prev, tempEnemyCharacter]);
@@ -2778,7 +2771,7 @@ const resolveCombatTurn = React.useCallback(
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             
-            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+            const rarityOrder: { [key: string]: number } = { 'commun': 1, 'rare': 2, 'epique': 3, 'légendaire': 4, 'divin': 5 };
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -2790,9 +2783,9 @@ const resolveCombatTurn = React.useCallback(
             };
 
             const config = inventoryConfig[poiLevel] || inventoryConfig[1];
-
+            
             const availableItems = itemsInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[item.rarity || 'Commun'] || 1;
+                const itemRarityValue = rarityOrder[item.rarity?.toLowerCase() || 'commun'] || 1;
                 return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
             });
             
@@ -3338,7 +3331,6 @@ const resolveCombatTurn = React.useCallback(
         });
     }, []);
 
-
     
   const handleGenerateCover = React.useCallback(async () => {
     setIsGeneratingCover(true);
@@ -3580,7 +3572,18 @@ const resolveCombatTurn = React.useCallback(
       onMapImageUpload={handleMapImageUpload}
       onMapImageUrlChange={handleMapImageUrlChange}
       onAddPoiToMap={handleAddPoiToMap}
-      onUploadToComicPanel={onUploadToComicPanel}
+      onUploadToComicPanel={(pageIndex, panelIndex, file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const url = e.target?.result as string;
+            setComicDraft(prev => prev.map((p, i) => 
+                i === pageIndex 
+                ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
+                : p
+            ));
+        };
+        reader.readAsDataURL(file);
+      }}
       isLoading={isUiLocked}
       onSaveToLibrary={handleSaveToLibrary}
       aiConfig={aiConfig}
@@ -3633,16 +3636,4 @@ const resolveCombatTurn = React.useCallback(
   );
 }
 
-
     
-    
-
-
-
-    
-
-    
-
-    
-
-
