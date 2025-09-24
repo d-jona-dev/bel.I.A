@@ -21,7 +21,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
-import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
+import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS } from "@/lib/items";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1104,12 +1104,9 @@ const resolveCombatTurn = React.useCallback(
         conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
 
-        // If the combat ended in victory, and there's a pending reward (from nocturnal hunt)
-        if(internalCombatUpdates.combatEnded && internalCombatUpdates.updatedCombatants?.every(c => c.team === 'player' || c.isDefeated)) {
-            if (nocturnalHuntReward) {
-                handleNewFamiliar(nocturnalHuntReward);
-                setNocturnalHuntReward(null); // Clear the pending reward
-            }
+        if(internalCombatUpdates.combatEnded && internalCombatUpdates.updatedCombatants?.every(c => c.team === 'player' || c.isDefeated) && nocturnalHuntReward) {
+            handleNewFamiliar(nocturnalHuntReward);
+            setNocturnalHuntReward(null);
         }
     }
 
@@ -1445,7 +1442,7 @@ const resolveCombatTurn = React.useCallback(
       };
   }, [loadAdventureState, toast]);
 
-    const fetchInitialSkill = async () => {
+    const fetchInitialSkill = React.useCallback(async () => {
       if (
         adventureSettings.rpgMode &&
         adventureSettings.playerLevel === 1 &&
@@ -1507,11 +1504,11 @@ const resolveCombatTurn = React.useCallback(
           setIsLoadingInitialSkill(false);
         }
       }
-    };
+    }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage, toast]);
+    
     React.useEffect(() => {
         fetchInitialSkill();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage]);
+    }, [fetchInitialSkill]);
 
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
@@ -2747,8 +2744,8 @@ const resolveCombatTurn = React.useCallback(
             
             userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
         } else {
-             let sourcePool: BaseItem[];
-             switch (buildingId) {
+            let sourcePool: BaseItem[];
+            switch (buildingId) {
                 case 'forgeron':
                     sourcePool = [...allWeapons, ...allArmors];
                     break;
@@ -2771,7 +2768,7 @@ const resolveCombatTurn = React.useCallback(
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             
-            const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -3628,3 +3625,13 @@ const resolveCombatTurn = React.useCallback(
 
 
     
+    
+
+
+
+    
+
+    
+
+    
+
