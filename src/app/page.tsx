@@ -478,6 +478,7 @@ export default function Home() {
   // NEW: State for item targeting in combat
   const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
   const [isTargeting, setIsTargeting] = React.useState(false);
+  const [isNocturnalHuntVictory, setIsNocturnalHuntVictory] = React.useState(false);
 
   const addCurrencyToPlayer = React.useCallback((amount: number) => {
     setAdventureSettings(prevSettings => {
@@ -491,7 +492,7 @@ export default function Home() {
 
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
-           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+           id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
            name: item.itemName,
            quantity: item.quantity,
            description: item.description,
@@ -926,11 +927,13 @@ const resolveCombatTurn = React.useCallback(
         turnLog: string[];
         combatUpdates: CombatUpdatesSchema;
         conquestHappened: boolean;
+        isNocturnalHuntVictory: boolean;
     } => {
         let turnLog: string[] = [];
         let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
         const effectivePlayerStats = calculateEffectiveStats(settings);
         let conquestHappened = false;
+        let nocturnalHuntVictory = false;
     
         const getDamage = (damageBonus: string | undefined): number => {
             if (!damageBonus) return 1;
@@ -1016,14 +1019,12 @@ const resolveCombatTurn = React.useCallback(
                 if (enemyData) {
                     expGained += (enemyData.level || 1) * 10;
                     currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
+                     if (enemy.characterId.startsWith('nocturnal-')) {
+                        nocturnalHuntVictory = true; // Signal the specific victory
+                    }
                 }
             });
 
-            if (nocturnalHuntRewardItem) {
-                itemsObtained.push(nocturnalHuntRewardItem);
-                setNocturnalHuntRewardItem(null); // Consume the reward
-            }
-            
             turnLog.push(`Victoire!`);
             
             if(currentCombatState.contestedPoiId) {
@@ -1058,6 +1059,7 @@ const resolveCombatTurn = React.useCallback(
             turnLog,
             combatUpdates,
             conquestHappened,
+            isNocturnalHuntVictory: nocturnalHuntVictory,
         };
     }, [baseCharacters, nocturnalHuntRewardItem]);
 
@@ -1072,6 +1074,7 @@ const resolveCombatTurn = React.useCallback(
     let turnLog: string[] = [];
     let internalCombatUpdates: CombatUpdatesSchema | undefined;
     let conquestHappened = false;
+    let nocturnalHuntVictory = false;
 
     if (locationIdOverride) {
         liveSettings.playerLocationId = locationIdOverride;
@@ -1083,9 +1086,10 @@ const resolveCombatTurn = React.useCallback(
     if (liveCombat?.isActive) {
         const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
         internalCombatUpdates = combatResult.combatUpdates;
-        liveCombat = combatResult.nextActiveCombatState;
+        liveCombat = combatResult.nextCombatState;
         turnLog = combatResult.turnLog;
         conquestHappened = combatResult.conquestHappened;
+        nocturnalHuntVictory = combatResult.isNocturnalHuntVictory;
         handleCombatUpdates(internalCombatUpdates);
 
     }
@@ -1178,7 +1182,12 @@ const resolveCombatTurn = React.useCallback(
                         goldValue: 1,
                     } as LootedItem));
 
-                const finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
+                let finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
+                
+                if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                    finalLoot.push(nocturnalHuntRewardItem);
+                    setNocturnalHuntRewardItem(null);
+                }
                 
                 handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
 
@@ -1220,7 +1229,7 @@ const resolveCombatTurn = React.useCallback(
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
       handleNarrativeUpdate, handleNewCharacters, handleNewFamiliar, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange, handleCombatUpdates,
-      adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate, baseCharacters, merchantInventory
+      adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate, baseCharacters, merchantInventory, nocturnalHuntRewardItem
   ]);
 
   const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -2166,7 +2175,7 @@ const resolveCombatTurn = React.useCallback(
                         timestamp: Date.now(),
                         sceneDescription: result.sceneDescriptionForImage,
                         loot: (result.itemsObtained || []).map(item => ({
-                           id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                           id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
                            name: item.itemName,
                            quantity: item.quantity,
                            description: item.description,
@@ -2739,12 +2748,12 @@ const resolveCombatTurn = React.useCallback(
             };
 
             const rewardItem: LootedItem = {
-                itemName: `Collier de Crocs de ${creature.name}`,
+                itemName: `Crocs de ${creature.name}`,
                 quantity: 1,
-                description: `Un collier fait des crocs de la créature vaincue. Contient l'essence de la créature. A utiliser pour lier le familier. Rareté: ${rarity}.`,
+                description: `Les crocs de la créature vaincue. Contient l'essence de la créature. A utiliser pour lier le familier. Rareté: ${rarity}.`,
                 effect: newFamiliarReward.passiveBonus.description,
                 itemType: 'consumable',
-                goldValue: 100 * (familiarRarityRoll + 1), // some value
+                goldValue: 100 * (familiarRarityRoll + 1),
             };
             setNocturnalHuntRewardItem(rewardItem);
             
