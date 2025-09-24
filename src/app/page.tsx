@@ -432,6 +432,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
+  const [nocturnalHuntReward, setNocturnalHuntReward] = React.useState<NewFamiliarSchema | null>(null);
   
   const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
   const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
@@ -1312,6 +1313,14 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         turnLog = combatResult.turnLog;
         conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
+
+        // If the combat ended in victory, and there's a pending reward (from nocturnal hunt)
+        if(internalCombatUpdates.combatEnded && internalCombatUpdates.updatedCombatants?.every(c => c.team === 'player' || c.isDefeated)) {
+            if (nocturnalHuntReward) {
+                handleNewFamiliar(nocturnalHuntReward);
+                setNocturnalHuntReward(null); // Clear the pending reward
+            }
+        }
     }
 
     // This is now purely internal logic and does not depend on the AI's response.
@@ -1444,23 +1453,69 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
       handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
       handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory
+      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory, nocturnalHuntReward
   ]);
+
+    const handleSendSpecificAction = React.useCallback(async (action: string) => {
+        if (!action || isLoading) return;
+
+        handleNarrativeUpdate(action, 'user');
+        setIsLoading(true);
+
+        try {
+            await callGenerateAdventure(action);
+        } catch (error) { 
+            console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
+            toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+            setIsLoading(false);
+        }
+    }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
   
-  const handleSendSpecificAction = React.useCallback(async (action: string) => {
-    if (!action || isLoading) return;
+  const handleFinalizePurchase = React.useCallback(() => {
+      const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
-    handleNarrativeUpdate(action, 'user');
-    setIsLoading(true); // Moved to be more immediate
+      if ((adventureSettings.playerGold || 0) < totalCost) {
+          toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
+          return;
+      }
 
-    try {
-        await callGenerateAdventure(action);
-    } catch (error) { 
-        console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
-        toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
-        setIsLoading(false); // Ensure loading state is reset on error
-    }
-  }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
+      setAdventureSettings(prev => {
+          const newInventory = [...(prev.playerInventory || [])];
+          shoppingCart.forEach(cartItem => {
+              const newItem: PlayerInventoryItem = {
+                  id: `${cartItem.baseItemId}-${uid()}`,
+                  name: cartItem.name,
+                  quantity: cartItem.quantity || 1,
+                  description: cartItem.description,
+                  type: cartItem.type,
+                  goldValue: cartItem.finalGoldValue,
+                  damage: cartItem.damage,
+                  ac: cartItem.ac,
+                  statBonuses: cartItem.statBonuses,
+                  effectType: cartItem.effectType,
+                  effectDetails: cartItem.effectDetails,
+                  generatedImageUrl: null,
+                  isEquipped: false
+              };
+              const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
+              if (existingIndex > -1) {
+                  newInventory[existingIndex].quantity += newItem.quantity;
+              } else {
+                  newInventory.push(newItem);
+              }
+          });
+          return { ...prev, playerGold: (prev.playerGold || 0) - totalCost, playerInventory: newInventory };
+      });
+      
+      const boughtItemsSummary = shoppingCart.map(item => `${item.quantity}x ${item.name}`).join(', ');
+      toast({ title: "Achat Terminé!", description: `Vous avez acheté : ${boughtItemsSummary}.` });
+
+      handleSendSpecificAction(`J'achète les articles suivants : ${boughtItemsSummary}.`);
+      
+      setShoppingCart([]);
+      setMerchantInventory([]); // Close merchant panel after purchase
+  }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast]);
+
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
@@ -2691,7 +2746,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                 passiveBonus: generateDynamicFamiliarBonus(rarity),
             };
             
-            setTimeout(() => handleNewFamiliar(newFamiliarReward), 10);
+            setNocturnalHuntReward(newFamiliarReward);
             
             userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
         }
@@ -2762,7 +2817,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
                  setTimeout(() => {
                     toast({
                         title: "Amélioration Impossible",
-                        description: poi.ownerId !== playerId
+                        description: poi.ownerId !== PLAYER_ID
                             ? "Vous ne pouvez améliorer que les lieux que vous possédez."
                             : !isUpgradable
                             ? "Ce lieu a atteint son niveau maximum."
@@ -3252,51 +3307,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         });
     }, []);
 
-    const handleFinalizePurchase = React.useCallback(() => {
-        const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
-
-        if ((adventureSettings.playerGold || 0) < totalCost) {
-            toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
-            return;
-        }
-
-        setAdventureSettings(prev => {
-            const newInventory = [...(prev.playerInventory || [])];
-            shoppingCart.forEach(cartItem => {
-                const newItem: PlayerInventoryItem = {
-                    id: `${cartItem.baseItemId}-${uid()}`,
-                    name: cartItem.name,
-                    quantity: cartItem.quantity || 1,
-                    description: cartItem.description,
-                    type: cartItem.type,
-                    goldValue: cartItem.finalGoldValue,
-                    damage: cartItem.damage,
-                    ac: cartItem.ac,
-                    statBonuses: cartItem.statBonuses,
-                    effectType: cartItem.effectType,
-                    effectDetails: cartItem.effectDetails,
-                    generatedImageUrl: null,
-                    isEquipped: false
-                };
-                const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
-                if (existingIndex > -1) {
-                    newInventory[existingIndex].quantity += newItem.quantity;
-                } else {
-                    newInventory.push(newItem);
-                }
-            });
-            return { ...prev, playerGold: (prev.playerGold || 0) - totalCost, playerInventory: newInventory };
-        });
-        
-        const boughtItemsSummary = shoppingCart.map(item => `${item.quantity}x ${item.name}`).join(', ');
-        toast({ title: "Achat Terminé!", description: `Vous avez acheté : ${boughtItemsSummary}.` });
-
-        handleSendSpecificAction(`J'achète les articles suivants : ${boughtItemsSummary}.`);
-        
-        setShoppingCart([]);
-        setMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast]);
-
 
     
   const handleGenerateCover = React.useCallback(async () => {
@@ -3502,7 +3512,7 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook}
+      suggestQuestHookAction={callSuggestQuestHook as () => Promise<void>}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3587,3 +3597,5 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     </>
   );
 }
+
+    
