@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -433,7 +432,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
-  const [nocturnalHuntReward, setNocturnalHuntReward] = React.useState<NewFamiliarSchema | null>(null);
+  const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<LootedItem | null>(null);
   
   const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
   const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
@@ -502,7 +501,6 @@ export default function Home() {
     };
     reader.readAsDataURL(file);
   }, []);
-
   const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
            id: item.itemName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -530,7 +528,16 @@ export default function Home() {
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
    }, []);
-   
+  const addCurrencyToPlayer = React.useCallback((amount: number) => {
+    setAdventureSettings(prevSettings => {
+        if (!prevSettings.rpgMode) return prevSettings;
+        let currentGold = prevSettings.playerGold ?? 0;
+        let newGold = currentGold + amount;
+        if (newGold < 0) newGold = 0;
+        return { ...prevSettings, playerGold: newGold };
+    });
+  }, []);
+  
   const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
     if (!newChars || newChars.length === 0) return;
 
@@ -778,7 +785,7 @@ export default function Home() {
     });
   }, []);
 
-const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
+  const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
     setAdventureSettings(prevSettings => {
         if (!newFamiliarSchema) return prevSettings;
 
@@ -807,7 +814,6 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
         return { ...prevSettings, familiars: updatedFamiliars };
     });
 }, [toast]);
-
 const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
@@ -881,17 +887,6 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
     }
 
   }, [handleNarrativeUpdate]);
-  
-  const addCurrencyToPlayer = React.useCallback((amount: number) => {
-    setAdventureSettings(prevSettings => {
-        if (!prevSettings.rpgMode) return prevSettings;
-        let currentGold = prevSettings.playerGold ?? 0;
-        let newGold = currentGold + amount;
-        if (newGold < 0) newGold = 0;
-        return { ...prevSettings, playerGold: newGold };
-    });
-  }, []);
-
   const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
     if (!changes || changes.length === 0) return;
 
@@ -1039,6 +1034,12 @@ const resolveCombatTurn = React.useCallback(
                     currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
                 }
             });
+
+            if (nocturnalHuntRewardItem) {
+                itemsObtained.push(nocturnalHuntRewardItem);
+                setNocturnalHuntRewardItem(null); // Consume the reward
+            }
+            
             turnLog.push(`Victoire!`);
             
             if(currentCombatState.contestedPoiId) {
@@ -1075,7 +1076,7 @@ const resolveCombatTurn = React.useCallback(
             combatUpdates,
             conquestHappened,
         };
-    }, [baseCharacters]);
+    }, [baseCharacters, nocturnalHuntRewardItem]);
 
    const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
@@ -1104,10 +1105,6 @@ const resolveCombatTurn = React.useCallback(
         conquestHappened = combatResult.conquestHappened;
         handleCombatUpdates(internalCombatUpdates);
 
-        if(internalCombatUpdates.combatEnded && internalCombatUpdates.updatedCombatants?.every(c => c.team === 'player' || c.isDefeated) && nocturnalHuntReward) {
-            handleNewFamiliar(nocturnalHuntReward);
-            setNocturnalHuntReward(null);
-        }
     }
 
     // This is now purely internal logic and does not depend on the AI's response.
@@ -1177,7 +1174,7 @@ const resolveCombatTurn = React.useCallback(
             toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
         } else {
              // Use turn log as fallback narrative if AI fails to generate one
-            const narrativeContent = result.narrative || turnLog.join('\n') || "L'action se déroule, mais l'IA n'a pas fourni de description.";
+            const narrativeContent = result.narrative || (turnLog.length > 0 ? turnLog.join('\n') : "L'action se déroule, mais l'IA n'a pas fourni de description.");
             
             React.startTransition(() => {
                 if (locationIdOverride) {
@@ -1238,9 +1235,9 @@ const resolveCombatTurn = React.useCallback(
     }
   }, [
       currentLanguage, narrativeMessages, toast, resolveCombatTurn,
-      handleNarrativeUpdate, handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
-      adventureSettings, characters, activeCombat, handleNewFamiliar, aiConfig, handleTimeUpdate, baseCharacters, handleCombatUpdates, merchantInventory, nocturnalHuntReward
+      handleNarrativeUpdate, handleNewCharacters, handleNewFamiliar, handleCharacterHistoryUpdate, handleAffinityUpdates,
+      handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange, handleCombatUpdates,
+      adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate, baseCharacters, merchantInventory
   ]);
 
   const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -1513,8 +1510,9 @@ const resolveCombatTurn = React.useCallback(
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
+    const isTrophyItem = item.name.toLowerCase().includes('crocs de') || item.name.toLowerCase().includes('griffe de');
 
-    if (item.type !== 'misc' || !isFamiliarItem) {
+    if (item.type !== 'consumable' || (!isFamiliarItem && !isTrophyItem)) {
         setTimeout(() => {
            toast({
                title: "Utilisation Narrative",
@@ -1528,7 +1526,7 @@ const resolveCombatTurn = React.useCallback(
         return;
     }
 
-    const familiarName = item.name.replace(/\(Familier\)/i, '').trim();
+    const familiarName = item.name.replace(/\(Familier\)|\bCollier du\b|\bCrocs de\b/gi, '').trim();
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
 
@@ -1669,6 +1667,10 @@ const resolveCombatTurn = React.useCallback(
                            itemActionSuccessful = false;
                            return prevSettings;
                         }
+                    } else if (itemToUpdate.description?.toLowerCase().includes('familier')) {
+                         handleUseFamiliarItem(itemToUpdate);
+                         narrativeAction = "";
+                         effectAppliedMessage = "";
                     } else if (itemToUpdate.effectType === 'narrative') {
                         toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });
                     }
@@ -2735,17 +2737,25 @@ const resolveCombatTurn = React.useCallback(
             
             const newFamiliarReward: NewFamiliarSchema = {
                 name: creature.name,
-                description: `Un ${creature.name.toLowerCase()} capturé lors d'une chasse nocturne.`,
+                description: `Un ${creature.name.toLowerCase()} capturé lors d'une chasse nocturne. Rareté: ${rarity}.`,
                 rarity: rarity,
                 passiveBonus: generateDynamicFamiliarBonus(rarity),
             };
-            
-            setNocturnalHuntReward(newFamiliarReward);
+
+            const rewardItem: LootedItem = {
+                itemName: `Collier de Crocs de ${creature.name}`,
+                quantity: 1,
+                description: `Un collier fait des crocs de la créature vaincue. Contient l'essence de la créature. A utiliser pour lier le familier. Rareté: ${rarity}.`,
+                effect: newFamiliarReward.passiveBonus.description,
+                itemType: 'consumable',
+                goldValue: 100 * (familiarRarityRoll + 1), // some value
+            };
+            setNocturnalHuntRewardItem(rewardItem);
             
             userActionText = `Je commence une chasse nocturne et une créature apparaît !`;
         } else {
             let sourcePool: BaseItem[];
-            switch (buildingId) {
+             switch (buildingId) {
                 case 'forgeron':
                     sourcePool = [...allWeapons, ...allArmors];
                     break;
@@ -3634,4 +3644,5 @@ const resolveCombatTurn = React.useCallback(
     
 
     
+
 
