@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -157,6 +157,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const [newPoiOwnerId, setNewPoiOwnerId] = React.useState(initialValues.playerName || 'player');
     const [newPoiLevel, setNewPoiLevel] = React.useState(1);
     const [newPoiBuildings, setNewPoiBuildings] = React.useState<string[]>([]);
+    
+    const [isDebugItemsOpen, setIsDebugItemsOpen] = React.useState(false);
+    const [debugItems, setDebugItems] = React.useState<Record<string, BaseItem[]>>({});
 
 
     const form = useForm<AdventureFormValues>({
@@ -307,6 +310,37 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         localStorage.setItem('custom_universes', JSON.stringify(customUniverses));
         form.setValue('activeItemUniverses', form.getValues('activeItemUniverses')?.filter(u => u !== universeToDelete));
         toast({ title: 'Univers supprimé', description: `L'univers "${universeToDelete}" a été retiré.`});
+    };
+    
+    const runItemDebug = () => {
+        const activeUniverses = form.getValues('activeItemUniverses') || [];
+        const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+        const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
+            1: { size: 3, minRarity: 1, maxRarity: 1 }, 2: { size: 4, minRarity: 1, maxRarity: 2 },
+            3: { size: 5, minRarity: 1, maxRarity: 3 }, 4: { size: 6, minRarity: 2, maxRarity: 4 },
+            5: { size: 7, minRarity: 3, maxRarity: 5 }, 6: { size: 10, minRarity: 4, maxRarity: 5 },
+        };
+        const buildingToSourceMap = {
+            'forgeron': [...weapons, ...armors],
+            'bijoutier': jewelry,
+            'magicien': consumables,
+        };
+
+        let debugResults: Record<string, BaseItem[]> = {};
+
+        for (const [building, sourcePool] of Object.entries(buildingToSourceMap)) {
+            for (let level = 1; level <= 6; level++) {
+                const config = inventoryConfig[level];
+                const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
+                const availableItems = itemsInUniverse.filter(item => {
+                    const itemRarityValue = rarityOrder[item.rarity || 'Commun'] || 1;
+                    return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
+                });
+                debugResults[`${building}-Niv${level}`] = availableItems;
+            }
+        }
+        setDebugItems(debugResults);
+        setIsDebugItemsOpen(true);
     };
 
     React.useImperativeHandle(ref, () => ({
@@ -500,7 +534,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 {items.map(item => (
                     <Card key={item.id} className="p-2 flex justify-between items-center bg-muted/20">
                         <div>
-                            <p className="font-semibold text-sm">{item.name}</p>
+                            <p className="font-semibold text-sm">{item.name} <span className="text-xs text-muted-foreground">({item.rarity})</span></p>
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                         </div>
                         <div className="flex gap-1">
@@ -517,6 +551,17 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             </ScrollArea>
         </>
     );
+
+    const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
+        switch (rarity) {
+          case 'Commun': return 'text-gray-500';
+          case 'Rare': return 'text-blue-500';
+          case 'Epique': return 'text-purple-500';
+          case 'Légendaire': return 'text-orange-500';
+          case 'Divin': return 'text-yellow-400';
+          default: return 'text-gray-500';
+        }
+    };
 
     return (
         <Form {...form}>
@@ -617,11 +662,45 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     name="activeItemUniverses"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <div className="mb-4">
-                                                <FormLabel className="text-base flex items-center gap-2"><Box className="h-5 w-5" /> Univers d'Objets Actifs</FormLabel>
-                                                <FormDescription>
-                                                    Sélectionnez les univers dont les objets pourront apparaître. Vous pouvez en ajouter ci-dessous.
-                                                </FormDescription>
+                                            <div className="mb-4 flex justify-between items-center">
+                                                <div>
+                                                    <FormLabel className="text-base flex items-center gap-2"><Box className="h-5 w-5" /> Univers d'Objets Actifs</FormLabel>
+                                                    <FormDescription>
+                                                        Sélectionnez les univers dont les objets pourront apparaître.
+                                                    </FormDescription>
+                                                </div>
+                                                <Dialog open={isDebugItemsOpen} onOpenChange={setIsDebugItemsOpen}>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="secondary" size="sm" onClick={runItemDebug}><Search className="mr-2 h-4 w-4" /> Vérifier</Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-[80vw]">
+                                                        <DialogHeader>
+                                                            <DialogTitle>Vérification des Inventaires de Marchands</DialogTitle>
+                                                            <DialogDescription>
+                                                                Voici les objets disponibles pour chaque marchand à chaque niveau de ville, basés sur les univers actifs.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <ScrollArea className="h-[70vh] p-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                                {Object.entries(debugItems).map(([key, items]) => (
+                                                                    <Card key={key}>
+                                                                        <CardHeader className="p-3">
+                                                                            <CardTitle className="text-sm capitalize">{key.replace('-', ' - ')}</CardTitle>
+                                                                        </CardHeader>
+                                                                        <CardContent className="p-3">
+                                                                            {items.length === 0 ? <p className="text-xs text-muted-foreground italic">Aucun objet disponible.</p> : (
+                                                                                <ul className="text-xs space-y-1">
+                                                                                    {items.map(item => <li key={item.id} className={rarityColorClass(item.rarity)}>{item.name} ({item.rarity})</li>)}
+                                                                                </ul>
+                                                                            )}
+                                                                        </CardContent>
+                                                                    </Card>
+                                                                ))}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </DialogContent>
+                                                </Dialog>
+
                                             </div>
                                             <div className="space-y-2">
                                                 {allUniverses.map((universe) => (
