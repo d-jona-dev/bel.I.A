@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -2581,7 +2582,17 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
 
   const generateDynamicFamiliarBonus = React.useCallback((rarity: Familiar['rarity']): FamiliarPassiveBonus => {
     const statTypes: Array<FamiliarPassiveBonus['type']> = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'armor_class', 'attack_bonus'];
-    
+    const statNames: { [key in Exclude<FamiliarPassiveBonus['type'], 'narrative' | 'gold_find' | 'exp_gain'>]: string } = {
+        strength: 'Force',
+        dexterity: 'Dextérité',
+        constitution: 'Constitution',
+        intelligence: 'Intelligence',
+        wisdom: 'Sagesse',
+        charisma: 'Charisme',
+        armor_class: "Classe d'Armure",
+        attack_bonus: "Bonus d'Attaque"
+    };
+
     const bonusValues: Record<Familiar['rarity'], number> = {
         'common': 1,
         'uncommon': 2,
@@ -2600,18 +2611,8 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
     
     const bonusType = statTypes[Math.floor(Math.random() * statTypes.length)];
     const bonusValue = bonusValues[rarity] || 1;
-    let description = `+${bonusValue} en ${bonusType}`;
-
-    switch(bonusType) {
-        case 'strength': description = `+${bonusValue} en Force`; break;
-        case 'dexterity': description = `+${bonusValue} en Dextérité`; break;
-        case 'constitution': description = `+${bonusValue} en Constitution`; break;
-        case 'intelligence': description = `+${bonusValue} en Intelligence`; break;
-        case 'wisdom': description = `+${bonusValue} en Sagesse`; break;
-        case 'charisma': description = `+${bonusValue} en Charisme`; break;
-        case 'armor_class': description = `+${bonusValue} en Classe d'Armure`; break;
-        case 'attack_bonus': description = `+${bonusValue} au Bonus d'Attaque`; break;
-    }
+    const bonusName = statNames[bonusType as keyof typeof statNames] || bonusType;
+    let description = `+${bonusValue} en ${bonusName}`;
 
     return {
         type: bonusType,
@@ -2766,16 +2767,29 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
             
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
+            
             const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
-            const maxRarityValue = poiLevel >= 6 ? 5 : poiLevel === 5 ? 4 : poiLevel === 4 ? 3 : poiLevel === 3 ? 2 : 2;
             
-            const availableItems = itemsInUniverse.filter(item => (rarityOrder[item.rarity || 'Commun'] || 1) <= maxRarityValue);
+            const inventoryConfig = {
+                1: { size: 3, minRarity: 1, maxRarity: 1 }, // Commun
+                2: { size: 4, minRarity: 1, maxRarity: 2 }, // Commun -> Rare
+                3: { size: 5, minRarity: 1, maxRarity: 3 }, // Commun -> Epique
+                4: { size: 6, minRarity: 1, maxRarity: 4 }, // Commun -> Légendaire
+                5: { size: 7, minRarity: 1, maxRarity: 5 }, // Commun -> Divin
+                6: { size: 10, minRarity: 4, maxRarity: 5 } // Légendaire -> Divin
+            };
+
+            const config = inventoryConfig[poiLevel as keyof typeof inventoryConfig] || inventoryConfig[1];
+
+            const availableItems = itemsInUniverse.filter(item => {
+                const itemRarityValue = rarityOrder[item.rarity || 'Commun'] || 1;
+                return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
+            });
             
-            const inventorySize = poiLevel >= 6 ? 15 : poiLevel === 5 ? 13 : poiLevel === 4 ? 11 : poiLevel === 3 ? 9 : poiLevel === 2 ? 7 : 5;
             const usedBaseItemIds = new Set<string>();
 
             if (availableItems.length > 0) {
-                for (let i = 0; i < inventorySize; i++) {
+                for (let i = 0; i < config.size; i++) {
                     const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)];
                     if (!baseItem || usedBaseItemIds.has(baseItem.id)) {
                         i--; // try again
@@ -3598,4 +3612,3 @@ const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchem
   );
 }
 
-    
