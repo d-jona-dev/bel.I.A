@@ -420,89 +420,94 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
 
 
 export default function Home() {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const adventureFormRef = React.useRef<AdventureFormHandle>(null);
-  const { toast } = useToast();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const adventureFormRef = React.useRef<AdventureFormHandle>(null);
+    const { toast } = useToast();
 
-  const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(() => createInitialState().settings);
-  const [characters, setCharacters] = React.useState<Character[]>(() => createInitialState().characters);
-  const [activeCombat, setActiveCombat] = React.useState<ActiveCombat | undefined>(undefined);
-  const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
-  const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
-  const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
-  const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
-  const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
-  const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
-  
-  const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
-  const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
-  const [allArmors, setAllArmors] = React.useState<BaseItem[]>([]);
-  const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
+    // Main adventure state
+    const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(() => createInitialState().settings);
+    const [characters, setCharacters] = React.useState<Character[]>(() => createInitialState().characters);
+    const [activeCombat, setActiveCombat] = React.useState<ActiveCombat | undefined>(undefined);
+    const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(() => createInitialState().narrative);
+    const [currentLanguage, setCurrentLanguage] = React.useState<string>("fr");
+    const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
+    const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
+    const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
+    const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
 
+    // Item definitions
+    const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
+    const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
+    const [allArmors, setAllArmors] = React.useState<BaseItem[]>([]);
+    const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
 
-  // Comic Draft State
-  const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
-  const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
-  const [isSaveComicDialogOpen, setIsSaveComicDialogOpen] = React.useState(false);
-  const [comicTitle, setComicTitle] = React.useState("");
-  const [comicCoverUrl, setComicCoverUrl] = React.useState<string | null>(null);
-  const [isGeneratingCover, setIsGeneratingCover] = React.useState(false);
+    // Comic Draft State
+    const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
+    const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
+    const [isSaveComicDialogOpen, setIsSaveComicDialogOpen] = React.useState(false);
+    const [comicTitle, setComicTitle] = React.useState("");
+    const [comicCoverUrl, setComicCoverUrl] = React.useState<string | null>(null);
+    const [isGeneratingCover, setIsGeneratingCover] = React.useState(false);
 
-  // Base state for resets
-  const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
-  const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
-  
-  // Staged state for form edits
-  const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => {
-    const initialState = createInitialState();
-    return {
-      ...JSON.parse(JSON.stringify(initialState.settings)),
-      characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))))
-    };
-  });
-  const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
-  
-  const [formPropKey, setFormPropKey] = React.useState(0);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
-  const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
-  const [isSuggestingQuest, setIsSuggestingQuest] = React.useState<boolean>(false);
-  const [isGeneratingItemImage, setIsGeneratingItemImage] = React.useState<boolean>(false);
-  const [itemToSellDetails, setItemToSellDetails] = React.useState<SellingItemDetails | null>(null);
-  const [sellQuantity, setSellQuantity] = React.useState(1);
-  const [isLoadingInitialSkill, setIsLoadingInitialSkill] = React.useState<boolean>(false);
-  const [useAestheticFont, setUseAestheticFont] = React.useState(true);
-  const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
-
-  // NEW: State for item targeting in combat
-  const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
-  const [isTargeting, setIsTargeting] = React.useState(false);
-  
-    const addCurrencyToPlayer = React.useCallback((amount: number) => {
-    setAdventureSettings(prevSettings => {
-        if (!prevSettings.rpgMode) return prevSettings;
-        let currentGold = prevSettings.playerGold ?? 0;
-        let newGold = currentGold + amount;
-        if (newGold < 0) newGold = 0;
-        return { ...prevSettings, playerGold: newGold };
+    // Base state for resets
+    const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
+    const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
+    
+    // Staged state for form edits
+    const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => {
+        const initialState = createInitialState();
+        return {
+            ...JSON.parse(JSON.stringify(initialState.settings)),
+            characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))))
+        };
     });
+    const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
+    
+    // UI and loading states
+    const [formPropKey, setFormPropKey] = React.useState(0);
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
+    const [isRegenerating, setIsRegenerating] = React.useState<boolean>(false);
+    const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
+    const [isSuggestingQuest, setIsSuggestingQuest] = React.useState<boolean>(false);
+    const [isGeneratingItemImage, setIsGeneratingItemImage] = React.useState<boolean>(false);
+    const [itemToSellDetails, setItemToSellDetails] = React.useState<SellingItemDetails | null>(null);
+    const [sellQuantity, setSellQuantity] = React.useState(1);
+    const [isLoadingInitialSkill, setIsLoadingInitialSkill] = React.useState<boolean>(false);
+    const [useAestheticFont, setUseAestheticFont] = React.useState(true);
+    const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
+
+    // Combat targeting state
+    const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
+    const [isTargeting, setIsTargeting] = React.useState(false);
+
+    // --- Core Action Handlers ---
+
+    // Placed first as it has no dependencies on other callbacks
+    const addCurrencyToPlayer = React.useCallback((amount: number) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            let currentGold = prevSettings.playerGold ?? 0;
+            let newGold = currentGold + amount;
+            if (newGold < 0) newGold = 0;
+            return { ...prevSettings, playerGold: newGold };
+        });
     }, []);
 
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
-       const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
-           id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-           name: item.itemName,
-           quantity: item.quantity,
-           description: item.description,
-           effect: item.effect,
-           type: item.itemType,
-           goldValue: item.goldValue,
-           statBonuses: item.statBonuses,
-           generatedImageUrl: null,
-           isEquipped: false,
-       }));
+        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
+            id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+            name: item.itemName,
+            quantity: item.quantity,
+            description: item.description,
+            effect: item.effect,
+            type: item.itemType,
+            goldValue: item.goldValue,
+            statBonuses: item.statBonuses,
+            generatedImageUrl: null,
+            isEquipped: false,
+        }));
 
-       const newMessage: Message = {
+        const newMessage: Message = {
             id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             type: type,
             content: content,
@@ -512,106 +517,9 @@ export default function Home() {
             imageTransform: type === 'ai' ? imageTransform : undefined,
             loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
             lootTaken: false,
-       };
-       setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
+        };
+        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
     }, []);
-
-    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
-        if (!newChars || newChars.length === 0) return;
-
-        setAdventureSettings(currentSettings => {
-            const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-
-            const newCharactersToAdd: Character[] = newChars.map(nc => {
-                const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-                let initialRelations: Record<string, string> = {};
-                if (currentSettings.relationsMode) {
-                    initialRelations[PLAYER_ID] = defaultRelationDesc;
-                    if (nc.initialRelations) {
-                        nc.initialRelations.forEach(rel => {
-                            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
-                            if (targetChar) {
-                                initialRelations[targetChar.id] = rel.description;
-                            } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
-                                initialRelations[PLAYER_ID] = rel.description;
-                            }
-                        });
-                    }
-                }
-                
-                const npcLevel = nc.level ?? 1;
-                const npcBaseDerivedStats = calculateBaseDerivedStats({
-                    level: npcLevel,
-                    characterClass: nc.characterClass || "PNJ",
-                    strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                    intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-                });
-
-                return {
-                    id: newId,
-                    name: nc.name,
-                    details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
-                    biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
-                    history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
-                    portraitUrl: null,
-                    faceSwapEnabled: false,
-                    affinity: currentSettings.relationsMode ? 50 : undefined,
-                    relations: currentSettings.relationsMode ? initialRelations : undefined,
-                    isAlly: nc.isAlly ?? false,
-                    initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
-                    currentExp: currentSettings.rpgMode ? 0 : undefined,
-                    expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
-                    locationId: currentSettings.playerLocationId,
-                    ...(currentSettings.rpgMode ? {
-                        level: npcLevel,
-                        characterClass: nc.characterClass || "PNJ",
-                        strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                        intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-                        hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                        maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                        manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                        maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                        armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
-                        attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
-                        damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
-                        isHostile: nc.isHostile ?? false,
-                    } : {})
-                };
-            });
-
-            setCharacters(currentChars => {
-                const updatedChars = [...currentChars];
-                newCharactersToAdd.forEach(newChar => {
-                    if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
-                        updatedChars.push(newChar);
-                        if (currentSettings.relationsMode) {
-                            for (let i = 0; i < updatedChars.length - 1; i++) {
-                                if (!updatedChars[i].relations) updatedChars[i].relations = {};
-                                if (!updatedChars[i].relations![newChar.id]) {
-                                    updatedChars[i].relations![newChar.id] = defaultRelationDesc;
-                                }
-                                if (!newChar.relations) newChar.relations = {};
-                                if (!newChar.relations![updatedChars[i].id]) {
-                                    newChar.relations![updatedChars[i].id] = defaultRelationDesc;
-                                }
-                            }
-                        }
-                        setTimeout(() => {
-                            toast({
-                                title: "Nouveau Personnage Rencontré!",
-                                description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
-                            });
-                        }, 0);
-                    }
-                });
-                setStagedCharacters(updatedChars);
-                return updatedChars;
-            });
-            
-            return currentSettings;
-        });
-    }, [currentLanguage, toast, characters]);
 
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -633,7 +541,7 @@ export default function Home() {
             return prevChars;
         });
     }, []);
-
+    
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
         const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
         if (!currentRelationsMode || !updates || updates.length === 0) return;
@@ -647,7 +555,6 @@ export default function Home() {
                 if (affinityUpdate) {
                     changed = true;
                     const currentAffinity = char.affinity ?? 50;
-                    // Clamp the change value to be within [-10, 10] as a safety measure
                     const clampedChange = Math.max(-10, Math.min(10, affinityUpdate.change));
                     const newAffinity = Math.max(0, Math.min(100, currentAffinity + clampedChange));
 
@@ -792,7 +699,7 @@ export default function Home() {
             return { ...prevSettings, familiars: updatedFamiliars };
         });
     }, [toast]);
-
+    
     const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
         if (!changes || changes.length === 0) return;
 
@@ -837,29 +744,282 @@ export default function Home() {
 
     }, [toast, characters, adventureSettings.playerName]);
 
+    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
+        if (!newChars || newChars.length === 0) return;
+
+        setAdventureSettings(currentSettings => {
+            const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+
+            const newCharactersToAdd: Character[] = newChars.map(nc => {
+                const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+                let initialRelations: Record<string, string> = {};
+                if (currentSettings.relationsMode) {
+                    initialRelations[PLAYER_ID] = defaultRelationDesc;
+                    if (nc.initialRelations) {
+                        nc.initialRelations.forEach(rel => {
+                            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
+                            if (targetChar) {
+                                initialRelations[targetChar.id] = rel.description;
+                            } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
+                                initialRelations[PLAYER_ID] = rel.description;
+                            }
+                        });
+                    }
+                }
+                
+                const npcLevel = nc.level ?? 1;
+                const npcBaseDerivedStats = calculateBaseDerivedStats({
+                    level: npcLevel,
+                    characterClass: nc.characterClass || "PNJ",
+                    strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+                    intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
+                });
+
+                return {
+                    id: newId,
+                    name: nc.name,
+                    details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
+                    biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
+                    history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
+                    portraitUrl: null,
+                    faceSwapEnabled: false,
+                    affinity: currentSettings.relationsMode ? 50 : undefined,
+                    relations: currentSettings.relationsMode ? initialRelations : undefined,
+                    isAlly: nc.isAlly ?? false,
+                    initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
+                    currentExp: currentSettings.rpgMode ? 0 : undefined,
+                    expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
+                    locationId: currentSettings.playerLocationId,
+                    ...(currentSettings.rpgMode ? {
+                        level: npcLevel,
+                        characterClass: nc.characterClass || "PNJ",
+                        strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+                        intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
+                        hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                        maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                        manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                        maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                        armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
+                        attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
+                        damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
+                        isHostile: nc.isHostile ?? false,
+                    } : {})
+                };
+            });
+
+            setCharacters(currentChars => {
+                const updatedChars = [...currentChars];
+                newCharactersToAdd.forEach(newChar => {
+                    if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
+                        updatedChars.push(newChar);
+                        if (currentSettings.relationsMode) {
+                            for (let i = 0; i < updatedChars.length - 1; i++) {
+                                if (!updatedChars[i].relations) updatedChars[i].relations = {};
+                                if (!updatedChars[i].relations![newChar.id]) {
+                                    updatedChars[i].relations![newChar.id] = defaultRelationDesc;
+                                }
+                                if (!newChar.relations) newChar.relations = {};
+                                if (!newChar.relations![updatedChars[i].id]) {
+                                    newChar.relations![updatedChars[i].id] = defaultRelationDesc;
+                                }
+                            }
+                        }
+                        setTimeout(() => {
+                            toast({
+                                title: "Nouveau Personnage Rencontré!",
+                                description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
+                            });
+                        }, 0);
+                    }
+                });
+                setStagedCharacters(updatedChars);
+                return updatedChars;
+            });
+            
+            return currentSettings;
+        });
+    }, [currentLanguage, toast, characters]);
+
+    const resolveCombatTurn = React.useCallback(
+        (
+            currentCombatState: ActiveCombat,
+            settings: AdventureSettings,
+            allCharacters: Character[]
+        ): {
+            nextCombatState: ActiveCombat;
+            turnLog: string[];
+            combatUpdates: CombatUpdatesSchema;
+            conquestHappened: boolean;
+            isNocturnalHuntVictory: boolean;
+        } => {
+            let turnLog: string[] = [];
+            let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
+            const effectivePlayerStats = calculateEffectiveStats(settings);
+            let conquestHappened = false;
+            let nocturnalHuntVictory = false;
+            
+            const getDamage = (damageBonus: string | undefined): number => {
+                if (!damageBonus) return 1;
+                const match = damageBonus.match(/(\d+)d(\d+)([+-]\d+)?/);
+                let damage = 1;
+                if (match) {
+                    const [_, diceCount, diceSides, bonus] = match;
+                    damage = 0;
+                    for (let i = 0; i < parseInt(diceCount, 10); i++) {
+                        damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
+                    }
+                    if (bonus) damage += parseInt(bonus, 10);
+                } else if (!isNaN(parseInt(damageBonus, 10))) {
+                    damage = parseInt(damageBonus, 10);
+                }
+                return Math.max(1, damage);
+            };
+            
+            const player = updatedCombatants.find(c => c.characterId === PLAYER_ID);
+            if (player && !player.isDefeated) {
+                 const target = updatedCombatants.find(c => c.team === 'enemy' && !c.isDefeated);
+                 if(target) {
+                     const attackRoll = Math.floor(Math.random() * 20) + 1;
+                     const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
+                     const targetData = allCharacters.find(c => c.id === target.characterId);
+                     const targetAC = targetData?.armorClass ?? 10;
+      
+                     if (totalAttack >= targetAC) {
+                         const damage = getDamage(effectivePlayerStats.playerDamageBonus);
+                         target.currentHp = Math.max(0, target.currentHp - damage);
+                         turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
+                         if (target.currentHp === 0) {
+                             target.isDefeated = true;
+                             turnLog.push(`${target.name} est vaincu!`);
+                         }
+                     } else {
+                         turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
+                     }
+                 }
+            }
+        
+            updatedCombatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
+                const targetPool = updatedCombatants.filter(t => t.team === 'player' && !t.isDefeated);
+                if (targetPool.length > 0) {
+                    const target = targetPool[Math.floor(Math.random() * targetPool.length)];
+                    const enemyData = allCharacters.find(c => c.id === enemy.characterId);
+                    const attackRoll = Math.floor(Math.random() * 20) + 1;
+                    const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
+                    
+                    let targetAC = 10;
+                    if (target.characterId === PLAYER_ID) {
+                        targetAC = effectivePlayerStats.playerArmorClass || 10;
+                    } else {
+                        const allyData = allCharacters.find(c => c.id === target.characterId);
+                        targetAC = allyData?.armorClass ?? 10;
+                    }
+        
+                    if (totalAttack >= targetAC) {
+                        const damage = getDamage(enemyData?.damageBonus);
+                        target.currentHp = Math.max(0, target.currentHp - damage);
+                        turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
+                        if (target.currentHp === 0) {
+                            target.isDefeated = true;
+                            turnLog.push(`${target.name} est vaincu!`);
+                        }
+                    } else {
+                        turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
+                     }
+                }
+            });
+            
+            const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
+            const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
+            
+            const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
+            let expGained = 0;
+            let currencyGained = 0;
+            let itemsObtained: PlayerInventoryItem[] = [];
+      
+            if (isCombatOver && allEnemiesDefeated) {
+                updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
+                    const enemyData = baseCharacters.find(bc => bc.id === enemy.characterId);
+                    if (enemyData) {
+                        expGained += (enemyData.level || 1) * 10;
+                        currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
+                         if (enemy.characterId.startsWith('nocturnal-')) {
+                            nocturnalHuntVictory = true; // Signal the specific victory
+                        }
+                    }
+                });
+
+                turnLog.push(`Victoire!`);
+                
+                if(currentCombatState.contestedPoiId) {
+                    conquestHappened = true; // Signal that a conquest happened
+                    const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
+                    turnLog.push(`Le territoire de ${poiName} est conquis!`);
+                }
+                if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                    itemsObtained.push(nocturnalHuntRewardItem);
+                }
+            }
+      
+            const combatUpdates: CombatUpdatesSchema = {
+                updatedCombatants: updatedCombatants.map(c => ({
+                    combatantId: c.characterId,
+                    newHp: c.currentHp,
+                    newMp: c.currentMp,
+                    isDefeated: c.isDefeated,
+                    newStatusEffects: c.statusEffects,
+                })),
+                combatEnded: isCombatOver,
+                expGained: expGained,
+                currencyGained: currencyGained,
+                itemsObtained: itemsObtained.map(item => ({
+                    itemName: item.name,
+                    quantity: item.quantity,
+                    description: item.description,
+                    itemType: item.type,
+                    goldValue: item.goldValue,
+                    effect: item.effect,
+                    statBonuses: item.statBonuses,
+                })),
+                turnNarration: turnLog.join('\n'), // For AI context
+                nextActiveCombatState: {
+                    ...currentCombatState,
+                    combatants: updatedCombatants,
+                    isActive: !isCombatOver,
+                }
+            };
+      
+            return {
+                nextCombatState: combatUpdates.nextActiveCombatState!,
+                turnLog,
+                combatUpdates,
+                conquestHappened,
+                isNocturnalHuntVictory: nocturnalHuntVictory,
+            };
+        }, [baseCharacters, nocturnalHuntRewardItem]
+    );
+
     const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
         if (!updates) return;
     
-        // Update main character list with new stats
         if (updates.updatedCombatants) {
             const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
             setCharacters(prev =>
-            prev.map(char => {
-                const update = combatantsMap.get(char.id);
-                if (update) {
-                return {
-                    ...char,
-                    hitPoints: update.newHp,
-                    manaPoints: update.newMp ?? char.manaPoints,
-                    statusEffects: update.newStatusEffects ?? char.statusEffects,
-                };
-                }
-                return char;
-            })
+                prev.map(char => {
+                    const update = combatantsMap.get(char.id);
+                    if (update) {
+                    return {
+                        ...char,
+                        hitPoints: update.newHp,
+                        manaPoints: update.newMp ?? char.manaPoints,
+                        statusEffects: update.newStatusEffects ?? char.statusEffects,
+                    };
+                    }
+                    return char;
+                })
             );
         }
     
-        // Update player stats
         const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
         if (playerUpdate) {
             setAdventureSettings(prev => ({
@@ -869,22 +1029,18 @@ export default function Home() {
             }));
         }
         
-        // Handle end of combat rewards
         if (updates.combatEnded) {
             let lootMessage = "Le combat est terminé ! ";
-            let newLootItems: LootedItem[] = [];
             
-            const itemsFromText = (updates.lootItemsText || "")
-                .split(',')
-                .map(name => name.trim())
-                .filter(name => name)
-                .map(name => ({
-                    itemName: name,
-                    quantity: 1,
-                    description: `Un objet obtenu: ${name}`,
-                    itemType: 'misc',
-                    goldValue: 1,
-                } as LootedItem));
+            const newLootItems: LootedItem[] = (updates.itemsObtained || []).map(item => ({
+                itemName: item.itemName,
+                quantity: item.quantity,
+                description: item.description,
+                effect: item.effect,
+                itemType: item.itemType,
+                goldValue: item.goldValue,
+                statBonuses: item.statBonuses,
+            }));
 
             if (updates.expGained && updates.expGained > 0) {
                 lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
@@ -894,381 +1050,187 @@ export default function Home() {
                 lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
                 addCurrencyToPlayer(updates.currencyGained);
             }
-            if (updates.itemsObtained && updates.itemsObtained.length > 0) {
-                newLootItems.push(...updates.itemsObtained);
-            }
-            if (itemsFromText.length > 0) {
-                newLootItems.push(...itemsFromText);
-            }
             
             if (lootMessage.trim() !== "Le combat est terminé!") {
                 handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
             }
             
-            setActiveCombat(undefined); // Reset combat state
+            setActiveCombat(undefined);
         }
         
-        // Update activeCombat state if combat is ongoing
         else if (updates.nextActiveCombatState) {
             setActiveCombat(updates.nextActiveCombatState);
         }
 
     }, [handleNarrativeUpdate, addCurrencyToPlayer]);
   
-    const resolveCombatTurn = React.useCallback(
-    (
-      currentCombatState: ActiveCombat,
-      settings: AdventureSettings,
-      allCharacters: Character[]
-    ): {
-        nextCombatState: ActiveCombat;
-        turnLog: string[];
-        combatUpdates: CombatUpdatesSchema;
-        conquestHappened: boolean;
-        isNocturnalHuntVictory: boolean;
-    } => {
+    const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
+        React.startTransition(() => {
+          setIsLoading(true);
+        });
+    
+        let liveSettings = { ...adventureSettings };
+        let liveCharacters = [...characters];
+        let liveCombat = activeCombat ? { ...activeCombat } : undefined;
         let turnLog: string[] = [];
-        let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
-        const effectivePlayerStats = calculateEffectiveStats(settings);
+        let internalCombatUpdates: CombatUpdatesSchema | undefined;
         let conquestHappened = false;
         let nocturnalHuntVictory = false;
-    
-        const getDamage = (damageBonus: string | undefined): number => {
-            if (!damageBonus) return 1;
-            const match = damageBonus.match(/(\d+)d(\d+)([+-]\d+)?/);
-            let damage = 1;
-            if (match) {
-                const [_, diceCount, diceSides, bonus] = match;
-                damage = 0;
-                for (let i = 0; i < parseInt(diceCount, 10); i++) {
-                    damage += Math.floor(Math.random() * parseInt(diceSides, 10)) + 1;
-                }
-                if (bonus) damage += parseInt(bonus, 10);
-            } else if (!isNaN(parseInt(damageBonus, 10))) {
-                damage = parseInt(damageBonus, 10);
-            }
-            return Math.max(1, damage);
-        };
+
+        if (locationIdOverride) {
+            liveSettings.playerLocationId = locationIdOverride;
+            liveCharacters = liveCharacters.map(char => 
+                char.isAlly ? { ...char, locationId: locationIdOverride } : char
+            );
+        }
         
-        const player = updatedCombatants.find(c => c.characterId === PLAYER_ID);
-        if (player && !player.isDefeated) {
-             const target = updatedCombatants.find(c => c.team === 'enemy' && !c.isDefeated);
-             if(target) {
-                 const attackRoll = Math.floor(Math.random() * 20) + 1;
-                 const totalAttack = attackRoll + (effectivePlayerStats.playerAttackBonus || 0);
-                 const targetData = allCharacters.find(c => c.id === target.characterId);
-                 const targetAC = targetData?.armorClass ?? 10;
-  
-                 if (totalAttack >= targetAC) {
-                     const damage = getDamage(effectivePlayerStats.playerDamageBonus);
-                     target.currentHp = Math.max(0, target.currentHp - damage);
-                     turnLog.push(`${player.name} touche ${target.name} et inflige ${damage} points de dégâts.`);
-                     if (target.currentHp === 0) {
-                         target.isDefeated = true;
-                         turnLog.push(`${target.name} est vaincu!`);
-                     }
-                 } else {
-                     turnLog.push(`${player.name} attaque ${target.name} mais rate son coup.`);
-                 }
-             }
+        if (liveCombat?.isActive) {
+            const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
+            internalCombatUpdates = combatResult.combatUpdates;
+            liveCombat = combatResult.nextCombatState;
+            turnLog = combatResult.turnLog;
+            conquestHappened = combatResult.conquestHappened;
+            nocturnalHuntVictory = combatResult.isNocturnalHuntVictory;
+            handleCombatUpdates(internalCombatUpdates);
         }
     
-        updatedCombatants.filter(c => c.team === 'enemy' && !c.isDefeated).forEach(enemy => {
-            const targetPool = updatedCombatants.filter(t => t.team === 'player' && !t.isDefeated);
-            if (targetPool.length > 0) {
-                const target = targetPool[Math.floor(Math.random() * targetPool.length)];
-                const enemyData = allCharacters.find(c => c.id === enemy.characterId);
-                const attackRoll = Math.floor(Math.random() * 20) + 1;
-                const totalAttack = attackRoll + (enemyData?.attackBonus || 0);
-                
-                let targetAC = 10;
-                if (target.characterId === PLAYER_ID) {
-                    targetAC = effectivePlayerStats.playerArmorClass || 10;
-                } else {
-                    const allyData = allCharacters.find(c => c.id === target.characterId);
-                    targetAC = allyData?.armorClass ?? 10;
-                }
-    
-                if (totalAttack >= targetAC) {
-                    const damage = getDamage(enemyData?.damageBonus);
-                    target.currentHp = Math.max(0, target.currentHp - damage);
-                    turnLog.push(`${enemy.name} attaque ${target.name} et inflige ${damage} points de dégâts.`);
-                    if (target.currentHp === 0) {
-                        target.isDefeated = true;
-                        turnLog.push(`${target.name} est vaincu!`);
-                    }
-                } else {
-                    turnLog.push(`${enemy.name} attaque ${target.name} et rate.`);
-                 }
-            }
-        });
-        
-        const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
-        const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
-        
-        const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
-        let expGained = 0;
-        let currencyGained = 0;
-        let itemsObtained: LootedItem[] = [];
-  
-        if (isCombatOver && allEnemiesDefeated) {
-            updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
-                const enemyData = baseCharacters.find(bc => bc.id === enemy.characterId);
-                if (enemyData) {
-                    expGained += (enemyData.level || 1) * 10;
-                    currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
-                     if (enemy.characterId.startsWith('nocturnal-')) {
-                        nocturnalHuntVictory = true; // Signal the specific victory
-                    }
-                }
-            });
-
-            turnLog.push(`Victoire!`);
-            
-            if(currentCombatState.contestedPoiId) {
-                conquestHappened = true; // Signal that a conquest happened
-                const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
-                turnLog.push(`Le territoire de ${poiName} est conquis!`);
-            }
-             if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                const reward = nocturnalHuntRewardItem;
-                itemsObtained.push({
-                    itemName: reward.name,
-                    quantity: reward.quantity,
-                    description: reward.description,
-                    itemType: reward.type,
-                    goldValue: reward.goldValue,
-                    effect: reward.effect,
-                    statBonuses: reward.statBonuses,
-                });
-                setNocturnalHuntRewardItem(null); // Clear the pending reward
-            }
+        if (conquestHappened && liveCombat?.contestedPoiId) {
+            handlePoiOwnershipChange([{
+                poiId: liveCombat.contestedPoiId,
+                newOwnerId: PLAYER_ID
+            }]);
         }
-  
-        const combatUpdates: CombatUpdatesSchema = {
-            updatedCombatants: updatedCombatants.map(c => ({
-                combatantId: c.characterId,
-                newHp: c.currentHp,
-                newMp: c.currentMp,
-                isDefeated: c.isDefeated,
-                newStatusEffects: c.statusEffects,
-            })),
-            combatEnded: isCombatOver,
-            expGained: expGained,
-            currencyGained: currencyGained,
-            itemsObtained: itemsObtained,
-            turnNarration: turnLog.join('\n'), // For AI context
-            nextActiveCombatState: {
-                ...currentCombatState,
-                combatants: updatedCombatants,
-                isActive: !isCombatOver,
-            }
-        };
-  
-        return {
-            nextCombatState: combatUpdates.nextActiveCombatState!,
-            turnLog,
-            combatUpdates,
-            conquestHappened,
-            isNocturnalHuntVictory: nocturnalHuntVictory,
-        };
-    }, [baseCharacters, nocturnalHuntRewardItem]);
-
-
-    const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
-    React.startTransition(() => {
-      setIsLoading(true);
-    });
-
-    let liveSettings = { ...adventureSettings };
-    let liveCharacters = [...characters];
-    let liveCombat = activeCombat ? { ...activeCombat } : undefined;
-    let turnLog: string[] = [];
-    let internalCombatUpdates: CombatUpdatesSchema | undefined;
-    let conquestHappened = false;
-    let nocturnalHuntVictory = false;
-
-
-    if (locationIdOverride) {
-        liveSettings.playerLocationId = locationIdOverride;
-        liveCharacters = liveCharacters.map(char => 
-            char.isAlly ? { ...char, locationId: locationIdOverride } : char
-        );
-    }
-    
-    if (liveCombat?.isActive) {
-        const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
-        internalCombatUpdates = combatResult.combatUpdates;
-        liveCombat = combatResult.nextCombatState;
-        turnLog = combatResult.turnLog;
-        conquestHappened = combatResult.conquestHappened;
-        nocturnalHuntVictory = combatResult.isNocturnalHuntVictory; // Capture the victory signal
-        handleCombatUpdates(internalCombatUpdates);
-
-    }
-
-    // This is now purely internal logic and does not depend on the AI's response.
-    if (conquestHappened && liveCombat?.contestedPoiId) {
-        handlePoiOwnershipChange([{
-            poiId: liveCombat.contestedPoiId,
-            newOwnerId: PLAYER_ID
-        }]);
-    }
-    
-    const presentCharacters = liveCharacters.filter(char => char.locationId === liveSettings.playerLocationId);
-    const currentPlayerLocation = liveSettings.playerLocationId ? liveSettings.mapPointsOfInterest?.find(poi => poi.id === liveSettings.playerLocationId) : undefined;
-    
-    let ownerNameForPrompt = "Inconnu";
-    if (currentPlayerLocation?.ownerId) {
-        ownerNameForPrompt = currentPlayerLocation.ownerId === PLAYER_ID ? (liveSettings.playerName || "Player") : (liveCharacters.find(c => c.id === currentPlayerLocation.ownerId)?.name || 'un inconnu');
-    }
-
-    const effectiveStatsThisTurn = calculateEffectiveStats(liveSettings);
-
-    const input: GenerateAdventureInput = {
-        world: liveSettings.world,
-        initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${liveSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
-        characters: presentCharacters, 
-        userAction: turnLog.length > 0 ? turnLog.join('\n') : userActionText,
-        currentLanguage,
-        playerName: liveSettings.playerName || "Player",
-        rpgModeActive: liveSettings.rpgMode,
-        relationsModeActive: liveSettings.relationsMode ?? true,
-        activeCombat: liveCombat,
-        playerGold: liveSettings.playerGold,
-        playerSkills: liveSettings.playerSkills,
-        playerClass: liveSettings.playerClass,
-        playerLevel: liveSettings.playerLevel,
-        playerCurrentHp: liveSettings.playerCurrentHp,
-        playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
-        playerCurrentMp: liveSettings.playerCurrentMp,
-        playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
-        playerCurrentExp: liveSettings.playerCurrentExp,
-        playerExpToNextLevel: liveSettings.playerExpToNextLevel,
-        playerStrength: effectiveStatsThisTurn.playerStrength,
-        playerDexterity: effectiveStatsThisTurn.playerDexterity,
-        playerConstitution: effectiveStatsThisTurn.playerConstitution,
-        playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
-        playerWisdom: effectiveStatsThisTurn.playerWisdom,
-        playerCharisma: effectiveStatsThisTurn.playerCharisma,
-        playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
-        playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
-        playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
-        equippedWeaponName: liveSettings.equippedItemIds?.weapon ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.weapon)?.name : undefined,
-        equippedArmorName: liveSettings.equippedItemIds?.armor ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.armor)?.name : undefined,
-        equippedJewelryName: liveSettings.equippedItemIds?.jewelry ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.jewelry)?.name : undefined,
-        playerLocationId: liveSettings.playerLocationId,
-        mapPointsOfInterest: liveSettings.mapPointsOfInterest,
-        playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
-        aiConfig,
-        timeManagement: liveSettings.timeManagement,
-        playerPortraitUrl: liveSettings.playerPortraitUrl,
-        playerFaceSwapEnabled: liveSettings.playerFaceSwapEnabled,
-        merchantInventory,
-    };
-
-    try {
-        const result: GenerateAdventureFlowOutput = await generateAdventure(input);
         
-        if (result.error && !result.narrative) {
-            toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
-        } else {
-             // Use turn log as fallback narrative if AI fails to generate one
-            const narrativeContent = result.narrative || (turnLog.length > 0 ? turnLog.join('\n') : "L'action se déroule, mais l'IA n'a pas fourni de description.");
+        const presentCharacters = liveCharacters.filter(char => char.locationId === liveSettings.playerLocationId);
+        const currentPlayerLocation = liveSettings.playerLocationId ? liveSettings.mapPointsOfInterest?.find(poi => poi.id === liveSettings.playerLocationId) : undefined;
+        
+        let ownerNameForPrompt = "Inconnu";
+        if (currentPlayerLocation?.ownerId) {
+            ownerNameForPrompt = currentPlayerLocation.ownerId === PLAYER_ID ? (liveSettings.playerName || "Player") : (liveCharacters.find(c => c.id === currentPlayerLocation.ownerId)?.name || 'un inconnu');
+        }
+    
+        const effectiveStatsThisTurn = calculateEffectiveStats(liveSettings);
+    
+        const input: GenerateAdventureInput = {
+            world: liveSettings.world,
+            initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${liveSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+            characters: presentCharacters, 
+            userAction: turnLog.length > 0 ? turnLog.join('\n') : userActionText,
+            currentLanguage,
+            playerName: liveSettings.playerName || "Player",
+            rpgModeActive: liveSettings.rpgMode,
+            relationsModeActive: liveSettings.relationsMode ?? true,
+            activeCombat: liveCombat,
+            playerGold: liveSettings.playerGold,
+            playerSkills: liveSettings.playerSkills,
+            playerClass: liveSettings.playerClass,
+            playerLevel: liveSettings.playerLevel,
+            playerCurrentHp: liveSettings.playerCurrentHp,
+            playerMaxHp: effectiveStatsThisTurn.playerMaxHp,
+            playerCurrentMp: liveSettings.playerCurrentMp,
+            playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
+            playerCurrentExp: liveSettings.playerCurrentExp,
+            playerExpToNextLevel: liveSettings.playerExpToNextLevel,
+            playerStrength: effectiveStatsThisTurn.playerStrength,
+            playerDexterity: effectiveStatsThisTurn.playerDexterity,
+            playerConstitution: effectiveStatsThisTurn.playerConstitution,
+            playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
+            playerWisdom: effectiveStatsThisTurn.playerWisdom,
+            playerCharisma: effectiveStatsThisTurn.playerCharisma,
+            playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
+            playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
+            playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
+            equippedWeaponName: liveSettings.equippedItemIds?.weapon ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.weapon)?.name : undefined,
+            equippedArmorName: liveSettings.equippedItemIds?.armor ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.armor)?.name : undefined,
+            equippedJewelryName: liveSettings.equippedItemIds?.jewelry ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.jewelry)?.name : undefined,
+            playerLocationId: liveSettings.playerLocationId,
+            mapPointsOfInterest: liveSettings.mapPointsOfInterest,
+            playerLocation: currentPlayerLocation ? { ...currentPlayerLocation, ownerName: ownerNameForPrompt } : undefined,
+            aiConfig,
+            timeManagement: liveSettings.timeManagement,
+            playerPortraitUrl: liveSettings.playerPortraitUrl,
+            playerFaceSwapEnabled: liveSettings.playerFaceSwapEnabled,
+            merchantInventory,
+        };
+    
+        try {
+            const result: GenerateAdventureFlowOutput = await generateAdventure(input);
             
-            React.startTransition(() => {
-                if (locationIdOverride) {
-                    setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
-                    setCharacters(liveCharacters);
-                    setStagedCharacters(liveCharacters);
-                }
+            if (result.error && !result.narrative) {
+                toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
+            } else {
+                const narrativeContent = result.narrative || (turnLog.length > 0 ? turnLog.join('\n') : "L'action se déroule, mais l'IA n'a pas fourni de description.");
                 
-                const lootItemsFromText = (result.lootItemsText || "")
-                    .split(',')
-                    .map(name => name.trim())
-                    .filter(name => name)
-                    .map(name => ({
-                        itemName: name,
-                        quantity: 1,
-                        description: `Un objet obtenu: ${name}`,
-                        itemType: 'misc',
-                        goldValue: 1,
-                    } as LootedItem));
-
-                let finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
-                
-                if (internalCombatUpdates?.combatEnded && nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                    finalLoot.push({
-                        itemName: nocturnalHuntRewardItem.name,
-                        quantity: nocturnalHuntRewardItem.quantity,
-                        description: nocturnalHuntRewardItem.description,
-                        itemType: nocturnalHuntRewardItem.type,
-                        goldValue: nocturnalHuntRewardItem.goldValue,
-                        effect: nocturnalHuntRewardItem.effect,
-                        statBonuses: nocturnalHuntRewardItem.statBonuses,
-                    });
-                    setNocturnalHuntRewardItem(null); // Clear the reward
-                }
-                                
-                handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
-
-                if (result.newCharacters) handleNewCharacters(result.newCharacters);
-                if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
-                if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
-                
-                if (liveSettings.relationsMode && result.affinityUpdates) {
-                    // Clamp affinity updates to safe values before applying
-                    const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
-                        ...u,
-                        change: Math.max(-10, Math.min(10, u.change)),
-                    }));
-                    handleAffinityUpdates(clampedAffinityUpdates);
-                }
-                
-                if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
-                
-                if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
-                    addCurrencyToPlayer(result.currencyGained);
-                     setTimeout(() => {
-                        toast({
-                            title: result.currencyGained! > 0 ? "Pièces d'Or Reçues!" : "Dépense Effectuée",
-                            description: `Votre trésorerie a été mise à jour.`
+                React.startTransition(() => {
+                    if (locationIdOverride) {
+                        setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
+                        setCharacters(liveCharacters);
+                        setStagedCharacters(liveCharacters);
+                    }
+                    
+                    let finalLoot = [...(result.itemsObtained || [])];
+                    if (internalCombatUpdates?.combatEnded && nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                        finalLoot.push({
+                            itemName: nocturnalHuntRewardItem.name,
+                            quantity: nocturnalHuntRewardItem.quantity,
+                            description: nocturnalHuntRewardItem.description,
+                            itemType: nocturnalHuntRewardItem.type,
+                            goldValue: nocturnalHuntRewardItem.goldValue,
+                            effect: nocturnalHuntRewardItem.effect,
+                            statBonuses: nocturnalHuntRewardItem.statBonuses,
                         });
-                    }, 0);
-                }
-            });
+                        setNocturnalHuntRewardItem(null);
+                    }
+                                    
+                    handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
+    
+                    if (result.newCharacters) handleNewCharacters(result.newCharacters);
+                    if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
+                    if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
+                    
+                    if (liveSettings.relationsMode && result.affinityUpdates) {
+                        const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
+                            ...u,
+                            change: Math.max(-10, Math.min(10, u.change)),
+                        }));
+                        handleAffinityUpdates(clampedAffinityUpdates);
+                    }
+                    
+                    if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
+                    if (liveSettings.timeManagement?.enabled && result.updatedTime) handleTimeUpdate(result.updatedTime.newEvent);
+                    
+                    if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
+                        addCurrencyToPlayer(result.currencyGained);
+                         setTimeout(() => {
+                            toast({
+                                title: result.currencyGained! > 0 ? "Pièces d'Or Reçues!" : "Dépense Effectuée",
+                                description: `Votre trésorerie a été mise à jour.`
+                            });
+                        }, 0);
+                    }
+                });
+            }
+        } catch (error) { 
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error:", error);
+            toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
+        } finally {
+            setIsLoading(false);
         }
-    } catch (error) { 
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error:", error);
-        toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
-    } finally {
-        setIsLoading(false);
-    }
-  }, [
-      currentLanguage, narrativeMessages, toast,
-      handleNewFamiliar,
-      handleNarrativeUpdate,
-      handleNewCharacters,
-      handleCharacterHistoryUpdate,
-      handleAffinityUpdates,
-      handleRelationUpdatesFromAI,
-      handleCombatUpdates,
-      handlePoiOwnershipChange,
-      addCurrencyToPlayer,
-      handleTimeUpdate,
-      resolveCombatTurn,
-      adventureSettings,
-      characters,
-      activeCombat,
-      aiConfig,
-      baseCharacters,
-      merchantInventory,
-      nocturnalHuntRewardItem,
-  ]);
+    }, [
+        currentLanguage, narrativeMessages, toast,
+        handleNewFamiliar, handleNarrativeUpdate, handleNewCharacters,
+        handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
+        handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
+        handleTimeUpdate, resolveCombatTurn, adventureSettings,
+        characters, activeCombat, aiConfig, baseCharacters, merchantInventory,
+        nocturnalHuntRewardItem,
+    ]);
 
-  const handleSendSpecificAction = React.useCallback(async (action: string) => {
+    // --- End Core Action Handlers ---
+
+
+    const handleSendSpecificAction = React.useCallback(async (action: string) => {
         if (!action || isLoading) return;
 
         handleNarrativeUpdate(action, 'user');
@@ -1450,7 +1412,6 @@ export default function Home() {
       };
 
       loadAllItemTypes();
-      // Listen for storage changes from other components/tabs
       window.addEventListener('storage', loadAllItemTypes);
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
@@ -1541,7 +1502,7 @@ export default function Home() {
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
-    const isTrophyItem = item.name.toLowerCase().includes('crocs de') || item.name.toLowerCase().includes('griffe de');
+    const isTrophyItem = item.name.toLowerCase().includes('crocs de') || item.name.toLowerCase().includes('griffe de') || item.name.toLowerCase().includes('collier de');
 
     if (item.type !== 'consumable' || (!isFamiliarItem && !isTrophyItem)) {
         setTimeout(() => {
@@ -1636,7 +1597,6 @@ export default function Home() {
         handleNarrativeUpdate(narrativeAction, 'user');
         callGenerateAdventure(narrativeAction);
 
-        // Reset targeting state
         setIsTargeting(false);
         setItemToUse(null);
 
@@ -1673,10 +1633,9 @@ export default function Home() {
 
             if (action === 'use') {
                 if (itemToUpdate.effectType === 'combat' && activeCombat?.isActive) {
-                    // Logic for combat items is now handled via setItemToUse/setIsTargeting
                     setItemToUse(itemToUpdate);
                     setIsTargeting(true);
-                    itemActionSuccessful = false; // Don't proceed with narrative action yet
+                    itemActionSuccessful = false; 
                     return prevSettings;
                 }
                 
@@ -1709,17 +1668,14 @@ export default function Home() {
                     itemActionSuccessful = true;
 
                 } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
-                    // Prevent "using" equippable items, direct them to equip
                      setTimeout(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });},0);
                     itemActionSuccessful = false;
                     return prevSettings;
-                } else { // misc or quest items
+                } else { 
                      if (itemToUpdate.description?.toLowerCase().includes('familier')) {
-                         // This path is now taken only for specific familiar items
                          handleUseFamiliarItem(itemToUpdate);
                          newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                          itemActionSuccessful = true;
-                         // The handleUseFamiliarItem will create its own narrative
                          narrativeAction = "";
                          effectAppliedMessage = "";
                      } else {
@@ -2131,7 +2087,6 @@ export default function Home() {
             });
 
             currentActiveCombatRegen.combatants = Array.from(combatantsForAIRegenMap.values());
-            console.log('[LOG_PAGE_TSX] Combatants sent to AI (handleRegenerateLastResponse):', JSON.stringify(currentActiveCombatRegen.combatants.map(c => ({ id: c.characterId, name: c.name, team: c.team, hp: c.currentHp, mp: c.currentMp }))));
         }
         
         const currentPlayerLocation = currentTurnSettings.playerLocationId
@@ -2783,7 +2738,7 @@ export default function Home() {
             }
 
             const trophyName = `${physicalItem.name} de ${creatureType.name} ${descriptor.name}`;
-            const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${creatureType.name.toLowerCase()} ${descriptor.name.toLowerCase()}. Il semble contenir une essence magique.`;
+            const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${creatureType.name.toLowerCase()} ${descriptor.name.toLowerCase()}. Il semble contenir une essence magique. Rareté: ${rarity}.`;
             
             const rewardItem: PlayerInventoryItem = {
                 id: `trophy-${creatureType.name.toLowerCase()}-${uid()}`,
@@ -2795,6 +2750,7 @@ export default function Home() {
                 generatedImageUrl: null,
                 isEquipped: false,
                 statBonuses: {},
+                 effect: `Permet d'invoquer un ${creatureType.name} ${descriptor.name} comme familier.`,
             };
             setNocturnalHuntRewardItem(rewardItem);
             
@@ -2888,7 +2844,7 @@ export default function Home() {
             const typeConfig = poiLevelConfig[poi.icon as keyof typeof poiLevelConfig];
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
-            const canAfford = isUpgradable && canAfford;
+            const canAfford = isUpgradable && upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
 
             if (!isUpgradable || !canAfford) {
                  setTimeout(() => {
@@ -3688,15 +3644,3 @@ export default function Home() {
     </>
   );
 }
-
-
-    
-
-
-
-    
-
-    
-
-    
-
