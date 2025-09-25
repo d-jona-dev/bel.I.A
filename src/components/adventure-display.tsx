@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X, Diamond } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -83,7 +83,7 @@ interface AdventureDisplayProps {
     onToggleAestheticFont: () => void;
     onGenerateMap: () => Promise<void>;
     isGeneratingMap: boolean;
-    onPoiPositionChange: (poiId: string, newPosition: { x: number; y: number; }) => void;
+    onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number; }) => void;
     onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
     onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
     onMapImageUrlChange: (url: string) => void;
@@ -112,6 +112,7 @@ interface AdventureDisplayProps {
     onFinalizePurchase: () => void;
     onCloseMerchantPanel: () => void;
     isLoading: boolean;
+    handleClaimHuntReward: (combatantId: string) => void;
 }
 
 interface CustomImageStyle {
@@ -197,6 +198,7 @@ export function AdventureDisplay({
     onFinalizePurchase,
     onCloseMerchantPanel,
     isLoading, // Destructure isLoading
+    handleClaimHuntReward,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -503,15 +505,48 @@ export function AdventureDisplay({
 
     return (
         <Card className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
-            <CardHeader className="p-3 pb-2">
-                <CardTitle className="text-base flex items-center justify-between">
-                    <span className="truncate">{name}</span>
+            <CardHeader className="p-3 pb-2 flex-row justify-between items-start">
+                 <div className="flex-1">
+                    <CardTitle className="text-base flex items-center">
+                        <span className="truncate">{name}</span>
+                        {combatData.isDefeated && combatData.rewardItem && (
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 ml-2"
+                                            onClick={() => handleClaimHuntReward(combatData.characterId)}
+                                        >
+                                            <Diamond className="h-4 w-4 text-purple-500 hover:text-purple-400" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Récupérer le trophée</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                         {combatData.rewardItem && !combatData.isDefeated && (
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Diamond className="h-4 w-4 ml-2 text-muted-foreground/50" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Vaincre pour récupérer le trophée</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </CardTitle>
                     {charClass && level !== undefined && (
-                        <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                        <UICardDescription className="text-xs">
                             {charClass} Niv. {level}
-                        </span>
+                        </UICardDescription>
                     )}
-                </CardTitle>
+                </div>
             </CardHeader>
             <CardContent className="p-3 pt-0 space-y-1">
                 <div>
@@ -1392,13 +1427,3 @@ export function AdventureDisplay({
   );
 }
 
-    
-    
-
-
-
-    
-
-    
-
-    

@@ -41,6 +41,7 @@ export interface SellingItem {
   statBonuses?: PlayerInventoryItem['statBonuses'];
   effectType?: 'stat' | 'narrative' | 'combat';
   effectDetails?: BaseItem['effectDetails'];
+  quantity?: number;
 }
 
 
@@ -118,6 +119,7 @@ export const CombatantSchema = z.object({
     team: z.enum(['player', 'enemy', 'neutral']).describe("Team alignment. 'player' team includes the main player and any allied NPCs."),
     isDefeated: z.boolean().default(false).describe("Is this combatant defeated?"),
     statusEffects: z.array(StatusEffectSchema).optional().describe("Active status effects on the combatant."),
+    rewardItem: z.custom<PlayerInventoryItem>().optional().describe("The item to be rewarded if this is a special hunt combatant and is defeated."),
 });
 export type Combatant = z.infer<typeof CombatantSchema>;
 
@@ -639,7 +641,7 @@ export const CombatUpdatesSchema = z.object({
     updatedCombatants: z.array(CombatOutcomeSchema).describe("An array detailing the HP, MP, status, and defeat outcomes for every combatant involved in this turn. This field is MANDATORY if a combat turn occurred. It must reflect the state of combatants *after* this turn's actions."),
     expGained: z.number().int().optional().describe("Experience points gained by the player if any enemies were defeated. Award based on enemy difficulty/level (e.g., 5-20 for easy, 25-75 for medium, 100+ for hard/bosses). IF NO EXP GAINED, PROVIDE 0."),
     itemsObtained: z.array(LootedItemSchema).optional().describe("Items looted by the player if combat is won. **CRITICAL: The AI should provide a simple text list of item names in `lootItemsText` instead of filling this directly.**"),
-    lootItemsText: z.string().optional().describe("A simple, comma-separated string of item names looted by the player if combat is won (e.g., 'Rusty Sword, 15 Gold, Health Potion'). This is preferred over the complex `itemsObtained` field for better AI compatibility."),
+    lootItemsText: z.string().optional().describe("A simple, comma-separated string of item names looted by the player (e.g., 'Rusty Sword, 15 Gold, Health Potion'). This is preferred over the complex `itemsObtained` field for better AI compatibility."),
     currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces looted by the player if combat is won. IF NO CURRENCY CHANGE, PROVIDE 0."),
     combatEnded: z.boolean().default(false).describe("True if the combat encounter has concluded (e.g., all enemies defeated/fled, or player/allies defeated/fled)."),
     turnNarration: z.string().describe("A detailed narration of the combat actions and outcomes for this turn. This is MANDATORY if combat took place. This will be part of the main narrative output as well."),

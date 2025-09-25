@@ -433,7 +433,6 @@ export default function Home() {
     const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
     const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
     const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
-    const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
 
     // Item definitions
     const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
@@ -482,6 +481,8 @@ export default function Home() {
     // Combat targeting state
     const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
     const [isTargeting, setIsTargeting] = React.useState(false);
+    const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
+
 
     // --- Core Action Handlers ---
 
@@ -522,6 +523,65 @@ export default function Home() {
         };
         setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
     }, []);
+
+    const handleDiscardLoot = React.useCallback((messageId: string) => {
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
+        toast({ title: "Butin Laissé", description: "Vous avez choisi de ne pas prendre ces objets." });
+    }, [toast]);
+    
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
+        React.startTransition(() => {
+            setAdventureSettings(prevSettings => {
+                if (!prevSettings.rpgMode) return prevSettings;
+                const newInventory = [...(prevSettings.playerInventory || [])];
+                
+                const lootMessage = narrativeMessages.find(m => m.id === messageId);
+                let currencyGained = 0;
+                 if (lootMessage?.loot) {
+                    const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
+                    if (currencyItem) {
+                        currencyGained = currencyItem.quantity;
+                    }
+                 }
+    
+                itemsToTake.forEach(item => {
+                    if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
+                        console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
+                        return;
+                    }
+                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
+                    if (existingItemIndex > -1) {
+                        newInventory[existingItemIndex].quantity += item.quantity;
+                    } else {
+                        newInventory.push({ ...item, isEquipped: false });
+                    }
+                });
+                return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
+            });
+            setNarrativeMessages(prevMessages =>
+                prevMessages.map(msg =>
+                    msg.id === messageId ? { ...msg, lootTaken: true } : msg
+                )
+            );
+        });
+        if (!silent) {
+            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+        }
+      }, [toast, narrativeMessages]);
+
+    const handleClaimHuntReward = React.useCallback((combatantId: string) => {
+        const combatant = activeCombat?.combatants.find(c => c.characterId === combatantId);
+        if (!combatant || !combatant.isDefeated || !combatant.rewardItem) return;
+    
+        handleTakeLoot("hunt-reward", [combatant.rewardItem], false);
+        setActiveCombat(undefined); // End combat
+        handleNarrativeUpdate(`Vous avez récupéré ${combatant.rewardItem.name} sur la créature vaincue.`, 'system');
+    
+    }, [activeCombat, handleTakeLoot, handleNarrativeUpdate]);
 
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -843,6 +903,71 @@ export default function Home() {
         });
     }, [currentLanguage, toast, characters]);
 
+    const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
+        if (!updates) return;
+    
+        if (updates.updatedCombatants) {
+            const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
+            setCharacters(prev =>
+                prev.map(char => {
+                    const update = combatantsMap.get(char.id);
+                    if (update) {
+                    return {
+                        ...char,
+                        hitPoints: update.newHp,
+                        manaPoints: update.newMp ?? char.manaPoints,
+                        statusEffects: update.newStatusEffects ?? char.statusEffects,
+                    };
+                    }
+                    return char;
+                })
+            );
+        }
+    
+        const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
+        if (playerUpdate) {
+            setAdventureSettings(prev => ({
+            ...prev,
+            playerCurrentHp: playerUpdate.newHp,
+            playerCurrentMp: playerUpdate.newMp ?? prev.playerCurrentMp,
+            }));
+        }
+        
+        if (updates.combatEnded) {
+            let lootMessage = "Le combat est terminé ! ";
+            
+            const newLootItems: LootedItem[] = (updates.itemsObtained || []).map(item => ({
+                itemName: item.name,
+                quantity: item.quantity,
+                description: item.description,
+                effect: item.effect,
+                itemType: item.type,
+                goldValue: item.goldValue,
+                statBonuses: item.statBonuses,
+            }));
+
+            if (updates.expGained && updates.expGained > 0) {
+                lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
+                setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
+            }
+            if (updates.currencyGained && updates.currencyGained > 0) {
+                lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
+                addCurrencyToPlayer(updates.currencyGained);
+            }
+            
+            if (lootMessage.trim() !== "Le combat est terminé!") {
+                handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
+            }
+            
+            setActiveCombat(undefined);
+        }
+        
+        else if (updates.nextActiveCombatState) {
+            setActiveCombat(updates.nextActiveCombatState);
+        }
+
+    }, [handleNarrativeUpdate, addCurrencyToPlayer]);
+  
     const resolveCombatTurn = React.useCallback(
         (
             currentCombatState: ActiveCombat,
@@ -853,7 +978,7 @@ export default function Home() {
             turnLog: string[];
             combatUpdates: CombatUpdatesSchema;
             conquestHappened: boolean;
-            isNocturnalHuntVictory: boolean;
+            nocturnalHuntVictory: boolean;
         } => {
             let turnLog: string[] = [];
             let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
@@ -937,7 +1062,7 @@ export default function Home() {
             const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
             let expGained = 0;
             let currencyGained = 0;
-            let itemsObtained: LootedItem[] = [];
+            let itemsObtained: PlayerInventoryItem[] = [];
       
             if (isCombatOver && allEnemiesDefeated) {
                 updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
@@ -945,24 +1070,8 @@ export default function Home() {
                     if (enemyData) {
                         expGained += (enemyData.level || 1) * 10;
                         currencyGained += Math.floor(Math.random() * (enemyData.level || 1) * 5) + (enemyData.level || 1);
-                         if (enemy.characterId.startsWith('nocturnal-')) {
-                            nocturnalHuntVictory = true; // Signal the specific victory
-                        }
                     }
                 });
-                
-                if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                    setAdventureSettings(prev => {
-                        const newInventory = [...(prev.playerInventory || []), nocturnalHuntRewardItem];
-                        return { ...prev, playerInventory: newInventory };
-                    });
-                    setNocturnalHuntRewardItem(null); // Clear the pending reward
-                    toast({
-                        title: "Récompense Obtenue!",
-                        description: `Vous avez obtenu : ${nocturnalHuntRewardItem.name}. Utilisez-le depuis votre inventaire.`
-                    });
-                }
-
 
                 turnLog.push(`Victoire!`);
                 
@@ -970,6 +1079,14 @@ export default function Home() {
                     conquestHappened = true; // Signal that a conquest happened
                     const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
                     turnLog.push(`Le territoire de ${poiName} est conquis!`);
+                }
+                
+                if (nocturnalHuntRewardItem) {
+                    nocturnalHuntVictory = true;
+                    if (nocturnalHuntRewardItem) {
+                      itemsObtained.push(nocturnalHuntRewardItem);
+                      setNocturnalHuntRewardItem(null); 
+                    }
                 }
             }
       
@@ -984,7 +1101,15 @@ export default function Home() {
                 combatEnded: isCombatOver,
                 expGained: expGained,
                 currencyGained: currencyGained,
-                itemsObtained: itemsObtained,
+                itemsObtained: itemsObtained.map(item => ({
+                    itemName: item.name,
+                    quantity: item.quantity,
+                    description: item.description,
+                    effect: item.effect,
+                    itemType: item.type,
+                    goldValue: item.goldValue,
+                    statBonuses: item.statBonuses,
+                })),
                 turnNarration: turnLog.join('\n'), // For AI context
                 nextActiveCombatState: {
                     ...currentCombatState,
@@ -998,79 +1123,11 @@ export default function Home() {
                 turnLog,
                 combatUpdates,
                 conquestHappened,
-                isNocturnalHuntVictory: nocturnalHuntVictory,
+                nocturnalHuntVictory,
             };
-        }, [baseCharacters, nocturnalHuntRewardItem, toast]
+        }, [baseCharacters, nocturnalHuntRewardItem]
     );
 
-    const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
-        if (!updates) return;
-    
-        if (updates.updatedCombatants) {
-            const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
-            setCharacters(prev =>
-                prev.map(char => {
-                    const update = combatantsMap.get(char.id);
-                    if (update) {
-                    return {
-                        ...char,
-                        hitPoints: update.newHp,
-                        manaPoints: update.newMp ?? char.manaPoints,
-                        statusEffects: update.newStatusEffects ?? char.statusEffects,
-                    };
-                    }
-                    return char;
-                })
-            );
-        }
-    
-        const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
-        if (playerUpdate) {
-            setAdventureSettings(prev => ({
-            ...prev,
-            playerCurrentHp: playerUpdate.newHp,
-            playerCurrentMp: playerUpdate.newMp ?? prev.playerCurrentMp,
-            }));
-        }
-        
-        if (updates.combatEnded) {
-            let lootMessage = "Le combat est terminé ! ";
-            
-            const newLootItems: PlayerInventoryItem[] = (updates.itemsObtained || []).map(item => ({
-                id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-                name: item.itemName,
-                quantity: item.quantity,
-                description: item.description,
-                effect: item.effect,
-                type: item.itemType,
-                goldValue: item.goldValue,
-                statBonuses: item.statBonuses,
-                generatedImageUrl: null,
-                isEquipped: false,
-            }));
-
-            if (updates.expGained && updates.expGained > 0) {
-                lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
-                setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
-            }
-            if (updates.currencyGained && updates.currencyGained > 0) {
-                lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
-                addCurrencyToPlayer(updates.currencyGained);
-            }
-            
-            if (lootMessage.trim() !== "Le combat est terminé!") {
-                handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
-            }
-            
-            setActiveCombat(undefined);
-        }
-        
-        else if (updates.nextActiveCombatState) {
-            setActiveCombat(updates.nextActiveCombatState);
-        }
-
-    }, [handleNarrativeUpdate, addCurrencyToPlayer]);
-  
     const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
         React.startTransition(() => {
           setIsLoading(true);
@@ -1082,6 +1139,7 @@ export default function Home() {
         let turnLog: string[] = [];
         let internalCombatUpdates: CombatUpdatesSchema | undefined;
         let conquestHappened = false;
+        let nocturnalHuntVictory = false;
 
         if (locationIdOverride) {
             liveSettings.playerLocationId = locationIdOverride;
@@ -1093,9 +1151,10 @@ export default function Home() {
         if (liveCombat?.isActive) {
             const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
             internalCombatUpdates = combatResult.combatUpdates;
-            liveCombat = combatResult.nextCombatState;
+            liveCombat = combatResult.nextActiveCombatState;
             turnLog = combatResult.turnLog;
             conquestHappened = combatResult.conquestHappened;
+            nocturnalHuntVictory = combatResult.nocturnalHuntVictory;
             handleCombatUpdates(internalCombatUpdates);
         }
     
@@ -1138,9 +1197,9 @@ export default function Home() {
             playerExpToNextLevel: liveSettings.playerExpToNextLevel,
             playerStrength: effectiveStatsThisTurn.playerStrength,
             playerDexterity: effectiveStatsThisTurn.playerDexterity,
-            playerConstitution: effectiveStatsThisTurn.playerConstitution,
-            playerIntelligence: effectiveStatsThisTurn.playerIntelligence,
-            playerWisdom: effectiveStatsThisTurn.playerWisdom,
+            playerConstitution: liveSettings.playerConstitution,
+            playerIntelligence: liveSettings.playerIntelligence,
+            playerWisdom: liveSettings.playerWisdom,
             playerCharisma: effectiveStatsThisTurn.playerCharisma,
             playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
             playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
@@ -1174,6 +1233,7 @@ export default function Home() {
                     }
                     
                     let finalLoot = [...(result.itemsObtained || [])];
+                    
                                     
                     handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
     
@@ -1216,7 +1276,7 @@ export default function Home() {
         handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
         handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
-        characters, activeCombat, aiConfig, baseCharacters, merchantInventory,
+        characters, activeCombat, aiConfig, baseCharacters, merchantInventory, nocturnalHuntRewardItem
     ]);
 
     // --- End Core Action Handlers ---
@@ -1282,47 +1342,6 @@ export default function Home() {
       setMerchantInventory([]); // Close merchant panel after purchase
   }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast]);
    
-
-  const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
-    React.startTransition(() => {
-        setAdventureSettings(prevSettings => {
-            if (!prevSettings.rpgMode) return prevSettings;
-            const newInventory = [...(prevSettings.playerInventory || [])];
-            
-            const lootMessage = narrativeMessages.find(m => m.id === messageId);
-            let currencyGained = 0;
-             if (lootMessage?.loot) {
-                const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
-                if (currencyItem) {
-                    currencyGained = currencyItem.quantity;
-                }
-             }
-
-            itemsToTake.forEach(item => {
-                if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
-                    console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
-                    return;
-                }
-                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                if (existingItemIndex > -1) {
-                    newInventory[existingItemIndex].quantity += item.quantity;
-                } else {
-                    newInventory.push({ ...item, isEquipped: false });
-                }
-            });
-            return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
-        });
-        setNarrativeMessages(prevMessages =>
-            prevMessages.map(msg =>
-                msg.id === messageId ? { ...msg, lootTaken: true } : msg
-            )
-        );
-    });
-    if (!silent) {
-        setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
-    }
-  }, [toast, narrativeMessages]);
-
   const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
         toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
@@ -1703,7 +1722,7 @@ export default function Home() {
                 const effectiveStats = calculateEffectiveStats(newSettings);
                 return { ...newSettings, ...effectiveStats };
             }
-            
+
             return newSettings;
         });
 
@@ -1933,18 +1952,7 @@ export default function Home() {
   }, [toast]);
 
 
-    const handleDiscardLoot = React.useCallback((messageId: string) => {
-        React.startTransition(() => {
-            setNarrativeMessages(prevMessages =>
-                prevMessages.map(msg =>
-                    msg.id === messageId ? { ...msg, lootTaken: true } : msg
-                )
-            );
-        });
-        setTimeout(() => {toast({ title: "Objets Laissés", description: "Vous avez décidé de ne pas prendre ces objets." });},0);
-    }, [toast]);
-
-   const handleEditMessage = React.useCallback((messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => {
+    const handleEditMessage = React.useCallback((messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => {
        React.startTransition(() => {
            setNarrativeMessages(prev => prev.map(msg =>
                msg.id === messageId ? { 
@@ -2111,11 +2119,11 @@ export default function Home() {
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
                  playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
-                 playerDexterity: effectiveStatsThisTurn.playerDexterity,
+                 playerDexterity: currentTurnSettings.playerDexterity,
                  playerConstitution: currentTurnSettings.playerConstitution,
                  playerIntelligence: currentTurnSettings.playerIntelligence,
                  playerWisdom: currentTurnSettings.playerWisdom,
-                 playerCharisma: currentTurnSettings.playerCharisma,
+                 playerCharisma: effectiveStatsThisTurn.playerCharisma,
                  playerArmorClass: currentTurnSettings.playerArmorClass,
                  playerAttackBonus: currentTurnSettings.playerAttackBonus,
                  playerDamageBonus: currentTurnSettings.playerDamageBonus,
@@ -2147,7 +2155,7 @@ export default function Home() {
                     const newAiMessage: Message = {
                         id: `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                         type: 'ai',
-                        content: result.narrative,
+                        content: result.narrative || "L'IA n'a pas fourni de description narrative.",
                         timestamp: Date.now(),
                         sceneDescription: result.sceneDescriptionForImage,
                         loot: (result.itemsObtained || []).map(item => ({
@@ -2677,23 +2685,25 @@ export default function Home() {
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
         if (buildingId === 'poste-chasse-nocturne') {
-             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
             const creatureTypes = creatureFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+            const physicalItems = physicalFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             
-            if (!creatureTypes.length || !descriptors.length) {
-                toast({ title: "Chasse impossible", description: "Données de base manquantes pour générer une créature pour les univers sélectionnés.", variant: "destructive" });
+            if (!creatureTypes.length || !descriptors.length || !physicalItems.length) {
+                toast({ title: "Chasse impossible", description: "Données de base manquantes (créature, descripteur ou objet) pour générer une rencontre dans les univers sélectionnés.", variant: "destructive" });
                 setIsLoading(false);
                 return;
             }
     
             const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
             const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
+            
             const enemyName = `${creatureType.name} ${descriptor.name}`;
             
             // Generate temporary enemy character
-            const tempEnemyId = `nocturnal-${creatureType.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`;
+            const tempEnemyId = `nocturnal-${creatureType.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`;
             const tempEnemyLevel = (poi.level || 1) + Math.floor(Math.random() * 2);
             const tempEnemyStats = {
                 level: tempEnemyLevel,
@@ -2717,28 +2727,9 @@ export default function Home() {
             };
             setCharacters(prev => [...prev, tempEnemyCharacter]);
     
-            // Initiate combat
-            const combatants: Combatant[] = [
-                { characterId: PLAYER_ID, name: adventureSettings.playerName || 'Player', team: 'player', currentHp: adventureSettings.playerCurrentHp!, maxHp: adventureSettings.playerMaxHp! },
-                { characterId: tempEnemyId, name: enemyName, team: 'enemy', currentHp: tempEnemyStats.hp, maxHp: tempEnemyStats.hp }
-            ];
-            setActiveCombat({
-                isActive: true,
-                combatants: combatants,
-                environmentDescription: `Dans les profondeurs sombres de la ${poi.name}.`,
-                turnLog: [],
-            });
-    
-            // Prepare the reward item
-            const physicalItems = physicalFamiliarItems.filter(item => activeUniverses.includes(item.universe));
-            if (!physicalItems.length) {
-                 toast({ title: "Erreur de récompense", description: "Aucun objet physique de familier trouvé pour l'univers actif.", variant: "destructive" });
-                 setIsLoading(false);
-                 return;
-            }
+             // Prepare the reward item
             const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
             const trophyName = `${physicalItem.name} de ${enemyName}`;
-    
             const familiarRarityRoll = Math.random();
             let rarity: Familiar['rarity'] = 'common';
             if (familiarRarityRoll < 0.05) rarity = 'legendary';
@@ -2761,7 +2752,24 @@ export default function Home() {
                 statBonuses: {},
                 effect: `Permet d'invoquer un ${enemyName} comme familier. ${familiarBonus.description.replace('X', String(familiarBonus.value))}`,
             };
-            setNocturnalHuntRewardItem(rewardItem);
+            
+            // Attach reward to the temporary enemy
+            const playerCombatant: Combatant = { characterId: PLAYER_ID, name: adventureSettings.playerName || 'Player', team: 'player', currentHp: adventureSettings.playerCurrentHp!, maxHp: adventureSettings.playerMaxHp! };
+            const enemyCombatant: Combatant = { 
+                characterId: tempEnemyId, 
+                name: enemyName, 
+                team: 'enemy', 
+                currentHp: tempEnemyStats.hp, 
+                maxHp: tempEnemyStats.hp,
+                rewardItem: rewardItem,
+            };
+            
+            setActiveCombat({
+                isActive: true,
+                combatants: [playerCombatant, enemyCombatant],
+                environmentDescription: `Dans les profondeurs sombres de la ${poi.name}.`,
+                turnLog: [],
+            });
     
             userActionText = `Je commence une chasse nocturne et un ${enemyName} apparaît !`;
 
@@ -2790,8 +2798,7 @@ export default function Home() {
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             const poiLevel = poi.level || 1;
             
-            const rarityOrder: { [key in BaseItem['rarity'] as string]: number } = { 'commun': 1, 'rare': 2, 'epique': 3, 'légendaire': 4, 'divin': 5 };
-
+            const rarityOrder: { [key: string]: number } = { 'commun': 1, 'rare': 2, 'epique': 3, 'légendaire': 4, 'divin': 5 };
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -2856,7 +2863,6 @@ export default function Home() {
             const isUpgradable = isPlayerOwned && typeConfig && (poi.level || 1) < Object.keys(typeConfig).length;
             const upgradeCost = isUpgradable ? typeConfig[(poi.level || 1) as keyof typeof typeConfig]?.upgradeCost : null;
             const canAfford = isUpgradable && upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
-
 
             if (!isUpgradable || !canAfford) {
                  setTimeout(() => {
@@ -3341,10 +3347,10 @@ export default function Home() {
     const handleRemoveFromCart = React.useCallback((itemName: string) => {
         setShoppingCart(prevCart => {
             const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
-            if (existingItem && existingItem.quantity > 1) {
+            if (existingItem && existingItem.quantity! > 1) {
                  return prevCart.map(cartItem => 
                     cartItem.name === itemName
-                    ? { ...cartItem, quantity: cartItem.quantity - 1 } 
+                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
                     : cartItem
                 );
             }
@@ -3606,7 +3612,6 @@ export default function Home() {
         reader.readAsDataURL(file);
       }}
       isLoading={isUiLocked}
-      onSaveToLibrary={handleSaveToLibrary}
       aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
       comicDraft={comicDraft}
@@ -3622,14 +3627,15 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
+      onSaveToLibrary={handleSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
       onRemoveFromCart={handleRemoveFromCart}
       onFinalizePurchase={handleFinalizePurchase}
       onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
+      handleClaimHuntReward={handleClaimHuntReward}
     />
      {isTargeting && itemToUse && (
         <AlertDialog open={isTargeting} onOpenChange={setIsTargeting}>
@@ -3656,3 +3662,5 @@ export default function Home() {
     </>
   );
 }
+
+    
