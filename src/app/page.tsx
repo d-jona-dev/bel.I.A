@@ -479,7 +479,7 @@ export default function Home() {
   const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
   const [isTargeting, setIsTargeting] = React.useState(false);
   
-  const addCurrencyToPlayer = React.useCallback((amount: number) => {
+    const addCurrencyToPlayer = React.useCallback((amount: number) => {
     setAdventureSettings(prevSettings => {
         if (!prevSettings.rpgMode) return prevSettings;
         let currentGold = prevSettings.playerGold ?? 0;
@@ -487,9 +487,9 @@ export default function Home() {
         if (newGold < 0) newGold = 0;
         return { ...prevSettings, playerGold: newGold };
     });
-  }, []);
+    }, []);
 
-  const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
+    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
        const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
            id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
            name: item.itemName,
@@ -515,408 +515,408 @@ export default function Home() {
             lootTaken: false,
        };
        setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
-   }, []);
-   
-  const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
-    if (!newChars || newChars.length === 0) return;
+    }, []);
 
-    setAdventureSettings(currentSettings => {
-        const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
+        if (!newChars || newChars.length === 0) return;
 
-        const newCharactersToAdd: Character[] = newChars.map(nc => {
-            const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        setAdventureSettings(currentSettings => {
+            const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
 
-            let initialRelations: Record<string, string> = {};
-            if (currentSettings.relationsMode) {
-                initialRelations[PLAYER_ID] = defaultRelationDesc;
-                if (nc.initialRelations) {
-                    nc.initialRelations.forEach(rel => {
-                        const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
-                        if (targetChar) {
-                            initialRelations[targetChar.id] = rel.description;
-                        } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
-                            initialRelations[PLAYER_ID] = rel.description;
-                        }
-                    });
+            const newCharactersToAdd: Character[] = newChars.map(nc => {
+                const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+                let initialRelations: Record<string, string> = {};
+                if (currentSettings.relationsMode) {
+                    initialRelations[PLAYER_ID] = defaultRelationDesc;
+                    if (nc.initialRelations) {
+                        nc.initialRelations.forEach(rel => {
+                            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
+                            if (targetChar) {
+                                initialRelations[targetChar.id] = rel.description;
+                            } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
+                                initialRelations[PLAYER_ID] = rel.description;
+                            }
+                        });
+                    }
                 }
-            }
-            
-            const npcLevel = nc.level ?? 1;
-            const npcBaseDerivedStats = calculateBaseDerivedStats({
-                level: npcLevel,
-                characterClass: nc.characterClass || "PNJ",
-                strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-            });
-
-            return {
-                id: newId,
-                name: nc.name,
-                details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
-                biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
-                history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
-                portraitUrl: null,
-                faceSwapEnabled: false,
-                affinity: currentSettings.relationsMode ? 50 : undefined,
-                relations: currentSettings.relationsMode ? initialRelations : undefined,
-                isAlly: nc.isAlly ?? false,
-                initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
-                currentExp: currentSettings.rpgMode ? 0 : undefined,
-                expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
-                locationId: currentSettings.playerLocationId,
-                ...(currentSettings.rpgMode ? {
+                
+                const npcLevel = nc.level ?? 1;
+                const npcBaseDerivedStats = calculateBaseDerivedStats({
                     level: npcLevel,
                     characterClass: nc.characterClass || "PNJ",
                     strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
                     intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-                    hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                    maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                    manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                    maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                    armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
-                    attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
-                    damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
-                    isHostile: nc.isHostile ?? false,
-                } : {})
-            };
-        });
-
-        setCharacters(currentChars => {
-            const updatedChars = [...currentChars];
-            newCharactersToAdd.forEach(newChar => {
-                if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
-                    updatedChars.push(newChar);
-                    if (currentSettings.relationsMode) {
-                        for (let i = 0; i < updatedChars.length - 1; i++) {
-                            if (!updatedChars[i].relations) updatedChars[i].relations = {};
-                            if (!updatedChars[i].relations![newChar.id]) {
-                                updatedChars[i].relations![newChar.id] = defaultRelationDesc;
-                            }
-                            if (!newChar.relations) newChar.relations = {};
-                            if (!newChar.relations![updatedChars[i].id]) {
-                                newChar.relations![updatedChars[i].id] = defaultRelationDesc;
-                            }
-                        }
-                    }
-                    setTimeout(() => {
-                        toast({
-                            title: "Nouveau Personnage Rencontré!",
-                            description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
-                        });
-                    }, 0);
-                }
-            });
-            setStagedCharacters(updatedChars);
-            return updatedChars;
-        });
-        
-        return currentSettings;
-    });
-  }, [currentLanguage, toast, characters]);
-
-  const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
-    if (!updates || updates.length === 0) return;
-    setStagedCharacters(prevChars => {
-        let changed = false;
-        const updatedChars = prevChars.map(char => {
-            const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
-            if (charUpdates.length > 0) {
-                changed = true;
-                const newHistory = charUpdates.map(u => u.historyEntry);
-                return {
-                    ...char,
-                    history: [...(char.history || []), ...newHistory].slice(-20),
-                };
-            }
-            return char;
-        });
-        if (changed) return updatedChars;
-        return prevChars;
-    });
-  }, []);
-
-  const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
-    const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
-    if (!currentRelationsMode || !updates || updates.length === 0) return;
-
-    const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-
-    setStagedCharacters(prevChars => {
-         let changed = false;
-        const updatedChars = prevChars.map(char => {
-            const affinityUpdate = updates.find(u => u.characterName.toLowerCase() === char.name.toLowerCase());
-            if (affinityUpdate) {
-                changed = true;
-                const currentAffinity = char.affinity ?? 50;
-                // Clamp the change value to be within [-10, 10] as a safety measure
-                const clampedChange = Math.max(-10, Math.min(10, affinityUpdate.change));
-                const newAffinity = Math.max(0, Math.min(100, currentAffinity + clampedChange));
-
-                if (Math.abs(clampedChange) >= 3) {
-                     const charName = affinityUpdate.characterName;
-                     const direction = clampedChange > 0 ? 'améliorée' : 'détériorée';
-                     toastsToShow.push({
-                         title: `Affinité Modifiée: ${charName}`,
-                         description: `Votre relation avec ${charName} s'est significativement ${direction}. Raison: ${affinityUpdate.reason || 'Interaction récente'}`,
-                     });
-                }
-                return { ...char, affinity: newAffinity };
-            }
-            return char;
-        });
-        if (changed) return updatedChars;
-        return prevChars;
-    });
-     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [toast, stagedAdventureSettings.relationsMode]);
-
-  const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
-    const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
-    const currentPlayerName = stagedAdventureSettings.playerName || "Player";
-    if (!currentRelationsMode || !updates || !updates.length) return;
-
-    const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-    const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-
-    setStagedCharacters(prevChars => {
-        let charsCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
-        let changed = false;
-
-        updates.forEach(update => {
-            const sourceCharIndex = charsCopy.findIndex((c: Character) => c.name.toLowerCase() === update.characterName.toLowerCase());
-            if (sourceCharIndex === -1) return;
-
-            let targetId: string | null = null;
-            if (update.targetName.toLowerCase() === currentPlayerName.toLowerCase()) {
-                targetId = PLAYER_ID;
-            } else {
-                const targetChar = charsCopy.find((c:Character) => c.name.toLowerCase() === update.targetName.toLowerCase());
-                if (targetChar) targetId = targetChar.id;
-                else return;
-            }
-
-            if (!targetId) return;
-
-            const currentRelation = charsCopy[sourceCharIndex].relations?.[targetId] || defaultRelationDesc;
-            const newRelationFromAI = update.newRelation.trim() === "" || update.newRelation.toLowerCase() === "inconnu" || update.newRelation.toLowerCase() === "unknown" ? defaultRelationDesc : update.newRelation;
-
-
-            if (currentRelation !== newRelationFromAI) {
-                if (!charsCopy[sourceCharIndex].relations) {
-                    charsCopy[sourceCharIndex].relations = {};
-                }
-                charsCopy[sourceCharIndex].relations![targetId] = newRelationFromAI;
-                changed = true;
-                toastsToShow.push({
-                    title: `Relation Changée: ${update.characterName}`,
-                    description: `Relation envers ${update.targetName} est maintenant "${newRelationFromAI}". Raison: ${update.reason || 'Événement narratif'}`,
                 });
 
-                if (targetId !== PLAYER_ID) {
-                    const targetCharIndex = charsCopy.findIndex(c => c.id === targetId);
-                    if (targetCharIndex !== -1) {
-                        if (!charsCopy[targetCharIndex].relations) {
-                           charsCopy[targetCharIndex].relations = {};
+                return {
+                    id: newId,
+                    name: nc.name,
+                    details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
+                    biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
+                    history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
+                    portraitUrl: null,
+                    faceSwapEnabled: false,
+                    affinity: currentSettings.relationsMode ? 50 : undefined,
+                    relations: currentSettings.relationsMode ? initialRelations : undefined,
+                    isAlly: nc.isAlly ?? false,
+                    initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
+                    currentExp: currentSettings.rpgMode ? 0 : undefined,
+                    expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
+                    locationId: currentSettings.playerLocationId,
+                    ...(currentSettings.rpgMode ? {
+                        level: npcLevel,
+                        characterClass: nc.characterClass || "PNJ",
+                        strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
+                        intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
+                        hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                        maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
+                        manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                        maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
+                        armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
+                        attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
+                        damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
+                        isHostile: nc.isHostile ?? false,
+                    } : {})
+                };
+            });
+
+            setCharacters(currentChars => {
+                const updatedChars = [...currentChars];
+                newCharactersToAdd.forEach(newChar => {
+                    if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
+                        updatedChars.push(newChar);
+                        if (currentSettings.relationsMode) {
+                            for (let i = 0; i < updatedChars.length - 1; i++) {
+                                if (!updatedChars[i].relations) updatedChars[i].relations = {};
+                                if (!updatedChars[i].relations![newChar.id]) {
+                                    updatedChars[i].relations![newChar.id] = defaultRelationDesc;
+                                }
+                                if (!newChar.relations) newChar.relations = {};
+                                if (!newChar.relations![updatedChars[i].id]) {
+                                    newChar.relations![updatedChars[i].id] = defaultRelationDesc;
+                                }
+                            }
                         }
-                         charsCopy[targetCharIndex].relations![charsCopy[sourceCharIndex].id] = newRelationFromAI;
+                        setTimeout(() => {
+                            toast({
+                                title: "Nouveau Personnage Rencontré!",
+                                description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
+                            });
+                        }, 0);
+                    }
+                });
+                setStagedCharacters(updatedChars);
+                return updatedChars;
+            });
+            
+            return currentSettings;
+        });
+    }, [currentLanguage, toast, characters]);
+
+    const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
+        if (!updates || updates.length === 0) return;
+        setStagedCharacters(prevChars => {
+            let changed = false;
+            const updatedChars = prevChars.map(char => {
+                const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
+                if (charUpdates.length > 0) {
+                    changed = true;
+                    const newHistory = charUpdates.map(u => u.historyEntry);
+                    return {
+                        ...char,
+                        history: [...(char.history || []), ...newHistory].slice(-20),
+                    };
+                }
+                return char;
+            });
+            if (changed) return updatedChars;
+            return prevChars;
+        });
+    }, []);
+
+    const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
+        const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+        if (!currentRelationsMode || !updates || updates.length === 0) return;
+
+        const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
+
+        setStagedCharacters(prevChars => {
+            let changed = false;
+            const updatedChars = prevChars.map(char => {
+                const affinityUpdate = updates.find(u => u.characterName.toLowerCase() === char.name.toLowerCase());
+                if (affinityUpdate) {
+                    changed = true;
+                    const currentAffinity = char.affinity ?? 50;
+                    // Clamp the change value to be within [-10, 10] as a safety measure
+                    const clampedChange = Math.max(-10, Math.min(10, affinityUpdate.change));
+                    const newAffinity = Math.max(0, Math.min(100, currentAffinity + clampedChange));
+
+                    if (Math.abs(clampedChange) >= 3) {
+                        const charName = affinityUpdate.characterName;
+                        const direction = clampedChange > 0 ? 'améliorée' : 'détériorée';
+                        toastsToShow.push({
+                            title: `Affinité Modifiée: ${charName}`,
+                            description: `Votre relation avec ${charName} s'est significativement ${direction}. Raison: ${affinityUpdate.reason || 'Interaction récente'}`,
+                        });
+                    }
+                    return { ...char, affinity: newAffinity };
+                }
+                return char;
+            });
+            if (changed) return updatedChars;
+            return prevChars;
+        });
+        toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
+    }, [toast, stagedAdventureSettings.relationsMode]);
+
+    const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
+        const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+        const currentPlayerName = stagedAdventureSettings.playerName || "Player";
+        if (!currentRelationsMode || !updates || !updates.length) return;
+
+        const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+        const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
+
+        setStagedCharacters(prevChars => {
+            let charsCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
+            let changed = false;
+
+            updates.forEach(update => {
+                const sourceCharIndex = charsCopy.findIndex((c: Character) => c.name.toLowerCase() === update.characterName.toLowerCase());
+                if (sourceCharIndex === -1) return;
+
+                let targetId: string | null = null;
+                if (update.targetName.toLowerCase() === currentPlayerName.toLowerCase()) {
+                    targetId = PLAYER_ID;
+                } else {
+                    const targetChar = charsCopy.find((c:Character) => c.name.toLowerCase() === update.targetName.toLowerCase());
+                    if (targetChar) targetId = targetChar.id;
+                    else return;
+                }
+
+                if (!targetId) return;
+
+                const currentRelation = charsCopy[sourceCharIndex].relations?.[targetId] || defaultRelationDesc;
+                const newRelationFromAI = update.newRelation.trim() === "" || update.newRelation.toLowerCase() === "inconnu" || update.newRelation.toLowerCase() === "unknown" ? defaultRelationDesc : update.newRelation;
+
+
+                if (currentRelation !== newRelationFromAI) {
+                    if (!charsCopy[sourceCharIndex].relations) {
+                        charsCopy[sourceCharIndex].relations = {};
+                    }
+                    charsCopy[sourceCharIndex].relations![targetId] = newRelationFromAI;
+                    changed = true;
+                    toastsToShow.push({
+                        title: `Relation Changée: ${update.characterName}`,
+                        description: `Relation envers ${update.targetName} est maintenant "${newRelationFromAI}". Raison: ${update.reason || 'Événement narratif'}`,
+                    });
+
+                    if (targetId !== PLAYER_ID) {
+                        const targetCharIndex = charsCopy.findIndex(c => c.id === targetId);
+                        if (targetCharIndex !== -1) {
+                            if (!charsCopy[targetCharIndex].relations) {
+                            charsCopy[targetCharIndex].relations = {};
+                            }
+                            charsCopy[targetCharIndex].relations![charsCopy[sourceCharIndex].id] = newRelationFromAI;
+                        }
                     }
                 }
-            }
-        });
-
-        if (changed) return charsCopy;
-        return prevChars;
-    });
-     toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
-  }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
-
- const handleTimeUpdate = React.useCallback((newEvent?: string) => {
-    setAdventureSettings(prev => {
-        if (!prev.timeManagement?.enabled) return prev;
-
-        const { currentTime, timeElapsedPerTurn, day, dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"] } = prev.timeManagement;
-
-        const [h1, m1] = currentTime.split(':').map(Number);
-        const [h2, m2] = timeElapsedPerTurn.split(':').map(Number);
-        
-        let totalMinutes = m1 + m2;
-        let totalHours = h1 + h2 + Math.floor(totalMinutes / 60);
-        
-        let newDay = day;
-        if (totalHours >= 24) {
-            newDay += Math.floor(totalHours / 24);
-            totalHours %= 24;
-        }
-
-        const newCurrentTime = `${String(totalHours).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
-        const newDayName = dayNames[(newDay - 1) % dayNames.length];
-        
-        return {
-            ...prev,
-            timeManagement: {
-                ...prev.timeManagement,
-                day: newDay,
-                dayName: newDayName,
-                currentTime: newCurrentTime,
-                currentEvent: newEvent || prev.timeManagement.currentEvent,
-            },
-        };
-    });
-  }, []);
-
-  const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
-    setAdventureSettings(prevSettings => {
-        if (!newFamiliarSchema) return prevSettings;
-
-        const newFamiliar: Familiar = {
-            id: `${newFamiliarSchema.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-            name: newFamiliarSchema.name,
-            description: newFamiliarSchema.description,
-            rarity: newFamiliarSchema.rarity,
-            level: 1,
-            currentExp: 0,
-            expToNextLevel: 100,
-            isActive: false,
-            passiveBonus: newFamiliarSchema.passiveBonus,
-            portraitUrl: null,
-        };
-
-        const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
-        
-        setTimeout(() => {
-            toast({
-                title: "Nouveau Familier!",
-                description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
             });
-        }, 0);
 
-        return { ...prevSettings, familiars: updatedFamiliars };
-    });
-  }, [toast]);
-
-  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
-    if (!changes || changes.length === 0) return;
-
-    const updater = (prev: AdventureSettings): AdventureSettings => {
-        if (!prev.mapPointsOfInterest) return prev;
-
-        let pois = [...prev.mapPointsOfInterest];
-        let changed = false;
-
-        changes.forEach(change => {
-            const poiIndex = pois.findIndex(p => p.id === change.poiId);
-            if (poiIndex !== -1) {
-                const oldOwnerId = pois[poiIndex].ownerId;
-                if (oldOwnerId !== change.newOwnerId) {
-                    const poi = pois[poiIndex];
-                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                    
-                    pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
-                    changed = true;
-                    
-                    setTimeout(() => {
-                        toast({
-                            title: "Changement de Territoire!",
-                            description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                        });
-                    }, 0);
-                }
-            }
+            if (changed) return charsCopy;
+            return prevChars;
         });
+        toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
+    }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
-        if (!changed) return prev;
-        return { ...prev, mapPointsOfInterest: pois };
-    };
-    
-    setAdventureSettings(updater);
-    setStagedAdventureSettings(prevStaged => {
-        const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
-        const finalPois = updater(updatedLiveState).mapPointsOfInterest;
-        return { ...prevStaged, mapPointsOfInterest: finalPois };
-    });
-    setFormPropKey(k => k + 1);
+    const handleTimeUpdate = React.useCallback((newEvent?: string) => {
+        setAdventureSettings(prev => {
+            if (!prev.timeManagement?.enabled) return prev;
 
-}, [toast, characters, adventureSettings.playerName]);
+            const { currentTime, timeElapsedPerTurn, day, dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"] } = prev.timeManagement;
 
-  const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
-    if (!updates) return;
-  
-    // Update main character list with new stats
-    if (updates.updatedCombatants) {
-        const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
-        setCharacters(prev =>
-          prev.map(char => {
-            const update = combatantsMap.get(char.id);
-            if (update) {
-              return {
-                ...char,
-                hitPoints: update.newHp,
-                manaPoints: update.newMp ?? char.manaPoints,
-                statusEffects: update.newStatusEffects ?? char.statusEffects,
-              };
+            const [h1, m1] = currentTime.split(':').map(Number);
+            const [h2, m2] = timeElapsedPerTurn.split(':').map(Number);
+            
+            let totalMinutes = m1 + m2;
+            let totalHours = h1 + h2 + Math.floor(totalMinutes / 60);
+            
+            let newDay = day;
+            if (totalHours >= 24) {
+                newDay += Math.floor(totalHours / 24);
+                totalHours %= 24;
             }
-            return char;
-          })
-        );
-    }
-  
-    // Update player stats
-    const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
-    if (playerUpdate) {
-        setAdventureSettings(prev => ({
-          ...prev,
-          playerCurrentHp: playerUpdate.newHp,
-          playerCurrentMp: playerUpdate.newMp ?? prev.playerCurrentMp,
-        }));
-    }
-    
-    // Handle end of combat rewards
-    if (updates.combatEnded) {
-        let lootMessage = "Le combat est terminé ! ";
-        let newLootItems: LootedItem[] = [];
-        
-        const itemsFromText = (updates.lootItemsText || "")
-            .split(',')
-            .map(name => name.trim())
-            .filter(name => name)
-            .map(name => ({
-                itemName: name,
-                quantity: 1,
-                description: `Un objet obtenu: ${name}`,
-                itemType: 'misc',
-                goldValue: 1,
-            } as LootedItem));
 
-        if (updates.expGained && updates.expGained > 0) {
-            lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
-            setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
-        }
-        if (updates.currencyGained && updates.currencyGained > 0) {
-             lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
-             addCurrencyToPlayer(updates.currencyGained);
-        }
-        if (updates.itemsObtained && updates.itemsObtained.length > 0) {
-             newLootItems.push(...updates.itemsObtained);
-        }
-        if (itemsFromText.length > 0) {
-             newLootItems.push(...itemsFromText);
-        }
-        
-        if (lootMessage.trim() !== "Le combat est terminé!") {
-            handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
-        }
-        
-        setActiveCombat(undefined); // Reset combat state
-    }
-    
-    // Update activeCombat state if combat is ongoing
-    else if (updates.nextActiveCombatState) {
-        setActiveCombat(updates.nextActiveCombatState);
-    }
+            const newCurrentTime = `${String(totalHours).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+            const newDayName = dayNames[(newDay - 1) % dayNames.length];
+            
+            return {
+                ...prev,
+                timeManagement: {
+                    ...prev.timeManagement,
+                    day: newDay,
+                    dayName: newDayName,
+                    currentTime: newCurrentTime,
+                    currentEvent: newEvent || prev.timeManagement.currentEvent,
+                },
+            };
+        });
+    }, []);
 
-  }, [handleNarrativeUpdate, addCurrencyToPlayer]);
+    const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
+        setAdventureSettings(prevSettings => {
+            if (!newFamiliarSchema) return prevSettings;
+
+            const newFamiliar: Familiar = {
+                id: `${newFamiliarSchema.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                name: newFamiliarSchema.name,
+                description: newFamiliarSchema.description,
+                rarity: newFamiliarSchema.rarity,
+                level: 1,
+                currentExp: 0,
+                expToNextLevel: 100,
+                isActive: false,
+                passiveBonus: newFamiliarSchema.passiveBonus,
+                portraitUrl: null,
+            };
+
+            const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
+            
+            setTimeout(() => {
+                toast({
+                    title: "Nouveau Familier!",
+                    description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
+                });
+            }, 0);
+
+            return { ...prevSettings, familiars: updatedFamiliars };
+        });
+    }, [toast]);
+
+    const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+        if (!changes || changes.length === 0) return;
+
+        const updater = (prev: AdventureSettings): AdventureSettings => {
+            if (!prev.mapPointsOfInterest) return prev;
+
+            let pois = [...prev.mapPointsOfInterest];
+            let changed = false;
+
+            changes.forEach(change => {
+                const poiIndex = pois.findIndex(p => p.id === change.poiId);
+                if (poiIndex !== -1) {
+                    const oldOwnerId = pois[poiIndex].ownerId;
+                    if (oldOwnerId !== change.newOwnerId) {
+                        const poi = pois[poiIndex];
+                        const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                        
+                        pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
+                        changed = true;
+                        
+                        setTimeout(() => {
+                            toast({
+                                title: "Changement de Territoire!",
+                                description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                            });
+                        }, 0);
+                    }
+                }
+            });
+
+            if (!changed) return prev;
+            return { ...prev, mapPointsOfInterest: pois };
+        };
+        
+        setAdventureSettings(updater);
+        setStagedAdventureSettings(prevStaged => {
+            const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
+            const finalPois = updater(updatedLiveState).mapPointsOfInterest;
+            return { ...prevStaged, mapPointsOfInterest: finalPois };
+        });
+        setFormPropKey(k => k + 1);
+
+    }, [toast, characters, adventureSettings.playerName]);
+
+    const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
+        if (!updates) return;
+    
+        // Update main character list with new stats
+        if (updates.updatedCombatants) {
+            const combatantsMap = new Map(updates.updatedCombatants.map(c => [c.combatantId, c]));
+            setCharacters(prev =>
+            prev.map(char => {
+                const update = combatantsMap.get(char.id);
+                if (update) {
+                return {
+                    ...char,
+                    hitPoints: update.newHp,
+                    manaPoints: update.newMp ?? char.manaPoints,
+                    statusEffects: update.newStatusEffects ?? char.statusEffects,
+                };
+                }
+                return char;
+            })
+            );
+        }
+    
+        // Update player stats
+        const playerUpdate = updates.updatedCombatants?.find(c => c.combatantId === PLAYER_ID);
+        if (playerUpdate) {
+            setAdventureSettings(prev => ({
+            ...prev,
+            playerCurrentHp: playerUpdate.newHp,
+            playerCurrentMp: playerUpdate.newMp ?? prev.playerCurrentMp,
+            }));
+        }
+        
+        // Handle end of combat rewards
+        if (updates.combatEnded) {
+            let lootMessage = "Le combat est terminé ! ";
+            let newLootItems: LootedItem[] = [];
+            
+            const itemsFromText = (updates.lootItemsText || "")
+                .split(',')
+                .map(name => name.trim())
+                .filter(name => name)
+                .map(name => ({
+                    itemName: name,
+                    quantity: 1,
+                    description: `Un objet obtenu: ${name}`,
+                    itemType: 'misc',
+                    goldValue: 1,
+                } as LootedItem));
+
+            if (updates.expGained && updates.expGained > 0) {
+                lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
+                setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
+            }
+            if (updates.currencyGained && updates.currencyGained > 0) {
+                lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
+                addCurrencyToPlayer(updates.currencyGained);
+            }
+            if (updates.itemsObtained && updates.itemsObtained.length > 0) {
+                newLootItems.push(...updates.itemsObtained);
+            }
+            if (itemsFromText.length > 0) {
+                newLootItems.push(...itemsFromText);
+            }
+            
+            if (lootMessage.trim() !== "Le combat est terminé!") {
+                handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
+            }
+            
+            setActiveCombat(undefined); // Reset combat state
+        }
+        
+        // Update activeCombat state if combat is ongoing
+        else if (updates.nextActiveCombatState) {
+            setActiveCombat(updates.nextActiveCombatState);
+        }
+
+    }, [handleNarrativeUpdate, addCurrencyToPlayer]);
   
-  const resolveCombatTurn = React.useCallback(
+    const resolveCombatTurn = React.useCallback(
     (
       currentCombatState: ActiveCombat,
       settings: AdventureSettings,
@@ -1031,10 +1031,16 @@ export default function Home() {
                 const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
                 turnLog.push(`Le territoire de ${poiName} est conquis!`);
             }
-            if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                setAdventureSettings(prev => {
-                    const newInventory = [...(prev.playerInventory || []), nocturnalHuntRewardItem];
-                    return { ...prev, playerInventory: newInventory };
+             if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                const reward = nocturnalHuntRewardItem;
+                itemsObtained.push({
+                    itemName: reward.name,
+                    quantity: reward.quantity,
+                    description: reward.description,
+                    itemType: reward.type,
+                    goldValue: reward.goldValue,
+                    effect: reward.effect,
+                    statBonuses: reward.statBonuses,
                 });
                 setNocturnalHuntRewardItem(null); // Clear the pending reward
             }
@@ -1068,6 +1074,7 @@ export default function Home() {
             isNocturnalHuntVictory: nocturnalHuntVictory,
         };
     }, [baseCharacters, nocturnalHuntRewardItem]);
+
 
     const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
     React.startTransition(() => {
@@ -1347,7 +1354,7 @@ export default function Home() {
   }, [toast, narrativeMessages]);
 
   const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
-    if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative) {
+    if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
         toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
         return;
     }
@@ -3667,4 +3674,5 @@ export default function Home() {
 
 
     
+
 
