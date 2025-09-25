@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -21,7 +20,7 @@ import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLev
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
-import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS } from "@/lib/items";
+import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1087,6 +1086,8 @@ export default function Home() {
     let turnLog: string[] = [];
     let internalCombatUpdates: CombatUpdatesSchema | undefined;
     let conquestHappened = false;
+    let nocturnalHuntVictory = false;
+
 
     if (locationIdOverride) {
         liveSettings.playerLocationId = locationIdOverride;
@@ -1101,6 +1102,7 @@ export default function Home() {
         liveCombat = combatResult.nextCombatState;
         turnLog = combatResult.turnLog;
         conquestHappened = combatResult.conquestHappened;
+        nocturnalHuntVictory = combatResult.isNocturnalHuntVictory; // Capture the victory signal
         handleCombatUpdates(internalCombatUpdates);
 
     }
@@ -1194,6 +1196,19 @@ export default function Home() {
                     } as LootedItem));
 
                 let finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
+                
+                if (internalCombatUpdates?.combatEnded && nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                    finalLoot.push({
+                        itemName: nocturnalHuntRewardItem.name,
+                        quantity: nocturnalHuntRewardItem.quantity,
+                        description: nocturnalHuntRewardItem.description,
+                        itemType: nocturnalHuntRewardItem.type,
+                        goldValue: nocturnalHuntRewardItem.goldValue,
+                        effect: nocturnalHuntRewardItem.effect,
+                        statBonuses: nocturnalHuntRewardItem.statBonuses,
+                    });
+                    setNocturnalHuntRewardItem(null); // Clear the reward
+                }
                                 
                 handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
 
@@ -1250,6 +1265,7 @@ export default function Home() {
       aiConfig,
       baseCharacters,
       merchantInventory,
+      nocturnalHuntRewardItem,
   ]);
 
   const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -1322,7 +1338,7 @@ export default function Home() {
             const lootMessage = narrativeMessages.find(m => m.id === messageId);
             let currencyGained = 0;
              if (lootMessage?.loot) {
-                const currencyItem = lootMessage.loot.find(item => item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold"));
+                const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
                 if (currencyItem) {
                     currencyGained = currencyItem.quantity;
                 }
@@ -1394,16 +1410,6 @@ export default function Home() {
         }
     });
   }, [toast]);
-
-  React.useEffect(() => {
-      setStagedAdventureSettings({
-          ...JSON.parse(JSON.stringify(baseAdventureSettings)),
-          characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
-      });
-      setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)));
-      setFormPropKey(k => k + 1);
-  }, [baseAdventureSettings, baseCharacters]);
-
 
   React.useEffect(() => {
       const shouldLoad = localStorage.getItem('loadStoryOnMount');
@@ -1692,7 +1698,7 @@ export default function Home() {
                            itemActionSuccessful = false;
                            return prevSettings;
                         }
-                    } else if (itemToUpdate.description?.toLowerCase().includes('familier') || itemToUpdate.name.toLowerCase().includes('crocs de') || itemToUpdate.name.toLowerCase().includes('griffe de')) {
+                    } else if (itemToUpdate.name.toLowerCase().includes('crocs de') || itemToUpdate.name.toLowerCase().includes('griffe de') || itemToUpdate.name.toLowerCase().includes('collier de')) {
                          handleUseFamiliarItem(itemToUpdate);
                          narrativeAction = "";
                          effectAppliedMessage = "";
@@ -2759,20 +2765,31 @@ export default function Home() {
             else if (familiarRarityRoll < 0.15) rarity = 'epic';
             else if (familiarRarityRoll < 0.4) rarity = 'rare';
             else if (familiarRarityRoll < 0.7) rarity = 'uncommon';
-            
-            const newFamiliarReward: NewFamiliarSchema = {
-                name: creature.name,
-                description: `Un ${creature.name.toLowerCase()} capturé lors d'une chasse nocturne. Rareté: ${rarity}.`,
-                rarity: rarity,
-                passiveBonus: generateDynamicFamiliarBonus(rarity),
-            };
 
+            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            
+            const physicalItems = BASE_FAMILIAR_PHYSICAL_ITEMS.filter(item => activeUniverses.includes(item.universe));
+            const creatureTypes = BASE_FAMILIAR_CREATURES.filter(item => activeUniverses.includes(item.universe));
+            const descriptors = BASE_FAMILIAR_DESCRIPTORS.filter(item => activeUniverses.includes(item.universe));
+
+            const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
+            const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
+            const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
+
+            if (!physicalItem || !creatureType || !descriptor) {
+                toast({ title: "Erreur de génération", description: "Impossible de générer un trophée de familier, données de base manquantes.", variant: "destructive" });
+                setIsLoading(false);
+                return;
+            }
+
+            const trophyName = `${physicalItem.name} de ${creatureType.name} ${descriptor.name}`;
+            const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${creatureType.name.toLowerCase()} ${descriptor.name.toLowerCase()}. Il semble contenir une essence magique.`;
+            
             const rewardItem: PlayerInventoryItem = {
-                id: `trophy-${creature.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
-                name: `Crocs de ${creature.name}`,
+                id: `trophy-${creatureType.name.toLowerCase()}-${uid()}`,
+                name: trophyName,
                 quantity: 1,
-                description: `Les crocs de la créature vaincue. Contient l'essence de la créature. A utiliser pour lier le familier. Rareté: ${rarity}.`,
-                effect: newFamiliarReward.passiveBonus.description,
+                description: trophyDescription,
                 type: 'consumable',
                 goldValue: 100 * (familiarRarityRoll + 1),
                 generatedImageUrl: null,
@@ -2821,7 +2838,7 @@ export default function Home() {
             const config = inventoryConfig[poiLevel] || inventoryConfig[1];
             
             const availableItems = itemsInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[item.rarity?.toLowerCase() || 'commun'] || 1;
+                const itemRarityValue = rarityOrder[(item.rarity || 'commun').toLowerCase()] || 1;
                 return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
             });
             
@@ -3675,4 +3692,11 @@ export default function Home() {
 
     
 
+
+
+    
+
+    
+
+    
 

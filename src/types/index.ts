@@ -12,7 +12,7 @@ export interface BaseItem {
   ac?: string; // e.g., "11 + Mod.Dex", "14"
   baseGoldValue: number;
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string;
-  rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
+  rarity: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
   effectType?: 'stat' | 'narrative' | 'combat';
   statBonuses?: PlayerInventoryItem['statBonuses'];
   effectDetails?: {
@@ -21,13 +21,10 @@ export interface BaseItem {
   };
 }
 
-export interface BaseFamiliar {
-    id: string;
-    name: string;
-    description: string;
-    universe: string;
-    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-    basePassiveBonus: FamiliarPassiveBonus;
+export interface BaseFamiliarComponent {
+  id: string;
+  name: string;
+  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string;
 }
 
 
@@ -39,7 +36,7 @@ export interface SellingItem {
   type: BaseItem['type'];
   damage?: string;
   ac?: string;
-  rarity: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin';
+  rarity: BaseItem['rarity'];
   finalGoldValue: number;
   statBonuses?: PlayerInventoryItem['statBonuses'];
   effectType?: 'stat' | 'narrative' | 'combat';
@@ -702,4 +699,3 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
-

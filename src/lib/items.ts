@@ -1,5 +1,52 @@
 
-import type { BaseItem } from '@/types';
+import type { BaseItem, BaseFamiliar } from '@/types';
+
+// NEW: Base definitions for modular familiar components
+export interface BaseFamiliarComponent {
+  id: string;
+  name: string;
+  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string;
+}
+
+export const BASE_FAMILIAR_PHYSICAL_ITEMS: BaseFamiliarComponent[] = [
+    { id: 'phy-001', name: 'Collier', universe: 'Médiéval-Fantastique' },
+    { id: 'phy-002', name: 'Plume', universe: 'Médiéval-Fantastique' },
+    { id: 'phy-003', name: 'Croc', universe: 'Médiéval-Fantastique' },
+    { id: 'phy-004', name: 'Griffe', universe: 'Médiéval-Fantastique' },
+    { id: 'phy-005', name: 'Orbe', universe: 'Médiéval-Fantastique' },
+    { id: 'phy-006', name: 'Puce Électronique', universe: 'Futuriste' },
+    { id: 'phy-007', name: 'Réacteur Miniature', universe: 'Futuriste' },
+    { id: 'phy-008', name: 'Éclat de Données', universe: 'Futuriste' },
+    { id: 'phy-009', name: 'Boulon Rouillé', universe: 'Post-Apo' },
+    { id: 'phy-010', name: 'Fragment de Pneu', universe: 'Post-Apo' },
+];
+
+export const BASE_FAMILIAR_CREATURES: BaseFamiliarComponent[] = [
+    { id: 'cre-001', name: 'Loup', universe: 'Médiéval-Fantastique' },
+    { id: 'cre-002', name: 'Faucon', universe: 'Médiéval-Fantastique' },
+    { id: 'cre-003', name: 'Chat', universe: 'Médiéval-Fantastique' },
+    { id: 'cre-004', name: 'Ours', universe: 'Médiéval-Fantastique' },
+    { id: 'cre-005', name: 'Serpent', universe: 'Médiéval-Fantastique' },
+    { id: 'cre-006', name: 'Drone', universe: 'Futuriste' },
+    { id: 'cre-007', name: 'Androïde', universe: 'Futuriste' },
+    { id: 'cre-008', name: 'Cyber-panthère', universe: 'Futuriste' },
+    { id: 'cre-009', name: 'Chien Mutant', universe: 'Post-Apo' },
+    { id: 'cre-010', name: 'Rat Géant', universe: 'Post-Apo' },
+];
+
+export const BASE_FAMILIAR_DESCRIPTORS: BaseFamiliarComponent[] = [
+    { id: 'des-001', name: 'Spectral', universe: 'Médiéval-Fantastique' },
+    { id: 'des-002', name: 'de Feu', universe: 'Médiéval-Fantastique' },
+    { id: 'des-003', name: 'de Glace', universe: 'Médiéval-Fantastique' },
+    { id: 'des-004', name: 'Doré', universe: 'Médiéval-Fantastique' },
+    { id: 'des-005', name: 'd\'Ombre', universe: 'Médiéval-Fantastique' },
+    { id: 'des-006', name: 'Néon', universe: 'Futuriste' },
+    { id: 'des-007', name: 'Holographique', universe: 'Futuriste' },
+    { id: 'des-008', name: 'Chromé', universe: 'Futuriste' },
+    { id: 'des-009', name: 'Toxique', universe: 'Post-Apo' },
+    { id: 'des-010', name: 'Enragé', universe: 'Post-Apo' },
+];
+
 
 export const BASE_WEAPONS: BaseItem[] = [
   { id: 'weap-001', name: 'Bâton', description: 'Un simple bâton de bois, utile pour la marche et pour se défendre.', type: 'weapon', damage: '1d6', baseGoldValue: 2, universe: 'Médiéval-Fantastique', rarity: 'Commun' },
