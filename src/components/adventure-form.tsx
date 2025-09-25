@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,7 @@ import { Slider } from "./ui/slider";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS } from "@/lib/items";
+import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 
@@ -142,14 +142,25 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const [allUniverses, setAllUniverses] = React.useState<string[]>(['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra']);
     const [newUniverse, setNewUniverse] = React.useState('');
 
+    // Item States
     const [consumables, setConsumables] = React.useState<BaseItem[]>([]);
     const [weapons, setWeapons] = React.useState<BaseItem[]>([]);
     const [armors, setArmors] = React.useState<BaseItem[]>([]);
     const [jewelry, setJewelry] = React.useState<BaseItem[]>([]);
 
+    // Familiar Component States
+    const [physicalFamiliarItems, setPhysicalFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    const [creatureFamiliarItems, setCreatureFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    const [descriptorFamiliarItems, setDescriptorFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    
     const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
     const [isItemEditorOpen, setIsItemEditorOpen] = React.useState(false);
     const [editingItemType, setEditingItemType] = React.useState<BaseItem['type']>('consumable');
+
+    // Familiar Component Editor State
+    const [editingFamiliarComponent, setEditingFamiliarComponent] = React.useState<BaseFamiliarComponent | null>(null);
+    const [isFamiliarEditorOpen, setIsFamiliarEditorOpen] = React.useState(false);
+    const [editingFamiliarComponentType, setEditingFamiliarComponentType] = React.useState<'physical' | 'creature' | 'descriptor'>('physical');
     
     const [newPoiName, setNewPoiName] = React.useState("");
     const [newPoiDescription, setNewPoiDescription] = React.useState("");
@@ -191,18 +202,23 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 const customUniverses = JSON.parse(storedUniverses);
                 setAllUniverses(prev => Array.from(new Set([...prev, ...customUniverses])));
             }
-
-            const storedConsumables = localStorage.getItem('custom_consumables');
-            setConsumables(storedConsumables ? JSON.parse(storedConsumables) : BASE_CONSUMABLES);
             
-            const storedWeapons = localStorage.getItem('custom_weapons');
-            setWeapons(storedWeapons ? JSON.parse(storedWeapons) : BASE_WEAPONS);
+            const loadData = (key: string, baseData: any[]) => {
+              try {
+                const storedData = localStorage.getItem(key);
+                return storedData ? JSON.parse(storedData) : baseData;
+              } catch {
+                return baseData;
+              }
+            };
             
-            const storedArmors = localStorage.getItem('custom_armors');
-            setArmors(storedArmors ? JSON.parse(storedArmors) : BASE_ARMORS);
-            
-            const storedJewelry = localStorage.getItem('custom_jewelry');
-            setJewelry(storedJewelry ? JSON.parse(storedJewelry) : BASE_JEWELRY);
+            setConsumables(loadData('custom_consumables', BASE_CONSUMABLES));
+            setWeapons(loadData('custom_weapons', BASE_WEAPONS));
+            setArmors(loadData('custom_armors', BASE_ARMORS));
+            setJewelry(loadData('custom_jewelry', BASE_JEWELRY));
+            setPhysicalFamiliarItems(loadData('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
+            setCreatureFamiliarItems(loadData('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
+            setDescriptorFamiliarItems(loadData('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
 
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
@@ -241,6 +257,71 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             default: return [];
         }
     }
+
+    const saveFamiliarComponents = (type: 'physical' | 'creature' | 'descriptor', components: BaseFamiliarComponent[]) => {
+        const keyMap = {
+            physical: 'custom_familiar_physical',
+            creature: 'custom_familiar_creatures',
+            descriptor: 'custom_familiar_descriptors'
+        };
+        const stateSetterMap = {
+            physical: setPhysicalFamiliarItems,
+            creature: setCreatureFamiliarItems,
+            descriptor: setDescriptorFamiliarItems
+        };
+        const key = keyMap[type];
+        const setter = stateSetterMap[type];
+        setter(components);
+        localStorage.setItem(key, JSON.stringify(components));
+    }
+
+    const getFamiliarComponentsForType = (type: 'physical' | 'creature' | 'descriptor'): BaseFamiliarComponent[] => {
+        switch (type) {
+            case 'physical': return physicalFamiliarItems;
+            case 'creature': return creatureFamiliarItems;
+            case 'descriptor': return descriptorFamiliarItems;
+            default: return [];
+        }
+    }
+
+    const handleSaveFamiliarComponent = () => {
+        if (!editingFamiliarComponent || !editingFamiliarComponent.name.trim()) {
+            toast({ title: "Erreur", description: "Le nom du composant est requis.", variant: "destructive" });
+            return;
+        }
+
+        const components = getFamiliarComponentsForType(editingFamiliarComponentType);
+        const isNew = editingFamiliarComponent.id.startsWith('new-');
+        let updatedComponents;
+
+        if (isNew) {
+            updatedComponents = [...components, editingFamiliarComponent];
+        } else {
+            updatedComponents = components.map(c => c.id === editingFamiliarComponent.id ? editingFamiliarComponent : c);
+        }
+        
+        saveFamiliarComponents(editingFamiliarComponentType, updatedComponents);
+        toast({ title: "Composant de familier sauvegardé", description: `"${editingFamiliarComponent.name}" a été mis à jour.` });
+        setIsFamiliarEditorOpen(false);
+        setEditingFamiliarComponent(null);
+    };
+
+    const handleAddNewFamiliarComponent = (type: 'physical' | 'creature' | 'descriptor') => {
+        setEditingFamiliarComponentType(type);
+        setEditingFamiliarComponent({
+            id: `new-${type.slice(0,3)}-${Date.now()}`,
+            name: "",
+            universe: 'Médiéval-Fantastique',
+        });
+        setIsFamiliarEditorOpen(true);
+    };
+
+    const handleDeleteFamiliarComponent = (componentId: string, type: 'physical' | 'creature' | 'descriptor') => {
+        const components = getFamiliarComponentsForType(type);
+        const updatedComponents = components.filter(c => c.id !== componentId);
+        saveFamiliarComponents(type, updatedComponents);
+        toast({ title: "Composant de familier supprimé" });
+    };
 
 
     const handleSaveItem = () => {
@@ -552,6 +633,35 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </>
     );
 
+    const renderFamiliarComponentManager = (type: 'physical' | 'creature' | 'descriptor', title: string, components: BaseFamiliarComponent[]) => (
+        <>
+            <div className="flex justify-between items-center mb-2">
+                <CardDescription>Gérez la liste des "{title}".</CardDescription>
+                <Button size="sm" variant="outline" onClick={() => handleAddNewFamiliarComponent(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+            </div>
+            <ScrollArea className="h-48 border rounded-md p-2">
+                <div className="space-y-2">
+                {components.map(component => (
+                    <Card key={component.id} className="p-2 flex justify-between items-center bg-muted/20">
+                        <div>
+                            <p className="font-semibold text-sm">{component.name}</p>
+                            <p className="text-xs text-muted-foreground">Univers: {component.universe}</p>
+                        </div>
+                        <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteFamiliarComponent(component.id, type)}>
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingFamiliarComponentType(type); setEditingFamiliarComponent(JSON.parse(JSON.stringify(component))); setIsFamiliarEditorOpen(true);}}>
+                                <FilePenLine className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    </Card>
+                ))}
+                </div>
+            </ScrollArea>
+        </>
+    );
+
     const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
         switch (rarity) {
           case 'Commun': return 'text-gray-500';
@@ -750,11 +860,12 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 </div>
                                 <Separator className="my-4" />
                                 <Tabs defaultValue="consumables">
-                                    <TabsList className="grid w-full grid-cols-4">
+                                    <TabsList className="grid w-full grid-cols-5">
                                         <TabsTrigger value="consumables">Consommables</TabsTrigger>
                                         <TabsTrigger value="weapons">Armes</TabsTrigger>
                                         <TabsTrigger value="armors">Armures</TabsTrigger>
                                         <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
+                                        <TabsTrigger value="familiars">Familiers</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="consumables" className="mt-4">
                                         {renderItemManager('consumable', 'Consommables', consumables)}
@@ -767,6 +878,16 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </TabsContent>
                                      <TabsContent value="jewelry" className="mt-4">
                                         {renderItemManager('jewelry', 'Bijoux', jewelry)}
+                                    </TabsContent>
+                                     <TabsContent value="familiars" className="mt-4 space-y-4">
+                                        <div className="p-2 border rounded-lg bg-muted/20">
+                                            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><PawPrint className="h-4 w-4"/>Composants de Familiers</h4>
+                                            {renderFamiliarComponentManager('physical', 'Objets Physiques', physicalFamiliarItems)}
+                                            <Separator className="my-4" />
+                                            {renderFamiliarComponentManager('creature', 'Types de Créatures', creatureFamiliarItems)}
+                                            <Separator className="my-4" />
+                                            {renderFamiliarComponentManager('descriptor', 'Descripteurs', descriptorFamiliarItems)}
+                                        </div>
                                     </TabsContent>
                                 </Tabs>
                             </Card>
@@ -1408,6 +1529,37 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+             <Dialog open={isFamiliarEditorOpen} onOpenChange={setIsFamiliarEditorOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingFamiliarComponent?.id.startsWith('new-') ? "Créer un composant" : "Modifier un composant"}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {editingFamiliarComponent && (
+                        <div className="space-y-4 py-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="fam-comp-name">Nom</Label>
+                                <Input id="fam-comp-name" value={editingFamiliarComponent.name} onChange={e => setEditingFamiliarComponent({...editingFamiliarComponent, name: e.target.value})} />
+                             </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="fam-comp-universe">Univers</Label>
+                                <Select value={editingFamiliarComponent.universe} onValueChange={(v: BaseFamiliarComponent['universe']) => setEditingFamiliarComponent({...editingFamiliarComponent, universe: v})}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        {allUniverses.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setIsFamiliarEditorOpen(false); setEditingFamiliarComponent(null); }}>Annuler</Button>
+                        <Button onClick={handleSaveFamiliarComponent}>Sauvegarder</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </form>
         </Form>
     );
@@ -1415,5 +1567,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 AdventureForm.displayName = "AdventureForm";
 
     
+
+    
+
 
     
