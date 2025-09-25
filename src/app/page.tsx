@@ -440,6 +440,9 @@ export default function Home() {
     const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
     const [allArmors, setAllArmors] = React.useState<BaseItem[]>([]);
     const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
+    const [physicalFamiliarItems, setPhysicalFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    const [creatureFamiliarItems, setCreatureFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    const [descriptorFamiliarItems, setDescriptorFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
 
     // Comic Draft State
     const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
@@ -935,7 +938,7 @@ export default function Home() {
             const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
             let expGained = 0;
             let currencyGained = 0;
-            let itemsObtained: PlayerInventoryItem[] = [];
+            let itemsObtained: LootedItem[] = [];
       
             if (isCombatOver && allEnemiesDefeated) {
                 updatedCombatants.filter(c => c.team === 'enemy' && c.isDefeated).forEach(enemy => {
@@ -956,8 +959,17 @@ export default function Home() {
                     const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
                     turnLog.push(`Le territoire de ${poiName} est conquis!`);
                 }
+                
                 if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                    itemsObtained.push(nocturnalHuntRewardItem);
+                    itemsObtained.push({
+                        itemName: nocturnalHuntRewardItem.name,
+                        quantity: nocturnalHuntRewardItem.quantity,
+                        description: nocturnalHuntRewardItem.description,
+                        itemType: nocturnalHuntRewardItem.type,
+                        goldValue: nocturnalHuntRewardItem.goldValue,
+                        effect: nocturnalHuntRewardItem.effect,
+                        statBonuses: nocturnalHuntRewardItem.statBonuses,
+                    });
                 }
             }
       
@@ -972,15 +984,7 @@ export default function Home() {
                 combatEnded: isCombatOver,
                 expGained: expGained,
                 currencyGained: currencyGained,
-                itemsObtained: itemsObtained.map(item => ({
-                    itemName: item.name,
-                    quantity: item.quantity,
-                    description: item.description,
-                    itemType: item.type,
-                    goldValue: item.goldValue,
-                    effect: item.effect,
-                    statBonuses: item.statBonuses,
-                })),
+                itemsObtained: itemsObtained,
                 turnNarration: turnLog.join('\n'), // For AI context
                 nextActiveCombatState: {
                     ...currentCombatState,
@@ -1224,7 +1228,6 @@ export default function Home() {
         handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
         characters, activeCombat, aiConfig, baseCharacters, merchantInventory,
-        nocturnalHuntRewardItem,
     ]);
 
     // --- End Core Action Handlers ---
@@ -1391,11 +1394,11 @@ export default function Home() {
       }
 
       const loadAllItemTypes = () => {
-          const loadType = (key: string, defaultItems: BaseItem[]) => {
+          const loadType = (key: string, defaultItems: any[]) => {
               try {
                   const storedItems = localStorage.getItem(key);
                   if (storedItems) {
-                      const customItems: BaseItem[] = JSON.parse(storedItems);
+                      const customItems = JSON.parse(storedItems);
                       const baseMap = new Map(defaultItems.map(item => [item.id, item]));
                       const customMap = new Map(customItems.map(item => [item.id, item]));
                       return Array.from(new Map([...baseMap, ...customMap]).values());
@@ -1409,6 +1412,9 @@ export default function Home() {
           setAllWeapons(loadType('custom_weapons', BASE_WEAPONS));
           setAllArmors(loadType('custom_armors', BASE_ARMORS));
           setAllJewelry(loadType('custom_jewelry', BASE_JEWELRY));
+          setPhysicalFamiliarItems(loadType('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
+          setCreatureFamiliarItems(loadType('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
+          setDescriptorFamiliarItems(loadType('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
       };
 
       loadAllItemTypes();
@@ -2723,23 +2729,24 @@ export default function Home() {
 
             const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
-            const physicalItems = BASE_FAMILIAR_PHYSICAL_ITEMS.filter(item => activeUniverses.includes(item.universe));
-            const creatureTypes = BASE_FAMILIAR_CREATURES.filter(item => activeUniverses.includes(item.universe));
-            const descriptors = BASE_FAMILIAR_DESCRIPTORS.filter(item => activeUniverses.includes(item.universe));
+            const physicalItems = physicalFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+            const creatureTypes = creatureFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+            const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
 
-            const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
-            const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
-            const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
-
-            if (!physicalItem || !creatureType || !descriptor) {
-                toast({ title: "Erreur de génération", description: "Impossible de générer un trophée de familier, données de base manquantes.", variant: "destructive" });
+            if (!physicalItems.length || !creatureTypes.length || !descriptors.length) {
+                toast({ title: "Erreur de génération", description: "Impossible de générer un trophée de familier, données de base manquantes pour les univers sélectionnés.", variant: "destructive" });
                 setIsLoading(false);
                 return;
             }
 
+            const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
+            const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
+            const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
+            
             const trophyName = `${physicalItem.name} de ${creatureType.name} ${descriptor.name}`;
             const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${creatureType.name.toLowerCase()} ${descriptor.name.toLowerCase()}. Il semble contenir une essence magique. Rareté: ${rarity}.`;
-            
+            const familiarBonus = generateDynamicFamiliarBonus(rarity);
+
             const rewardItem: PlayerInventoryItem = {
                 id: `trophy-${creatureType.name.toLowerCase()}-${uid()}`,
                 name: trophyName,
@@ -2750,7 +2757,7 @@ export default function Home() {
                 generatedImageUrl: null,
                 isEquipped: false,
                 statBonuses: {},
-                 effect: `Permet d'invoquer un ${creatureType.name} ${descriptor.name} comme familier.`,
+                effect: `Permet d'invoquer un ${creatureType.name} ${descriptor.name} comme familier. ${familiarBonus.description.replace('X', String(familiarBonus.value))}`,
             };
             setNocturnalHuntRewardItem(rewardItem);
             
@@ -2794,7 +2801,7 @@ export default function Home() {
             const config = inventoryConfig[poiLevel] || inventoryConfig[1];
             
             const availableItems = itemsInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[(item.rarity || 'commun').toLowerCase()] || 1;
+                const itemRarityValue = rarityOrder[item.rarity.toLowerCase()] || 1;
                 return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
             });
             
@@ -2911,7 +2918,7 @@ export default function Home() {
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3611,7 +3618,7 @@ export default function Home() {
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
-      onGenerateCover={handleGenerateCover}
+      handleGenerateCover={handleGenerateCover}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
