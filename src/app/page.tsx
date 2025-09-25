@@ -433,7 +433,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = React.useState<AiConfig>(() => createInitialState().aiConfig);
   const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
   const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]); // NEW: Shopping cart state
-  const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<LootedItem | null>(null);
+  const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
   
   const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
   const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
@@ -478,8 +478,7 @@ export default function Home() {
   // NEW: State for item targeting in combat
   const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
   const [isTargeting, setIsTargeting] = React.useState(false);
-  const [isNocturnalHuntVictory, setIsNocturnalHuntVictory] = React.useState(false);
-
+  
   const addCurrencyToPlayer = React.useCallback((amount: number) => {
     setAdventureSettings(prevSettings => {
         if (!prevSettings.rpgMode) return prevSettings;
@@ -793,9 +792,53 @@ export default function Home() {
 
         return { ...prevSettings, familiars: updatedFamiliars };
     });
-}, [toast]);
+  }, [toast]);
 
-const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
+  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+    if (!changes || changes.length === 0) return;
+
+    const updater = (prev: AdventureSettings): AdventureSettings => {
+        if (!prev.mapPointsOfInterest) return prev;
+
+        let pois = [...prev.mapPointsOfInterest];
+        let changed = false;
+
+        changes.forEach(change => {
+            const poiIndex = pois.findIndex(p => p.id === change.poiId);
+            if (poiIndex !== -1) {
+                const oldOwnerId = pois[poiIndex].ownerId;
+                if (oldOwnerId !== change.newOwnerId) {
+                    const poi = pois[poiIndex];
+                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                    
+                    pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
+                    changed = true;
+                    
+                    setTimeout(() => {
+                        toast({
+                            title: "Changement de Territoire!",
+                            description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                        });
+                    }, 0);
+                }
+            }
+        });
+
+        if (!changed) return prev;
+        return { ...prev, mapPointsOfInterest: pois };
+    };
+    
+    setAdventureSettings(updater);
+    setStagedAdventureSettings(prevStaged => {
+        const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
+        const finalPois = updater(updatedLiveState).mapPointsOfInterest;
+        return { ...prevStaged, mapPointsOfInterest: finalPois };
+    });
+    setFormPropKey(k => k + 1);
+
+}, [toast, characters, adventureSettings.playerName]);
+
+  const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
     if (!updates) return;
   
     // Update main character list with new stats
@@ -858,7 +901,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
         if (itemsFromText.length > 0) {
              newLootItems.push(...itemsFromText);
         }
-
+        
         if (lootMessage.trim() !== "Le combat est terminé!") {
             handleNarrativeUpdate(lootMessage, 'system', undefined, newLootItems);
         }
@@ -873,51 +916,7 @@ const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => 
 
   }, [handleNarrativeUpdate, addCurrencyToPlayer]);
   
-  const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
-    if (!changes || changes.length === 0) return;
-
-    const updater = (prev: AdventureSettings): AdventureSettings => {
-        if (!prev.mapPointsOfInterest) return prev;
-
-        let pois = [...prev.mapPointsOfInterest];
-        let changed = false;
-
-        changes.forEach(change => {
-            const poiIndex = pois.findIndex(p => p.id === change.poiId);
-            if (poiIndex !== -1) {
-                const oldOwnerId = pois[poiIndex].ownerId;
-                if (oldOwnerId !== change.newOwnerId) {
-                    const poi = pois[poiIndex];
-                    const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                    
-                    pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
-                    changed = true;
-                    
-                    setTimeout(() => {
-                        toast({
-                            title: "Changement de Territoire!",
-                            description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                        });
-                    }, 0);
-                }
-            }
-        });
-
-        if (!changed) return prev;
-        return { ...prev, mapPointsOfInterest: pois };
-    };
-    
-    setAdventureSettings(updater);
-    setStagedAdventureSettings(prevStaged => {
-        const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
-        const finalPois = updater(updatedLiveState).mapPointsOfInterest;
-        return { ...prevStaged, mapPointsOfInterest: finalPois };
-    });
-    setFormPropKey(k => k + 1);
-
-}, [toast, characters, adventureSettings.playerName]);
-
-const resolveCombatTurn = React.useCallback(
+  const resolveCombatTurn = React.useCallback(
     (
       currentCombatState: ActiveCombat,
       settings: AdventureSettings,
@@ -1032,6 +1031,13 @@ const resolveCombatTurn = React.useCallback(
                 const poiName = settings.mapPointsOfInterest?.find(p=>p.id === currentCombatState.contestedPoiId)?.name || "Territoire Inconnu";
                 turnLog.push(`Le territoire de ${poiName} est conquis!`);
             }
+            if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
+                setAdventureSettings(prev => {
+                    const newInventory = [...(prev.playerInventory || []), nocturnalHuntRewardItem];
+                    return { ...prev, playerInventory: newInventory };
+                });
+                setNocturnalHuntRewardItem(null); // Clear the pending reward
+            }
         }
   
         const combatUpdates: CombatUpdatesSchema = {
@@ -1074,7 +1080,6 @@ const resolveCombatTurn = React.useCallback(
     let turnLog: string[] = [];
     let internalCombatUpdates: CombatUpdatesSchema | undefined;
     let conquestHappened = false;
-    let nocturnalHuntVictory = false;
 
     if (locationIdOverride) {
         liveSettings.playerLocationId = locationIdOverride;
@@ -1089,7 +1094,6 @@ const resolveCombatTurn = React.useCallback(
         liveCombat = combatResult.nextCombatState;
         turnLog = combatResult.turnLog;
         conquestHappened = combatResult.conquestHappened;
-        nocturnalHuntVictory = combatResult.isNocturnalHuntVictory;
         handleCombatUpdates(internalCombatUpdates);
 
     }
@@ -1183,12 +1187,7 @@ const resolveCombatTurn = React.useCallback(
                     } as LootedItem));
 
                 let finalLoot = [...(result.itemsObtained || []), ...lootItemsFromText];
-                
-                if (nocturnalHuntVictory && nocturnalHuntRewardItem) {
-                    finalLoot.push(nocturnalHuntRewardItem);
-                    setNocturnalHuntRewardItem(null);
-                }
-                
+                                
                 handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
 
                 if (result.newCharacters) handleNewCharacters(result.newCharacters);
@@ -1226,10 +1225,24 @@ const resolveCombatTurn = React.useCallback(
         setIsLoading(false);
     }
   }, [
-      currentLanguage, narrativeMessages, toast, resolveCombatTurn,
-      handleNarrativeUpdate, handleNewCharacters, handleNewFamiliar, handleCharacterHistoryUpdate, handleAffinityUpdates,
-      handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange, handleCombatUpdates,
-      adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate, baseCharacters, merchantInventory, nocturnalHuntRewardItem
+      currentLanguage, narrativeMessages, toast,
+      handleNewFamiliar,
+      handleNarrativeUpdate,
+      handleNewCharacters,
+      handleCharacterHistoryUpdate,
+      handleAffinityUpdates,
+      handleRelationUpdatesFromAI,
+      handleCombatUpdates,
+      handlePoiOwnershipChange,
+      addCurrencyToPlayer,
+      handleTimeUpdate,
+      resolveCombatTurn,
+      adventureSettings,
+      characters,
+      activeCombat,
+      aiConfig,
+      baseCharacters,
+      merchantInventory,
   ]);
 
   const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -2747,13 +2760,17 @@ const resolveCombatTurn = React.useCallback(
                 passiveBonus: generateDynamicFamiliarBonus(rarity),
             };
 
-            const rewardItem: LootedItem = {
-                itemName: `Crocs de ${creature.name}`,
+            const rewardItem: PlayerInventoryItem = {
+                id: `trophy-${creature.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
+                name: `Crocs de ${creature.name}`,
                 quantity: 1,
                 description: `Les crocs de la créature vaincue. Contient l'essence de la créature. A utiliser pour lier le familier. Rareté: ${rarity}.`,
                 effect: newFamiliarReward.passiveBonus.description,
-                itemType: 'consumable',
+                type: 'consumable',
                 goldValue: 100 * (familiarRarityRoll + 1),
+                generatedImageUrl: null,
+                isEquipped: false,
+                statBonuses: {},
             };
             setNocturnalHuntRewardItem(rewardItem);
             
@@ -3650,3 +3667,4 @@ const resolveCombatTurn = React.useCallback(
 
 
     
+
