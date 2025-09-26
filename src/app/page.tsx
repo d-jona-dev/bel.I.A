@@ -1502,71 +1502,73 @@ export default function Home() {
       }, [useAestheticFont, toast]);
 
     const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    const isFamiliarItem = item.effect?.toLowerCase().includes('invoquer') && item.effect.toLowerCase().includes('familier');
+        const isFamiliarItem = item.effect?.toLowerCase().includes('invoquer') && item.effect.toLowerCase().includes('familier');
 
-    if (!isFamiliarItem) {
-        setTimeout(() => {
-            toast({
-                title: "Utilisation Narrative",
-                description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
-                variant: "default",
-            });
-        }, 0);
-        const narrativeAction = `J'utilise l'objet: ${item.name}.`;
+        if (!isFamiliarItem) {
+            setTimeout(() => {
+                toast({
+                    title: "Utilisation Narrative",
+                    description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
+                    variant: "default",
+                });
+            }, 0);
+            const narrativeAction = `J'utilise l'objet: ${item.name}.`;
+            handleNarrativeUpdate(narrativeAction, 'user');
+            callGenerateAdventure(narrativeAction);
+            return;
+        }
+
+        const nameMatch = item.effect?.match(/invoquer un (.+) comme familier/i);
+        const familiarName = nameMatch ? nameMatch[1] : 'Familier Inconnu';
+        
+        const rarityMatch = item.description?.match(/Rareté:\s*([a-zA-Z]+)/i);
+        const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
+        
+        const bonusMatch = item.effect?.match(/Bonus passif : \+?(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
+        const bonus: FamiliarPassiveBonus = {
+            type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
+            value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
+            description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
+        };
+
+        const newFamiliar: Familiar = {
+            id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            name: familiarName,
+            description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
+            rarity: rarity,
+            level: 1,
+            currentExp: 0,
+            expToNextLevel: 100,
+            isActive: false,
+            passiveBonus: bonus,
+            portraitUrl: null,
+        };
+
+        setAdventureSettings(prev => {
+            const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
+            const itemIndex = newInventory.findIndex(i => i.id === item.id);
+            if (itemIndex > -1) {
+                newInventory[itemIndex].quantity -= 1;
+                if (newInventory[itemIndex].quantity <= 0) {
+                    newInventory.splice(itemIndex, 1);
+                }
+            }
+            
+            const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+
+            setTimeout(() => {
+                toast({
+                    title: "Familier Invoqué!",
+                    description: `${newFamiliar.name} a été ajouté à votre groupe!`,
+                });
+            }, 0);
+
+            return { ...prev, playerInventory: newInventory, familiars: updatedFamiliars };
+        });
+
+        const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
         handleNarrativeUpdate(narrativeAction, 'user');
         callGenerateAdventure(narrativeAction);
-        return;
-    }
-
-    const nameMatch = item.name.match(/de (.+)/);
-    const familiarName = nameMatch ? nameMatch[1] : 'Familier Inconnu';
-    const rarityMatch = item.description?.match(/Rareté:\s*([a-zA-Z]+)/i);
-    const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
-    const bonusMatch = item.effect?.match(/Bonus passif : \+?(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
-    const bonus: FamiliarPassiveBonus = {
-        type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
-        value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
-        description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
-    };
-
-    const newFamiliar: Familiar = {
-        id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
-        name: familiarName,
-        description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
-        rarity: rarity,
-        level: 1,
-        currentExp: 0,
-        expToNextLevel: 100,
-        isActive: false,
-        passiveBonus: bonus,
-        portraitUrl: null,
-    };
-
-    setAdventureSettings(prev => {
-        const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
-        const itemIndex = newInventory.findIndex(i => i.id === item.id);
-        if (itemIndex > -1) {
-            newInventory[itemIndex].quantity -= 1;
-            if (newInventory[itemIndex].quantity <= 0) {
-                newInventory.splice(itemIndex, 1);
-            }
-        }
-        
-        const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
-
-        setTimeout(() => {
-            toast({
-                title: "Familier Invoqué!",
-                description: `${newFamiliar.name} a été ajouté à votre groupe!`,
-            });
-        }, 0);
-
-        return { ...prev, playerInventory: newInventory, familiars: updatedFamiliars };
-    });
-
-    const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
-    handleNarrativeUpdate(narrativeAction, 'user');
-    callGenerateAdventure(narrativeAction);
 
   }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
 
@@ -3620,6 +3622,7 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
+      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
       onSaveToLibrary={handleSaveToLibrary}
       merchantInventory={merchantInventory}
@@ -3655,3 +3658,4 @@ export default function Home() {
     </>
   );
 }
+
