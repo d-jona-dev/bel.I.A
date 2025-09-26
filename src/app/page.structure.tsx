@@ -150,6 +150,7 @@ interface PageStructureProps {
   onFinalizePurchase: () => void;
   onCloseMerchantPanel: () => void;
   isLoading: boolean;
+  handleClaimHuntReward: (combatantId: string) => void;
 }
 
 export function PageStructure({
@@ -248,6 +249,7 @@ export function PageStructure({
   onRemoveFromCart,
   onFinalizePurchase,
   onCloseMerchantPanel,
+  handleClaimHuntReward,
 }: PageStructureProps) {
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
@@ -502,6 +504,7 @@ export function PageStructure({
                 onFinalizePurchase={onFinalizePurchase}
                 onCloseMerchantPanel={onCloseMerchantPanel}
                 isLoading={isLoading}
+                handleClaimHuntReward={handleClaimHuntReward}
              />
         </main>
       </SidebarInset>
