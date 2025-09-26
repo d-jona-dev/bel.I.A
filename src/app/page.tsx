@@ -1061,9 +1061,9 @@ export default function Home() {
             const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
             const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
             
-            let isCombatOver = allEnemiesDefeated || allPlayersDefeated;
             const hasHuntReward = updatedCombatants.some(c => c.team === 'enemy' && c.isDefeated && c.rewardItem);
             
+            let isCombatOver = allEnemiesDefeated || allPlayersDefeated;
             // Override combat end if a hunt reward needs to be claimed
             if (isCombatOver && allEnemiesDefeated && hasHuntReward) {
                 isCombatOver = false;
@@ -1518,7 +1518,7 @@ export default function Home() {
 
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const isFamiliarItem = item.description?.toLowerCase().includes('familier');
-    const isTrophyItem = item.name.toLowerCase().includes('crocs de') || item.name.toLowerCase().includes('griffe de') || item.name.toLowerCase().includes('collier de');
+    const isTrophyItem = item.name.toLowerCase().includes(' de ') && (item.name.toLowerCase().includes('collier de ') || item.name.toLowerCase().includes('crocs de ') || item.name.toLowerCase().includes('griffe de ') || item.name.toLowerCase().includes('plume de '));
 
     if (item.type !== 'consumable' || (!isFamiliarItem && !isTrophyItem)) {
         setTimeout(() => {
@@ -1534,7 +1534,7 @@ export default function Home() {
         return;
     }
 
-    const familiarName = item.name.replace(/\(Familier\)|\bCollier du\b|\bCrocs de\b/gi, '').trim();
+    const familiarName = item.name.replace(/^(Collier de |Crocs de |Griffe de |Plume de )/i, '').trim();
     const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
     const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
 
@@ -1544,14 +1544,14 @@ export default function Home() {
         description: item.effect || "Bonus Passif",
     };
 
-    const newFamiliar: NewFamiliarSchema = {
+    const newFamiliarSchema: NewFamiliarSchema = {
         name: familiarName,
         description: item.description || `Un familier nommé ${familiarName}.`,
         rarity: rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common',
         passiveBonus: bonus,
     };
-
-    handleNewFamiliar(newFamiliar);
+    
+    handleNewFamiliar(newFamiliarSchema);
     
     const narrativeAction = `J'utilise l'objet pour invoquer mon nouveau compagnon: ${item.name}.`;
     handleNarrativeUpdate(narrativeAction, 'user');
@@ -1673,7 +1673,7 @@ export default function Home() {
                            itemActionSuccessful = false;
                            return prevSettings;
                         }
-                    } else if (itemToUpdate.name.toLowerCase().includes('crocs de') || itemToUpdate.name.toLowerCase().includes('griffe de') || itemToUpdate.name.toLowerCase().includes('collier de')) {
+                    } else if (itemToUpdate.name.toLowerCase().includes(' de ') && (itemToUpdate.name.toLowerCase().includes('collier de ') || itemToUpdate.name.toLowerCase().includes('crocs de ') || itemToUpdate.name.toLowerCase().includes('griffe de ') || itemToUpdate.name.toLowerCase().includes('plume de '))) {
                          handleUseFamiliarItem(itemToUpdate);
                          narrativeAction = "";
                          effectAppliedMessage = "";
@@ -2166,7 +2166,7 @@ export default function Home() {
                            quantity: item.quantity,
                            description: item.description,
                            effect: item.effect,
-                           type: item.itemType,
+                           itemType: item.itemType,
                            goldValue: item.goldValue,
                            statBonuses: item.statBonuses,
                            generatedImageUrl: null,
@@ -2748,7 +2748,7 @@ export default function Home() {
                 quantity: 1,
                 description: trophyDescription,
                 type: 'consumable',
-                goldValue: 100 * (familiarRarityRoll + 1),
+                goldValue: Math.floor(100 * (familiarRarityRoll + 1)),
                 generatedImageUrl: null,
                 isEquipped: false,
                 statBonuses: {},
@@ -2837,7 +2837,7 @@ export default function Home() {
                         damage: baseItem.damage,
                         ac: baseItem.ac,
                         rarity: baseItem.rarity || 'Commun',
-                        finalGoldValue: baseItem.baseGoldValue,
+                        finalGoldValue: Math.floor(baseItem.baseGoldValue * (1 + (poiLevel - 1) * 0.1)),
                         statBonuses: baseItem.statBonuses,
                         effectType: baseItem.effectType,
                         effectDetails: baseItem.effectDetails,
@@ -3666,3 +3666,4 @@ export default function Home() {
 }
 
     
+
