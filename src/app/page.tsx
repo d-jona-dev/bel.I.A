@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -734,22 +733,9 @@ export default function Home() {
         });
     }, []);
 
-    const handleNewFamiliar = React.useCallback((newFamiliarSchema: NewFamiliarSchema) => {
+    const handleNewFamiliar = React.useCallback((newFamiliar: Familiar) => {
         setAdventureSettings(prevSettings => {
-            if (!newFamiliarSchema) return prevSettings;
-
-            const newFamiliar: Familiar = {
-                id: `${newFamiliarSchema.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-                name: newFamiliarSchema.name,
-                description: newFamiliarSchema.description,
-                rarity: newFamiliarSchema.rarity,
-                level: 1,
-                currentExp: 0,
-                expToNextLevel: 100,
-                isActive: false,
-                passiveBonus: newFamiliarSchema.passiveBonus,
-                portraitUrl: null,
-            };
+            if (!newFamiliar) return prevSettings;
 
             const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
             
@@ -1064,7 +1050,6 @@ export default function Home() {
             const hasHuntReward = updatedCombatants.some(c => c.team === 'enemy' && c.isDefeated && c.rewardItem);
             
             let isCombatOver = allEnemiesDefeated || allPlayersDefeated;
-            // Override combat end if a hunt reward needs to be claimed
             if (isCombatOver && allEnemiesDefeated && hasHuntReward) {
                 isCombatOver = false;
             }
@@ -1196,14 +1181,14 @@ export default function Home() {
             playerCurrentMp: liveSettings.playerCurrentMp,
             playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
             playerCurrentExp: liveSettings.playerCurrentExp,
-            playerExpToNextLevel: liveSettings.playerExpToNextLevel,
+            playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
             playerStrength: effectiveStatsThisTurn.playerStrength,
             playerDexterity: effectiveStatsThisTurn.playerDexterity,
             playerConstitution: liveSettings.playerConstitution,
             playerIntelligence: liveSettings.playerIntelligence,
             playerWisdom: liveSettings.playerWisdom,
             playerCharisma: effectiveStatsThisTurn.playerCharisma,
-            playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
+            playerArmorClass: liveSettings.playerArmorClass,
             playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
             playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
             equippedWeaponName: liveSettings.equippedItemIds?.weapon ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.weapon)?.name : undefined,
@@ -1240,7 +1225,7 @@ export default function Home() {
                     handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
     
                     if (result.newCharacters) handleNewCharacters(result.newCharacters);
-                    if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
+                    if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
                     if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                     
                     if (liveSettings.relationsMode && result.affinityUpdates) {
@@ -1516,48 +1501,72 @@ export default function Home() {
         });
       }, [useAestheticFont, toast]);
 
-  const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    const isFamiliarItem = item.description?.toLowerCase().includes('familier');
-    const isTrophyItem = item.name.toLowerCase().includes(' de ') && (item.name.toLowerCase().includes('collier de ') || item.name.toLowerCase().includes('crocs de ') || item.name.toLowerCase().includes('griffe de ') || item.name.toLowerCase().includes('plume de '));
-
-    if (item.type !== 'consumable' || (!isFamiliarItem && !isTrophyItem)) {
-        setTimeout(() => {
-           toast({
-               title: "Utilisation Narrative",
-               description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
-               variant: "default",
-           });
-        }, 0);
-        const narrativeAction = `J'utilise l'objet: ${item.name}.`;
+    const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+        const isFamiliarItem = item.effect?.toLowerCase().includes('invoquer') && item.effect.toLowerCase().includes('familier');
+    
+        if (!isFamiliarItem) {
+            setTimeout(() => {
+                toast({
+                    title: "Utilisation Narrative",
+                    description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
+                    variant: "default",
+                });
+            }, 0);
+            const narrativeAction = `J'utilise l'objet: ${item.name}.`;
+            handleNarrativeUpdate(narrativeAction, 'user');
+            callGenerateAdventure(narrativeAction);
+            return;
+        }
+    
+        // Extract familiar info from the item
+        const nameMatch = item.name.match(/de (.+)/);
+        const familiarName = nameMatch ? nameMatch[1] : 'Familier Inconnu';
+    
+        const rarityMatch = item.description?.match(/Rareté:\s*([a-zA-Z]+)/i);
+        const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
+    
+        const bonusMatch = item.effect?.match(/Bonus passif : \+(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
+        const bonus: FamiliarPassiveBonus = {
+            type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
+            value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
+            description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
+        };
+    
+        const newFamiliar: Familiar = {
+            id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            name: familiarName,
+            description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
+            rarity: rarity,
+            level: 1,
+            currentExp: 0,
+            expToNextLevel: 100,
+            isActive: false,
+            passiveBonus: bonus,
+            portraitUrl: null,
+        };
+    
+        // Add the familiar to the state
+        handleNewFamiliar(newFamiliar);
+    
+        // Consume the item
+        setAdventureSettings(prev => {
+            const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
+            const itemIndex = newInventory.findIndex(i => i.id === item.id);
+            if (itemIndex > -1) {
+                newInventory[itemIndex].quantity -= 1;
+                if (newInventory[itemIndex].quantity <= 0) {
+                    newInventory.splice(itemIndex, 1);
+                }
+            }
+            return { ...prev, playerInventory: newInventory };
+        });
+    
+        // Generate narrative
+        const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
         handleNarrativeUpdate(narrativeAction, 'user');
         callGenerateAdventure(narrativeAction);
-        return;
-    }
-
-    const familiarName = item.name.replace(/^(Collier de |Crocs de |Griffe de |Plume de )/i, '').trim();
-    const effectMatch = item.effect?.match(/Bonus passif\s*:\s*\+?(\d+)\s*en\s*([a-zA-Z_]+)/i);
-    const rarityMatch = item.description?.match(/Rareté\s*:\s*([a-zA-Z]+)/i);
-
-    const bonus: FamiliarPassiveBonus = {
-        type: effectMatch ? (effectMatch[2].toLowerCase() as FamiliarPassiveBonus['type']) : 'strength',
-        value: effectMatch ? parseInt(effectMatch[1], 10) : 1,
-        description: item.effect || "Bonus Passif",
-    };
-
-    const newFamiliarSchema: NewFamiliarSchema = {
-        name: familiarName,
-        description: item.description || `Un familier nommé ${familiarName}.`,
-        rarity: rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common',
-        passiveBonus: bonus,
-    };
     
-    handleNewFamiliar(newFamiliarSchema);
-    
-    const narrativeAction = `J'utilise l'objet pour invoquer mon nouveau compagnon: ${item.name}.`;
-    handleNarrativeUpdate(narrativeAction, 'user');
-    callGenerateAdventure(narrativeAction);
-
-}, [handleNewFamiliar, handleNarrativeUpdate, callGenerateAdventure, toast]);
+    }, [handleNewFamiliar, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
   const applyCombatItemEffect = React.useCallback((targetId?: string) => {
         if (!itemToUse || !activeCombat?.isActive) return;
@@ -1657,48 +1666,32 @@ export default function Home() {
                 
                 narrativeAction = `J'utilise ${itemToUpdate.name}.`;
                 if (itemToUpdate.type === 'consumable') {
-                    if (itemToUpdate.effectDetails) {
-                        if (itemToUpdate.effectDetails.type === 'heal') {
-                            const hpChange = itemToUpdate.effectDetails.amount;
-                            const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
-                            changes = { playerCurrentHp: newPlayerHp };
-                            effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
-                        } else if(activeCombat?.isActive) {
-                           setItemToUse(itemToUpdate);
-                           setIsTargeting(true);
-                           itemActionSuccessful = false;
-                           return prevSettings;
-                        } else {
-                           toast({ title: "Utilisation en Combat Requise", description: `L'effet de ${itemToUpdate.name} est destiné au combat.`, variant: "default" });
-                           itemActionSuccessful = false;
-                           return prevSettings;
-                        }
-                    } else if (itemToUpdate.name.toLowerCase().includes(' de ') && (itemToUpdate.name.toLowerCase().includes('collier de ') || itemToUpdate.name.toLowerCase().includes('crocs de ') || itemToUpdate.name.toLowerCase().includes('griffe de ') || itemToUpdate.name.toLowerCase().includes('plume de '))) {
-                         handleUseFamiliarItem(itemToUpdate);
-                         narrativeAction = "";
-                         effectAppliedMessage = "";
-                    } else if (itemToUpdate.effectType === 'narrative') {
-                        toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });
-                    }
-                    newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                    itemActionSuccessful = true;
-
-                } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
-                     setTimeout(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });},0);
-                    itemActionSuccessful = false;
-                    return prevSettings;
-                } else { 
-                     if (itemToUpdate.description?.toLowerCase().includes('familier')) {
+                    if (itemToUpdate.effectDetails && itemToUpdate.effectDetails.type === 'heal') {
+                        const hpChange = itemToUpdate.effectDetails.amount;
+                        const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
+                        changes = { playerCurrentHp: newPlayerHp };
+                        effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
+                        newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                        itemActionSuccessful = true;
+                    } else if (itemToUpdate.effect?.toLowerCase().includes('invoquer') && itemToUpdate.effect.toLowerCase().includes('familier')) {
                          handleUseFamiliarItem(itemToUpdate);
                          newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                          itemActionSuccessful = true;
                          narrativeAction = "";
                          effectAppliedMessage = "";
-                     } else {
-                        setTimeout(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });},0);
-                        newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                        itemActionSuccessful = true;
-                     }
+                    } else {
+                       toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate.name} est narratif ou requiert une situation spécifique.`, variant: "default" });
+                       itemActionSuccessful = true; // Still consume for narrative effect
+                       newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                    }
+                } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
+                     setTimeout(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });},0);
+                    itemActionSuccessful = false;
+                    return prevSettings;
+                } else { 
+                    setTimeout(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });},0);
+                    newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+                    itemActionSuccessful = true;
                 }
             } else if (action === 'discard') {
                 narrativeAction = `Je jette ${itemToUpdate.name}.`;
@@ -2119,9 +2112,9 @@ export default function Home() {
                  playerCurrentMp: currentTurnSettings.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
-                 playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
+                 playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
-                 playerDexterity: currentTurnSettings.playerDexterity,
+                 playerDexterity: effectiveStatsThisTurn.playerDexterity,
                  playerConstitution: currentTurnSettings.playerConstitution,
                  playerIntelligence: currentTurnSettings.playerIntelligence,
                  playerWisdom: currentTurnSettings.playerWisdom,
@@ -2183,7 +2176,7 @@ export default function Home() {
                 });
 
                 if (result.newCharacters) handleNewCharacters(result.newCharacters);
-                 if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
+                 if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
@@ -2647,7 +2640,7 @@ export default function Home() {
                 currentHp: c.hitPoints!,
                 maxHp: c.maxHitPoints!,
                 currentMp: c.manaPoints,
-                maxMp: c.maxManaPoints,
+                maxMp: c.manaPoints,
                 team: 'player',
                 isDefeated: false,
                 statusEffects: c.statusEffects || [],
@@ -2691,20 +2684,19 @@ export default function Home() {
             
             const creatureTypes = creatureFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
-            const physicalItems = physicalFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             
-            if (!creatureTypes.length || !descriptors.length || !physicalItems.length) {
-                toast({ title: "Chasse impossible", description: "Données de base manquantes (créature, descripteur ou objet) pour générer une rencontre dans les univers sélectionnés.", variant: "destructive" });
+            if (!creatureTypes.length || !descriptors.length) {
+                toast({ title: "Chasse impossible", description: "Données de base manquantes (créature ou descripteur) pour générer une rencontre dans les univers sélectionnés.", variant: "destructive" });
                 setIsLoading(false);
                 return;
             }
     
             const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
             const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
-            
+            const physicalItem = physicalFamiliarItems.length > 0 ? physicalFamiliarItems[Math.floor(Math.random() * physicalFamiliarItems.length)] : { id: 'phy-fallback', name: 'Essence', universe: 'Médiéval-Fantastique' };
+
             const enemyName = `${creatureType.name} ${descriptor.name}`;
             
-            // Generate temporary enemy character
             const tempEnemyId = `nocturnal-${creatureType.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`;
             const tempEnemyLevel = (poi.level || 1) + Math.floor(Math.random() * 2);
             const tempEnemyStats = {
@@ -2729,9 +2721,6 @@ export default function Home() {
             };
             setCharacters(prev => [...prev, tempEnemyCharacter]);
     
-             // Prepare the reward item
-            const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
-            const trophyName = `${physicalItem.name} de ${enemyName}`;
             const familiarRarityRoll = Math.random();
             let rarity: Familiar['rarity'] = 'common';
             if (familiarRarityRoll < 0.05) rarity = 'legendary';
@@ -2740,8 +2729,9 @@ export default function Home() {
             else if (familiarRarityRoll < 0.7) rarity = 'uncommon';
     
             const familiarBonus = generateDynamicFamiliarBonus(rarity);
+            const trophyName = `${physicalItem.name} de ${enemyName}`;
             const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${enemyName.toLowerCase()}. Il semble contenir une essence magique. Rareté: ${rarity}.`;
-    
+            
             const rewardItem: PlayerInventoryItem = {
                 id: `trophy-${creatureType.name.toLowerCase()}-${uid()}`,
                 name: trophyName,
@@ -2755,7 +2745,6 @@ export default function Home() {
                 effect: `Permet d'invoquer un ${enemyName} comme familier. ${familiarBonus.description.replace('X', String(familiarBonus.value))}`,
             };
             
-            // Attach reward to the temporary enemy
             const playerCombatant: Combatant = { characterId: PLAYER_ID, name: adventureSettings.playerName || 'Player', team: 'player', currentHp: adventureSettings.playerCurrentHp!, maxHp: adventureSettings.playerMaxHp! };
             const enemyCombatant: Combatant = { 
                 characterId: tempEnemyId, 
@@ -3541,14 +3530,14 @@ export default function Home() {
                  return { ...char, relations: updatedRelations };
                }
                if (targetId !== PLAYER_ID && char.id === targetId ) {
-                   const sourceChar = prevChars.find(c => c.id === charId);
-                   if (sourceChar) {
-                       const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
-                       return { ...char, relations: updatedRelations };
-                   }
+                    const sourceChar = prevChars.find(c => c.id === charId);
+                    if (sourceChar) {
+                        const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
+                        return { ...char, relations: updatedRelations };
+                    }
                }
                return char;
-             })
+            })
            );
       }}
       handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
@@ -3664,6 +3653,3 @@ export default function Home() {
     </>
   );
 }
-
-    
-
