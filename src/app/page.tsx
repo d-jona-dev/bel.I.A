@@ -1502,16 +1502,12 @@ export default function Home() {
       }, [useAestheticFont, toast]);
 
     const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-        const isFamiliarItem = item.effect?.toLowerCase().includes('invoquer') && item.effect.toLowerCase().includes('familier');
-
-        if (!isFamiliarItem) {
-            setTimeout(() => {
-                toast({
-                    title: "Utilisation Narrative",
-                    description: `Vous tentez d'utiliser ${item.name}, mais son effet n'est pas clair. L'IA décrira le résultat.`,
-                    variant: "default",
-                });
-            }, 0);
+        if (!item.effect?.toLowerCase().includes('invoquer un')) {
+            toast({
+                title: "Utilisation Narrative",
+                description: `Vous tentez d'utiliser ${item.name}. L'IA décrira le résultat.`,
+                variant: "default",
+            });
             const narrativeAction = `J'utilise l'objet: ${item.name}.`;
             handleNarrativeUpdate(narrativeAction, 'user');
             callGenerateAdventure(narrativeAction);
@@ -1521,10 +1517,10 @@ export default function Home() {
         const nameMatch = item.effect?.match(/invoquer un (.+) comme familier/i);
         const familiarName = nameMatch ? nameMatch[1] : 'Familier Inconnu';
         
-        const rarityMatch = item.description?.match(/Rareté:\s*([a-zA-Z]+)/i);
+        const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|commun|epique|légendaire)/i);
         const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
         
-        const bonusMatch = item.effect?.match(/Bonus passif : \+?(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
+        const bonusMatch = item.effect?.match(/Bonus passif : \+(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
         const bonus: FamiliarPassiveBonus = {
             type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
             value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
@@ -1544,31 +1540,48 @@ export default function Home() {
             portraitUrl: null,
         };
 
-        setAdventureSettings(prev => {
-            const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
-            const itemIndex = newInventory.findIndex(i => i.id === item.id);
-            if (itemIndex > -1) {
-                newInventory[itemIndex].quantity -= 1;
-                if (newInventory[itemIndex].quantity <= 0) {
-                    newInventory.splice(itemIndex, 1);
-                }
+        try {
+            // Save to global storage first
+            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+            if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
+                existingFamiliars.push(newFamiliar);
+                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
             }
+
+            // Now, add to the current adventure state
+            setAdventureSettings(prev => {
+                const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
+                const itemIndex = newInventory.findIndex(i => i.id === item.id);
+                if (itemIndex > -1) {
+                    newInventory[itemIndex].quantity -= 1;
+                    if (newInventory[itemIndex].quantity <= 0) {
+                        newInventory.splice(itemIndex, 1);
+                    }
+                }
+                
+                const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+
+                return { ...prev, playerInventory: newInventory, familiars: updatedFamiliars };
+            });
+
+            toast({
+                title: "Familier Invoqué avec Succès!",
+                description: `${newFamiliar.name} a été ajouté à votre groupe.`,
+            });
             
-            const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+            const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
+            handleNarrativeUpdate(narrativeAction, 'user');
+            callGenerateAdventure(narrativeAction);
 
-            setTimeout(() => {
-                toast({
-                    title: "Familier Invoqué!",
-                    description: `${newFamiliar.name} a été ajouté à votre groupe!`,
-                });
-            }, 0);
-
-            return { ...prev, playerInventory: newInventory, familiars: updatedFamiliars };
-        });
-
-        const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
-        handleNarrativeUpdate(narrativeAction, 'user');
-        callGenerateAdventure(narrativeAction);
+        } catch (error) {
+            console.error("Failed to save or add familiar:", error);
+            toast({
+                title: "Erreur d'Invocation",
+                description: "Impossible de sauvegarder ou d'ajouter le familier.",
+                variant: "destructive"
+            });
+        }
 
   }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
 
@@ -3658,4 +3671,3 @@ export default function Home() {
     </>
   );
 }
-
