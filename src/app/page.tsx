@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -481,8 +482,7 @@ export default function Home() {
     // Combat targeting state
     const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
     const [isTargeting, setIsTargeting] = React.useState(false);
-    const [nocturnalHuntRewardItem, setNocturnalHuntRewardItem] = React.useState<PlayerInventoryItem | null>(null);
-
+    
 
     // --- Core Action Handlers ---
 
@@ -562,11 +562,13 @@ export default function Home() {
                 });
                 return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
             });
-            setNarrativeMessages(prevMessages =>
-                prevMessages.map(msg =>
-                    msg.id === messageId ? { ...msg, lootTaken: true } : msg
-                )
-            );
+            if (messageId) { // Check if messageId is provided before updating narrative
+                setNarrativeMessages(prevMessages =>
+                    prevMessages.map(msg =>
+                        msg.id === messageId ? { ...msg, lootTaken: true } : msg
+                    )
+                );
+            }
         });
         if (!silent) {
             setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
@@ -577,7 +579,7 @@ export default function Home() {
         const combatant = activeCombat?.combatants.find(c => c.characterId === combatantId);
         if (!combatant || !combatant.isDefeated || !combatant.rewardItem) return;
     
-        handleTakeLoot("hunt-reward", [combatant.rewardItem], false);
+        handleTakeLoot("", [combatant.rewardItem], false);
         setActiveCombat(undefined); // End combat
         handleNarrativeUpdate(`Vous avez récupéré ${combatant.rewardItem.name} sur la créature vaincue.`, 'system');
     
@@ -978,13 +980,13 @@ export default function Home() {
             turnLog: string[];
             combatUpdates: CombatUpdatesSchema;
             conquestHappened: boolean;
-            nocturnalHuntVictory: boolean;
+            
         } => {
             let turnLog: string[] = [];
             let updatedCombatants = JSON.parse(JSON.stringify(currentCombatState.combatants)) as Combatant[];
             const effectivePlayerStats = calculateEffectiveStats(settings);
             let conquestHappened = false;
-            let nocturnalHuntVictory = false;
+            
             
             const getDamage = (damageBonus: string | undefined): number => {
                 if (!damageBonus) return 1;
@@ -1059,7 +1061,14 @@ export default function Home() {
             const allEnemiesDefeated = updatedCombatants.filter(c => c.team === 'enemy').every(c => c.isDefeated);
             const allPlayersDefeated = updatedCombatants.filter(c => c.team === 'player').every(c => c.isDefeated);
             
-            const isCombatOver = allEnemiesDefeated || allPlayersDefeated;
+            let isCombatOver = allEnemiesDefeated || allPlayersDefeated;
+            const hasHuntReward = updatedCombatants.some(c => c.team === 'enemy' && c.isDefeated && c.rewardItem);
+            
+            // Override combat end if a hunt reward needs to be claimed
+            if (isCombatOver && allEnemiesDefeated && hasHuntReward) {
+                isCombatOver = false;
+            }
+
             let expGained = 0;
             let currencyGained = 0;
             let itemsObtained: PlayerInventoryItem[] = [];
@@ -1081,13 +1090,7 @@ export default function Home() {
                     turnLog.push(`Le territoire de ${poiName} est conquis!`);
                 }
                 
-                if (nocturnalHuntRewardItem) {
-                    nocturnalHuntVictory = true;
-                    if (nocturnalHuntRewardItem) {
-                      itemsObtained.push(nocturnalHuntRewardItem);
-                      setNocturnalHuntRewardItem(null); 
-                    }
-                }
+                
             }
       
             const combatUpdates: CombatUpdatesSchema = {
@@ -1123,9 +1126,8 @@ export default function Home() {
                 turnLog,
                 combatUpdates,
                 conquestHappened,
-                nocturnalHuntVictory,
             };
-        }, [baseCharacters, nocturnalHuntRewardItem]
+        }, [baseCharacters]
     );
 
     const callGenerateAdventure = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
@@ -1139,7 +1141,7 @@ export default function Home() {
         let turnLog: string[] = [];
         let internalCombatUpdates: CombatUpdatesSchema | undefined;
         let conquestHappened = false;
-        let nocturnalHuntVictory = false;
+        
 
         if (locationIdOverride) {
             liveSettings.playerLocationId = locationIdOverride;
@@ -1154,7 +1156,7 @@ export default function Home() {
             liveCombat = combatResult.nextActiveCombatState;
             turnLog = combatResult.turnLog;
             conquestHappened = combatResult.conquestHappened;
-            nocturnalHuntVictory = combatResult.nocturnalHuntVictory;
+            
             handleCombatUpdates(internalCombatUpdates);
         }
     
@@ -1276,7 +1278,7 @@ export default function Home() {
         handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
         handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
-        characters, activeCombat, aiConfig, baseCharacters, merchantInventory, nocturnalHuntRewardItem
+        characters, activeCombat, aiConfig, baseCharacters, merchantInventory
     ]);
 
     // --- End Core Action Handlers ---
