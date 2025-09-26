@@ -1502,25 +1502,13 @@ export default function Home() {
       }, [useAestheticFont, toast]);
 
     const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-        if (!item.effect?.toLowerCase().includes('invoquer un')) {
-            toast({
-                title: "Utilisation Narrative",
-                description: `Vous tentez d'utiliser ${item.name}. L'IA décrira le résultat.`,
-                variant: "default",
-            });
-            const narrativeAction = `J'utilise l'objet: ${item.name}.`;
-            handleNarrativeUpdate(narrativeAction, 'user');
-            callGenerateAdventure(narrativeAction);
-            return;
-        }
+        const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
+        const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
 
-        const nameMatch = item.effect?.match(/invoquer un (.+) comme familier/i);
-        const familiarName = nameMatch ? nameMatch[1] : 'Familier Inconnu';
-        
-        const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|commun|epique|légendaire)/i);
+        const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|divin)/i);
         const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
         
-        const bonusMatch = item.effect?.match(/Bonus passif : \+(\d+)\s*en\s*([a-zA-Z\s_]+)/i);
+        const bonusMatch = item.effect?.match(/Bonus passif : \+?(-?\d+)\s*en\s*([a-zA-Z\s_é]+)/i);
         const bonus: FamiliarPassiveBonus = {
             type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
             value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
@@ -1541,15 +1529,15 @@ export default function Home() {
         };
 
         try {
-            // Save to global storage first
             const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
             let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
             if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
                 existingFamiliars.push(newFamiliar);
                 localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
             }
-
-            // Now, add to the current adventure state
+            
+            handleAddStagedFamiliar(newFamiliar);
+            
             setAdventureSettings(prev => {
                 const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
                 const itemIndex = newInventory.findIndex(i => i.id === item.id);
@@ -1559,10 +1547,7 @@ export default function Home() {
                         newInventory.splice(itemIndex, 1);
                     }
                 }
-                
-                const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
-
-                return { ...prev, playerInventory: newInventory, familiars: updatedFamiliars };
+                return { ...prev, playerInventory: newInventory };
             });
 
             toast({
@@ -1582,7 +1567,6 @@ export default function Home() {
                 variant: "destructive"
             });
         }
-
   }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
 
   const applyCombatItemEffect = React.useCallback((targetId?: string) => {
@@ -1692,7 +1676,6 @@ export default function Home() {
                         itemActionSuccessful = true;
                     } else if (itemToUpdate.effect?.toLowerCase().includes('invoquer') && itemToUpdate.effect.toLowerCase().includes('familier')) {
                          handleUseFamiliarItem(itemToUpdate);
-                         newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                          itemActionSuccessful = true;
                          narrativeAction = "";
                          effectAppliedMessage = "";
@@ -2309,25 +2292,23 @@ export default function Home() {
     }, [toast]);
 
     const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        if (adventureSettings.familiars?.some(f => f.id === familiarToAdd.id)) {
-            setTimeout(() => {
-                 toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-            }, 0);
-            return;
-        }
+        setAdventureSettings(prev => {
+            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
+                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                return prev;
+            }
+            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
+            
+            // Also update the staged settings
+            setStagedAdventureSettings(stagedPrev => ({
+                ...stagedPrev,
+                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
+            }));
 
-        const updater = (prev: AdventureSettings) => ({
-            ...prev,
-            familiars: [...(prev.familiars || []), familiarToAdd]
-        });
-
-        setAdventureSettings(updater);
-        setStagedAdventureSettings(prev => ({...prev, familiars: updater(prev as AdventureSettings).familiars }));
-
-        setTimeout(() => {
             toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-        }, 0);
-    }, [toast, adventureSettings.familiars]);
+            return { ...prev, familiars: updatedFamiliars };
+        });
+    }, [toast]);
 
 
   const handleAddStagedCharacter = (globalCharToAdd: Character) => {
