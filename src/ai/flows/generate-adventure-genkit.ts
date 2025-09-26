@@ -175,6 +175,7 @@ const prompt = ai.definePrompt({
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Ensure narrative continuity from the 'Current Situation/Recent Narrative'. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
+**CRITICAL RULE: If the user action is about summoning, using, or interacting with a FAMILIAR (compagnon, animal, familier), you MUST NOT list it in the \`newCharacters\` array. The game system handles familiar creation and management internally.**
 
 World: {{{world}}}
 

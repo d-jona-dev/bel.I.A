@@ -73,7 +73,8 @@ function buildOpenRouterPrompt(
     let mainInstruction = `Tu es un maître du jeu pour une fiction interactive. Ta tâche est de faire avancer l'histoire.
     La langue de sortie OBLIGATOIRE est : **${input.currentLanguage}**.
     Ne décris que les conséquences de l'action du joueur et les réactions des PNJ.
-    Commence ta narration directement, sans répéter l'action du joueur.`;
+    Commence ta narration directement, sans répéter l'action du joueur.
+    RÈGLE CRITIQUE : Si l'action du joueur concerne l'invocation ou l'interaction avec un FAMILIER (compagnon, animal), tu NE DOIS PAS le lister dans le champ \`newCharacters\`. Le système de jeu gère les familiers en interne.`;
     
     const systemPromptContent = `Tu es un assistant IA qui répond TOUJOURS au format JSON. Ne fournis aucun texte en dehors de l'objet JSON.`;
     
