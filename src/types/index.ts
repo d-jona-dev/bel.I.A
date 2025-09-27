@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -6,7 +7,7 @@ export interface BaseItem {
   id: string;
   name: string;
   description: string;
-  type: 'weapon' | 'armor' | 'jewelry' | 'consumable' | 'quest' | 'misc';
+  type: 'weapon' | 'armor' | 'jewelry' | 'consumable' | 'quest' | 'misc' | 'npc';
   damage?: string; // e.g., "1d6", "2d8"
   ac?: string; // e.g., "11 + Mod.Dex", "14"
   baseGoldValue: number;
@@ -197,7 +198,7 @@ export interface PlayerInventoryItem {
   quantity: number;
   description?: string;
   effect?: string;
-  type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc' | 'jewelry';
+  type: 'consumable' | 'weapon' | 'armor' | 'quest' | 'misc' | 'jewelry' | 'npc';
   goldValue?: number;
   generatedImageUrl?: string | null;
   isEquipped?: boolean;
@@ -700,3 +701,4 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+

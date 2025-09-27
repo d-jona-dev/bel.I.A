@@ -1138,7 +1138,7 @@ export default function Home() {
         if (liveCombat?.isActive) {
             const combatResult = resolveCombatTurn(liveCombat, liveSettings, liveCharacters);
             internalCombatUpdates = combatResult.combatUpdates;
-            liveCombat = combatResult.nextActiveCombatState;
+            liveCombat = combatResult.nextCombatState;
             turnLog = combatResult.turnLog;
             conquestHappened = combatResult.conquestHappened;
             
@@ -1183,7 +1183,7 @@ export default function Home() {
             playerCurrentExp: liveSettings.playerCurrentExp,
             playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
             playerStrength: effectiveStatsThisTurn.playerStrength,
-            playerDexterity: effectiveStatsThisTurn.playerDexterity,
+            playerDexterity: effectiveStatsThisTurn.dexterity,
             playerConstitution: liveSettings.playerConstitution,
             playerIntelligence: liveSettings.playerIntelligence,
             playerWisdom: liveSettings.playerWisdom,
@@ -1285,49 +1285,85 @@ export default function Home() {
     }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
    
     const handleFinalizePurchase = React.useCallback(() => {
-      const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
+        const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
-      if ((adventureSettings.playerGold || 0) < totalCost) {
-          toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
-          return;
-      }
+        if ((adventureSettings.playerGold || 0) < totalCost) {
+            toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
+            return;
+        }
 
-      setAdventureSettings(prev => {
-          const newInventory = [...(prev.playerInventory || [])];
-          shoppingCart.forEach(cartItem => {
-              const newItem: PlayerInventoryItem = {
-                  id: `${cartItem.baseItemId}-${uid()}`,
-                  name: cartItem.name,
-                  quantity: cartItem.quantity || 1,
-                  description: cartItem.description,
-                  type: cartItem.type,
-                  goldValue: cartItem.finalGoldValue,
-                  damage: cartItem.damage,
-                  ac: cartItem.ac,
-                  statBonuses: cartItem.statBonuses,
-                  effectType: cartItem.effectType,
-                  effectDetails: cartItem.effectDetails,
-                  generatedImageUrl: null,
-                  isEquipped: false
-              };
-              const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
-              if (existingIndex > -1) {
-                  newInventory[existingIndex].quantity += newItem.quantity;
-              } else {
-                  newInventory.push(newItem);
-              }
-          });
-          return { ...prev, playerGold: (prev.playerGold || 0) - totalCost, playerInventory: newInventory };
-      });
-      
-      const boughtItemsSummary = shoppingCart.map(item => `${item.quantity}x ${item.name}`).join(', ');
-      toast({ title: "Achat Terminé!", description: `Vous avez acheté : ${boughtItemsSummary}.` });
+        const boughtItemsSummary: string[] = [];
 
-      handleSendSpecificAction(`J'achète les articles suivants : ${boughtItemsSummary}.`);
-      
-      setShoppingCart([]);
-      setMerchantInventory([]); // Close merchant panel after purchase
-  }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast]);
+        // Handle items to be added to inventory
+        const itemsToInventory = shoppingCart.filter(item => item.type !== 'npc');
+        if (itemsToInventory.length > 0) {
+            setAdventureSettings(prev => {
+                const newInventory = [...(prev.playerInventory || [])];
+                itemsToInventory.forEach(cartItem => {
+                    const newItem: PlayerInventoryItem = {
+                        id: `${cartItem.baseItemId}-${uid()}`,
+                        name: cartItem.name,
+                        quantity: cartItem.quantity || 1,
+                        description: cartItem.description,
+                        type: cartItem.type as any, // Cast because 'npc' is filtered out
+                        goldValue: cartItem.finalGoldValue,
+                        damage: cartItem.damage,
+                        ac: cartItem.ac,
+                        statBonuses: cartItem.statBonuses,
+                        effectType: cartItem.effectType,
+                        effectDetails: cartItem.effectDetails,
+                        generatedImageUrl: null,
+                        isEquipped: false
+                    };
+                    const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
+                    if (existingIndex > -1) {
+                        newInventory[existingIndex].quantity += newItem.quantity;
+                    } else {
+                        newInventory.push(newItem);
+                    }
+                    boughtItemsSummary.push(`${newItem.quantity}x ${newItem.name}`);
+                });
+                return { ...prev, playerInventory: newInventory };
+            });
+        }
+        
+        // Handle recruited NPCs
+        const npcsToRecruit = shoppingCart.filter(item => item.type === 'npc');
+        if (npcsToRecruit.length > 0) {
+            const newCharactersToAdd: Character[] = npcsToRecruit.map(npcItem => {
+                 const baseStats = calculateBaseDerivedStats({
+                    level: 1, characterClass: "Mercenaire", strength: 12, dexterity: 12, constitution: 12, intelligence: 10, wisdom: 10, charisma: 10
+                 });
+                boughtItemsSummary.push(`1x Compagnon: ${npcItem.name}`);
+                return {
+                    id: `${npcItem.baseItemId}-${uid()}`,
+                    name: npcItem.name,
+                    details: npcItem.description,
+                    isAlly: true,
+                    isHostile: false,
+                    affinity: 70, // Start as loyal ally
+                    level: 1,
+                    characterClass: "Mercenaire",
+                    ...baseStats,
+                    hitPoints: baseStats.maxHitPoints,
+                    manaPoints: baseStats.maxManaPoints,
+                    locationId: adventureSettings.playerLocationId,
+                };
+            });
+            handleNewCharacters(newCharactersToAdd);
+        }
+
+        // Update player gold
+        setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) - totalCost }));
+        
+        const summaryText = boughtItemsSummary.join(', ');
+        toast({ title: "Achat Terminé!", description: `Vous avez acquis : ${summaryText}.` });
+
+        handleSendSpecificAction(`J'achète les articles suivants : ${summaryText}.`);
+        
+        setShoppingCart([]);
+        setMerchantInventory([]); // Close merchant panel after purchase
+    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, handleNewCharacters, setAdventureSettings, setShoppingCart, setMerchantInventory]);
    
   const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
@@ -1501,6 +1537,25 @@ export default function Home() {
         });
       }, [useAestheticFont, toast]);
 
+    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+        setAdventureSettings(prev => {
+            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
+                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                return prev;
+            }
+            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
+            
+            // Also update the staged settings
+            setStagedAdventureSettings(stagedPrev => ({
+                ...stagedPrev,
+                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
+            }));
+
+            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+            return { ...prev, familiars: updatedFamiliars };
+        });
+    }, [toast]);
+
     const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
         const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
@@ -1567,7 +1622,7 @@ export default function Home() {
                 variant: "destructive"
             });
         }
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, handleAddStagedFamiliar]);
 
   const applyCombatItemEffect = React.useCallback((targetId?: string) => {
         if (!itemToUse || !activeCombat?.isActive) return;
@@ -1674,9 +1729,9 @@ export default function Home() {
                         effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
                         newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                         itemActionSuccessful = true;
-                    } else if (itemToUpdate.effect?.toLowerCase().includes('invoquer') && itemToUpdate.effect.toLowerCase().includes('familier')) {
+                    } else if (itemToUpdate.effect?.toLowerCase().includes('invoquer') || itemToUpdate.effect?.toLowerCase().includes('invocation')) {
                          handleUseFamiliarItem(itemToUpdate);
-                         itemActionSuccessful = true;
+                         itemActionSuccessful = true; // The other function will handle narrative
                          narrativeAction = "";
                          effectAppliedMessage = "";
                     } else {
@@ -2114,7 +2169,7 @@ export default function Home() {
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
                  playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
                  playerStrength: effectiveStatsThisTurn.playerStrength,
-                 playerDexterity: effectiveStatsThisTurn.playerDexterity,
+                 playerDexterity: effectiveStatsThisTurn.dexterity,
                  playerConstitution: currentTurnSettings.playerConstitution,
                  playerIntelligence: currentTurnSettings.playerIntelligence,
                  playerWisdom: currentTurnSettings.playerWisdom,
@@ -2291,26 +2346,6 @@ export default function Home() {
         }
     }, [toast]);
 
-    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        setAdventureSettings(prev => {
-            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
-                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-                return prev;
-            }
-            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
-            
-            // Also update the staged settings
-            setStagedAdventureSettings(stagedPrev => ({
-                ...stagedPrev,
-                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
-            }));
-
-            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-            return { ...prev, familiars: updatedFamiliars };
-        });
-    }, [toast]);
-
-
   const handleAddStagedCharacter = (globalCharToAdd: Character) => {
     const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
 
@@ -2467,7 +2502,7 @@ export default function Home() {
             manaPoints: char.maxManaPoints,
             statusEffects: [],
         })));
-        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSettingsFromBase.initialSituation, timestamp: Date.now() }]);
+        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveSettings.initialSituation, timestamp: Date.now() }]);
         setActiveCombat(undefined);
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
@@ -2762,9 +2797,67 @@ export default function Home() {
     
             userActionText = `Je commence une chasse nocturne et un ${enemyName} apparaît !`;
 
+        } else if (buildingId === 'quartier-esclaves') {
+            const baseMercenaries = [
+                { name: "Guerrier Endurci", class: "Guerrier", universe: 'Médiéval-Fantastique' },
+                { name: "Archer Elfe", class: "Archer", universe: 'Médiéval-Fantastique' },
+                { name: "Cyborg de Combat", class: "Cyborg", universe: 'Futuriste' },
+                { name: "Pillard du Désert", class: "Pillard", universe: 'Post-Apo' },
+            ];
+            const availableMercs = baseMercenaries.filter(m => activeUniverses.includes(m.universe));
+            let generatedMercs: SellingItem[] = [];
+            for(let i=0; i<3; i++) { // Generate 3 mercs for sale
+                if (availableMercs.length === 0) break;
+                const mercProfile = availableMercs[Math.floor(Math.random() * availableMercs.length)];
+                generatedMercs.push({
+                    baseItemId: `npc-${mercProfile.name.toLowerCase().replace(/\s/g, '-')}`,
+                    name: mercProfile.name,
+                    description: `Un ${mercProfile.name} prêt à se battre pour de l'or.`,
+                    type: 'npc', // Special type for characters
+                    rarity: 'Rare', // Can be used for tiering
+                    finalGoldValue: 150 * poiLevel,
+                });
+            }
+            setMerchantInventory(generatedMercs);
+        } else if (buildingId === 'menagerie') {
+            const creatureTypes = creatureFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+            const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+            const physicalItems = physicalFamiliarItems.filter(item => activeUniverses.includes(item.universe));
+
+            let generatedFamiliars: SellingItem[] = [];
+            for (let i = 0; i < 5; i++) { // Generate 5 familiar items
+                if (creatureTypes.length === 0 || descriptors.length === 0 || physicalItems.length === 0) continue;
+                const creatureType = creatureTypes[Math.floor(Math.random() * creatureTypes.length)];
+                const descriptor = descriptors[Math.floor(Math.random() * descriptors.length)];
+                const physicalItem = physicalItems[Math.floor(Math.random() * physicalItems.length)];
+                
+                const familiarRarityRoll = Math.random();
+                let rarity: Familiar['rarity'] = 'common';
+                if (familiarRarityRoll < 0.05) rarity = 'legendary';
+                else if (familiarRarityRoll < 0.15) rarity = 'epic';
+                else if (familiarRarityRoll < 0.4) rarity = 'rare';
+                else if (familiarRarityRoll < 0.7) rarity = 'uncommon';
+
+                const bonus = generateDynamicFamiliarBonus(rarity);
+                const itemName = `${physicalItem.name} de ${creatureType.name} ${descriptor.name}`;
+                
+                generatedFamiliars.push({
+                    baseItemId: `fam-${creatureType.id}-${descriptor.id}-${physicalItem.id}`,
+                    name: itemName,
+                    description: `Un ${physicalItem.name.toLowerCase()} qui permet d'invoquer un ${creatureType.name} ${descriptor.name}. Rareté: ${rarity}.`,
+                    type: 'consumable',
+                    rarity: rarity as any,
+                    finalGoldValue: Math.floor(50 * (familiarRarityRoll + 1) * poiLevel),
+                    effect: `Permet d'invoquer un familier. ${bonus.description.replace('X', String(bonus.value))}`,
+                });
+            }
+            setMerchantInventory(generatedFamiliars);
         } else {
-            let sourcePool: BaseItem[];
-             switch (buildingId) {
+            let sourcePool: Array<BaseItem | SellingItem> = [];
+            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            const poiLevel = poi.level || 1;
+            
+            switch (buildingId) {
                 case 'forgeron':
                     sourcePool = [...allWeapons, ...allArmors];
                     break;
@@ -2782,12 +2875,9 @@ export default function Home() {
             }
 
             let generatedInventory: SellingItem[] = [];
-            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+            const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes((item as BaseItem).universe));
             
-            const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
-            const poiLevel = poi.level || 1;
-            
-            const rarityOrder: { [key: string]: number } = { 'commun': 1, 'rare': 2, 'epique': 3, 'légendaire': 4, 'divin': 5 };
+            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -2801,7 +2891,7 @@ export default function Home() {
             const config = inventoryConfig[poiLevel] || inventoryConfig[1];
             
             const availableItems = itemsInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[(item.rarity || 'Commun').toLowerCase()] || 1;
+                const itemRarityValue = rarityOrder[(item as BaseItem).rarity || 'Commun'] || 1;
                 return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
             });
             
@@ -2810,7 +2900,7 @@ export default function Home() {
 
             if (availableItems.length > 0) {
                 while (generatedInventory.length < config.size && safetyBreak < 200) {
-                    const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+                    const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)] as BaseItem;
                     if (!baseItem || usedBaseItemIds.has(baseItem.id)) {
                         safetyBreak++;
                         continue;
@@ -2838,7 +2928,6 @@ export default function Home() {
                      variant: "default",
                  });
             }
-            
             setMerchantInventory(generatedInventory);
         }
 
@@ -3375,7 +3464,7 @@ export default function Home() {
     }
   }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
     
-  const handleSaveToLibrary = React.useCallback(async () => {
+  const onSaveToLibrary = React.useCallback(async () => {
     if (!comicTitle.trim()) {
         toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
         return;
@@ -3425,7 +3514,7 @@ export default function Home() {
             variant: "destructive"
         });
     }
-  }, [comicDraft, comicTitle, comicCoverUrl, toast]);
+  }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
 
 
   const handleAddComicPage = () => {
@@ -3618,7 +3707,7 @@ export default function Home() {
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
-      onSaveToLibrary={handleSaveToLibrary}
+      onSaveToLibrary={onSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
@@ -3652,3 +3741,4 @@ export default function Home() {
     </>
   );
 }
+
