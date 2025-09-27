@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -593,11 +592,13 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     };
     
     React.useEffect(() => {
+        // Reset level and buildings if type changes
         setNewPoiLevel(1);
         setNewPoiBuildings([]);
     }, [newPoiType]);
     
     React.useEffect(() => {
+        // Prune selected buildings if they exceed the new slot limit
         if (newPoiBuildings.length > buildingSlotsForLevel) {
             setNewPoiBuildings(prev => prev.slice(0, buildingSlotsForLevel));
         }
@@ -995,7 +996,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </AccordionItem>
                 </Accordion>
                 
-                <Accordion type="single" collapsible className="w-full" defaultValue="player-character-config">
+                <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="player-character-config">
                         <AccordionTrigger>Configuration du Héros</AccordionTrigger>
                         <AccordionContent className="pt-2 space-y-4">

@@ -50,7 +50,7 @@ export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
   },
   {
     id: 'quartier-esclaves',
-    name: "Marché aux Esclaves",
+    name: "Marché aux esclaves",
     description: "Permet d'acheter des alliés pour renforcer vos rangs.",
     applicablePoiTypes: ['Village'],
   },
@@ -120,7 +120,7 @@ export const BUILDING_DEFINITIONS: BuildingDefinition[] = [
 
 // Le coût du N-ième bâtiment. (index 0 = 1er bâtiment, etc.)
 export const BUILDING_COST_PROGRESSION: number[] = [
-    50, 100, 200, 400, 800
+    50, 100, 200, 400, 800, 1600, 3200, 6400
 ];
 
 // Nombre de slots de bâtiment débloqués par niveau de POI

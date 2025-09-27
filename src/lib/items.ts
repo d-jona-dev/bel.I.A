@@ -1,5 +1,4 @@
-
-import type { BaseItem, BaseFamiliar } from '@/types';
+import type { BaseItem, BaseFamiliarComponent } from '@/types';
 
 // NEW: Base definitions for modular familiar components
 export interface BaseFamiliarComponent {
