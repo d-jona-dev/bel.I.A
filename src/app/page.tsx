@@ -2502,7 +2502,7 @@ export default function Home() {
             manaPoints: char.maxManaPoints,
             statusEffects: [],
         })));
-        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveSettings.initialSituation, timestamp: Date.now() }]);
+        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveAdventureSettings.initialSituation, timestamp: Date.now() }]);
         setActiveCombat(undefined);
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
@@ -2712,8 +2712,10 @@ export default function Home() {
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
 
+        const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
+        const poiLevel = poi.level || 1;
+
         if (buildingId === 'poste-chasse-nocturne') {
-            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
             
             const creatureTypes = creatureFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
@@ -2854,8 +2856,8 @@ export default function Home() {
             setMerchantInventory(generatedFamiliars);
         } else {
             let sourcePool: Array<BaseItem | SellingItem> = [];
-            const activeUniverses = adventureSettings.activeItemUniverses || ['Médiéval-Fantastique'];
-            const poiLevel = poi.level || 1;
+            
+            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
             switch (buildingId) {
                 case 'forgeron':
@@ -2876,8 +2878,6 @@ export default function Home() {
 
             let generatedInventory: SellingItem[] = [];
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes((item as BaseItem).universe));
-            
-            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -3436,35 +3436,7 @@ export default function Home() {
         });
     }, []);
 
-    
-  const handleGenerateCover = React.useCallback(async () => {
-    setIsGeneratingCover(true);
-    toast({ title: "Génération de la couverture..."});
-
-    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
-
-    try {
-        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-        if (result.imageUrl) {
-            setComicCoverUrl(result.imageUrl);
-            toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        toast({
-            title: "Erreur de Génération",
-            description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
-            variant: "destructive"
-        });
-    } finally {
-        setIsGeneratingCover(false);
-    }
-  }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
-    
-  const onSaveToLibrary = React.useCallback(async () => {
+    const onSaveToLibrary = React.useCallback(async () => {
     if (!comicTitle.trim()) {
         toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
         return;
@@ -3515,6 +3487,33 @@ export default function Home() {
         });
     }
   }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
+    
+  const handleGenerateCover = React.useCallback(async () => {
+    setIsGeneratingCover(true);
+    toast({ title: "Génération de la couverture..."});
+
+    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
+
+    try {
+        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+        if (result.imageUrl) {
+            setComicCoverUrl(result.imageUrl);
+            toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        toast({
+            title: "Erreur de Génération",
+            description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
+            variant: "destructive"
+        });
+    } finally {
+        setIsGeneratingCover(false);
+    }
+  }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
 
 
   const handleAddComicPage = () => {
@@ -3741,4 +3740,3 @@ export default function Home() {
     </>
   );
 }
-
