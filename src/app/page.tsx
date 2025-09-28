@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -1245,14 +1246,14 @@ export default function Home() {
             toast({ title: "Action Impossible", description: "Cet objet ne peut pas être utilisé pour invoquer un familier.", variant: "destructive" });
             return;
         }
-    
+
         const newFamiliar: Familiar = {
             id: `familiar-${item.familiarDetails.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
             isActive: false, 
             ...item.familiarDetails,
         };
-    
-        // Update adventure state
+
+        // Update adventure state atomically
         setAdventureSettings(prev => {
             const newInventory = [...(prev.playerInventory || [])];
             const itemIndex = newInventory.findIndex(i => i.id === item.id);
@@ -1268,8 +1269,8 @@ export default function Home() {
                 playerInventory: newInventory.filter(i => i.quantity > 0),
             };
         });
-    
-        // Save to global familiars in localStorage
+
+        // Save to global storage
         try {
             const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
             let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
@@ -1283,7 +1284,6 @@ export default function Home() {
     
         toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
     
-        // Send narrative action
         const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${newFamiliar.name} !`;
         handleSendSpecificAction(narrativeAction);
     }, [handleSendSpecificAction, toast]);
@@ -2274,7 +2274,7 @@ export default function Home() {
                        const attributesToInit: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
                        attributesToInit.forEach(attr => {
                            if (charToUpdate[attr] === undefined) {
-                               (charToUpdate[attr] as any) = BASE_ATTRIBUTE_VALUE;
+                               (charToUpdate[attr] as any) = BASE_ATTRIBUTE_VALUE_FORM;
                            }
                        });
                        const derived = calculateBaseDerivedStats(charToUpdate);
@@ -2790,6 +2790,68 @@ export default function Home() {
             });
     
             userActionText = `Je commence une chasse nocturne et un ${enemyName} apparaît !`;
+
+        } else if (buildingId === 'equipe-archeologues') {
+             const enemyName = "Gardien des Ruines";
+             const tempEnemyId = `guardian-${uid()}`;
+             const tempEnemyLevel = (poi.level || 1) * 2;
+             const tempEnemyStats = {
+                 level: tempEnemyLevel,
+                 hp: 40 + tempEnemyLevel * 10,
+                 ac: 14 + tempEnemyLevel,
+                 attack: 3 + tempEnemyLevel,
+                 damage: `2d8+${tempEnemyLevel}`,
+             };
+             const tempEnemyCharacter: Character = {
+                 id: tempEnemyId,
+                 name: enemyName,
+                 details: "Une ancienne construction de pierre et de magie, animée pour protéger les secrets de ce lieu.",
+                 isHostile: true,
+                 level: tempEnemyStats.level,
+                 hitPoints: tempEnemyStats.hp,
+                 maxHitPoints: tempEnemyStats.hp,
+                 armorClass: tempEnemyStats.ac,
+                 attackBonus: tempEnemyStats.attack,
+                 damageBonus: tempEnemyStats.damage,
+                 locationId: poi.id,
+             };
+             setCharacters(prev => [...prev, tempEnemyCharacter]);
+
+             const legendaryItems = [...BASE_WEAPONS, ...BASE_ARMORS].filter(item => item.rarity === 'Légendaire' && activeUniverses.includes(item.universe));
+             const randomLegendaryItem = legendaryItems.length > 0 ? legendaryItems[Math.floor(Math.random() * legendaryItems.length)] : BASE_WEAPONS[0]; // Fallback to a basic item
+
+             const rewardItem: PlayerInventoryItem = {
+                 id: `${randomLegendaryItem.id}-${uid()}`,
+                 name: randomLegendaryItem.name,
+                 quantity: 1,
+                 description: randomLegendaryItem.description,
+                 type: randomLegendaryItem.type as any,
+                 goldValue: randomLegendaryItem.baseGoldValue * 2, // Legendary items are valuable
+                 damage: randomLegendaryItem.damage,
+                 ac: randomLegendaryItem.ac,
+                 statBonuses: randomLegendaryItem.statBonuses,
+                 generatedImageUrl: null,
+                 isEquipped: false,
+             };
+
+             const playerCombatant: Combatant = { characterId: PLAYER_ID, name: adventureSettings.playerName || 'Player', team: 'player', currentHp: adventureSettings.playerCurrentHp!, maxHp: adventureSettings.playerMaxHp! };
+             const enemyCombatant: Combatant = {
+                 characterId: tempEnemyId,
+                 name: enemyName,
+                 team: 'enemy',
+                 currentHp: tempEnemyStats.hp,
+                 maxHp: tempEnemyStats.hp,
+                 rewardItem: rewardItem,
+             };
+             
+             setActiveCombat({
+                 isActive: true,
+                 combatants: [playerCombatant, enemyCombatant],
+                 environmentDescription: `Dans une chambre oubliée au coeur de la mine de ${poi.name}.`,
+                 turnLog: [],
+             });
+
+             userActionText = `En explorant les profondeurs avec les archéologues, nous réveillons un ${enemyName} !`;
 
         } else if (buildingId === 'quartier-esclaves') {
             const baseMercenaries = [
@@ -3763,6 +3825,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
