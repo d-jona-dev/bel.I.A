@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -1556,7 +1555,7 @@ export default function Home() {
             return { ...prev, familiars: updatedFamiliars };
         });
     }, [toast]);
-
+    
   const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
     const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
     const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
@@ -1583,43 +1582,39 @@ export default function Home() {
         passiveBonus: bonus,
         portraitUrl: null,
     };
-
-    // Save to global storage first
-    try {
-        const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-        let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-        if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
-            existingFamiliars.push(newFamiliar);
-            localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-        }
-    } catch (error) {
-        console.error("Failed to save familiar to localStorage:", error);
-        toast({ title: "Erreur de Sauvegarde Globale", variant: "destructive" });
-    }
-
-    // Update adventure state to add familiar and consume item
+    
     setAdventureSettings(prev => {
-        // Add familiar
-        const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
-
-        // Consume item
+        // 1. Consume item
         const newInventory = [...(prev.playerInventory || [])];
         const itemIndex = newInventory.findIndex(i => i.id === item.id);
         if (itemIndex > -1) {
             newInventory[itemIndex].quantity -= 1;
-            if (newInventory[itemIndex].quantity <= 0) {
-                newInventory.splice(itemIndex, 1);
+        }
+        const finalInventory = newInventory.filter(i => i.quantity > 0);
+        
+        // 2. Add familiar
+        const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+        
+        // 3. Save to global storage
+        try {
+            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+            if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
+                existingFamiliars.push(newFamiliar);
+                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
             }
+        } catch (error) {
+            console.error("Failed to save familiar to localStorage:", error);
+            toast({ title: "Erreur de Sauvegarde Globale", variant: "destructive" });
         }
         
         return { 
             ...prev, 
             familiars: updatedFamiliars,
-            playerInventory: newInventory,
+            playerInventory: finalInventory,
         };
     });
     
-    // Notify user and trigger narrative
     toast({
         title: "Familier Invoqué!",
         description: `${newFamiliar.name} a été ajouté à votre groupe.`,
@@ -1738,9 +1733,11 @@ export default function Home() {
                         itemActionSuccessful = true;
                     } else if (itemToUpdate.effect?.toLowerCase().includes('invoquer') || itemToUpdate.effect?.toLowerCase().includes('invocation')) {
                          handleUseFamiliarItem(itemToUpdate);
-                         itemActionSuccessful = true; // The other function will handle narrative
+                         itemActionSuccessful = false; // The other function will handle narrative and state updates
                          narrativeAction = "";
                          effectAppliedMessage = "";
+                         // We return early here as handleUseFamiliarItem handles its own state updates
+                         return prevSettings;
                     } else {
                        toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate.name} est narratif ou requiert une situation spécifique.`, variant: "default" });
                        itemActionSuccessful = true; // Still consume for narrative effect
@@ -3747,6 +3744,3 @@ export default function Home() {
     </>
   );
 }
-
-
-    
