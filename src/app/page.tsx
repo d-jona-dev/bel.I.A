@@ -830,7 +830,26 @@ export default function Home() {
 
             if (updates.expGained && updates.expGained > 0) {
                 lootMessage += `Vous gagnez ${updates.expGained} points d'expérience. `;
-                setAdventureSettings(prev => ({...prev, playerCurrentExp: (prev.playerCurrentExp || 0) + updates.expGained!}));
+                setAdventureSettings(prev => {
+                    const newExp = (prev.playerCurrentExp || 0) + updates.expGained!;
+                    
+                    let updatedFamiliars = prev.familiars || [];
+                    const activeFamiliar = updatedFamiliars.find(f => f.isActive);
+                    if (activeFamiliar) {
+                        activeFamiliar.currentExp += updates.expGained!;
+                        if (activeFamiliar.currentExp >= activeFamiliar.expToNextLevel) {
+                            activeFamiliar.level += 1;
+                            activeFamiliar.currentExp -= activeFamiliar.expToNextLevel;
+                            activeFamiliar.expToNextLevel = Math.floor(100 * Math.pow(1.5, activeFamiliar.level - 1));
+                            toast({
+                                title: "Familier a monté de niveau!",
+                                description: `${activeFamiliar.name} est maintenant niveau ${activeFamiliar.level}!`
+                            });
+                        }
+                    }
+
+                    return {...prev, playerCurrentExp: newExp, familiars: updatedFamiliars};
+                });
             }
             if (updates.currencyGained && updates.currencyGained > 0) {
                 lootMessage += `Vous trouvez ${updates.currencyGained} pièces d'or.`;
@@ -848,7 +867,7 @@ export default function Home() {
             setActiveCombat(updates.nextActiveCombatState);
         }
 
-    }, [handleNarrativeUpdate, addCurrencyToPlayer]);
+    }, [handleNarrativeUpdate, addCurrencyToPlayer, toast]);
   
     const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
         if (!changes || changes.length === 0) return;
@@ -1226,48 +1245,50 @@ export default function Home() {
             toast({ title: "Action Impossible", description: "Cet objet ne peut pas être utilisé pour invoquer un familier.", variant: "destructive" });
             return;
         }
-
+    
         const newFamiliar: Familiar = {
             id: `familiar-${item.familiarDetails.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
             isActive: false, 
             ...item.familiarDetails,
         };
-        
+    
+        // Update adventure state
         setAdventureSettings(prev => {
             const newInventory = [...(prev.playerInventory || [])];
             const itemIndex = newInventory.findIndex(i => i.id === item.id);
             if (itemIndex > -1) {
                 newInventory[itemIndex].quantity -= 1;
             }
-
+    
             const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
             
-            try {
-                const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-                let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-                if (!existingFamiliars.some(f => f.id === newFamiliar.id || f.name === newFamiliar.name)) {
-                    existingFamiliars.push(newFamiliar);
-                    localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-                }
-            } catch (error) {
-                console.error("Failed to save familiar to localStorage:", error);
-            }
-
             return {
                 ...prev,
                 familiars: updatedFamiliars,
                 playerInventory: newInventory.filter(i => i.quantity > 0),
             };
         });
-
+    
+        // Save to global familiars in localStorage
+        try {
+            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+            if (!existingFamiliars.some(f => f.id === newFamiliar.id || f.name === newFamiliar.name)) {
+                existingFamiliars.push(newFamiliar);
+                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
+            }
+        } catch (error) {
+            console.error("Failed to save familiar to localStorage:", error);
+        }
+    
         toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
-        
+    
+        // Send narrative action
         const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${newFamiliar.name} !`;
         handleSendSpecificAction(narrativeAction);
-
     }, [handleSendSpecificAction, toast]);
    
-  const handleFinalizePurchase = React.useCallback(() => {
+  const onFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
         if ((adventureSettings.playerGold || 0) < totalCost) {
@@ -2740,14 +2761,14 @@ export default function Home() {
                 statBonuses: {},
                 effect: `Permet d'invoquer un ${enemyName} comme familier. ${familiarBonus.description.replace('X', String(familiarBonus.value))}`,
                 familiarDetails: {
-                    name: enemyName,
-                    description: `Un ${enemyName} invoqué depuis un trophée.`,
-                    rarity: rarity,
-                    level: 1,
-                    currentExp: 0,
-                    expToNextLevel: 100,
-                    passiveBonus: familiarBonus,
-                    portraitUrl: null,
+                  name: enemyName,
+                  description: `Un ${enemyName} invoqué depuis un trophée.`,
+                  rarity: rarity,
+                  level: 1,
+                  currentExp: 0,
+                  expToNextLevel: 100,
+                  passiveBonus: familiarBonus,
+                  portraitUrl: null,
                 }
             };
             
@@ -3713,7 +3734,7 @@ export default function Home() {
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
       onRemoveFromCart={handleRemoveFromCart}
-      onFinalizePurchase={handleFinalizePurchase}
+      onFinalizePurchase={onFinalizePurchase}
       onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
       handleClaimHuntReward={handleClaimHuntReward}
     />
@@ -3742,4 +3763,8 @@ export default function Home() {
     </>
   );
 }
+
+
+
+
 
