@@ -484,17 +484,6 @@ export default function Home() {
     
 
     // --- Core Action Handlers ---
-
-    const addCurrencyToPlayer = React.useCallback((amount: number) => {
-        setAdventureSettings(prevSettings => {
-            if (!prevSettings.rpgMode) return prevSettings;
-            let currentGold = prevSettings.playerGold ?? 0;
-            let newGold = currentGold + amount;
-            if (newGold < 0) newGold = 0;
-            return { ...prevSettings, playerGold: newGold };
-        });
-    }, []);
-
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
         const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
             id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -522,67 +511,33 @@ export default function Home() {
         };
         setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
     }, []);
+    
+    const handleNewFamiliar = React.useCallback((newFamiliar: Familiar) => {
+        setAdventureSettings(prevSettings => {
+            if (!newFamiliar) return prevSettings;
 
-    const handleDiscardLoot = React.useCallback((messageId: string) => {
-        setNarrativeMessages(prevMessages =>
-            prevMessages.map(msg =>
-                msg.id === messageId ? { ...msg, lootTaken: true } : msg
-            )
-        );
-        toast({ title: "Butin Laissé", description: "Vous avez choisi de ne pas prendre ces objets." });
+            const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
+            
+            setTimeout(() => {
+                toast({
+                    title: "Nouveau Familier!",
+                    description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
+                });
+            }, 0);
+
+            return { ...prevSettings, familiars: updatedFamiliars };
+        });
     }, [toast]);
     
-    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
-        React.startTransition(() => {
-            setAdventureSettings(prevSettings => {
-                if (!prevSettings.rpgMode) return prevSettings;
-                const newInventory = [...(prevSettings.playerInventory || [])];
-                
-                const lootMessage = narrativeMessages.find(m => m.id === messageId);
-                let currencyGained = 0;
-                 if (lootMessage?.loot) {
-                    const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
-                    if (currencyItem) {
-                        currencyGained = currencyItem.quantity;
-                    }
-                 }
-    
-                itemsToTake.forEach(item => {
-                    if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
-                        console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
-                        return;
-                    }
-                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                    if (existingItemIndex > -1) {
-                        newInventory[existingItemIndex].quantity += item.quantity;
-                    } else {
-                        newInventory.push({ ...item, isEquipped: false });
-                    }
-                });
-                return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
-            });
-            if (messageId) { // Check if messageId is provided before updating narrative
-                setNarrativeMessages(prevMessages =>
-                    prevMessages.map(msg =>
-                        msg.id === messageId ? { ...msg, lootTaken: true } : msg
-                    )
-                );
-            }
+    const addCurrencyToPlayer = React.useCallback((amount: number) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            let currentGold = prevSettings.playerGold ?? 0;
+            let newGold = currentGold + amount;
+            if (newGold < 0) newGold = 0;
+            return { ...prevSettings, playerGold: newGold };
         });
-        if (!silent) {
-            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
-        }
-      }, [toast, narrativeMessages]);
-
-    const handleClaimHuntReward = React.useCallback((combatantId: string) => {
-        const combatant = activeCombat?.combatants.find(c => c.characterId === combatantId);
-        if (!combatant || !combatant.isDefeated || !combatant.rewardItem) return;
-    
-        handleTakeLoot("", [combatant.rewardItem], false);
-        setActiveCombat(undefined); // End combat
-        handleNarrativeUpdate(`Vous avez récupéré ${combatant.rewardItem.name} sur la créature vaincue.`, 'system');
-    
-    }, [activeCombat, handleTakeLoot, handleNarrativeUpdate]);
+    }, []);
 
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -604,7 +559,7 @@ export default function Home() {
             return prevChars;
         });
     }, []);
-    
+
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
         const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
         if (!currentRelationsMode || !updates || updates.length === 0) return;
@@ -732,67 +687,6 @@ export default function Home() {
             };
         });
     }, []);
-
-    const handleNewFamiliar = React.useCallback((newFamiliar: Familiar) => {
-        setAdventureSettings(prevSettings => {
-            if (!newFamiliar) return prevSettings;
-
-            const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
-            
-            setTimeout(() => {
-                toast({
-                    title: "Nouveau Familier!",
-                    description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
-                });
-            }, 0);
-
-            return { ...prevSettings, familiars: updatedFamiliars };
-        });
-    }, [toast]);
-    
-    const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
-        if (!changes || changes.length === 0) return;
-
-        const updater = (prev: AdventureSettings): AdventureSettings => {
-            if (!prev.mapPointsOfInterest) return prev;
-
-            let pois = [...prev.mapPointsOfInterest];
-            let changed = false;
-
-            changes.forEach(change => {
-                const poiIndex = pois.findIndex(p => p.id === change.poiId);
-                if (poiIndex !== -1) {
-                    const oldOwnerId = pois[poiIndex].ownerId;
-                    if (oldOwnerId !== change.newOwnerId) {
-                        const poi = pois[poiIndex];
-                        const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
-                        
-                        pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
-                        changed = true;
-                        
-                        setTimeout(() => {
-                            toast({
-                                title: "Changement de Territoire!",
-                                description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                            });
-                        }, 0);
-                    }
-                }
-            });
-
-            if (!changed) return prev;
-            return { ...prev, mapPointsOfInterest: pois };
-        };
-        
-        setAdventureSettings(updater);
-        setStagedAdventureSettings(prevStaged => {
-            const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
-            const finalPois = updater(updatedLiveState).mapPointsOfInterest;
-            return { ...prevStaged, mapPointsOfInterest: finalPois };
-        });
-        setFormPropKey(k => k + 1);
-
-    }, [toast, characters, adventureSettings.playerName]);
 
     const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
         if (!newChars || newChars.length === 0) return;
@@ -956,6 +850,50 @@ export default function Home() {
 
     }, [handleNarrativeUpdate, addCurrencyToPlayer]);
   
+    const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
+        if (!changes || changes.length === 0) return;
+
+        const updater = (prev: AdventureSettings): AdventureSettings => {
+            if (!prev.mapPointsOfInterest) return prev;
+
+            let pois = [...prev.mapPointsOfInterest];
+            let changed = false;
+
+            changes.forEach(change => {
+                const poiIndex = pois.findIndex(p => p.id === change.poiId);
+                if (poiIndex !== -1) {
+                    const oldOwnerId = pois[poiIndex].ownerId;
+                    if (oldOwnerId !== change.newOwnerId) {
+                        const poi = pois[poiIndex];
+                        const newOwnerName = change.newOwnerId === PLAYER_ID ? (adventureSettings.playerName || "Joueur") : characters.find(c => c.id === change.newOwnerId)?.name || 'un inconnu';
+                        
+                        pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
+                        changed = true;
+                        
+                        setTimeout(() => {
+                            toast({
+                                title: "Changement de Territoire!",
+                                description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
+                            });
+                        }, 0);
+                    }
+                }
+            });
+
+            if (!changed) return prev;
+            return { ...prev, mapPointsOfInterest: pois };
+        };
+        
+        setAdventureSettings(updater);
+        setStagedAdventureSettings(prevStaged => {
+            const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
+            const finalPois = updater(updatedLiveState).mapPointsOfInterest;
+            return { ...prevStaged, mapPointsOfInterest: finalPois };
+        });
+        setFormPropKey(k => k + 1);
+
+    }, [toast, characters, adventureSettings.playerName]);
+
     const resolveCombatTurn = React.useCallback(
         (
             currentCombatState: ActiveCombat,
@@ -1265,7 +1203,6 @@ export default function Home() {
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
         characters, activeCombat, aiConfig, baseCharacters, merchantInventory
     ]);
-
     // --- End Core Action Handlers ---
 
 
@@ -1283,6 +1220,69 @@ export default function Home() {
             setIsLoading(false);
         }
     }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
+
+    const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+        const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
+        const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
+    
+        const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|divin)/i);
+        const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
+    
+        const bonusMatch = item.effect?.match(/Bonus passif : \+?(-?\d+)\s*en\s*([a-zA-Z\s_é]+)/i);
+        const bonus: FamiliarPassiveBonus = {
+            type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
+            value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
+            description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
+        };
+    
+        const newFamiliar: Familiar = {
+            id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            name: familiarName,
+            description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
+            rarity: rarity,
+            level: 1,
+            currentExp: 0,
+            expToNextLevel: 100,
+            isActive: false,
+            passiveBonus: bonus,
+            portraitUrl: null,
+        };
+    
+        setAdventureSettings(prev => {
+            const newInventory = [...(prev.playerInventory || [])];
+            const itemIndex = newInventory.findIndex(i => i.id === item.id);
+            if (itemIndex > -1) {
+                newInventory[itemIndex].quantity -= 1;
+            }
+    
+            const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+    
+            // Sauvegarde globale
+            try {
+                const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+                let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+                if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
+                    existingFamiliars.push(newFamiliar);
+                    localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
+                }
+            } catch (error) {
+                console.error("Failed to save familiar to localStorage:", error);
+            }
+    
+            return {
+                ...prev,
+                familiars: updatedFamiliars,
+                playerInventory: newInventory.filter(i => i.quantity > 0),
+            };
+        });
+    
+        toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté.` });
+    
+        const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
+        handleNarrativeUpdate(narrativeAction, 'user');
+        callGenerateAdventure(narrativeAction);
+    
+    }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
    
     const handleFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
@@ -1537,94 +1537,67 @@ export default function Home() {
         });
       }, [useAestheticFont, toast]);
 
-    const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        setAdventureSettings(prev => {
-            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
-                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-                return prev;
-            }
-            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
-            
-            // Also update the staged settings
-            setStagedAdventureSettings(stagedPrev => ({
-                ...stagedPrev,
-                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
-            }));
-
-            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-            return { ...prev, familiars: updatedFamiliars };
-        });
+    const handleDiscardLoot = React.useCallback((messageId: string) => {
+        setNarrativeMessages(prevMessages =>
+            prevMessages.map(msg =>
+                msg.id === messageId ? { ...msg, lootTaken: true } : msg
+            )
+        );
+        toast({ title: "Butin Laissé", description: "Vous avez choisi de ne pas prendre ces objets." });
     }, [toast]);
     
-  const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-    const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
-    const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
-
-    const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|divin)/i);
-    const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
+        React.startTransition(() => {
+            setAdventureSettings(prevSettings => {
+                if (!prevSettings.rpgMode) return prevSettings;
+                const newInventory = [...(prevSettings.playerInventory || [])];
+                
+                const lootMessage = narrativeMessages.find(m => m.id === messageId);
+                let currencyGained = 0;
+                 if (lootMessage?.loot) {
+                    const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
+                    if (currencyItem) {
+                        currencyGained = currencyItem.quantity;
+                    }
+                 }
     
-    const bonusMatch = item.effect?.match(/Bonus passif : \+?(-?\d+)\s*en\s*([a-zA-Z\s_é]+)/i);
-    const bonus: FamiliarPassiveBonus = {
-        type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
-        value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
-        description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
-    };
-
-    const newFamiliar: Familiar = {
-        id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
-        name: familiarName,
-        description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
-        rarity: rarity,
-        level: 1,
-        currentExp: 0,
-        expToNextLevel: 100,
-        isActive: false,
-        passiveBonus: bonus,
-        portraitUrl: null,
-    };
-    
-    setAdventureSettings(prev => {
-        // 1. Consume item
-        const newInventory = [...(prev.playerInventory || [])];
-        const itemIndex = newInventory.findIndex(i => i.id === item.id);
-        if (itemIndex > -1) {
-            newInventory[itemIndex].quantity -= 1;
-        }
-        const finalInventory = newInventory.filter(i => i.quantity > 0);
-        
-        // 2. Add familiar
-        const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
-        
-        // 3. Save to global storage
-        try {
-            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-            if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
-                existingFamiliars.push(newFamiliar);
-                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
+                itemsToTake.forEach(item => {
+                    if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
+                        console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
+                        return;
+                    }
+                    const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
+                    if (existingItemIndex > -1) {
+                        newInventory[existingItemIndex].quantity += item.quantity;
+                    } else {
+                        newInventory.push({ ...item, isEquipped: false });
+                    }
+                });
+                return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
+            });
+            if (messageId) { // Check if messageId is provided before updating narrative
+                setNarrativeMessages(prevMessages =>
+                    prevMessages.map(msg =>
+                        msg.id === messageId ? { ...msg, lootTaken: true } : msg
+                    )
+                );
             }
-        } catch (error) {
-            console.error("Failed to save familiar to localStorage:", error);
-            toast({ title: "Erreur de Sauvegarde Globale", variant: "destructive" });
+        });
+        if (!silent) {
+            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
         }
-        
-        return { 
-            ...prev, 
-            familiars: updatedFamiliars,
-            playerInventory: finalInventory,
-        };
-    });
-    
-    toast({
-        title: "Familier Invoqué!",
-        description: `${newFamiliar.name} a été ajouté à votre groupe.`,
-    });
-    
-    const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
-    handleNarrativeUpdate(narrativeAction, 'user');
-    callGenerateAdventure(narrativeAction);
+      }, [toast, narrativeMessages]);
 
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
+    const handleClaimHuntReward = React.useCallback((combatantId: string) => {
+        const combatant = activeCombat?.combatants.find(c => c.characterId === combatantId);
+        if (!combatant || !combatant.isDefeated || !combatant.rewardItem) return;
+    
+        handleTakeLoot("", [combatant.rewardItem], false);
+        setActiveCombat(undefined); // End combat
+        handleNarrativeUpdate(`Vous avez récupéré ${combatant.rewardItem.name} sur la créature vaincue.`, 'system');
+    
+    }, [activeCombat, handleTakeLoot, handleNarrativeUpdate]);
+   
 
   const applyCombatItemEffect = React.useCallback((targetId?: string) => {
         if (!itemToUse || !activeCombat?.isActive) return;
@@ -2125,7 +2098,7 @@ export default function Home() {
                     const allyCombatantRegen: Combatant = {
                         characterId: char.id, name: char.name,
                         currentHp: existingCombatantData?.currentHp ?? char.hitPoints!,
-                        maxHp: existingCombatantData?.maxHitPoints!,
+                        maxHp: existingCombatantData?.maxHp!,
                         currentMp: existingCombatantData?.currentMp ?? char.manaPoints,
                         maxMp: existingCombatantData?.maxManaPoints,
                         team: 'player', isDefeated: existingCombatantData ? existingCombatantData.isDefeated : (char.hitPoints! <= 0),
@@ -3586,6 +3559,25 @@ export default function Home() {
     const currentPage = comicDraft[currentComicPageIndex];
     exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
   }, [comicDraft, currentComicPageIndex, toast]);
+  
+  const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
+        setAdventureSettings(prev => {
+            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
+                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                return prev;
+            }
+            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
+            
+            // Also update the staged settings
+            setStagedAdventureSettings(stagedPrev => ({
+                ...stagedPrev,
+                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
+            }));
+
+            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+            return { ...prev, familiars: updatedFamiliars };
+        });
+    }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -3744,3 +3736,7 @@ export default function Home() {
     </>
   );
 }
+
+    
+
+    
