@@ -87,6 +87,7 @@ const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Charact
 
 // Calculates effective stats including equipment (PLAYER ONLY FOR NOW)
 const calculateEffectiveStats = (settings: AdventureSettings) => {
+    // Start with base attributes from settings
     let effectiveStrength = settings.playerStrength || BASE_ATTRIBUTE_VALUE;
     let effectiveDexterity = settings.playerDexterity || BASE_ATTRIBUTE_VALUE;
     let effectiveConstitution = settings.playerConstitution || BASE_ATTRIBUTE_VALUE;
@@ -95,7 +96,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     let effectiveCharisma = settings.playerCharisma || BASE_ATTRIBUTE_VALUE;
     
     const activeFamiliar = settings.familiars?.find(f => f.isActive);
-    if (activeFamiliar) {
+    if (activeFamiliar?.passiveBonus) {
         const bonus = activeFamiliar.passiveBonus;
         const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
         if (bonus.type === 'strength') effectiveStrength += bonusValue;
@@ -109,14 +110,16 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const inventory = settings.playerInventory || [];
     const equippedJewelry = settings.equippedItemIds?.jewelry ? inventory.find(item => item.id === settings.equippedItemIds?.jewelry) : null;
 
-    if (equippedJewelry?.statBonuses?.str) effectiveStrength += equippedJewelry.statBonuses.str;
-    if (equippedJewelry?.statBonuses?.dex) effectiveDexterity += equippedJewelry.statBonuses.dex;
-    if (equippedJewelry?.statBonuses?.con) effectiveConstitution += equippedJewelry.statBonuses.con;
-    if (equippedJewelry?.statBonuses?.int) effectiveIntelligence += equippedJewelry.statBonuses.int;
-    if (equippedJewelry?.statBonuses?.wis) effectiveWisdom += equippedJewelry.statBonuses.wis;
-    if (equippedJewelry?.statBonuses?.cha) effectiveCharisma += equippedJewelry.statBonuses.cha;
+    if (equippedJewelry?.statBonuses) {
+        if (equippedJewelry.statBonuses.str) effectiveStrength += equippedJewelry.statBonuses.str;
+        if (equippedJewelry.statBonuses.dex) effectiveDexterity += equippedJewelry.statBonuses.dex;
+        if (equippedJewelry.statBonuses.con) effectiveConstitution += equippedJewelry.statBonuses.con;
+        if (equippedJewelry.statBonuses.int) effectiveIntelligence += equippedJewelry.statBonuses.int;
+        if (equippedJewelry.statBonuses.wis) effectiveWisdom += equippedJewelry.statBonuses.wis;
+        if (equippedJewelry.statBonuses.cha) effectiveCharisma += equippedJewelry.statBonuses.cha;
+    }
 
-    const basePlayerStats = {
+    const tempPlayerStatsForCalculation = {
         strength: effectiveStrength,
         dexterity: effectiveDexterity,
         constitution: effectiveConstitution,
@@ -124,9 +127,9 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         playerClass: settings.playerClass,
         playerLevel: settings.playerLevel,
     };
-    const baseDerived = calculateBaseDerivedStats(basePlayerStats as any);
+    const baseDerived = calculateBaseDerivedStats(tempPlayerStatsForCalculation as any);
+    
     let effectiveMaxHp = baseDerived.maxHitPoints;
-
     if (equippedJewelry?.statBonuses?.hp) {
         effectiveMaxHp += equippedJewelry.statBonuses.hp;
     }
@@ -135,7 +138,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const agileAC = 10 + Math.floor((effectiveDexterity - 10) / 2);
     let armorBasedAC = 0;
     
-    if (activeFamiliar) {
+    if (activeFamiliar?.passiveBonus) {
         const bonus = activeFamiliar.passiveBonus;
         const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
         if (bonus.type === 'armor_class') armorBasedAC += bonusValue;
@@ -176,7 +179,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
     const effectiveAC = Math.max(agileAC, armorBasedAC);
     let effectiveAttackBonus = baseDerived.attackBonus;
     
-    if (activeFamiliar) {
+    if (activeFamiliar?.passiveBonus) {
         const bonus = activeFamiliar.passiveBonus;
         const bonusValue = Math.floor(bonus.value * (activeFamiliar.level || 1));
         if (bonus.type === 'attack_bonus') effectiveAttackBonus += bonusValue;
@@ -217,12 +220,7 @@ const calculateEffectiveStats = (settings: AdventureSettings) => {
         playerArmorClass: effectiveAC,
         playerAttackBonus: effectiveAttackBonus,
         playerDamageBonus: effectiveDamageBonus,
-        playerStrength: effectiveStrength,
-        playerDexterity: effectiveDexterity,
-        playerConstitution: effectiveConstitution,
-        playerIntelligence: effectiveIntelligence,
-        playerWisdom: effectiveWisdom,
-        playerCharisma: effectiveCharisma,
+        // Return the effective stats for this calculation, but DO NOT save them back to the base stats
     };
 };
 
@@ -246,7 +244,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       playerCharisma: BASE_ATTRIBUTE_VALUE,
     };
   
-    const initialBaseDerivedStats = calculateEffectiveStats({
+    const initialBaseDerivedStats = calculateBaseDerivedStats({
       ...initialPlayerAttributes,
       playerName: "Héros",
       playerClass: "Guerrier",
@@ -1139,14 +1137,14 @@ export default function Home() {
             playerCurrentMp: liveSettings.playerCurrentMp,
             playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
             playerCurrentExp: liveSettings.playerCurrentExp,
-            playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
-            playerStrength: effectiveStatsThisTurn.playerStrength,
-            playerDexterity: effectiveStatsThisTurn.dexterity,
+            playerExpToNextLevel: liveSettings.playerExpToNextLevel,
+            playerStrength: liveSettings.playerStrength,
+            playerDexterity: liveSettings.playerDexterity,
             playerConstitution: liveSettings.playerConstitution,
             playerIntelligence: liveSettings.playerIntelligence,
             playerWisdom: liveSettings.playerWisdom,
-            playerCharisma: effectiveStatsThisTurn.playerCharisma,
-            playerArmorClass: liveSettings.playerArmorClass,
+            playerCharisma: liveSettings.playerCharisma,
+            playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
             playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
             playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
             equippedWeaponName: liveSettings.equippedItemIds?.weapon ? liveSettings.playerInventory?.find(i => i.id === liveSettings.equippedItemIds?.weapon)?.name : undefined,
@@ -1288,7 +1286,7 @@ export default function Home() {
         handleSendSpecificAction(narrativeAction);
     }, [handleSendSpecificAction, toast]);
    
-  const onFinalizePurchase = React.useCallback(() => {
+  const handleFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
         if ((adventureSettings.playerGold || 0) < totalCost) {
@@ -2149,16 +2147,16 @@ export default function Home() {
                  playerCurrentMp: currentTurnSettings.playerCurrentMp,
                  playerMaxMp: effectiveStatsThisTurn.playerMaxMp,
                  playerCurrentExp: currentTurnSettings.playerCurrentExp,
-                 playerExpToNextLevel: effectiveStatsThisTurn.playerExpToNextLevel,
-                 playerStrength: effectiveStatsThisTurn.playerStrength,
-                 playerDexterity: effectiveStatsThisTurn.dexterity,
+                 playerExpToNextLevel: currentTurnSettings.playerExpToNextLevel,
+                 playerStrength: currentTurnSettings.playerStrength,
+                 playerDexterity: currentTurnSettings.playerDexterity,
                  playerConstitution: currentTurnSettings.playerConstitution,
                  playerIntelligence: currentTurnSettings.playerIntelligence,
                  playerWisdom: currentTurnSettings.playerWisdom,
-                 playerCharisma: effectiveStatsThisTurn.playerCharisma,
-                 playerArmorClass: currentTurnSettings.playerArmorClass,
-                 playerAttackBonus: currentTurnSettings.playerAttackBonus,
-                 playerDamageBonus: currentTurnSettings.playerDamageBonus,
+                 playerCharisma: currentTurnSettings.playerCharisma,
+                 playerArmorClass: effectiveStatsThisTurn.playerArmorClass,
+                 playerAttackBonus: effectiveStatsThisTurn.playerAttackBonus,
+                 playerDamageBonus: effectiveStatsThisTurn.playerDamageBonus,
                  equippedWeaponName: currentTurnSettings.equippedItemIds?.weapon ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.weapon)?.name : undefined,
                  equippedArmorName: currentTurnSettings.equippedItemIds?.armor ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.armor)?.name : undefined,
                  equippedJewelryName: currentTurnSettings.equippedItemIds?.jewelry ? currentTurnSettings.playerInventory?.find(i => i.id === currentTurnSettings.equippedItemIds?.jewelry)?.name : undefined,
@@ -3796,7 +3794,7 @@ export default function Home() {
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
       onRemoveFromCart={handleRemoveFromCart}
-      onFinalizePurchase={onFinalizePurchase}
+      onFinalizePurchase={handleFinalizePurchase}
       onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
       handleClaimHuntReward={handleClaimHuntReward}
     />
@@ -3825,6 +3823,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
