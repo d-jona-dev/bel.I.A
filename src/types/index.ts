@@ -19,6 +19,8 @@ export interface BaseItem {
     type: 'heal' | 'damage_single' | 'damage_all';
     amount: number;
   };
+  // NEW: Holds the full familiar definition if this item is a familiar summon
+  familiarDetails?: Omit<Familiar, 'id' | 'isActive' | '_lastSaved'>;
 }
 
 export interface BaseFamiliarComponent {
@@ -42,6 +44,7 @@ export interface SellingItem {
   effectType?: 'stat' | 'narrative' | 'combat';
   effectDetails?: BaseItem['effectDetails'];
   quantity?: number;
+  familiarDetails?: Omit<Familiar, 'id' | 'isActive' | '_lastSaved'>;
 }
 
 
@@ -219,6 +222,7 @@ export interface PlayerInventoryItem {
     type: 'heal' | 'damage_single' | 'damage_all';
     amount: number;
   };
+  familiarDetails?: Omit<Familiar, 'id' | 'isActive' | '_lastSaved'>;
 }
 
 export interface PlayerSkill {
@@ -702,3 +706,4 @@ export interface GenerateSceneImageFlowOutput {
   error?: string;
 }
 
+    
