@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, PawPrint, Save, UploadCloud, Star, BarChart2, CheckCircle, Diamond, Palette, Trash2 } from "lucide-react";
+import { Wand2, Loader2, PawPrint, Save, UploadCloud, Star, BarChart2, CheckCircle, Diamond, Palette, Trash2, RefreshCw } from "lucide-react";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
 import type { Familiar } from "@/types";
@@ -27,6 +27,7 @@ interface FamiliarSidebarProps {
     onAddStagedFamiliar: (familiar: Familiar) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     rpgMode: boolean;
+    onRefreshGlobalFamiliars?: () => void; // Optional refresh function
 }
 
 interface CustomImageStyle {
@@ -51,6 +52,7 @@ export function FamiliarSidebar({
     onAddStagedFamiliar,
     generateImageAction,
     rpgMode,
+    onRefreshGlobalFamiliars,
 }: FamiliarSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
@@ -60,24 +62,44 @@ export function FamiliarSidebar({
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
 
 
-  React.useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== 'undefined') {
+  const loadGlobalFamiliars = React.useCallback(() => {
+     if (typeof window !== 'undefined') {
         try {
             const storedGlobal = localStorage.getItem('globalFamiliars');
             if (storedGlobal) {
                 setGlobalFamiliars(JSON.parse(storedGlobal));
-            }
-             const savedStyles = localStorage.getItem("customImageStyles_v1");
-            if (savedStyles) {
-                setCustomStyles(JSON.parse(savedStyles));
+            } else {
+                setGlobalFamiliars([]);
             }
         } catch (error) {
-            console.error("Failed to load global data:", error);
-            toast({ title: "Erreur", description: "Impossible de charger les données globales.", variant: "destructive" });
+            console.error("Failed to load global familiars:", error);
         }
     }
-  }, [toast]);
+  }, []);
+
+  React.useEffect(() => {
+    setIsClient(true);
+    loadGlobalFamiliars();
+
+    const savedStyles = localStorage.getItem("customImageStyles_v1");
+    if (savedStyles) {
+        setCustomStyles(JSON.parse(savedStyles));
+    }
+    
+    // Listen for storage changes from other tabs/windows
+    window.addEventListener('storage', loadGlobalFamiliars);
+    return () => {
+      window.removeEventListener('storage', loadGlobalFamiliars);
+    }
+  }, [loadGlobalFamiliars]);
+  
+  const handleRefresh = () => {
+    loadGlobalFamiliars();
+    if(onRefreshGlobalFamiliars) {
+      onRefreshGlobalFamiliars();
+    }
+    toast({ title: "Liste Actualisée", description: "La liste des familiers sauvegardés a été rechargée."});
+  };
 
   const handleGeneratePortrait = async (familiar: Familiar) => {
     if (imageLoadingStates[familiar.id]) return;
@@ -128,7 +150,7 @@ export function FamiliarSidebar({
     }
   };
   
-  const availableGlobalFamiliars = globalFamiliars.filter(gf => !familiars.some(sf => sf.id === gf.id));
+  const availableGlobalFamiliars = globalFamiliars.filter(gf => !familiars.some(sf => sf.id === gf.id || sf.name === gf.name));
 
 
   return (
@@ -136,10 +158,28 @@ export function FamiliarSidebar({
         {isClient && (
             <Card className="mb-4 border-dashed">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">Ajouter un Familier Sauvegardé</CardTitle>
+                    <CardTitle className="text-base flex items-center justify-between">
+                        <span className="flex items-center gap-2">Ajouter un Familier Sauvegardé</span>
+                         <TooltipProvider>
+                           <Tooltip>
+                               <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh}>
+                                        <RefreshCw className="h-4 w-4"/>
+                                    </Button>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                   <p>Actualiser la liste globale</p>
+                               </TooltipContent>
+                           </Tooltip>
+                       </TooltipProvider>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {availableGlobalFamiliars.length > 0 ? (
+                    {globalFamiliars.length === 0 ? (
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Aucun familier global sauvegardé pour l'instant.
+                        </p>
+                    ) : availableGlobalFamiliars.length > 0 ? (
                         <Select onValueChange={(id) => {
                             const familiar = globalFamiliars.find(f => f.id === id);
                             if (familiar) onAddStagedFamiliar(familiar);
@@ -157,7 +197,7 @@ export function FamiliarSidebar({
                         </Select>
                     ) : (
                         <p className="text-sm text-muted-foreground mt-1">
-                            {globalFamiliars.length > 0 ? "Tous les familiers sauvegardés sont dans l'aventure." : "Aucun familier global sauvegardé."}
+                            Tous les familiers sauvegardés sont déjà dans l'aventure.
                         </p>
                     )}
                 </CardContent>

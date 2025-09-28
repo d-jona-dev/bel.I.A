@@ -60,7 +60,7 @@ interface AdventureDisplayProps {
     playerId: string;
     generateAdventureAction: (userActionText: string) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>; // Updated prop type
-    suggestQuestHookAction: (input: SuggestQuestHookInput) => Promise<void>;
+    suggestQuestHookAction: () => Promise<void>;
     adventureSettings: AdventureSettings;
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
@@ -1015,7 +1015,7 @@ export function AdventureDisplay({
                                         type="button"
                                         variant="outline"
                                         size="icon"
-                                        onClick={suggestQuestHookAction as () => Promise<void>}
+                                        onClick={suggestQuestHookAction}
                                         disabled={isLoading || isSuggestingQuest}
                                     >
                                         {isSuggestingQuest ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lightbulb className="h-5 w-5" />}
@@ -1426,4 +1426,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-

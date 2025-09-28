@@ -1229,10 +1229,10 @@ export default function Home() {
 
         const newFamiliar: Familiar = {
             id: `familiar-${item.familiarDetails.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
-            isActive: false, // Always inactive on summon
+            isActive: false, 
             ...item.familiarDetails,
         };
-
+        
         setAdventureSettings(prev => {
             const newInventory = [...(prev.playerInventory || [])];
             const itemIndex = newInventory.findIndex(i => i.id === item.id);
@@ -1241,6 +1241,17 @@ export default function Home() {
             }
 
             const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+            
+            try {
+                const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+                let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+                if (!existingFamiliars.some(f => f.id === newFamiliar.id || f.name === newFamiliar.name)) {
+                    existingFamiliars.push(newFamiliar);
+                    localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
+                }
+            } catch (error) {
+                console.error("Failed to save familiar to localStorage:", error);
+            }
 
             return {
                 ...prev,
@@ -1248,18 +1259,6 @@ export default function Home() {
                 playerInventory: newInventory.filter(i => i.quantity > 0),
             };
         });
-
-        // Global save
-        try {
-            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-            if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
-                existingFamiliars.push(newFamiliar);
-                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-            }
-        } catch (error) {
-            console.error("Failed to save familiar to localStorage:", error);
-        }
 
         toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
         
@@ -3361,7 +3360,6 @@ export default function Home() {
             }
             const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
             
-            // Also update the staged settings
             setStagedAdventureSettings(stagedPrev => ({
                 ...stagedPrev,
                 familiars: [...(stagedPrev.familiars || []), familiarToAdd]
@@ -3647,7 +3645,7 @@ export default function Home() {
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook as () => Promise<void>}
+      suggestQuestHookAction={callSuggestQuestHook}
       isSuggestingQuest={isSuggestingQuest}
       showRestartConfirm={showRestartConfirm}
       setShowRestartConfirm={setShowRestartConfirm}
@@ -3744,3 +3742,4 @@ export default function Home() {
     </>
   );
 }
+
