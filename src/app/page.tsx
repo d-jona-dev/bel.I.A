@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -1556,73 +1557,79 @@ export default function Home() {
         });
     }, [toast]);
 
-    const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-        const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
-        const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
+  const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
+    const nameMatch = item.name.match(/(?:Collier|Plume|Croc|Griffe|Orbe|Puce Électronique|Réacteur Miniature|Éclat de Données|Boulon Rouillé|Fragment de Pneu) de (.+)/);
+    const familiarName = nameMatch ? nameMatch[1] : `Familier de ${item.name}`;
 
-        const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|divin)/i);
-        const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
-        
-        const bonusMatch = item.effect?.match(/Bonus passif : \+?(-?\d+)\s*en\s*([a-zA-Z\s_é]+)/i);
-        const bonus: FamiliarPassiveBonus = {
-            type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
-            value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
-            description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
-        };
+    const rarityMatch = item.description?.match(/Rareté:\s*(commune|rare|epic|legendary|divin)/i);
+    const rarity: Familiar['rarity'] = rarityMatch ? (rarityMatch[1].toLowerCase() as Familiar['rarity']) : 'common';
+    
+    const bonusMatch = item.effect?.match(/Bonus passif : \+?(-?\d+)\s*en\s*([a-zA-Z\s_é]+)/i);
+    const bonus: FamiliarPassiveBonus = {
+        type: bonusMatch ? (bonusMatch[2].trim().toLowerCase().replace(' ', '_') as FamiliarPassiveBonus['type']) : 'strength',
+        value: bonusMatch ? parseInt(bonusMatch[1], 10) : 1,
+        description: bonusMatch ? `Bonus passif : +X en ${bonusMatch[2].trim()}` : "Bonus Passif",
+    };
 
-        const newFamiliar: Familiar = {
-            id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
-            name: familiarName,
-            description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
-            rarity: rarity,
-            level: 1,
-            currentExp: 0,
-            expToNextLevel: 100,
-            isActive: false,
-            passiveBonus: bonus,
-            portraitUrl: null,
-        };
+    const newFamiliar: Familiar = {
+        id: `familiar-${familiarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+        name: familiarName,
+        description: `Un familier de type ${familiarName}, invoqué via "${item.name}". Rareté: ${rarity}.`,
+        rarity: rarity,
+        level: 1,
+        currentExp: 0,
+        expToNextLevel: 100,
+        isActive: false,
+        passiveBonus: bonus,
+        portraitUrl: null,
+    };
 
-        try {
-            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-            if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
-                existingFamiliars.push(newFamiliar);
-                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-            }
-            
-            handleAddStagedFamiliar(newFamiliar);
-            
-            setAdventureSettings(prev => {
-                const newInventory = prev.playerInventory ? [...prev.playerInventory] : [];
-                const itemIndex = newInventory.findIndex(i => i.id === item.id);
-                if (itemIndex > -1) {
-                    newInventory[itemIndex].quantity -= 1;
-                    if (newInventory[itemIndex].quantity <= 0) {
-                        newInventory.splice(itemIndex, 1);
-                    }
-                }
-                return { ...prev, playerInventory: newInventory };
-            });
-
-            toast({
-                title: "Familier Invoqué avec Succès!",
-                description: `${newFamiliar.name} a été ajouté à votre groupe.`,
-            });
-            
-            const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
-            handleNarrativeUpdate(narrativeAction, 'user');
-            callGenerateAdventure(narrativeAction);
-
-        } catch (error) {
-            console.error("Failed to save or add familiar:", error);
-            toast({
-                title: "Erreur d'Invocation",
-                description: "Impossible de sauvegarder ou d'ajouter le familier.",
-                variant: "destructive"
-            });
+    // Save to global storage first
+    try {
+        const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
+        let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
+        if (!existingFamiliars.some(f => f.id === newFamiliar.id)) {
+            existingFamiliars.push(newFamiliar);
+            localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
         }
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, handleAddStagedFamiliar]);
+    } catch (error) {
+        console.error("Failed to save familiar to localStorage:", error);
+        toast({ title: "Erreur de Sauvegarde Globale", variant: "destructive" });
+    }
+
+    // Update adventure state to add familiar and consume item
+    setAdventureSettings(prev => {
+        // Add familiar
+        const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
+
+        // Consume item
+        const newInventory = [...(prev.playerInventory || [])];
+        const itemIndex = newInventory.findIndex(i => i.id === item.id);
+        if (itemIndex > -1) {
+            newInventory[itemIndex].quantity -= 1;
+            if (newInventory[itemIndex].quantity <= 0) {
+                newInventory.splice(itemIndex, 1);
+            }
+        }
+        
+        return { 
+            ...prev, 
+            familiars: updatedFamiliars,
+            playerInventory: newInventory,
+        };
+    });
+    
+    // Notify user and trigger narrative
+    toast({
+        title: "Familier Invoqué!",
+        description: `${newFamiliar.name} a été ajouté à votre groupe.`,
+    });
+    
+    const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${familiarName} !`;
+    handleNarrativeUpdate(narrativeAction, 'user');
+    callGenerateAdventure(narrativeAction);
+
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast]);
 
   const applyCombatItemEffect = React.useCallback((targetId?: string) => {
         if (!itemToUse || !activeCombat?.isActive) return;
@@ -3494,7 +3501,7 @@ export default function Home() {
 
     const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
     const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Key dialogues include: "${textContent.substring(0, 200)}...". Style: epic, detailed, vibrant colors.`;
+    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
 
     try {
         const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
@@ -3726,7 +3733,7 @@ export default function Home() {
             </AlertDialogHeader>
             <div className="py-4 space-y-2">
               {(activeCombat?.combatants || []).filter(c => c.team === 'enemy' && !c.isDefeated).map(enemy => (
-                <Button key={enemy.characterId} variant="outline" className="w-full justify-start" onClick={() => applyCombatItemEffect(enemy.characterId)}>
+                <Button key={enemy.characterId} variant = "outline" className="w-full justify-start" onClick={() => applyCombatItemEffect(enemy.characterId)}>
                     {enemy.name} (PV: {enemy.currentHp}/{enemy.maxHp})
                 </Button>
               ))}
@@ -3740,3 +3747,6 @@ export default function Home() {
     </>
   );
 }
+
+
+    
