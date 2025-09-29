@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 const PLAYER_ID = "player";
@@ -417,6 +419,11 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
     return { settings: initialSettings, characters: initialCharacters, narrative: initialNarrative, aiConfig: initialAiConfig };
 };
 
+// NEW: Type for the state holding info about the familiar being named
+interface FamiliarNamingState {
+    itemUsedId: string;
+    baseFamiliar: Omit<Familiar, 'id' | 'name' | 'isActive' | '_lastSaved'>;
+}
 
 export default function Home() {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -481,6 +488,12 @@ export default function Home() {
     const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
     const [isTargeting, setIsTargeting] = React.useState(false);
     
+    // NEW: Familiar Naming State
+    const [namingFamiliarState, setNamingFamiliarState] = React.useState<FamiliarNamingState | null>(null);
+    const [newFamiliarName, setNewFamiliarName] = React.useState("");
+    const [familiarNameError, setFamiliarNameError] = React.useState<string | null>(null);
+
+
     // --- Core Action Handlers ---
     
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
@@ -517,12 +530,12 @@ export default function Home() {
 
             const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
             
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({
                     title: "Nouveau Familier!",
                     description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
                 });
-            }, 0);
+            });
 
             return { ...prevSettings, familiars: updatedFamiliars };
         });
@@ -590,7 +603,7 @@ export default function Home() {
             if (changed) return updatedChars;
             return prevChars;
         });
-        toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
+        toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
     }, [toast, stagedAdventureSettings.relationsMode]);
 
     const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
@@ -650,7 +663,7 @@ export default function Home() {
             if (changed) return charsCopy;
             return prevChars;
         });
-        toastsToShow.forEach(toastArgs => setTimeout(() => { toast(toastArgs); }, 0));
+        toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
     }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
     const handleTimeUpdate = React.useCallback((newEvent?: string) => {
@@ -768,12 +781,12 @@ export default function Home() {
                                 }
                             }
                         }
-                        setTimeout(() => {
+                        React.startTransition(() => {
                             toast({
                                 title: "Nouveau Personnage Rencontré!",
                                 description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
                             });
-                        }, 0);
+                        });
                     }
                 });
                 setStagedCharacters(updatedChars);
@@ -840,9 +853,11 @@ export default function Home() {
                             activeFamiliar.level += 1;
                             activeFamiliar.currentExp -= activeFamiliar.expToNextLevel;
                             activeFamiliar.expToNextLevel = Math.floor(100 * Math.pow(1.5, activeFamiliar.level - 1));
-                            toast({
-                                title: "Familier a monté de niveau!",
-                                description: `${activeFamiliar.name} est maintenant niveau ${activeFamiliar.level}!`
+                            React.startTransition(() => {
+                                toast({
+                                    title: "Familier a monté de niveau!",
+                                    description: `${activeFamiliar.name} est maintenant niveau ${activeFamiliar.level}!`
+                                });
                             });
                         }
                     }
@@ -888,12 +903,12 @@ export default function Home() {
                         pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
                         changed = true;
                         
-                        setTimeout(() => {
+                        React.startTransition(() => {
                             toast({
                                 title: "Changement de Territoire!",
                                 description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
                             });
-                        }, 0);
+                        });
                     }
                 }
             });
@@ -1164,7 +1179,9 @@ export default function Home() {
             const result: GenerateAdventureFlowOutput = await generateAdventure(input);
             
             if (result.error && !result.narrative) {
-                toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
+                React.startTransition(() => {
+                    toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
+                });
             } else {
                 const narrativeContent = result.narrative || (turnLog.length > 0 ? turnLog.join('\n') : "L'action se déroule, mais l'IA n'a pas fourni de description.");
                 
@@ -1197,19 +1214,21 @@ export default function Home() {
                     
                     if (liveSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0) {
                         addCurrencyToPlayer(result.currencyGained);
-                         setTimeout(() => {
+                         React.startTransition(() => {
                             toast({
                                 title: result.currencyGained! > 0 ? "Pièces d'Or Reçues!" : "Dépense Effectuée",
                                 description: `Votre trésorerie a été mise à jour.`
                             });
-                        }, 0);
+                        });
                     }
                 });
             }
         } catch (error) { 
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error:", error);
-            toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
+            });
         } finally {
             setIsLoading(false);
         }
@@ -1234,27 +1253,57 @@ export default function Home() {
             await callGenerateAdventure(action);
         } catch (error) { 
             console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
-            toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+            });
             setIsLoading(false);
         }
     }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
 
     const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
         if (!item.familiarDetails) {
-            toast({ title: "Action Impossible", description: "Cet objet ne peut pas être utilisé pour invoquer un familier.", variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Action Impossible", description: "Cet objet ne peut pas être utilisé pour invoquer un familier.", variant: "destructive" });
+            });
+            return;
+        }
+
+        const baseFamiliarData: Omit<Familiar, 'id' | 'name' | 'isActive' | '_lastSaved'> = {
+            ...item.familiarDetails,
+        };
+
+        setNamingFamiliarState({
+            itemUsedId: item.id,
+            baseFamiliar: baseFamiliarData,
+        });
+        setNewFamiliarName(item.familiarDetails.name || ""); // Pre-fill with default name
+        setFamiliarNameError(null);
+
+    }, [toast]);
+   
+    const handleConfirmFamiliarName = () => {
+        if (!namingFamiliarState || !newFamiliarName.trim()) {
+            setFamiliarNameError("Le nom ne peut pas être vide.");
+            return;
+        }
+        
+        const isNameTaken = (adventureSettings.familiars || []).some(f => f.name.toLowerCase() === newFamiliarName.trim().toLowerCase());
+        if (isNameTaken) {
+            setFamiliarNameError("Ce nom est déjà utilisé par un autre familier.");
             return;
         }
 
         const newFamiliar: Familiar = {
-            id: `familiar-${item.familiarDetails.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            ...namingFamiliarState.baseFamiliar,
+            id: `familiar-${newFamiliarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            name: newFamiliarName.trim(),
             isActive: false, 
-            ...item.familiarDetails,
         };
 
         // Update adventure state atomically
         setAdventureSettings(prev => {
             const newInventory = [...(prev.playerInventory || [])];
-            const itemIndex = newInventory.findIndex(i => i.id === item.id);
+            const itemIndex = newInventory.findIndex(i => i.id === namingFamiliarState.itemUsedId);
             if (itemIndex > -1) {
                 newInventory[itemIndex].quantity -= 1;
             }
@@ -1280,17 +1329,26 @@ export default function Home() {
             console.error("Failed to save familiar to localStorage:", error);
         }
     
-        toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
-    
-        const narrativeAction = `En utilisant ${item.name}, j'invoque mon nouveau compagnon: ${newFamiliar.name} !`;
+        React.startTransition(() => {
+            toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
+        });
+        
+        setNamingFamiliarState(null);
+        setNewFamiliarName("");
+        setFamiliarNameError(null);
+
+        const narrativeAction = `En utilisant l'objet, j'invoque mon nouveau compagnon et le nomme : ${newFamiliar.name} !`;
         handleSendSpecificAction(narrativeAction);
-    }, [handleSendSpecificAction, toast]);
-   
-  const handleFinalizePurchase = React.useCallback(() => {
+    };
+
+
+  const onFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
         if ((adventureSettings.playerGold || 0) < totalCost) {
-            toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
+            });
             return;
         }
 
@@ -1360,7 +1418,9 @@ export default function Home() {
         setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) - totalCost }));
         
         const summaryText = boughtItemsSummary.join(', ');
-        toast({ title: "Achat Terminé!", description: `Vous avez acquis : ${summaryText}.` });
+        React.startTransition(() => {
+            toast({ title: "Achat Terminé!", description: `Vous avez acquis : ${summaryText}.` });
+        });
 
         handleSendSpecificAction(`J'achète les articles suivants : ${summaryText}.`);
         
@@ -1370,7 +1430,9 @@ export default function Home() {
    
   const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
-        toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
+        });
         return;
     }
     React.startTransition(() => {
@@ -1420,7 +1482,9 @@ export default function Home() {
                   loadAdventureState(loadedState);
               } catch (e) {
                   console.error("Failed to parse adventure state from localStorage", e);
-                  toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
+                  React.startTransition(() => {
+                      toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
+                  });
               }
           }
           localStorage.removeItem('loadStoryOnMount');
@@ -1476,13 +1540,13 @@ export default function Home() {
 
           if (suggestedSkill.error) {
             console.error("Failed to fetch initial skill:", suggestedSkill.error);
-            setTimeout(() => {
+            React.startTransition(() => {
               toast({
                 title: "Erreur de Compétence",
                 description: suggestedSkill.error,
                 variant: "destructive",
               });
-            }, 0);
+            });
             return;
           }
 
@@ -1501,21 +1565,21 @@ export default function Home() {
             ...prev,
             playerSkills: [newSkill],
           }));
-          setTimeout(() => {
+          React.startTransition(() => {
             toast({
               title: "Compétence Initiale Acquise!",
               description: `${newSkill.name}: ${newSkill.description}`,
             });
-          }, 0);
+          });
         } catch (error) {
           console.error("Unexpected error fetching initial skill:", error);
-           setTimeout(() => {
+           React.startTransition(() => {
             toast({
               title: "Erreur Inattendue",
               description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la suggestion de compétence.",
               variant: "destructive",
             });
-          }, 0);
+          });
         } finally {
           setIsLoadingInitialSkill(false);
         }
@@ -1534,9 +1598,11 @@ export default function Home() {
     const handleToggleAestheticFont = React.useCallback(() => {
         const newFontState = !useAestheticFont;
         setUseAestheticFont(newFontState);
-        toast({
-            title: "Police de la carte changée",
-            description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
+        React.startTransition(() => {
+            toast({
+                title: "Police de la carte changée",
+                description: `La police ${newFontState ? "esthétique a été activée" : "standard a été activée"}.`
+            });
         });
       }, [useAestheticFont, toast]);
 
@@ -1546,7 +1612,9 @@ export default function Home() {
                 msg.id === messageId ? { ...msg, lootTaken: true } : msg
             )
         );
-        toast({ title: "Butin Laissé", description: "Vous avez choisi de ne pas prendre ces objets." });
+        React.startTransition(() => {
+            toast({ title: "Butin Laissé", description: "Vous avez choisi de ne pas prendre ces objets." });
+        });
     }, [toast]);
     
     const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
@@ -1587,7 +1655,7 @@ export default function Home() {
             }
         });
         if (!silent) {
-            setTimeout(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });},0);
+            React.startTransition(() => {toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });});
         }
       }, [toast, narrativeMessages]);
 
@@ -1652,7 +1720,9 @@ export default function Home() {
             });
         }
         
-        toast({ title: "Action en Combat", description: effectAppliedMessage });
+        React.startTransition(() => {
+            toast({ title: "Action en Combat", description: effectAppliedMessage });
+        });
         handleNarrativeUpdate(narrativeAction, 'user');
         callGenerateAdventure(narrativeAction);
 
@@ -1670,7 +1740,7 @@ export default function Home() {
 
         setAdventureSettings(prevSettings => {
             if (!prevSettings.rpgMode || !prevSettings.playerInventory) {
-                 setTimeout(() => {toast({ title: action === 'use' ? "Utilisation Impossible" : "Action Impossible", description: "Le mode RPG doit être actif et vous devez avoir des objets.", variant: "default" });},0);
+                 React.startTransition(() => {toast({ title: action === 'use' ? "Utilisation Impossible" : "Action Impossible", description: "Le mode RPG doit être actif et vous devez avoir des objets.", variant: "default" });});
                 itemActionSuccessful = false;
                 return prevSettings;
             }
@@ -1680,7 +1750,7 @@ export default function Home() {
 
             if (itemIndex === -1) {
                  const item = prevSettings.playerInventory.find(i => i.id === itemId);
-                 setTimeout(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });},0);
+                 React.startTransition(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });});
                 itemActionSuccessful = false;
                 return prevSettings;
             }
@@ -1720,11 +1790,11 @@ export default function Home() {
                        newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     }
                 } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
-                     setTimeout(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });},0);
+                     React.startTransition(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });});
                     itemActionSuccessful = false;
                     return prevSettings;
                 } else { 
-                    setTimeout(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });},0);
+                    React.startTransition(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });});
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
                 }
@@ -1758,7 +1828,7 @@ export default function Home() {
 
         if (itemActionSuccessful && narrativeAction) {
              if(effectAppliedMessage) {
-                setTimeout(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); }, 0);
+                React.startTransition(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); });
             }
             handleNarrativeUpdate(narrativeAction, 'user');
             callGenerateAdventure(narrativeAction);
@@ -1774,9 +1844,9 @@ export default function Home() {
         const itemToSell = currentSettings.playerInventory?.find(invItem => invItem.id === itemId);
 
         if (!currentSettings.rpgMode || !itemToSell || itemToSell.quantity <= 0) {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Vente Impossible", description: "Le mode RPG doit être actif et l'objet doit être dans votre inventaire.", variant: "default" });
-            }, 0);
+            });
             return;
         }
 
@@ -1793,9 +1863,9 @@ export default function Home() {
 
 
         if (sellPricePerUnit <= 0) {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Invendable", description: `"${itemToSell.name}" n'a pas de valeur marchande.`, variant: "default" });
-            }, 0);
+            });
             return;
         }
 
@@ -1813,17 +1883,17 @@ export default function Home() {
     const finalPricePerUnit = pricePerUnit || itemToSellDetails?.sellPricePerUnit;
 
     if (!itemToProcess || finalPricePerUnit === undefined || finalPricePerUnit <= 0) {
-        setTimeout(() => {
+        React.startTransition(() => {
             toast({ title: "Erreur de Vente", description: "Détails de l'objet ou prix invalide.", variant: "destructive" });
-        }, 0);
+        });
         setItemToSellDetails(null);
         return;
     }
 
     if (quantityToSell <= 0 || quantityToSell > itemToProcess.quantity) {
-        setTimeout(() => {
+        React.startTransition(() => {
             toast({ title: "Quantité Invalide", description: `Veuillez entrer une quantité entre 1 et ${itemToProcess.quantity}.`, variant: "destructive" });
-        }, 0);
+        });
         return;
     }
 
@@ -1878,9 +1948,9 @@ export default function Home() {
         });
 
         if (itemSoldSuccessfully) {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Objet(s) Vendu(s)!", description: `Vous avez vendu ${quantityToSell} ${itemToProcess.name} pour ${totalSellPrice} pièces d'or.` });
-            }, 0);
+            });
 
             handleNarrativeUpdate(userAction, 'user');
             callGenerateAdventure(userAction);
@@ -1895,7 +1965,7 @@ export default function Home() {
         if (!prevSettings.rpgMode || !prevSettings.playerInventory) return prevSettings;
         const item = prevSettings.playerInventory.find(i => i.id === itemIdToEquip);
         if (!item || item.quantity <= 0) {
-            setTimeout(() => { toast({ title: "Erreur", description: "Objet introuvable ou quantité insuffisante.", variant: "destructive" }); }, 0);
+            React.startTransition(() => { toast({ title: "Erreur", description: "Objet introuvable ou quantité insuffisante.", variant: "destructive" }); });
             return prevSettings;
         }
 
@@ -1905,7 +1975,7 @@ export default function Home() {
         else if (item.type === 'jewelry') slotToEquip = 'jewelry';
 
         if (!slotToEquip) {
-            setTimeout(() => { toast({ title: "Non Équipable", description: `"${item.name}" n'est pas un objet équipable dans un slot standard.`, variant: "default" }); }, 0);
+            React.startTransition(() => { toast({ title: "Non Équipable", description: `"${item.name}" n'est pas un objet équipable dans un slot standard.`, variant: "default" }); });
             return prevSettings;
         }
 
@@ -1937,7 +2007,7 @@ export default function Home() {
 
         const effectiveStats = calculateEffectiveStats(updatedSettings);
 
-        setTimeout(() => { toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` }); }, 0);
+        React.startTransition(() => { toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` }); });
         return {
             ...updatedSettings,
             ...effectiveStats,
@@ -1951,7 +2021,7 @@ export default function Home() {
 
           const itemIdToUnequip = prevSettings.equippedItemIds[slotToUnequip];
           if (!itemIdToUnequip) {
-              setTimeout(() => { toast({ title: "Information", description: `Aucun objet à déséquiper dans le slot ${slotToUnequip}.`, variant: "default" }); }, 0);
+              React.startTransition(() => { toast({ title: "Information", description: `Aucun objet à déséquiper dans le slot ${slotToUnequip}.`, variant: "default" }); });
               return prevSettings;
           }
 
@@ -1973,7 +2043,7 @@ export default function Home() {
 
           const effectiveStats = calculateEffectiveStats(updatedSettings);
 
-          setTimeout(() => { toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` }); }, 0);
+          React.startTransition(() => { toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` }); });
           return {
               ...updatedSettings,
               ...effectiveStats,
@@ -1994,9 +2064,9 @@ export default function Home() {
                 } : msg
            ));
        });
-        setTimeout(() => {
+        React.startTransition(() => {
             toast({ title: "Message Modifié" });
-        }, 0);
+        });
    }, [toast]);
 
     const handleUndoLastMessage = React.useCallback(() => {
@@ -2038,7 +2108,7 @@ export default function Home() {
             setActiveCombat(newActiveCombatState);
         });
         if (messageForToast) {
-             setTimeout(() => { toast(messageForToast as Parameters<typeof toast>[0]); }, 0);
+             React.startTransition(() => { toast(messageForToast as Parameters<typeof toast>[0]); });
         }
     }, [toast, activeCombat]);
 
@@ -2064,15 +2134,15 @@ export default function Home() {
          }
 
          if (!lastAiMessage || !lastUserAction) {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Impossible de régénérer", description: "Aucune réponse IA précédente valide trouvée pour régénérer.", variant: "destructive" });
-            },0);
+            });
              return;
          }
         React.startTransition(() => {
          setIsRegenerating(true);
         });
-         setTimeout(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); },0);
+         React.startTransition(() => { toast({ title: "Régénération en cours...", description: "Génération d'une nouvelle réponse." }); });
 
         const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings)) as AdventureSettings;
         const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
@@ -2172,9 +2242,9 @@ export default function Home() {
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
 
              if (result.error) {
-                setTimeout(() => {
+                React.startTransition(() => {
                     toast({ title: "Erreur de Régénération IA", description: result.error, variant: "destructive"});
-                },0);
+                });
                 setIsRegenerating(false);
                 return;
              }
@@ -2227,21 +2297,21 @@ export default function Home() {
                     } else {
                          addCurrencyToPlayer(amount);
                     }
-                    setTimeout(() => {
+                    React.startTransition(() => {
                         toast({
                             title: amount > 0 ? "Monnaie (Régén.)!" : "Dépense (Régén.)!",
                             description: `Votre trésorerie a été mise à jour.`
                         });
-                    }, 0);
+                    });
                 }
-                setTimeout(() => {toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });},0);
+                React.startTransition(() => {toast({ title: "Réponse Régénérée", description: "Une nouvelle réponse a été ajoutée." });});
             });
          } catch (error) { 
              console.error("[LOG_PAGE_TSX][handleRegenerateLastResponse] Critical error:", error);
              let toastDescription = `Impossible de générer une nouvelle réponse: ${error instanceof Error ? error.message : 'Unknown error'}.`;
-              setTimeout(() => {
+              React.startTransition(() => {
                 toast({ title: "Erreur Critique de Régénération", description: toastDescription, variant: "destructive"});
-              },0);
+              });
          } finally {
              React.startTransition(() => {
                 setIsRegenerating(false);
@@ -2311,18 +2381,18 @@ export default function Home() {
                     existingChars.push({ ...character, _lastSaved: Date.now() });
                 }
                 localStorage.setItem('globalCharacters', JSON.stringify(existingChars));
-                setTimeout(() => {
+                React.startTransition(() => {
                     toast({ title: "Personnage Sauvegardé Globalement", description: `${character.name} est maintenant disponible pour d'autres aventures et pour le chat.` });
-                },0);
+                });
                 setStagedCharacters(prev => prev.map(c => c.id === character.id ? { ...c, _lastSaved: Date.now() } : c));
             } catch (error) {
                  console.error("Failed to save character to localStorage:", error);
-                 setTimeout(() => { toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }); },0);
+                 React.startTransition(() => { toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }); });
             }
         } else {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Erreur", description: "La sauvegarde globale n'est disponible que côté client.", variant: "destructive" });
-            },0);
+            });
         }
     }, [toast]);
 
@@ -2330,7 +2400,9 @@ export default function Home() {
     const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
 
     if (isAlreadyInAdventure) {
-        toast({ title: "Personnage déjà présent", description: `${globalCharToAdd.name} est déjà dans l'aventure actuelle.`, variant: "default" });
+        React.startTransition(() => {
+            toast({ title: "Personnage déjà présent", description: `${globalCharToAdd.name} est déjà dans l'aventure actuelle.`, variant: "default" });
+        });
         return;
     }
 
@@ -2388,7 +2460,9 @@ export default function Home() {
         return [...updatedPrevChars, newChar];
     });
 
-    toast({ title: "Personnage Ajouté à l'Aventure", description: `${globalCharToAdd.name} a été ajouté aux modifications en attente. N'oubliez pas d'enregistrer les modifications.` });
+    React.startTransition(() => {
+        toast({ title: "Personnage Ajouté à l'Aventure", description: `${globalCharToAdd.name} a été ajouté aux modifications en attente. N'oubliez pas d'enregistrer les modifications.` });
+    });
   };
 
 
@@ -2413,9 +2487,9 @@ export default function Home() {
         a.click();
         document.body.removeChild(a);
         URL.createObjectURL(url);
-        setTimeout(() => {
+        React.startTransition(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
-        }, 0);
+        });
     }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -2435,9 +2509,9 @@ export default function Home() {
 
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
-                setTimeout(() => {
+                React.startTransition(() => {
                     toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" });
-                }, 0);
+                });
             }
         };
         reader.readAsText(file);
@@ -2487,9 +2561,9 @@ export default function Home() {
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
     });
-     setTimeout(() => {
+     React.startTransition(() => {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
-    }, 0);
+    });
   }, [baseAdventureSettings, baseCharacters, toast]);
 
   const onRestartAdventure = React.useCallback(() => {
@@ -2627,7 +2701,9 @@ export default function Home() {
         const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
 
         if (enemiesAtPoi.length === 0) {
-            toast({ title: "Aucun ennemi", description: "Il n'y a personne à combattre ici.", variant: "default" });
+            React.startTransition(() => {
+                toast({ title: "Aucun ennemi", description: "Il n'y a personne à combattre ici.", variant: "default" });
+            });
             setIsLoading(false);
             return;
         }
@@ -2701,7 +2777,9 @@ export default function Home() {
             const descriptors = descriptorFamiliarItems.filter(item => activeUniverses.includes(item.universe));
             
             if (!creatureTypes.length || !descriptors.length) {
-                toast({ title: "Chasse impossible", description: "Données de base manquantes (créature ou descripteur) pour générer une rencontre dans les univers sélectionnés.", variant: "destructive" });
+                React.startTransition(() => {
+                    toast({ title: "Chasse impossible", description: "Données de base manquantes (créature ou descripteur) pour générer une rencontre dans les univers sélectionnés.", variant: "destructive" });
+                });
                 setIsLoading(false);
                 return;
             }
@@ -2986,10 +3064,12 @@ export default function Home() {
                 }
             } else {
                  console.warn(`Aucun objet trouvé pour le marchand '${buildingId}' dans le lieu '${poi.name}' (niveau ${poiLevel}) avec les univers actifs.`);
-                 toast({
-                     title: "Stock Limité",
-                     description: `Le marchand de type '${buildingName}' n'a rien à vendre pour le moment dans les univers sélectionnés.`,
-                     variant: "default",
+                 React.startTransition(() => {
+                     toast({
+                         title: "Stock Limité",
+                         description: `Le marchand de type '${buildingName}' n'a rien à vendre pour le moment dans les univers sélectionnés.`,
+                         variant: "default",
+                     });
                  });
             }
             setMerchantInventory(generatedInventory);
@@ -3007,7 +3087,7 @@ export default function Home() {
             const canAfford = isUpgradable && upgradeCost !== null && (adventureSettings.playerGold || 0) >= upgradeCost;
 
             if (!isUpgradable || !canAfford) {
-                 setTimeout(() => {
+                 React.startTransition(() => {
                     toast({
                         title: "Amélioration Impossible",
                         description: poi.ownerId !== PLAYER_ID
@@ -3017,7 +3097,7 @@ export default function Home() {
                             : "Fonds insuffisants pour cette amélioration.",
                         variant: "destructive"
                     });
-                 }, 0);
+                 });
                  setIsLoading(false);
                 return;
             }
@@ -3033,15 +3113,17 @@ export default function Home() {
                 });
                 return { ...prev, playerGold: (prev.playerGold || 0) - upgradeCost!, mapPointsOfInterest: newPois };
             });
-            toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${upgradeCost} PO.` });
+            React.startTransition(() => {
+                toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${upgradeCost} PO.` });
+            });
             
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
 
         } else if (action === 'collect') {
             if (poi.ownerId !== PLAYER_ID) {
-                setTimeout(() => {
+                React.startTransition(() => {
                     toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
-                }, 0);
+                });
                 setIsLoading(false);
                 return;
             }
@@ -3066,7 +3148,9 @@ export default function Home() {
             await callGenerateAdventure(userActionText, locationIdOverride);
         } catch (error) {
             console.error("Error in handleMapAction trying to generate adventure:", error);
-            toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });
+            });
         }
     }
     
@@ -3109,9 +3193,11 @@ export default function Home() {
     }));
     setFormPropKey(prev => prev + 1);
     
-    toast({
-        title: "Point d'Intérêt Créé",
-        description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
+    React.startTransition(() => {
+        toast({
+            title: "Point d'Intérêt Créé",
+            description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
+        });
     });
 }, [toast]);
   
@@ -3120,13 +3206,17 @@ export default function Home() {
         const pois = prev.mapPointsOfInterest || [];
         const poiExists = pois.some(p => p.id === poiId && p.position);
         if (poiExists) {
-            toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            React.startTransition(() => {
+                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
+            });
             return prev;
         }
 
         const newPois = pois.map(p => {
             if (p.id === poiId) {
-                toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                React.startTransition(() => {
+                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
+                });
                 return { ...p, position: { x: 50, y: 50 } };
             }
             return p;
@@ -3190,9 +3280,9 @@ export default function Home() {
     React.startTransition(() => {
       setIsSuggestingQuest(true);
     });
-    setTimeout(() => {
+    React.startTransition(() => {
       toast({ title: "Suggestion de Quête", description: "L'IA réfléchit à une nouvelle accroche..." });
-    }, 0);
+    });
 
     const recentMessages = narrativeMessages.slice(-5).map(m => m.type === 'user' ? `${adventureSettings.playerName}: ${m.content}` : m.content).join('\n');
 
@@ -3205,7 +3295,7 @@ export default function Home() {
       };
       const result = await suggestQuestHook(input);
       React.startTransition(() => {
-        setTimeout(() => {
+        React.startTransition(() => {
           toast({
             title: "Suggestion de Quête:",
             description: (
@@ -3216,14 +3306,14 @@ export default function Home() {
             ),
             duration: 9000,
           });
-        }, 0);
+        });
       });
     } catch (error) {
       console.error("Error suggesting quest hook:", error);
       React.startTransition(() => {
-        setTimeout(() => {
+        React.startTransition(() => {
           toast({ title: "Erreur", description: "Impossible de suggérer une quête.", variant: "destructive" });
-        }, 0);
+        });
       });
     } finally {
       React.startTransition(() => {
@@ -3236,9 +3326,9 @@ export default function Home() {
     async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
         const result = await generateSceneImage(input, aiConfig);
         if (result.error) {
-            setTimeout(() => {
+            React.startTransition(() => {
                 toast({ title: "Erreur de Génération d'Image IA", description: result.error, variant: "destructive" });
-            }, 0);
+            });
             return { imageUrl: "", error: result.error };
         }
         return result;
@@ -3246,7 +3336,9 @@ export default function Home() {
 
     const handleGenerateMapImage = React.useCallback(async () => {
         setIsGeneratingMap(true);
-        toast({ title: "Génération de la carte...", description: "L'IA dessine votre monde." });
+        React.startTransition(() => {
+            toast({ title: "Génération de la carte...", description: "L'IA dessine votre monde." });
+        });
 
         const { world, mapPointsOfInterest } = adventureSettings;
         const poiNames = mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues';
@@ -3257,11 +3349,15 @@ export default function Home() {
             const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
             if (result.imageUrl) {
                 setAdventureSettings(prev => ({ ...prev, mapImageUrl: result.imageUrl }));
-                toast({ title: "Carte Générée!", description: "Le fond de la carte a été mis à jour." });
+                React.startTransition(() => {
+                    toast({ title: "Carte Générée!", description: "Le fond de la carte a été mis à jour." });
+                });
             }
         } catch (error) {
             console.error("Error generating map image:", error);
-            toast({ title: "Erreur", description: "Impossible de générer le fond de la carte.", variant: "destructive" });
+            React.startTransition(() => {
+                toast({ title: "Erreur", description: "Impossible de générer le fond de la carte.", variant: "destructive" });
+            });
         } finally {
             setIsGeneratingMap(false);
         }
@@ -3270,12 +3366,12 @@ export default function Home() {
   const handleGenerateItemImage = React.useCallback(async (item: PlayerInventoryItem) => {
     if (isGeneratingItemImage) return;
     setIsGeneratingItemImage(true);
-    setTimeout(() => {
+    React.startTransition(() => {
         toast({
           title: "Génération d'Image d'Objet",
           description: `Création d'une image pour ${item.name}...`,
         });
-    }, 0);
+    });
 
     let promptDescription = `A detailed illustration of a fantasy game item: "${item.name}".`;
     if (item.description) {
@@ -3310,7 +3406,7 @@ export default function Home() {
         return { ...prevSettings, playerInventory: newInventory };
       });
 
-      setTimeout(() => {
+      React.startTransition(() => {
           toast({
             title: "Image d'Objet Générée!",
             description: (
@@ -3322,17 +3418,17 @@ export default function Home() {
             ),
             duration: 9000,
           });
-      },0);
+      });
 
     } catch (error) { 
       console.error(`Critical error generating image for ${item.name}:`, error);
-      setTimeout(() => {
+      React.startTransition(() => {
           toast({
             title: "Erreur Critique de Génération d'Image",
             description: `Impossible de générer une image pour ${item.name}. ${error instanceof Error ? error.message : ''}`,
             variant: "destructive",
           });
-      },0);
+      });
 
     } finally {
       setIsGeneratingItemImage(false);
@@ -3342,31 +3438,41 @@ export default function Home() {
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi || poi.ownerId !== PLAYER_ID) {
-        toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
+        });
         return;
     }
 
     const buildingDef = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
     if (!buildingDef) {
-        toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
+        });
         return;
     }
 
     const currentBuildings = poi.buildings || [];
     if (currentBuildings.includes(buildingId)) {
-        toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
+        });
         return;
     }
 
     const maxSlots = BUILDING_SLOTS[poi.icon]?.[poi.level || 1] ?? 0;
     if (currentBuildings.length >= maxSlots) {
-        toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
+        });
         return;
     }
 
     const cost = BUILDING_COST_PROGRESSION[currentBuildings.length] ?? Infinity;
     if ((adventureSettings.playerGold || 0) < cost) {
-        toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
+        });
         return;
     }
 
@@ -3387,7 +3493,9 @@ export default function Home() {
         };
     });
 
-    toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
+    React.startTransition(() => {
+        toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
+    });
   }, [adventureSettings, toast]);
     
   const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
@@ -3422,13 +3530,17 @@ export default function Home() {
                     existingFamiliars.push({ ...familiarToSave, _lastSaved: Date.now() });
                 }
                 localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-                toast({ title: "Familier Sauvegardé Globalement", description: `${familiarToSave.name} est maintenant disponible pour d'autres aventures.` });
+                React.startTransition(() => {
+                    toast({ title: "Familier Sauvegardé Globalement", description: `${familiarToSave.name} est maintenant disponible pour d'autres aventures.` });
+                });
                 
                 handleFamiliarUpdate({...familiarToSave, _lastSaved: Date.now()});
                 
             } catch (error) {
                  console.error("Failed to save familiar to localStorage:", error);
-                 toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le familier.", variant: "destructive" });
+                 React.startTransition(() => {
+                     toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le familier.", variant: "destructive" });
+                 });
             }
         }
     }, [toast, handleFamiliarUpdate]);
@@ -3436,7 +3548,9 @@ export default function Home() {
   const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
         setAdventureSettings(prev => {
             if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
-                toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                React.startTransition(() => {
+                    toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
+                });
                 return prev;
             }
             const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
@@ -3446,7 +3560,9 @@ export default function Home() {
                 familiars: [...(stagedPrev.familiars || []), familiarToAdd]
             }));
 
-            toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+            React.startTransition(() => {
+                toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
+            });
             return { ...prev, familiars: updatedFamiliars };
         });
     }, [toast]);
@@ -3456,10 +3572,12 @@ export default function Home() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-        toast({
-            title: "Fichier Invalide",
-            description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
-            variant: "destructive",
+        React.startTransition(() => {
+            toast({
+                title: "Fichier Invalide",
+                description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
+                variant: "destructive",
+            });
         });
         return;
     }
@@ -3468,9 +3586,11 @@ export default function Home() {
     reader.onload = (e) => {
         const imageUrl = e.target?.result as string;
         setAdventureSettings(prev => ({ ...prev, mapImageUrl: imageUrl }));
-        toast({
-            title: "Image de Carte Chargée",
-            description: "Le fond de la carte a été mis à jour avec votre image.",
+        React.startTransition(() => {
+            toast({
+                title: "Image de Carte Chargée",
+                description: "Le fond de la carte a été mis à jour avec votre image.",
+            });
         });
     };
     reader.readAsDataURL(file);
@@ -3479,15 +3599,19 @@ export default function Home() {
 
   const handleMapImageUrlChange = React.useCallback((url: string) => {
     setAdventureSettings(prev => ({ ...prev, mapImageUrl: url }));
-    toast({
-        title: "Image de Carte Chargée",
-        description: "Le fond de la carte a été mis à jour depuis l'URL.",
+    React.startTransition(() => {
+        toast({
+            title: "Image de Carte Chargée",
+            description: "Le fond de la carte a été mis à jour depuis l'URL.",
+        });
     });
   }, [toast]);
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
     setAiConfig(newConfig);
-    toast({ title: "Configuration IA mise à jour" });
+    React.startTransition(() => {
+        toast({ title: "Configuration IA mise à jour" });
+    });
   }, [toast]);
   
     const handleAddToCart = React.useCallback((item: SellingItem) => {
@@ -3520,7 +3644,9 @@ export default function Home() {
 
     const onSaveToLibrary = React.useCallback(async () => {
     if (!comicTitle.trim()) {
-        toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
+        React.startTransition(() => {
+            toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
+        });
         return;
     }
     
@@ -3556,23 +3682,29 @@ export default function Home() {
         
         localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
         
-        toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
+        React.startTransition(() => {
+            toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
+        });
         setIsSaveComicDialogOpen(false);
         setComicTitle("");
         setComicCoverUrl(null);
     } catch (e) {
         console.error("Failed to save comic to library:", e);
-        toast({
-            title: "Erreur de Sauvegarde",
-            description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
-            variant: "destructive"
+        React.startTransition(() => {
+            toast({
+                title: "Erreur de Sauvegarde",
+                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
+                variant: "destructive"
+            });
         });
     }
   }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
     
   const handleGenerateCover = React.useCallback(async () => {
     setIsGeneratingCover(true);
-    toast({ title: "Génération de la couverture..."});
+    React.startTransition(() => {
+        toast({ title: "Génération de la couverture..."});
+    });
 
     const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
     const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
@@ -3582,15 +3714,19 @@ export default function Home() {
         const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
         if (result.imageUrl) {
             setComicCoverUrl(result.imageUrl);
-            toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
+            React.startTransition(() => {
+                toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
+            });
         } else {
             throw new Error(result.error);
         }
     } catch (error) {
-        toast({
-            title: "Erreur de Génération",
-            description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
-            variant: "destructive"
+        React.startTransition(() => {
+            toast({
+                title: "Erreur de Génération",
+                description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
+                variant: "destructive"
+            });
         });
     } finally {
         setIsGeneratingCover(false);
@@ -3635,7 +3771,9 @@ export default function Home() {
                 newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
                 draft[i] = { ...page, panels: newPanels };
                 pageUpdated = true;
-                toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
+                React.startTransition(() => {
+                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
+                });
                 break;
             }
         }
@@ -3645,7 +3783,9 @@ export default function Home() {
             newPage.panels[0].imageUrl = dataUrl;
             draft.push(newPage);
             setCurrentComicPageIndex(draft.length - 1);
-            toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
+            React.startTransition(() => {
+                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
+            });
         }
         
         return draft;
@@ -3654,10 +3794,12 @@ export default function Home() {
 
   const handleDownloadComicDraft = React.useCallback(() => {
     if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
-        toast({
-            title: "Rien à télécharger",
-            description: "Il n'y a pas de planche de BD active à télécharger.",
-            variant: "destructive"
+        React.startTransition(() => {
+            toast({
+                title: "Rien à télécharger",
+                description: "Il n'y a pas de planche de BD active à télécharger.",
+                variant: "destructive"
+            });
         });
         return;
     }
@@ -3794,7 +3936,7 @@ export default function Home() {
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
       onRemoveFromCart={handleRemoveFromCart}
-      onFinalizePurchase={handleFinalizePurchase}
+      onFinalizePurchase={onFinalizePurchase}
       onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
       handleClaimHuntReward={handleClaimHuntReward}
     />
@@ -3820,9 +3962,41 @@ export default function Home() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+      {namingFamiliarState && (
+        <AlertDialog open={!!namingFamiliarState} onOpenChange={(open) => { if (!open) { setNamingFamiliarState(null); setNewFamiliarName(""); setFamiliarNameError(null); } }}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Donnez un nom à votre nouveau compagnon !</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Vous avez invoqué un(e) {namingFamiliarState.baseFamiliar.name}. Quel nom unique souhaitez-vous lui donner ?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="familiar-name-input">Nom du familier</Label>
+                    <Input
+                        id="familiar-name-input"
+                        value={newFamiliarName}
+                        onChange={(e) => {
+                            setNewFamiliarName(e.target.value);
+                            if (familiarNameError) setFamiliarNameError(null);
+                        }}
+                        placeholder="Entrez un nom..."
+                    />
+                    {familiarNameError && <p className="text-sm text-destructive">{familiarNameError}</p>}
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => { setNamingFamiliarState(null); setNewFamiliarName(""); setFamiliarNameError(null); }}>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmFamiliarName} disabled={!newFamiliarName.trim()}>
+                        Confirmer et Invoquer
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
+
 
 
 
