@@ -746,6 +746,8 @@ export function PageStructure({
                                                                     )}
                                                                     <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
                                                                     {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                                    {item.damage && <p className="text-xs text-red-600">Dégâts: {item.damage}</p>}
+                                                                    {item.ac && <p className="text-xs text-blue-600">CA: {item.ac}</p>}
                                                                     {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
                                                                     {item.statBonuses && (
                                                                         <div className="text-xs mt-1">
@@ -753,6 +755,13 @@ export function PageStructure({
                                                                             {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
                                                                             {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
                                                                             {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
+                                                                            {item.statBonuses.str && <p>Force: +{item.statBonuses.str}</p>}
+                                                                            {item.statBonuses.dex && <p>Dextérité: +{item.statBonuses.dex}</p>}
+                                                                            {item.statBonuses.con && <p>Constitution: +{item.statBonuses.con}</p>}
+                                                                            {item.statBonuses.int && <p>Intelligence: +{item.statBonuses.int}</p>}
+                                                                            {item.statBonuses.wis && <p>Sagesse: +{item.statBonuses.wis}</p>}
+                                                                            {item.statBonuses.cha && <p>Charisme: +{item.statBonuses.cha}</p>}
+                                                                            {item.statBonuses.hp && <p>PV Max: +{item.statBonuses.hp}</p>}
                                                                         </div>
                                                                     )}
                                                                     {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
@@ -1004,4 +1013,5 @@ export function PageStructure({
     </>
   );
 }
+
 
