@@ -1,5 +1,4 @@
 
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -419,139 +418,140 @@ export function PageStructure({
       </Sidebar>
 
       {/* Main Content Area */}
-      <SidebarInset className="flex flex-col h-screen">
-        <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
-           <div className="flex items-center space-x-2">
-             <SidebarTrigger /> 
-             <span className="font-semibold">Aventure</span>
-           </div>
-          <div className="flex items-center space-x-2">
-            <LanguageSelector
-                translateTextAction={translateTextAction}
-                currentText={narrativeMessages.map(m => m.content).join('\n\n')}
-                onLanguageChange={setCurrentLanguage}
-                currentLanguage={currentLanguage}
-            />
-             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={handleSave}>
-                    <Save className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                 <TooltipContent>Sauvegarder l'Aventure (JSON)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-             <SidebarTrigger data-sidebar-target="right-sidebar">
-                 <PanelRight className="h-5 w-5" />
-             </SidebarTrigger>
-          </div>
-        </header>
-        <main className="flex-1 overflow-auto p-4 flex flex-col gap-4">
-             <AdventureDisplay
-                playerId={playerId}
-                generateAdventureAction={generateAdventureAction}
-                generateSceneImageAction={generateSceneImageAction}
-                suggestQuestHookAction={suggestQuestHookAction as any}
-                adventureSettings={adventureSettings}
-                characters={characters}
-                initialMessages={narrativeMessages}
-                currentLanguage={currentLanguage}
-                onNarrativeChange={onNarrativeChange}
-                onEditMessage={handleEditMessage}
-                onRegenerateLastResponse={handleRegenerateLastResponse}
-                onUndoLastMessage={handleUndoLastMessage}
-                activeCombat={activeCombat}
-                onCombatUpdates={onCombatUpdates}
-                onRestartAdventure={onRestartAdventure}
-                isSuggestingQuest={isSuggestingQuest}
-                handleTakeLoot={handleTakeLoot}
-                handleDiscardLoot={handleDiscardLoot}
-                handlePlayerItemAction={handlePlayerItemAction} 
-                handleEquipItem={handleEquipItem} 
-                handleUnequipItem={handleUnequipItem}
-                handleMapAction={handleMapAction}
-                useAestheticFont={useAestheticFont}
-                onToggleAestheticFont={onToggleAestheticFont}
-                onGenerateMap={onGenerateMap}
-                isGeneratingMap={isGeneratingMap}
-                onPoiPositionChange={onPoiPositionChange}
-                onCreatePoi={onCreatePoi}
-                onMapImageUpload={onMapImageUpload}
-                onMapImageUrlChange={onMapImageUrlChange}
-                onAddPoiToMap={onAddPoiToMap}
-                comicDraft={comicDraft}
-                onDownloadComicDraft={onDownloadComicDraft}
-                onAddComicPage={onAddComicPage}
-                onAddComicPanel={onAddComicPanel}
-                onRemoveLastComicPanel={onRemoveLastComicPanel}
-                onUploadToComicPanel={onUploadToComicPanel}
-                currentComicPageIndex={currentComicPageIndex}
-                onComicPageChange={onComicPageChange}
-                onAddToComicPage={onAddToComicPage}
-                isSaveComicDialogOpen={isSaveComicDialogOpen}
-                setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
-                comicTitle={comicTitle}
-                setComicTitle={setComicTitle}
-                comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={isGeneratingCover}
-                onGenerateCover={onGenerateCover}
-                onSaveToLibrary={onSaveToLibrary}
-                merchantInventory={merchantInventory}
-                shoppingCart={shoppingCart}
-                onAddToCart={onAddToCart}
-                onRemoveFromCart={onRemoveFromCart}
-                onFinalizePurchase={onFinalizePurchase}
-                onCloseMerchantPanel={onCloseMerchantPanel}
-                isLoading={isLoading}
-                handleClaimHuntReward={handleClaimHuntReward}
-             />
-        </main>
-      </SidebarInset>
+      <div className="flex-1 flex overflow-hidden">
+        <SidebarInset className="flex flex-col h-screen">
+            <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
+              <div className="flex items-center space-x-2">
+                <SidebarTrigger /> 
+                <span className="font-semibold">Aventure</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <LanguageSelector
+                    translateTextAction={translateTextAction}
+                    currentText={narrativeMessages.map(m => m.content).join('\n\n')}
+                    onLanguageChange={setCurrentLanguage}
+                    currentLanguage={currentLanguage}
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={handleSave}>
+                        <Save className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Sauvegarder l'Aventure (JSON)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <SidebarTrigger data-sidebar-target="right-sidebar">
+                    <PanelRight className="h-5 w-5" />
+                </SidebarTrigger>
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+                <AdventureDisplay
+                    playerId={playerId}
+                    generateAdventureAction={generateAdventureAction}
+                    generateSceneImageAction={generateSceneImageAction}
+                    suggestQuestHookAction={suggestQuestHookAction as any}
+                    adventureSettings={adventureSettings}
+                    characters={characters}
+                    initialMessages={narrativeMessages}
+                    currentLanguage={currentLanguage}
+                    onNarrativeChange={onNarrativeChange}
+                    onEditMessage={handleEditMessage}
+                    onRegenerateLastResponse={handleRegenerateLastResponse}
+                    onUndoLastMessage={handleUndoLastMessage}
+                    activeCombat={activeCombat}
+                    onCombatUpdates={onCombatUpdates}
+                    onRestartAdventure={onRestartAdventure}
+                    isSuggestingQuest={isSuggestingQuest}
+                    handleTakeLoot={handleTakeLoot}
+                    handleDiscardLoot={handleDiscardLoot}
+                    handlePlayerItemAction={handlePlayerItemAction} 
+                    handleEquipItem={handleEquipItem} 
+                    handleUnequipItem={handleUnequipItem}
+                    handleMapAction={handleMapAction}
+                    useAestheticFont={useAestheticFont}
+                    onToggleAestheticFont={onToggleAestheticFont}
+                    onGenerateMap={onGenerateMap}
+                    isGeneratingMap={isGeneratingMap}
+                    onPoiPositionChange={onPoiPositionChange}
+                    onCreatePoi={onCreatePoi}
+                    onMapImageUpload={onMapImageUpload}
+                    onMapImageUrlChange={onMapImageUrlChange}
+                    onAddPoiToMap={onAddPoiToMap}
+                    comicDraft={comicDraft}
+                    onDownloadComicDraft={onDownloadComicDraft}
+                    onAddComicPage={onAddComicPage}
+                    onAddComicPanel={onAddComicPanel}
+                    onRemoveLastComicPanel={onRemoveLastComicPanel}
+                    onUploadToComicPanel={onUploadToComicPanel}
+                    currentComicPageIndex={currentComicPageIndex}
+                    onComicPageChange={onComicPageChange}
+                    onAddToComicPage={onAddToComicPage}
+                    isSaveComicDialogOpen={isSaveComicDialogOpen}
+                    setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
+                    comicTitle={comicTitle}
+                    setComicTitle={setComicTitle}
+                    comicCoverUrl={comicCoverUrl}
+                    isGeneratingCover={isGeneratingCover}
+                    onGenerateCover={onGenerateCover}
+                    onSaveToLibrary={onSaveToLibrary}
+                    merchantInventory={merchantInventory}
+                    shoppingCart={shoppingCart}
+                    onAddToCart={onAddToCart}
+                    onRemoveFromCart={onRemoveFromCart}
+                    onFinalizePurchase={onFinalizePurchase}
+                    onCloseMerchantPanel={onCloseMerchantPanel}
+                    isLoading={isLoading}
+                    handleClaimHuntReward={handleClaimHuntReward}
+                />
+            </main>
+        </SidebarInset>
 
-      {/* Right Sidebar: Config, Characters, AI Settings */}
-       <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
-            <SidebarHeader className="p-4 border-b border-sidebar-border">
-                 <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
-             </SidebarHeader>
-             <ScrollArea className="flex-1">
-                 <SidebarContent className="p-4 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Modes de Jeu</CardTitle>
-                            <CardDescription className="text-xs">Activez ou désactivez les systèmes de jeu.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <Label className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</Label>
-                                </div>
-                                <Switch checked={adventureSettings.rpgMode} onCheckedChange={handleToggleRpgMode} />
-                            </div>
-                             <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <Label className="flex items-center gap-2 text-sm"><LinkIcon className="h-4 w-4"/> Mode Relations</Label>
-                                </div>
-                                <Switch checked={adventureSettings.relationsMode} onCheckedChange={handleToggleRelationsMode} />
-                            </div>
-                             <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <Label className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</Label>
-                                </div>
-                                <Switch checked={adventureSettings.strategyMode} onCheckedChange={handleToggleStrategyMode} />
-                            </div>
-                        </CardContent>
-                    </Card>
+        {/* Right Sidebar: Config, Characters, AI Settings */}
+        <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
+              <SidebarHeader className="p-4 border-b border-sidebar-border">
+                  <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
+              </SidebarHeader>
+              <ScrollArea className="flex-1">
+                  <SidebarContent className="p-4 space-y-6">
+                      <Card>
+                          <CardHeader>
+                              <CardTitle className="text-base">Modes de Jeu</CardTitle>
+                              <CardDescription className="text-xs">Activez ou désactivez les systèmes de jeu.</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                              <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                  <div className="space-y-0.5">
+                                      <Label className="flex items-center gap-2 text-sm"><Gamepad2 className="h-4 w-4"/> Mode Jeu de Rôle (RPG)</Label>
+                                  </div>
+                                  <Switch checked={adventureSettings.rpgMode} onCheckedChange={handleToggleRpgMode} />
+                              </div>
+                              <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                  <div className="space-y-0.5">
+                                      <Label className="flex items-center gap-2 text-sm"><LinkIcon className="h-4 w-4"/> Mode Relations</Label>
+                                  </div>
+                                  <Switch checked={adventureSettings.relationsMode} onCheckedChange={handleToggleRelationsMode} />
+                              </div>
+                              <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                  <div className="space-y-0.5">
+                                      <Label className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</Label>
+                                  </div>
+                                  <Switch checked={adventureSettings.strategyMode} onCheckedChange={handleToggleStrategyMode} />
+                              </div>
+                          </CardContent>
+                      </Card>
 
 
-                     <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
-                         <AccordionItem value="adventure-config-accordion">
-                             <AccordionTrigger>
-                                 <div className="flex items-center gap-2">
-                                     <FileCog className="h-5 w-5" /> Configuration de l'Aventure
-                                 </div>
-                             </AccordionTrigger>
-                             <AccordionContent className="pt-2">
+                      <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
+                          <AccordionItem value="adventure-config-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <FileCog className="h-5 w-5" /> Configuration de l'Aventure
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
                                 <AdventureForm
                                     ref={adventureFormRef}
                                     formPropKey={formPropKey}
@@ -560,402 +560,404 @@ export function PageStructure({
                                     relationsMode={adventureSettings.relationsMode}
                                     strategyMode={adventureSettings.strategyMode}
                                 />
-                             </AccordionContent>
-                         </AccordionItem>
-                     </Accordion>
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
 
-                    <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
-                        <AccordionItem value="player-character-accordion">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                    <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 space-y-3">
-                                <Card>
-                                    <CardContent className="p-4 space-y-3">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-16 w-16">
-                                                {adventureSettings.playerPortraitUrl ? <UIAvatarImage src={adventureSettings.playerPortraitUrl} alt={playerName} /> : <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>}
-                                            </Avatar>
-                                            <div>
-                                                <p className="font-semibold">{playerName || "Héros"}</p>
-                                                {adventureSettings.rpgMode && <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>}
-                                            </div>
-                                        </div>
-                                        <div className="text-sm">
-                                            <p><strong className="font-medium">Détails :</strong> {adventureSettings.playerDetails || "Non spécifié."}</p>
-                                            <p><strong className="font-medium">Orientation :</strong> {adventureSettings.playerOrientation || "Non spécifié."}</p>
-                                            <p><strong className="font-medium">Background :</strong> {adventureSettings.playerDescription || "Non spécifié."}</p>
-                                        </div>
-                                        
-                                        {adventureSettings.rpgMode && (
-                                          <>
-                                            <Separator />
-                                            <div>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <Label htmlFor="player-hp-sidebar" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
-                                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
-                                                </div>
-                                                <Progress id="player-hp-sidebar" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
-                                            </div>
-
-                                            {(adventureSettings.playerMaxMp ?? 0) > 0 && (
-                                                <div>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <Label htmlFor="player-mp-sidebar" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
-                                                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
-                                                    </div>
-                                                    <Progress id="player-mp-sidebar" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
-                                                </div>
-                                            )}
-
-                                            <div>
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <Label htmlFor="player-exp-sidebar" className="text-sm font-medium flex items-center"><BarChart2Icon className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
-                                                    <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
-                                                </div>
-                                                <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
-                                            </div>
-                                            
-                                            {adventureSettings.playerGold !== undefined && (
-                                                <div className="mt-2 pt-2 border-t">
-                                                    <Label className="text-sm font-medium flex items-center">
-                                                        <Coins className="h-4 w-4 mr-1 text-amber-600"/>
-                                                        Pièces d'Or
-                                                    </Label>
-                                                    <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
-                                                </div>
-                                            )}
-                                        </>
-                                        )}
-
-                                        {adventureSettings.strategyMode && (
-                                        <div className="mt-2 pt-2 border-t">
-                                            <Label className="text-sm font-medium flex items-center">
-                                                <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
-                                                Lieu Actuel
-                                            </Label>
-                                            <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
-                                        </div>
-                                        )}
-                                        
-                                        {adventureSettings.rpgMode && (
+                      <Accordion type="single" collapsible className="w-full" defaultValue="player-character-accordion">
+                          <AccordionItem value="player-character-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2 space-y-3">
+                                  <Card>
+                                      <CardContent className="p-4 space-y-3">
+                                          <div className="flex items-center gap-3">
+                                              <Avatar className="h-16 w-16">
+                                                  {adventureSettings.playerPortraitUrl ? <UIAvatarImage src={adventureSettings.playerPortraitUrl} alt={playerName} /> : <AvatarFallback><UserCircle className="h-8 w-8" /></AvatarFallback>}
+                                              </Avatar>
+                                              <div>
+                                                  <p className="font-semibold">{playerName || "Héros"}</p>
+                                                  {adventureSettings.rpgMode && <p className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</p>}
+                                              </div>
+                                          </div>
+                                          <div className="text-sm">
+                                              <p><strong className="font-medium">Détails :</strong> {adventureSettings.playerDetails || "Non spécifié."}</p>
+                                              <p><strong className="font-medium">Orientation :</strong> {adventureSettings.playerOrientation || "Non spécifié."}</p>
+                                              <p><strong className="font-medium">Background :</strong> {adventureSettings.playerDescription || "Non spécifié."}</p>
+                                          </div>
+                                          
+                                          {adventureSettings.rpgMode && (
                                             <>
-                                            <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
-                                                <AccordionItem value="player-equipment-accordion">
-                                                    <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
-                                                        <div className="flex items-center gap-2">
-                                                            <Shirt className="h-4 w-4" /> Équipement
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pt-2 space-y-2 text-xs">
-                                                        {[
-                                                            { slot: 'weapon', label: 'Arme', icon: Sword },
-                                                            { slot: 'armor', label: 'Armure', icon: ArmorIcon },
-                                                            { slot: 'jewelry', label: 'Bijou', icon: Gem },
-                                                        ].map(({slot, label, icon: SlotIcon}) => {
-                                                            const item = getEquippedItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>);
+                                              <Separator />
+                                              <div>
+                                                  <div className="flex justify-between items-center mb-1">
+                                                      <Label htmlFor="player-hp-sidebar" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
+                                                      <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentHp ?? 0} / {adventureSettings.playerMaxHp ?? 0}</span>
+                                                  </div>
+                                                  <Progress id="player-hp-sidebar" value={((adventureSettings.playerCurrentHp ?? 0) / (adventureSettings.playerMaxHp || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
+                                              </div>
+
+                                              {(adventureSettings.playerMaxMp ?? 0) > 0 && (
+                                                  <div>
+                                                      <div className="flex justify-between items-center mb-1">
+                                                          <Label htmlFor="player-mp-sidebar" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
+                                                          <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentMp ?? 0} / {adventureSettings.playerMaxMp ?? 0}</span>
+                                                      </div>
+                                                      <Progress id="player-mp-sidebar" value={((adventureSettings.playerCurrentMp ?? 0) / (adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
+                                                  </div>
+                                              )}
+
+                                              <div>
+                                                  <div className="flex justify-between items-center mb-1">
+                                                      <Label htmlFor="player-exp-sidebar" className="text-sm font-medium flex items-center"><BarChart2Icon className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
+                                                      <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
+                                                  </div>
+                                                  <Progress id="player-exp-sidebar" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
+                                              </div>
+                                              
+                                              {adventureSettings.playerGold !== undefined && (
+                                                  <div className="mt-2 pt-2 border-t">
+                                                      <Label className="text-sm font-medium flex items-center">
+                                                          <Coins className="h-4 w-4 mr-1 text-amber-600"/>
+                                                          Pièces d'Or
+                                                      </Label>
+                                                      <p className="text-lg font-semibold mt-1">{adventureSettings.playerGold ?? 0}</p>
+                                                  </div>
+                                              )}
+                                          </>
+                                          )}
+
+                                          {adventureSettings.strategyMode && (
+                                          <div className="mt-2 pt-2 border-t">
+                                              <Label className="text-sm font-medium flex items-center">
+                                                  <MapPin className="h-4 w-4 mr-1 text-blue-600"/>
+                                                  Lieu Actuel
+                                              </Label>
+                                              <p className="text-lg font-semibold mt-1">{playerLocationName}</p>
+                                          </div>
+                                          )}
+                                          
+                                          {adventureSettings.rpgMode && (
+                                              <>
+                                              <Accordion type="single" collapsible className="w-full mt-3" defaultValue="player-equipment-accordion">
+                                                  <AccordionItem value="player-equipment-accordion">
+                                                      <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
+                                                          <div className="flex items-center gap-2">
+                                                              <Shirt className="h-4 w-4" /> Équipement
+                                                          </div>
+                                                      </AccordionTrigger>
+                                                      <AccordionContent className="pt-2 space-y-2 text-xs">
+                                                          {[
+                                                              { slot: 'weapon', label: 'Arme', icon: Sword },
+                                                              { slot: 'armor', label: 'Armure', icon: ArmorIcon },
+                                                              { slot: 'jewelry', label: 'Bijou', icon: Gem },
+                                                          ].map(({slot, label, icon: SlotIcon}) => {
+                                                              const item = getEquippedItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>);
+                                                              return (
+                                                                  <div key={slot} className="flex items-center justify-between p-2 border rounded-md bg-background shadow-sm">
+                                                                      <div className="flex items-center gap-2">
+                                                                          <SlotIcon className="h-4 w-4 text-muted-foreground" />
+                                                                          <span className="font-medium">{label}:</span>
+                                                                          <span className="text-muted-foreground truncate max-w-[100px]">{item ? item.name : "Vide"}</span>
+                                                                      </div>
+                                                                      {item && (
+                                                                          <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
+                                                                              Déséquiper
+                                                                          </Button>
+                                                                      )}
+                                                                  </div>
+                                                              );
+                                                          })}
+                                                      </AccordionContent>
+                                                  </AccordionItem>
+                                              </Accordion>
+
+                                              <CardDescription className="text-xs pt-2">
+                                                <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
+                                              </CardDescription>
+                                              <Card className="mt-1 bg-muted/30 border">
+                                                <CardContent className="p-2">
+                                                  {(!adventureSettings.playerInventory || adventureSettings.playerInventory.filter(item => item.quantity > 0).length === 0) ? (
+                                                    <p className="text-xs text-muted-foreground italic">Inventaire vide.</p>
+                                                  ) : (
+                                                    <ScrollArea className="h-auto max-h-48">
+                                                      <div className="grid grid-cols-5 gap-2 p-1">
+                                                        {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => {
+                                                            const sellPricePerUnit = calculateSellPricePerUnit(item);
+                                                            const sellLabel = sellPricePerUnit > 0
+                                                              ? `Vendre (pour ${sellPricePerUnit} PO ${item.quantity > 1 ? 'chacun' : ''})`
+                                                              : "Vendre (invendable)";
+
                                                             return (
-                                                                <div key={slot} className="flex items-center justify-between p-2 border rounded-md bg-background shadow-sm">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <SlotIcon className="h-4 w-4 text-muted-foreground" />
-                                                                        <span className="font-medium">{label}:</span>
-                                                                        <span className="text-muted-foreground truncate max-w-[100px]">{item ? item.name : "Vide"}</span>
-                                                                    </div>
-                                                                    {item && (
-                                                                        <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
-                                                                            Déséquiper
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
+                                                              <DropdownMenu key={`inventory-item-${item.id}`}>
+                                                                <TooltipProvider>
+                                                                  <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                      <DropdownMenuTrigger asChild>
+                                                                        <div
+                                                                          className={cn(
+                                                                            "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
+                                                                            getItemTypeColor(item.type, item.isEquipped),
+                                                                            isLoading && "cursor-not-allowed opacity-50"
+                                                                          )}
+                                                                        >
+                                                                          {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
+                                                                              <Image
+                                                                                  key={item.generatedImageUrl} 
+                                                                                  src={item.generatedImageUrl}
+                                                                                  alt={`${item.name} icon`}
+                                                                                  fill
+                                                                                  style={{ objectFit: 'contain' }}
+                                                                                  sizes="40px"
+                                                                                  data-ai-hint={`${item.name} icon`}
+                                                                              />
+                                                                          ) : (
+                                                                              <PackageOpen size={20} className="text-foreground/80" />
+                                                                          )}
+                                                                           <span className="absolute bottom-0 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
+                                                                              {item.name}
+                                                                            </span>
+                                                                          {item.quantity > 1 && (
+                                                                            <span
+                                                                              className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
+                                                                            >
+                                                                              {item.quantity}
+                                                                            </span>
+                                                                          )}
+                                                                           {item.isEquipped && <CheckCircle size={12} className="absolute top-0.5 left-0.5 text-green-500 bg-background rounded-full"/>}
+                                                                        </div>
+                                                                      </DropdownMenuTrigger>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top" align="center" className="w-auto max-w-xs">
+                                                                      {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') && (
+                                                                          <div className="relative w-24 h-24 mb-2 mx-auto border rounded-md overflow-hidden bg-muted">
+                                                                              <Image
+                                                                                  src={item.generatedImageUrl}
+                                                                                  alt={`${item.name} image`}
+                                                                                  fill
+                                                                                  style={{ objectFit: 'contain' }}
+                                                                                  sizes="96px"
+                                                                                  data-ai-hint={`${item.name} preview`}
+                                                                              />
+                                                                          </div>
+                                                                      )}
+                                                                      <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
+                                                                      {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                                                                      {item.damage && <p className="text-xs text-red-600">Dégâts: {item.damage}</p>}
+                                                                      {item.ac && <p className="text-xs text-blue-600">CA: {item.ac}</p>}
+                                                                      {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
+                                                                      {item.statBonuses && (
+                                                                          <div className="text-xs mt-1">
+                                                                              <p className="font-medium">Bonus:</p>
+                                                                              {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
+                                                                              {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
+                                                                              {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
+                                                                              {item.statBonuses.str && <p>Force: +{item.statBonuses.str}</p>}
+                                                                              {item.statBonuses.dex && <p>Dextérité: +{item.statBonuses.dex}</p>}
+                                                                              {item.statBonuses.con && <p>Constitution: +{item.statBonuses.con}</p>}
+                                                                              {item.statBonuses.int && <p>Intelligence: +{item.statBonuses.int}</p>}
+                                                                              {item.statBonuses.wis && <p>Sagesse: +{item.statBonuses.wis}</p>}
+                                                                              {item.statBonuses.cha && <p>Charisme: +{item.statBonuses.cha}</p>}
+                                                                              {item.statBonuses.hp && <p>PV Max: +{item.statBonuses.hp}</p>}
+                                                                          </div>
+                                                                      )}
+                                                                      {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
+                                                                      {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
+                                                                       {sellPricePerUnit > 0 && <p className="text-xs text-green-600">Vendable pour : {sellPricePerUnit} PO {item.quantity > 1 ? 'chacun' : ''}</p>}
+                                                                    </TooltipContent>
+                                                                  </Tooltip>
+                                                                </TooltipProvider>
+                                                                <DropdownMenuContent>
+                                                                   {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
+                                                                      item.isEquipped ? (
+                                                                          <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')} disabled={isLoading}>
+                                                                              <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
+                                                                          </DropdownMenuItem>
+                                                                      ) : (
+                                                                          <DropdownMenuItem onSelect={() => handleEquipItem(item.id)} disabled={isLoading}>
+                                                                              <Shirt className="mr-2 h-4 w-4" /> Équiper
+                                                                          </DropdownMenuItem>
+                                                                      )
+                                                                  )}
+                                                                  <DropdownMenuItem
+                                                                    onSelect={() => handlePlayerItemAction(item.id, 'use')}
+                                                                    disabled={(item.type !== 'consumable' && item.type !== 'misc') || isLoading}
+                                                                  >
+                                                                    <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
+                                                                  </DropdownMenuItem>
+                                                                  <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')} disabled={isLoading}>
+                                                                    <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
+                                                                  </DropdownMenuItem>
+                                                                   <DropdownMenuItem 
+                                                                    onSelect={() => handleSellItem(item.id)}
+                                                                    disabled={sellPricePerUnit <= 0 || isLoading}
+                                                                  >
+                                                                    <Coins className="mr-2 h-4 w-4" /> {sellLabel}
+                                                                  </DropdownMenuItem>
+                                                                  <DropdownMenuItem
+                                                                    onSelect={() => handleGenerateItemImage(item)}
+                                                                    disabled={isLoading}
+                                                                  >
+                                                                    <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
+                                                                  </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                              </DropdownMenu>
                                                             );
                                                         })}
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
+                                                      </div>
+                                                    </ScrollArea>
+                                                  )}
+                                                  {isLoading && (
+                                                    <p className="text-xs text-muted-foreground italic text-center p-1 mt-2">
+                                                      Veuillez attendre la fin de l'action en cours avant d'en utiliser un autre.
+                                                    </p>
+                                                  )}
+                                                </CardContent>
+                                              </Card>
+                                              <Accordion type="single" collapsible className="w-full mt-3">
+                                                  <AccordionItem value="player-skills-accordion">
+                                                      <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
+                                                          <div className="flex items-center gap-2">
+                                                              <BookOpen className="h-4 w-4" /> Compétences
+                                                          </div>
+                                                      </AccordionTrigger>
+                                                      <AccordionContent className="pt-2 space-y-1 text-xs">
+                                                          {(adventureSettings.playerSkills && adventureSettings.playerSkills.length > 0) ? (
+                                                              adventureSettings.playerSkills.map(skill => (
+                                                                  <TooltipProvider key={skill.id}>
+                                                                      <Tooltip>
+                                                                          <TooltipTrigger asChild>
+                                                                              <div className="p-2 border rounded-md bg-background shadow-sm cursor-default">
+                                                                                  <p className="font-medium text-foreground">{skill.name}</p>
+                                                                              </div>
+                                                                          </TooltipTrigger>
+                                                                          <TooltipContent side="top" align="start" className="w-auto max-w-xs">
+                                                                              <p className="font-semibold">{skill.name}</p>
+                                                                              <p className="text-xs text-muted-foreground">{skill.description}</p>
+                                                                              {skill.category && <p className="text-xs capitalize text-primary">Catégorie: {skill.category}</p>}
+                                                                          </TooltipContent>
+                                                                      </Tooltip>
+                                                                  </TooltipProvider>
+                                                              ))
+                                                          ) : (
+                                                              <p className="text-muted-foreground italic px-2">Aucune compétence acquise.</p>
+                                                          )}
+                                                          {/* Future: Button to choose new skill on level up */}
+                                                      </AccordionContent>
+                                                  </AccordionItem>
+                                              </Accordion>
+                                              </>
+                                          )}
+                                      </CardContent>
+                                  </Card>
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
 
-                                            <CardDescription className="text-xs pt-2">
-                                              <Briefcase className="inline h-3 w-3 mr-1" /> Inventaire :
-                                            </CardDescription>
-                                            <Card className="mt-1 bg-muted/30 border">
-                                              <CardContent className="p-2">
-                                                {(!adventureSettings.playerInventory || adventureSettings.playerInventory.filter(item => item.quantity > 0).length === 0) ? (
-                                                  <p className="text-xs text-muted-foreground italic">Inventaire vide.</p>
-                                                ) : (
-                                                  <ScrollArea className="h-auto max-h-48">
-                                                    <div className="grid grid-cols-5 gap-2 p-1">
-                                                      {adventureSettings.playerInventory.filter(item => item.quantity > 0).map((item, index) => {
-                                                          const sellPricePerUnit = calculateSellPricePerUnit(item);
-                                                          const sellLabel = sellPricePerUnit > 0
-                                                            ? `Vendre (pour ${sellPricePerUnit} PO ${item.quantity > 1 ? 'chacun' : ''})`
-                                                            : "Vendre (invendable)";
-
-                                                          return (
-                                                            <DropdownMenu key={`inventory-item-${item.id}`}>
-                                                              <TooltipProvider>
-                                                                <Tooltip>
-                                                                  <TooltipTrigger asChild>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                      <div
-                                                                        className={cn(
-                                                                          "relative flex flex-col items-center justify-center aspect-square border-2 rounded-md bg-background hover:bg-accent/50 cursor-pointer p-1 shadow-sm overflow-hidden",
-                                                                          getItemTypeColor(item.type, item.isEquipped),
-                                                                          isLoading && "cursor-not-allowed opacity-50"
-                                                                        )}
-                                                                      >
-                                                                        {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') ? (
-                                                                            <Image
-                                                                                key={item.generatedImageUrl} 
-                                                                                src={item.generatedImageUrl}
-                                                                                alt={`${item.name} icon`}
-                                                                                fill
-                                                                                style={{ objectFit: 'contain' }}
-                                                                                sizes="40px"
-                                                                                data-ai-hint={`${item.name} icon`}
-                                                                            />
-                                                                        ) : (
-                                                                            <PackageOpen size={20} className="text-foreground/80" />
-                                                                        )}
-                                                                         <span className="absolute bottom-0 left-0 right-0 text-[10px] leading-tight truncate w-full text-center text-foreground/90 block bg-background/70 px-0.5">
-                                                                            {item.name}
-                                                                          </span>
-                                                                        {item.quantity > 1 && (
-                                                                          <span
-                                                                            className="absolute top-0 right-0 text-[10px] bg-primary text-primary-foreground rounded-bl-md px-1 py-0.5 leading-none"
-                                                                          >
-                                                                            {item.quantity}
-                                                                          </span>
-                                                                        )}
-                                                                         {item.isEquipped && <CheckCircle size={12} className="absolute top-0.5 left-0.5 text-green-500 bg-background rounded-full"/>}
-                                                                      </div>
-                                                                    </DropdownMenuTrigger>
-                                                                  </TooltipTrigger>
-                                                                  <TooltipContent side="top" align="center" className="w-auto max-w-xs">
-                                                                    {item.generatedImageUrl && typeof item.generatedImageUrl === 'string' && item.generatedImageUrl.startsWith('data:image') && (
-                                                                        <div className="relative w-24 h-24 mb-2 mx-auto border rounded-md overflow-hidden bg-muted">
-                                                                            <Image
-                                                                                src={item.generatedImageUrl}
-                                                                                alt={`${item.name} image`}
-                                                                                fill
-                                                                                style={{ objectFit: 'contain' }}
-                                                                                sizes="96px"
-                                                                                data-ai-hint={`${item.name} preview`}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                    <p className="font-semibold">{item.name} (x{item.quantity}) {item.isEquipped ? "(Équipé)" : ""}</p>
-                                                                    {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                                                                    {item.damage && <p className="text-xs text-red-600">Dégâts: {item.damage}</p>}
-                                                                    {item.ac && <p className="text-xs text-blue-600">CA: {item.ac}</p>}
-                                                                    {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                                    {item.statBonuses && (
-                                                                        <div className="text-xs mt-1">
-                                                                            <p className="font-medium">Bonus:</p>
-                                                                            {item.statBonuses.ac && <p>CA: +{item.statBonuses.ac}</p>}
-                                                                            {item.statBonuses.attack && <p>Attaque: +{item.statBonuses.attack}</p>}
-                                                                            {item.statBonuses.damage && <p>Dégâts: {item.statBonuses.damage}</p>}
-                                                                            {item.statBonuses.str && <p>Force: +{item.statBonuses.str}</p>}
-                                                                            {item.statBonuses.dex && <p>Dextérité: +{item.statBonuses.dex}</p>}
-                                                                            {item.statBonuses.con && <p>Constitution: +{item.statBonuses.con}</p>}
-                                                                            {item.statBonuses.int && <p>Intelligence: +{item.statBonuses.int}</p>}
-                                                                            {item.statBonuses.wis && <p>Sagesse: +{item.statBonuses.wis}</p>}
-                                                                            {item.statBonuses.cha && <p>Charisme: +{item.statBonuses.cha}</p>}
-                                                                            {item.statBonuses.hp && <p>PV Max: +{item.statBonuses.hp}</p>}
-                                                                        </div>
-                                                                    )}
-                                                                    {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
-                                                                    {item.goldValue !== undefined && item.goldValue > 0 && <p className="text-xs text-amber-600">Valeur : {item.goldValue} PO</p>}
-                                                                     {sellPricePerUnit > 0 && <p className="text-xs text-green-600">Vendable pour : {sellPricePerUnit} PO {item.quantity > 1 ? 'chacun' : ''}</p>}
-                                                                  </TooltipContent>
-                                                                </Tooltip>
-                                                              </TooltipProvider>
-                                                              <DropdownMenuContent>
-                                                                 {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
-                                                                    item.isEquipped ? (
-                                                                        <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')} disabled={isLoading}>
-                                                                            <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
-                                                                        </DropdownMenuItem>
-                                                                    ) : (
-                                                                        <DropdownMenuItem onSelect={() => handleEquipItem(item.id)} disabled={isLoading}>
-                                                                            <Shirt className="mr-2 h-4 w-4" /> Équiper
-                                                                        </DropdownMenuItem>
-                                                                    )
-                                                                )}
-                                                                <DropdownMenuItem
-                                                                  onSelect={() => handlePlayerItemAction(item.id, 'use')}
-                                                                  disabled={(item.type !== 'consumable' && item.type !== 'misc') || isLoading}
-                                                                >
-                                                                  <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')} disabled={isLoading}>
-                                                                  <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
-                                                                </DropdownMenuItem>
-                                                                 <DropdownMenuItem 
-                                                                  onSelect={() => handleSellItem(item.id)}
-                                                                  disabled={sellPricePerUnit <= 0 || isLoading}
-                                                                >
-                                                                  <Coins className="mr-2 h-4 w-4" /> {sellLabel}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                  onSelect={() => handleGenerateItemImage(item)}
-                                                                  disabled={isLoading}
-                                                                >
-                                                                  <ImageIcon className="mr-2 h-4 w-4" /> Générer Image
-                                                                </DropdownMenuItem>
-                                                              </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                          );
-                                                      })}
-                                                    </div>
-                                                  </ScrollArea>
-                                                )}
-                                                {isLoading && (
-                                                  <p className="text-xs text-muted-foreground italic text-center p-1 mt-2">
-                                                    Veuillez attendre la fin de l'action en cours avant d'en utiliser un autre.
-                                                  </p>
-                                                )}
-                                              </CardContent>
-                                            </Card>
-                                            <Accordion type="single" collapsible className="w-full mt-3">
-                                                <AccordionItem value="player-skills-accordion">
-                                                    <AccordionTrigger className="text-sm p-2 hover:no-underline bg-muted/30 rounded-md">
-                                                        <div className="flex items-center gap-2">
-                                                            <BookOpen className="h-4 w-4" /> Compétences
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pt-2 space-y-1 text-xs">
-                                                        {(adventureSettings.playerSkills && adventureSettings.playerSkills.length > 0) ? (
-                                                            adventureSettings.playerSkills.map(skill => (
-                                                                <TooltipProvider key={skill.id}>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="p-2 border rounded-md bg-background shadow-sm cursor-default">
-                                                                                <p className="font-medium text-foreground">{skill.name}</p>
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top" align="start" className="w-auto max-w-xs">
-                                                                            <p className="font-semibold">{skill.name}</p>
-                                                                            <p className="text-xs text-muted-foreground">{skill.description}</p>
-                                                                            {skill.category && <p className="text-xs capitalize text-primary">Catégorie: {skill.category}</p>}
-                                                                        </TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            ))
-                                                        ) : (
-                                                            <p className="text-muted-foreground italic px-2">Aucune compétence acquise.</p>
-                                                        )}
-                                                        {/* Future: Button to choose new skill on level up */}
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                            </>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-
-                    <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="characters-accordion">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                    <UsersIcon className="h-5 w-5" /> Personnages Secondaires
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                                <CharacterSidebar
-                                    characters={stagedCharacters}
-                                    onCharacterUpdate={handleCharacterUpdate}
-                                    onSaveNewCharacter={handleSaveNewCharacter}
-                                    onAddStagedCharacter={handleAddStagedCharacter}
-                                    onRelationUpdate={handleRelationUpdate}
-                                    generateImageAction={generateSceneImageAction}
-                                    rpgMode={adventureSettings.rpgMode}
-                                    relationsMode={adventureSettings.relationsMode}
-                                    strategyMode={adventureSettings.strategyMode}
-                                    playerId={playerId}
-                                    playerName={stagedAdventureSettings.playerName || "Player"}
-                                    currentLanguage={currentLanguage}
-                                    pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                      
-                     {adventureSettings.strategyMode && (
-                        <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="poi-accordion">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <MapIconLucide className="h-5 w-5" /> Points d'Intérêt
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-2">
-                                   <PoiSidebar
-                                       playerId={playerId}
-                                       playerName={playerName}
-                                       pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
-                                       characters={characters}
-                                       onMapAction={handleMapAction}
-                                       currentTurn={currentTurn}
-                                       isLoading={isLoading}
-                                       playerGold={adventureSettings.playerGold}
-                                       onBuildInPoi={onBuildInPoi}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                     )}
-
-                     {adventureSettings.rpgMode && (
-                        <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="familiars-accordion">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2">
-                                        <PawPrint className="h-5 w-5" /> Familiers
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-2">
-                                    <FamiliarSidebar
-                                        familiars={adventureSettings.familiars || []}
-                                        onFamiliarUpdate={handleFamiliarUpdate}
-                                        onSaveFamiliar={handleSaveFamiliar}
-                                        onAddStagedFamiliar={handleAddStagedFamiliar}
-                                        generateImageAction={generateSceneImageAction}
-                                        rpgMode={adventureSettings.rpgMode}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
+                      <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="characters-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <UsersIcon className="h-5 w-5" /> Personnages Secondaires
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                  <CharacterSidebar
+                                      characters={stagedCharacters}
+                                      onCharacterUpdate={handleCharacterUpdate}
+                                      onSaveNewCharacter={handleSaveNewCharacter}
+                                      onAddStagedCharacter={handleAddStagedCharacter}
+                                      onRelationUpdate={handleRelationUpdate}
+                                      generateImageAction={generateSceneImageAction}
+                                      rpgMode={adventureSettings.rpgMode}
+                                      relationsMode={adventureSettings.relationsMode}
+                                      strategyMode={adventureSettings.strategyMode}
+                                      playerId={playerId}
+                                      playerName={stagedAdventureSettings.playerName || "Player"}
+                                      currentLanguage={currentLanguage}
+                                      pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                  />
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+                        
+                      {adventureSettings.strategyMode && (
+                          <Accordion type="single" collapsible className="w-full">
+                              <AccordionItem value="poi-accordion">
+                                  <AccordionTrigger>
+                                      <div className="flex items-center gap-2">
+                                          <MapIconLucide className="h-5 w-5" /> Points d'Intérêt
+                                      </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-2">
+                                    <PoiSidebar
+                                        playerId={playerId}
+                                        playerName={playerName}
+                                        pointsOfInterest={adventureSettings.mapPointsOfInterest || []}
+                                        characters={characters}
+                                        onMapAction={handleMapAction}
+                                        currentTurn={currentTurn}
+                                        isLoading={isLoading}
+                                        playerGold={adventureSettings.playerGold}
+                                        onBuildInPoi={onBuildInPoi}
+                                      />
+                                  </AccordionContent>
+                              </AccordionItem>
+                          </Accordion>
                       )}
 
-                    <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="ai-model-config-accordion">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                <BrainCircuit className="h-5 w-5" /> Modèle IA
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2">
-                                <ModelManager
-                                   config={aiConfig}
-                                   onConfigChange={onAiConfigChange}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
+                      {adventureSettings.rpgMode && (
+                          <Accordion type="single" collapsible className="w-full">
+                              <AccordionItem value="familiars-accordion">
+                                  <AccordionTrigger>
+                                      <div className="flex items-center gap-2">
+                                          <PawPrint className="h-5 w-5" /> Familiers
+                                      </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pt-2">
+                                      <FamiliarSidebar
+                                          familiars={adventureSettings.familiars || []}
+                                          onFamiliarUpdate={handleFamiliarUpdate}
+                                          onSaveFamiliar={handleSaveFamiliar}
+                                          onAddStagedFamiliar={handleAddStagedFamiliar}
+                                          generateImageAction={generateSceneImageAction}
+                                          rpgMode={adventureSettings.rpgMode}
+                                      />
+                                  </AccordionContent>
+                              </AccordionItem>
+                          </Accordion>
+                        )}
 
-                 </SidebarContent>
-             </ScrollArea>
-            <SidebarFooter className="p-4 border-t border-sidebar-border">
-                <Button onClick={handleApplyStagedChanges} className="w-full">
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Enregistrer les modifications
-                </Button>
-            </SidebarFooter>
-       </Sidebar>
+                      <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="ai-model-config-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                  <BrainCircuit className="h-5 w-5" /> Modèle IA
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                  <ModelManager
+                                    config={aiConfig}
+                                    onConfigChange={onAiConfigChange}
+                                  />
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+
+                  </SidebarContent>
+              </ScrollArea>
+              <SidebarFooter className="p-4 border-t border-sidebar-border">
+                  <Button onClick={handleApplyStagedChanges} className="w-full">
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Enregistrer les modifications
+                  </Button>
+              </SidebarFooter>
+        </Sidebar>
+      </div>
+
        <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -1013,5 +1015,3 @@ export function PageStructure({
     </>
   );
 }
-
-
