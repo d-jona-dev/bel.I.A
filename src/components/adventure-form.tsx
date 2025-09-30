@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,6 +37,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ChevronsUpDown } from "lucide-react";
 
 
 export type FormCharacterDefinition = {
@@ -88,6 +91,7 @@ const mapPointOfInterestSchema = z.object({
     ownerId: z.string().optional(),
     level: z.number().optional(),
     buildings: z.array(z.string()).optional(),
+    defenderUnitIds: z.array(z.string()).optional(), // Add defenderUnitIds to schema
 });
 
 const timeManagementSchema = z.object({
@@ -1235,6 +1239,68 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         <CardContent className="space-y-2 p-3">
                                             <FormField control={form.control} name={`mapPointsOfInterest.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name={`mapPointsOfInterest.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+                                             <FormField
+                                                control={form.control}
+                                                name={`mapPointsOfInterest.${index}.defenderUnitIds`}
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="flex items-center gap-2"><Shield className="h-4 w-4"/> Défenseurs</FormLabel>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    className="w-full justify-between h-auto"
+                                                                >
+                                                                    <span className="truncate">
+                                                                        {field.value && field.value.length > 0 ? field.value.map(id => enemies.find(e => e.id === id)?.name || id).join(', ') : "Sélectionner des défenseurs..."}
+                                                                    </span>
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-[300px] p-0">
+                                                                <Command>
+                                                                    <CommandInput placeholder="Rechercher un ennemi..." />
+                                                                    <CommandList>
+                                                                    <CommandEmpty>Aucun ennemi trouvé.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {enemies.map((enemy) => (
+                                                                        <CommandItem
+                                                                            value={enemy.name}
+                                                                            key={enemy.id}
+                                                                            onSelect={() => {
+                                                                                const selected = field.value || [];
+                                                                                const newSelection = selected.includes(enemy.id)
+                                                                                    ? selected.filter(id => id !== enemy.id)
+                                                                                    : [...selected, enemy.id];
+                                                                                field.onChange(newSelection);
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                (field.value || []).includes(enemy.id)
+                                                                                    ? "opacity-100"
+                                                                                    : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {enemy.name}
+                                                                        </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                    </CommandList>
+                                                                </Command>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <FormDescription className="text-xs">
+                                                        Garnison qui défendra ce lieu en cas d'attaque.
+                                                        </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
                                             <FormField control={form.control} name={`mapPointsOfInterest.${index}.icon`} render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Type</FormLabel>

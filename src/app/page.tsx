@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent, EnemyUnit } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -22,6 +22,7 @@ import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
 import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
+import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import {
   AlertDialog,
   AlertDialogAction,
@@ -366,6 +367,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           
           factionColor: '#0000FF', // Blue
           locationId: 'poi-foret',
+          race: 'Elfe',
         },
         {
           id: 'frak-1',
@@ -385,6 +387,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           
           factionColor: '#FF0000', // Red
           locationId: 'poi-grotte',
+          race: 'Gobelin',
         },
         {
           id: 'snirf-1',
@@ -404,6 +407,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
           
           factionColor: '#DC143C', // Crimson
           locationId: 'poi-grotte',
+          race: 'Gobelin',
         }
     ];
 
@@ -448,6 +452,7 @@ export default function Home() {
     const [physicalFamiliarItems, setPhysicalFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
     const [creatureFamiliarItems, setCreatureFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
     const [descriptorFamiliarItems, setDescriptorFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
+    const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
 
     // Comic Draft State
     const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
@@ -918,7 +923,12 @@ export default function Home() {
         };
         
         setAdventureSettings(updater);
-        toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
+        
+        toastsToShow.forEach(toastArgs => {
+            React.startTransition(() => {
+                toast(toastArgs);
+            });
+        });
 
         setStagedAdventureSettings(prevStaged => {
             const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
@@ -1496,33 +1506,36 @@ export default function Home() {
         setAdventureSettings(prev => ({
             ...prev,
             ...effectiveStats,
-            playerCurrentHp: effectiveStats.playerMaxHp,
-            playerCurrentMp: effectiveStats.playerMaxMp
+            playerCurrentHp: prev.playerCurrentHp ?? effectiveStats.playerMaxHp,
+            playerCurrentMp: prev.playerCurrentMp ?? effectiveStats.playerMaxMp
         }));
       }
 
       const loadAllItemTypes = () => {
-          const loadType = (key: string, defaultItems: any[]) => {
+          const loadData = (key: string, baseData: any[]) => {
               try {
-                  const storedItems = localStorage.getItem(key);
-                  if (storedItems) {
-                      const customItems = JSON.parse(storedItems);
-                      const baseMap = new Map(defaultItems.map(item => [item.id, item]));
-                      const customMap = new Map(customItems.map(item => [item.id, item]));
-                      return Array.from(new Map([...baseMap, ...customMap]).values());
-                  }
+                  const storedData = localStorage.getItem(key);
+                  return storedData ? JSON.parse(storedData) : baseData;
               } catch (error) {
                   console.error(`Failed to load custom items for ${key}:`, error);
               }
-              return defaultItems;
-          }
-          setAllConsumables(loadType('custom_consumables', BASE_CONSUMABLES));
-          setAllWeapons(loadType('custom_weapons', BASE_WEAPONS));
-          setAllArmors(loadType('custom_armors', BASE_ARMORS));
-          setAllJewelry(loadType('custom_jewelry', BASE_JEWELRY));
-          setPhysicalFamiliarItems(loadType('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
-          setCreatureFamiliarItems(loadType('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
-          setDescriptorFamiliarItems(loadType('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
+              return baseData;
+          };
+          setAllConsumables(loadData('custom_consumables', BASE_CONSUMABLES));
+          setAllWeapons(loadData('custom_weapons', BASE_WEAPONS));
+          setAllArmors(loadData('custom_armors', BASE_ARMORS));
+          setAllJewelry(loadData('custom_jewelry', BASE_JEWELRY));
+          setPhysicalFamiliarItems(loadData('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
+          setCreatureFamiliarItems(loadData('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
+          setDescriptorFamiliarItems(loadData('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
+          const customEnemies = loadData('custom_enemies', []);
+          const allEnemies = [...BASE_ENEMY_UNITS, ...customEnemies].reduce((acc, current) => {
+              if (!acc.find(item => item.id === current.id)) {
+                  acc.push(current);
+              }
+              return acc;
+          }, [] as EnemyUnit[]);
+          setAllEnemies(allEnemies);
       };
 
       loadAllItemTypes();
@@ -2707,14 +2720,58 @@ export default function Home() {
     let locationIdOverride: string | undefined = undefined;
     
     if (action === 'attack') {
-        const enemiesAtPoi = baseCharacters.filter(c => c.isHostile && c.locationId === poi.id);
+        let enemiesToFight: Character[] = [];
+        const owner = characters.find(c => c.id === poi.ownerId);
 
-        if (enemiesAtPoi.length === 0) {
+        // 1. Check for defined defenders on the POI
+        if (poi.defenderUnitIds && poi.defenderUnitIds.length > 0) {
+             poi.defenderUnitIds.forEach(unitId => {
+                const enemyUnit = allEnemies.find(e => e.id === unitId);
+                if (enemyUnit) {
+                    enemiesToFight.push({
+                        ...enemyUnit,
+                        id: `${enemyUnit.id}-${uid()}`, // Make instance unique for combat
+                        hitPoints: enemyUnit.hitPoints,
+                        maxHitPoints: enemyUnit.hitPoints,
+                        locationId: poi.id,
+                    });
+                }
+            });
+        }
+        // 2. Fallback to owner's race
+        else if (owner?.race) {
+            const potentialDefenders = allEnemies.filter(unit => unit.race === owner.race);
+            if (potentialDefenders.length > 0) {
+                 const numDefenders = Math.max(1, poi.level || 1);
+                 for (let i = 0; i < numDefenders; i++) {
+                    const unit = potentialDefenders[Math.floor(Math.random() * potentialDefenders.length)];
+                     enemiesToFight.push({
+                        ...unit,
+                        id: `${unit.id}-${uid()}`,
+                        hitPoints: unit.hitPoints,
+                        maxHitPoints: unit.hitPoints,
+                        locationId: poi.id,
+                    });
+                }
+            }
+        }
+        // 3. Fallback to any hostile character at the POI
+        else {
+            enemiesToFight = characters.filter(c => c.isHostile && c.locationId === poi.id);
+        }
+
+        if (enemiesToFight.length === 0) {
             React.startTransition(() => {
                 toast({ title: "Aucun ennemi", description: "Il n'y a personne à combattre ici.", variant: "default" });
             });
             setIsLoading(false);
             return;
+        }
+
+        // Add newly generated defenders to the main characters list so they can be found by combat logic
+        const newDefenders = enemiesToFight.filter(ef => !characters.some(c => c.id === ef.id));
+        if (newDefenders.length > 0) {
+            setCharacters(prev => [...prev, ...newDefenders]);
         }
 
         const effectiveStats = calculateEffectiveStats(adventureSettings);
@@ -2744,7 +2801,7 @@ export default function Home() {
                 statusEffects: c.statusEffects || [],
             }));
 
-        const enemiesInCombat: Combatant[] = enemiesAtPoi
+        const enemiesInCombat: Combatant[] = enemiesToFight
             .map(c => ({
                 characterId: c.id,
                 name: c.name,
@@ -3164,7 +3221,7 @@ export default function Home() {
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
     setAdventureSettings(prev => {
@@ -3176,7 +3233,7 @@ export default function Home() {
     });
   }, []);
   
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[] }) => {
+  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; defenderUnitIds?: string[] }) => {
     const newPoi: MapPointOfInterest = {
         id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: data.name,
@@ -3188,6 +3245,7 @@ export default function Home() {
         lastCollectedTurn: undefined,
         resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
         buildings: data.buildings || [],
+        defenderUnitIds: data.defenderUnitIds || [],
     };
     
     const updater = (prev: AdventureSettings) => ({
@@ -4005,6 +4063,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
