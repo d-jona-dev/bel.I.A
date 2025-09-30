@@ -29,6 +29,23 @@ export interface BaseFamiliarComponent {
   universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string;
 }
 
+// NEW: Base definition for an enemy unit
+export interface EnemyUnit {
+  id: string;
+  name: string;
+  race: string; // e.g., "Elfe", "Humain", "Gobelin"
+  class: string; // e.g., "Archer", "Guerrier"
+  level: number;
+  hitPoints: number;
+  armorClass: number;
+  attackBonus: number;
+  damage: string;
+  portraitUrl?: string | null;
+  lootTable?: Array<{ itemId: string; dropChance: number; minQuantity?: number; maxQuantity?: number }>;
+  expValue: number;
+  goldValue: number;
+}
+
 
 // NEW: Represents an item being sold by a merchant, with its final price.
 export interface SellingItem {
@@ -193,6 +210,7 @@ export interface Character {
   locationId?: string | null; // ID of the MapPointOfInterest where the character is currently located.
   statusEffects?: StatusEffect[];
   _lastSaved?: number; // Timestamp of last global save
+  race?: string; // NEW: Character's race for generating appropriate defenders
 }
 
 export interface PlayerInventoryItem {
