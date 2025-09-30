@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -44,6 +43,7 @@ export interface EnemyUnit {
   lootTable?: Array<{ itemId: string; dropChance: number; minQuantity?: number; maxQuantity?: number }>;
   expValue: number;
   goldValue: number;
+  universe: 'Médiéval-Fantastique' | 'Post-Apo' | 'Futuriste' | 'Space-Opéra' | string; // Added universe
 }
 
 
@@ -723,5 +723,3 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
-
-    

@@ -1,4 +1,3 @@
-
 // src/lib/enemies.ts
 import type { EnemyUnit } from '@/types';
 
@@ -20,6 +19,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 25,
     goldValue: 5,
     lootTable: [{ itemId: 'weap-018', dropChance: 0.1 }],
+    universe: 'Médiéval-Fantastique',
   },
   {
     id: 'human-archer',
@@ -35,6 +35,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 25,
     goldValue: 5,
     lootTable: [{ itemId: 'weap-012', dropChance: 0.1 }],
+    universe: 'Médiéval-Fantastique',
   },
   {
     id: 'human-captain',
@@ -50,6 +51,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 75,
     goldValue: 20,
     lootTable: [{ itemId: 'weap-019', dropChance: 0.2 }, { itemId: 'arm-005', dropChance: 0.1 }],
+    universe: 'Médiéval-Fantastique',
   },
 
   // GOBELINS
@@ -67,6 +69,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 20,
     goldValue: 3,
     lootTable: [{ itemId: 'weap-015', dropChance: 0.05 }],
+    universe: 'Médiéval-Fantastique',
   },
   {
     id: 'goblin-shaman',
@@ -82,6 +85,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 50,
     goldValue: 10,
     lootTable: [{ itemId: 'cons-combat-heal-Commun', dropChance: 0.1 }],
+    universe: 'Médiéval-Fantastique',
   },
   
   // ELFE
@@ -99,6 +103,7 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 60,
     goldValue: 15,
     lootTable: [{ itemId: 'weap-035', dropChance: 0.1 }],
+    universe: 'Médiéval-Fantastique',
   },
    {
     id: 'elf-bladedancer',
@@ -114,5 +119,6 @@ export const BASE_ENEMY_UNITS: EnemyUnit[] = [
     expValue: 100,
     goldValue: 30,
     lootTable: [{ itemId: 'weap-031', dropChance: 0.15 }],
+    universe: 'Médiéval-Fantastique',
   },
 ];

@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 
 
 export type FormCharacterDefinition = {
@@ -170,6 +171,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     
     const [isDebugItemsOpen, setIsDebugItemsOpen] = React.useState(false);
     const [debugItems, setDebugItems] = React.useState<Record<string, BaseItem[]>>({});
+    
+    // NEW: Enemy Management State
+    const [enemies, setEnemies] = React.useState<EnemyUnit[]>([]);
+    const [editingEnemy, setEditingEnemy] = React.useState<EnemyUnit | null>(null);
+    const [isEnemyEditorOpen, setIsEnemyEditorOpen] = React.useState(false);
 
 
     const form = useForm<AdventureFormValues>({
@@ -218,11 +224,103 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             setPhysicalFamiliarItems(loadData('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
             setCreatureFamiliarItems(loadData('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
             setDescriptorFamiliarItems(loadData('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
+            
+            // Load enemies
+            const customEnemies = loadData('custom_enemies', []);
+            const allEnemies = [...BASE_ENEMY_UNITS, ...customEnemies].reduce((acc, current) => {
+                if (!acc.find(item => item.id === current.id)) {
+                    acc.push(current);
+                }
+                return acc;
+            }, [] as EnemyUnit[]);
+            setEnemies(allEnemies);
 
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
         }
     }, []);
+    
+    // NEW: Enemy Management Functions
+    const saveEnemies = (updatedEnemies: EnemyUnit[]) => {
+        const customEnemies = updatedEnemies.filter(enemy => !BASE_ENEMY_UNITS.some(base => base.id === enemy.id));
+        setEnemies(updatedEnemies);
+        localStorage.setItem('custom_enemies', JSON.stringify(customEnemies));
+    };
+
+    const handleSaveEnemy = () => {
+        if (!editingEnemy || !editingEnemy.name.trim()) {
+            toast({ title: "Erreur", description: "Le nom de l'ennemi est requis.", variant: "destructive" });
+            return;
+        }
+        
+        const isNew = editingEnemy.id.startsWith('new-');
+        let updatedEnemies;
+
+        if (isNew) {
+            const newEnemy = {...editingEnemy, id: `custom-${editingEnemy.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`};
+            updatedEnemies = [...enemies, newEnemy];
+        } else {
+            updatedEnemies = enemies.map(e => e.id === editingEnemy.id ? editingEnemy : e);
+        }
+        
+        saveEnemies(updatedEnemies);
+        toast({ title: "Ennemi Sauvegardé", description: `"${editingEnemy.name}" a été mis à jour.`});
+        setIsEnemyEditorOpen(false);
+        setEditingEnemy(null);
+    };
+    
+    const handleAddNewEnemy = () => {
+        setEditingEnemy({
+            id: `new-enemy-${Date.now()}`,
+            name: "",
+            race: "",
+            class: "",
+            level: 1,
+            hitPoints: 10,
+            armorClass: 10,
+            attackBonus: 0,
+            damage: "1d6",
+            expValue: 10,
+            goldValue: 5,
+            universe: 'Médiéval-Fantastique',
+            lootTable: [],
+        });
+        setIsEnemyEditorOpen(true);
+    };
+
+    const handleDeleteEnemy = (enemyId: string) => {
+        const enemyToDelete = enemies.find(e => e.id === enemyId);
+        if (enemyToDelete && BASE_ENEMY_UNITS.some(base => base.id === enemyId)) {
+            toast({ title: "Suppression Impossible", description: "Vous ne pouvez pas supprimer un ennemi de base.", variant: 'destructive'});
+            return;
+        }
+        const updatedEnemies = enemies.filter(e => e.id !== enemyId);
+        saveEnemies(updatedEnemies);
+        toast({ title: "Ennemi Supprimé" });
+    };
+
+    const handleLootTableChange = (enemyId: string, itemId: string, checked: boolean) => {
+        if (!editingEnemy || editingEnemy.id !== enemyId) return;
+
+        let newLootTable = [...(editingEnemy.lootTable || [])];
+        if (checked) {
+            if (!newLootTable.some(item => item.itemId === itemId)) {
+                newLootTable.push({ itemId, dropChance: 0.1 }); // Default drop chance
+            }
+        } else {
+            newLootTable = newLootTable.filter(item => item.itemId !== itemId);
+        }
+        setEditingEnemy({ ...editingEnemy, lootTable: newLootTable });
+    };
+
+    const handleDropChanceChange = (enemyId: string, itemId: string, chance: number) => {
+        if (!editingEnemy || editingEnemy.id !== enemyId) return;
+        const newLootTable = (editingEnemy.lootTable || []).map(item =>
+            item.itemId === itemId ? { ...item, dropChance: chance } : item
+        );
+        setEditingEnemy({ ...editingEnemy, lootTable: newLootTable });
+    };
+
 
     const saveItems = (type: BaseItem['type'], items: BaseItem[]) => {
         const keyMap = {
@@ -894,6 +992,37 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                         </AccordionContent>
                     </AccordionItem>
+                    <AccordionItem value="enemy-config">
+                        <AccordionTrigger>Configuration des Ennemis</AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-4">
+                             <div className="flex justify-between items-center">
+                                <CardDescription>Gérez la base de données des unités ennemies.</CardDescription>
+                                <Button size="sm" variant="outline" onClick={handleAddNewEnemy}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+                            </div>
+                            <ScrollArea className="h-96 border rounded-md p-2">
+                                <div className="space-y-2">
+                                    {enemies.map(enemy => (
+                                        <Card key={enemy.id} className="p-2 flex justify-between items-center bg-muted/20">
+                                            <div>
+                                                <p className="font-semibold text-sm">{enemy.name} <span className="text-xs text-muted-foreground">(Niv. {enemy.level}, {enemy.race})</span></p>
+                                                <p className="text-xs text-muted-foreground">{enemy.class}</p>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                {!BASE_ENEMY_UNITS.some(base => base.id === enemy.id) && (
+                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteEnemy(enemy.id)}>
+                                                        <Trash2 className="h-4 w-4"/>
+                                                    </Button>
+                                                )}
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingEnemy(JSON.parse(JSON.stringify(enemy))); setIsEnemyEditorOpen(true);}}>
+                                                    <FilePenLine className="h-4 w-4"/>
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </AccordionContent>
+                    </AccordionItem>
                     <AccordionItem value="time-management-config">
                         <AccordionTrigger>Gestion avancée du temps</AccordionTrigger>
                         <AccordionContent className="pt-2 space-y-4">
@@ -1147,7 +1276,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                             <SelectContent>
                                                                 {Object.keys(poiLevelConfig[currentPoiType as keyof typeof poiLevelConfig] || {}).map(Number).map(level => (
-                                                                    <SelectItem key={level} value={level.toString()}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
+                                                                    <SelectItem key={level} value={String(level)}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -1379,6 +1508,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </AccordionItem>
                 </Accordion>
             </div>
+            {/* ITEM EDITOR DIALOG */}
              <Dialog open={isItemEditorOpen} onOpenChange={setIsItemEditorOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -1561,15 +1691,93 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {/* ENEMY EDITOR DIALOG */}
+            <Dialog open={isEnemyEditorOpen} onOpenChange={setIsEnemyEditorOpen}>
+                 <DialogContent className="max-w-4xl">
+                     <DialogHeader>
+                         <DialogTitle>{editingEnemy?.id.startsWith('new-') ? "Créer une Unité Ennemie" : `Modifier ${editingEnemy?.name}`}</DialogTitle>
+                     </DialogHeader>
+                     {editingEnemy && (
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                             {/* Left Column: Basic Info */}
+                             <div className="space-y-4">
+                                 <div className="space-y-2">
+                                     <Label>Nom</Label>
+                                     <Input value={editingEnemy.name} onChange={e => setEditingEnemy({...editingEnemy, name: e.target.value})} />
+                                 </div>
+                                 <div className="space-y-2">
+                                     <Label>Race</Label>
+                                     <Input value={editingEnemy.race} onChange={e => setEditingEnemy({...editingEnemy, race: e.target.value})} />
+                                 </div>
+                                 <div className="space-y-2">
+                                     <Label>Classe</Label>
+                                     <Input value={editingEnemy.class} onChange={e => setEditingEnemy({...editingEnemy, class: e.target.value})} />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <Label>Univers</Label>
+                                    <Select value={editingEnemy.universe} onValueChange={(v) => setEditingEnemy({...editingEnemy, universe: v})}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{allUniverses.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                 </div>
+                                 <div className="space-y-2">
+                                     <Label>Portrait URL</Label>
+                                     <Input value={editingEnemy.portraitUrl || ''} onChange={e => setEditingEnemy({...editingEnemy, portraitUrl: e.target.value})} />
+                                 </div>
+                             </div>
+                             {/* Right Column: Stats & Loot */}
+                             <div className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                     <div className="space-y-2"><Label>Niveau</Label><Input type="number" value={editingEnemy.level} onChange={e => setEditingEnemy({...editingEnemy, level: Number(e.target.value)})} /></div>
+                                     <div className="space-y-2"><Label>PV</Label><Input type="number" value={editingEnemy.hitPoints} onChange={e => setEditingEnemy({...editingEnemy, hitPoints: Number(e.target.value)})} /></div>
+                                     <div className="space-y-2"><Label>CA</Label><Input type="number" value={editingEnemy.armorClass} onChange={e => setEditingEnemy({...editingEnemy, armorClass: Number(e.target.value)})} /></div>
+                                     <div className="space-y-2"><Label>Bonus Attaque</Label><Input type="number" value={editingEnemy.attackBonus} onChange={e => setEditingEnemy({...editingEnemy, attackBonus: Number(e.target.value)})} /></div>
+                                     <div className="space-y-2"><Label>Dégâts</Label><Input value={editingEnemy.damage} onChange={e => setEditingEnemy({...editingEnemy, damage: e.target.value})} /></div>
+                                     <div className="space-y-2"><Label>EXP Donnée</Label><Input type="number" value={editingEnemy.expValue} onChange={e => setEditingEnemy({...editingEnemy, expValue: Number(e.target.value)})} /></div>
+                                     <div className="space-y-2"><Label>Or Donné</Label><Input type="number" value={editingEnemy.goldValue} onChange={e => setEditingEnemy({...editingEnemy, goldValue: Number(e.target.value)})} /></div>
+                                  </div>
+                                  <Separator/>
+                                   <div className="space-y-2">
+                                     <Label>Table de Butin</Label>
+                                     <ScrollArea className="h-40 border rounded-md p-2">
+                                         <div className="space-y-2">
+                                         {[...consumables, ...weapons, ...armors, ...jewelry].map(item => (
+                                             <div key={item.id} className="flex items-center justify-between p-1 bg-background rounded">
+                                                 <div className="flex items-center space-x-2">
+                                                     <Checkbox
+                                                        id={`loot-${item.id}`}
+                                                        checked={editingEnemy.lootTable?.some(loot => loot.itemId === item.id)}
+                                                        onCheckedChange={checked => handleLootTableChange(editingEnemy!.id, item.id, !!checked)}
+                                                     />
+                                                     <Label htmlFor={`loot-${item.id}`} className="text-xs font-normal truncate">{item.name}</Label>
+                                                 </div>
+                                                 {editingEnemy.lootTable?.some(loot => loot.itemId === item.id) && (
+                                                      <div className="flex items-center gap-1">
+                                                        <Input 
+                                                          type="number" 
+                                                          min="0" max="1" step="0.01" 
+                                                          className="h-7 w-20 text-xs" 
+                                                          value={editingEnemy.lootTable.find(loot => loot.itemId === item.id)?.dropChance || 0.1}
+                                                          onChange={e => handleDropChanceChange(editingEnemy!.id, item.id, Number(e.target.value))}
+                                                        />
+                                                      </div>
+                                                 )}
+                                             </div>
+                                         ))}
+                                         </div>
+                                     </ScrollArea>
+                                 </div>
+                             </div>
+                         </div>
+                     )}
+                     <DialogFooter>
+                         <Button variant="outline" onClick={() => { setIsEnemyEditorOpen(false); setEditingEnemy(null); }}>Annuler</Button>
+                         <Button onClick={handleSaveEnemy}>Sauvegarder</Button>
+                     </DialogFooter>
+                 </DialogContent>
+            </Dialog>
         </form>
         </Form>
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    
-
-    
-
-
-    
