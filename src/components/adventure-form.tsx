@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -40,6 +41,7 @@ import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 
 export type FormCharacterDefinition = {
@@ -261,7 +263,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         let updatedEnemies;
 
         if (isNew) {
-            const newEnemy = {...editingEnemy, id: `custom-${editingEnemy.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`};
+            const newEnemy = {...editingEnemy, id: `custom-${editingEnemy.name.toLowerCase().replace(/\s/g, '-')}-${Date.now()}`};
             updatedEnemies = [...enemies, newEnemy];
         } else {
             updatedEnemies = enemies.map(e => e.id === editingEnemy.id ? editingEnemy : e);
