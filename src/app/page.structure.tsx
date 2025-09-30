@@ -1,4 +1,5 @@
 
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -658,15 +659,24 @@ export function PageStructure({
                                                               const item = getEquippedItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>);
                                                               return (
                                                                   <div key={slot} className="flex items-center justify-between p-2 border rounded-md bg-background shadow-sm">
-                                                                      <div className="flex items-center gap-2">
-                                                                          <SlotIcon className="h-4 w-4 text-muted-foreground" />
-                                                                          <span className="font-medium">{label}:</span>
-                                                                          <span className="text-muted-foreground truncate max-w-[100px]">{item ? item.name : "Vide"}</span>
+                                                                      <div className="flex items-center gap-2 overflow-hidden">
+                                                                          <SlotIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                                                          <span className="font-medium flex-shrink-0">{label}:</span>
+                                                                          <span className="text-muted-foreground truncate">{item ? item.name : "Vide"}</span>
                                                                       </div>
                                                                       {item && (
-                                                                          <Button variant="outline" size="xs" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
-                                                                              Déséquiper
-                                                                          </Button>
+                                                                          <TooltipProvider>
+                                                                            <Tooltip>
+                                                                              <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
+                                                                                    <Trash2Icon className="h-4 w-4" />
+                                                                                </Button>
+                                                                              </TooltipTrigger>
+                                                                              <TooltipContent>
+                                                                                <p>Déséquiper</p>
+                                                                              </TooltipContent>
+                                                                            </Tooltip>
+                                                                          </TooltipProvider>
                                                                       )}
                                                                   </div>
                                                               );
@@ -1015,3 +1025,4 @@ export function PageStructure({
     </>
   );
 }
+
