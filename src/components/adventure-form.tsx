@@ -39,7 +39,7 @@ import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIA
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -1262,7 +1262,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                 </Button>
                                                                 </FormControl>
                                                             </PopoverTrigger>
-                                                            <PopoverContent className="w-[300px] p-0">
+                                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                                                 <Command>
                                                                     <CommandInput placeholder="Rechercher un ennemi..." />
                                                                     <CommandList>
