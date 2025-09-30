@@ -886,6 +886,8 @@ export default function Home() {
     const handlePoiOwnershipChange = React.useCallback((changes: { poiId: string; newOwnerId: string }[]) => {
         if (!changes || changes.length === 0) return;
 
+        const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
+        
         const updater = (prev: AdventureSettings): AdventureSettings => {
             if (!prev.mapPointsOfInterest) return prev;
 
@@ -903,11 +905,9 @@ export default function Home() {
                         pois[poiIndex] = { ...poi, ownerId: change.newOwnerId };
                         changed = true;
                         
-                        React.startTransition(() => {
-                            toast({
-                                title: "Changement de Territoire!",
-                                description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
-                            });
+                        toastsToShow.push({
+                            title: "Changement de Territoire!",
+                            description: `${poi.name} est maintenant sous le contrôle de ${newOwnerName}.`
                         });
                     }
                 }
@@ -918,6 +918,8 @@ export default function Home() {
         };
         
         setAdventureSettings(updater);
+        toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
+
         setStagedAdventureSettings(prevStaged => {
             const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
             const finalPois = updater(updatedLiveState).mapPointsOfInterest;
@@ -1490,7 +1492,6 @@ export default function Home() {
           localStorage.removeItem('loadStoryOnMount');
           localStorage.removeItem('currentAdventureState');
       } else {
-        // This is the new logic for initial load without a saved state
         const effectiveStats = calculateEffectiveStats(adventureSettings);
         setAdventureSettings(prev => ({
             ...prev,
@@ -1529,6 +1530,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAdventureState, toast]);
 
     const fetchInitialSkill = React.useCallback(async () => {
@@ -1741,108 +1743,106 @@ export default function Home() {
     }, [itemToUse, activeCombat, toast, handleNarrativeUpdate, callGenerateAdventure]);
 
   const handlePlayerItemAction = React.useCallback((itemId: string, action: 'use' | 'discard') => {
-    React.startTransition(() => {
-        let itemActionSuccessful = false;
-        let narrativeAction = "";
-        let effectAppliedMessage = "";
-        let itemUsedOrDiscarded: PlayerInventoryItem | undefined;
+    let itemActionSuccessful = false;
+    let narrativeAction = "";
+    let effectAppliedMessage = "";
+    let itemUsedOrDiscarded: PlayerInventoryItem | undefined;
 
-        setAdventureSettings(prevSettings => {
-            if (!prevSettings.rpgMode || !prevSettings.playerInventory) {
-                 React.startTransition(() => {toast({ title: action === 'use' ? "Utilisation Impossible" : "Action Impossible", description: "Le mode RPG doit être actif et vous devez avoir des objets.", variant: "default" });});
-                itemActionSuccessful = false;
+    setAdventureSettings(prevSettings => {
+        if (!prevSettings.rpgMode || !prevSettings.playerInventory) {
+             React.startTransition(() => {toast({ title: action === 'use' ? "Utilisation Impossible" : "Action Impossible", description: "Le mode RPG doit être actif et vous devez avoir des objets.", variant: "default" });});
+            itemActionSuccessful = false;
+            return prevSettings;
+        }
+
+        const newInventory = [...prevSettings.playerInventory];
+        const itemIndex = newInventory.findIndex(invItem => invItem.id === itemId && invItem.quantity > 0);
+
+        if (itemIndex === -1) {
+             const item = prevSettings.playerInventory.find(i => i.id === itemId);
+             React.startTransition(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });});
+            itemActionSuccessful = false;
+            return prevSettings;
+        }
+
+        const itemToUpdate = { ...newInventory[itemIndex] };
+        itemUsedOrDiscarded = itemToUpdate;
+        
+        let changes: Partial<AdventureSettings> = {};
+
+        if (action === 'use') {
+            if (itemToUpdate.effectType === 'combat' && activeCombat?.isActive) {
+                setItemToUse(itemToUpdate);
+                setIsTargeting(true);
+                itemActionSuccessful = false; 
                 return prevSettings;
             }
-
-            const newInventory = [...prevSettings.playerInventory];
-            const itemIndex = newInventory.findIndex(invItem => invItem.id === itemId && invItem.quantity > 0);
-
-            if (itemIndex === -1) {
-                 const item = prevSettings.playerInventory.find(i => i.id === itemId);
-                 React.startTransition(() => {toast({ title: "Objet Introuvable", description: `Vous n'avez pas de "${item?.name || itemId}" ${action === 'use' ? 'utilisable' : ''} ou en quantité suffisante.`, variant: "destructive" });});
-                itemActionSuccessful = false;
-                return prevSettings;
-            }
-
-            const itemToUpdate = { ...newInventory[itemIndex] };
-            itemUsedOrDiscarded = itemToUpdate;
             
-            let changes: Partial<AdventureSettings> = {};
-
-            if (action === 'use') {
-                if (itemToUpdate.effectType === 'combat' && activeCombat?.isActive) {
-                    setItemToUse(itemToUpdate);
-                    setIsTargeting(true);
-                    itemActionSuccessful = false; 
-                    return prevSettings;
-                }
-                
-                narrativeAction = `J'utilise ${itemToUpdate.name}.`;
-                if (itemToUpdate.type === 'consumable') {
-                    if (itemToUpdate.familiarDetails) {
-                        // This specific item summons a familiar
-                        handleUseFamiliarItem(itemToUpdate);
-                        itemActionSuccessful = false; // The other function will handle narrative and state updates
-                        narrativeAction = "";
-                        effectAppliedMessage = "";
-                        return prevSettings; // Return early
-                    } else if (itemToUpdate.effectDetails && itemToUpdate.effectDetails.type === 'heal') {
-                        const hpChange = itemToUpdate.effectDetails.amount;
-                        const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
-                        changes = { playerCurrentHp: newPlayerHp };
-                        effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
-                        newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                        itemActionSuccessful = true;
-                    } else {
-                       toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate.name} est narratif ou requiert une situation spécifique.`, variant: "default" });
-                       itemActionSuccessful = true; // Still consume for narrative effect
-                       newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                    }
-                } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
-                     React.startTransition(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });});
-                    itemActionSuccessful = false;
-                    return prevSettings;
-                } else { 
-                    React.startTransition(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });});
+            narrativeAction = `J'utilise ${itemToUpdate.name}.`;
+            if (itemToUpdate.type === 'consumable') {
+                if (itemToUpdate.familiarDetails) {
+                    // This specific item summons a familiar
+                    handleUseFamiliarItem(itemToUpdate);
+                    itemActionSuccessful = false; // The other function will handle narrative and state updates
+                    narrativeAction = "";
+                    effectAppliedMessage = "";
+                    return prevSettings; // Return early
+                } else if (itemToUpdate.effectDetails && itemToUpdate.effectDetails.type === 'heal') {
+                    const hpChange = itemToUpdate.effectDetails.amount;
+                    const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
+                    changes = { playerCurrentHp: newPlayerHp };
+                    effectAppliedMessage = `${itemToUpdate.name} utilisé. PV restaurés: ${hpChange}.`;
                     newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                     itemActionSuccessful = true;
+                } else {
+                   toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate.name} est narratif ou requiert une situation spécifique.`, variant: "default" });
+                   itemActionSuccessful = true; // Still consume for narrative effect
+                   newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
                 }
-            } else if (action === 'discard') {
-                narrativeAction = `Je jette ${itemToUpdate.name}.`;
+            } else if (itemToUpdate.type === 'weapon' || itemToUpdate.type === 'armor' || itemToUpdate.type === 'jewelry') {
+                 React.startTransition(() => {toast({ title: "Action Requise", description: `Veuillez "Équiper" ${itemToUpdate?.name} plutôt que de l'utiliser.`, variant: "default" });});
+                itemActionSuccessful = false;
+                return prevSettings;
+            } else { 
+                React.startTransition(() => {toast({ title: "Utilisation Narrative", description: `L'effet de ${itemToUpdate?.name} est narratif.`, variant: "default" });});
                 newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
-                effectAppliedMessage = `${itemToUpdate.name} a été jeté.`;
-                if (itemToUpdate.isEquipped) {
-                    if (prevSettings.equippedItemIds?.weapon === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), weapon: null };
-                    else if (prevSettings.equippedItemIds?.armor === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), armor: null };
-                    else if (prevSettings.equippedItemIds?.jewelry === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), jewelry: null };
-                    newInventory[itemIndex].isEquipped = false;
-                }
                 itemActionSuccessful = true;
             }
-
-            if (newInventory[itemIndex]?.quantity <= 0) {
-                newInventory.splice(itemIndex, 1);
+        } else if (action === 'discard') {
+            narrativeAction = `Je jette ${itemToUpdate.name}.`;
+            newInventory[itemIndex] = { ...itemToUpdate, quantity: itemToUpdate.quantity - 1 };
+            effectAppliedMessage = `${itemToUpdate.name} a été jeté.`;
+            if (itemToUpdate.isEquipped) {
+                if (prevSettings.equippedItemIds?.weapon === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), weapon: null };
+                else if (prevSettings.equippedItemIds?.armor === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), armor: null };
+                else if (prevSettings.equippedItemIds?.jewelry === itemToUpdate.id) changes.equippedItemIds = { ...(prevSettings.equippedItemIds || {}), jewelry: null };
+                newInventory[itemIndex].isEquipped = false;
             }
-            changes.playerInventory = newInventory;
-            
-            const newSettings = { ...prevSettings, ...changes };
-            
-            if(changes.equippedItemIds) {
-                const effectiveStats = calculateEffectiveStats(newSettings);
-                return { ...newSettings, ...effectiveStats };
-            }
-
-            return newSettings;
-        });
-
-        if (itemActionSuccessful && narrativeAction) {
-             if(effectAppliedMessage) {
-                React.startTransition(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); });
-            }
-            handleNarrativeUpdate(narrativeAction, 'user');
-            callGenerateAdventure(narrativeAction);
+            itemActionSuccessful = true;
         }
+
+        if (newInventory[itemIndex]?.quantity <= 0) {
+            newInventory.splice(itemIndex, 1);
+        }
+        changes.playerInventory = newInventory;
+        
+        const newSettings = { ...prevSettings, ...changes };
+        
+        if(changes.equippedItemIds) {
+            const effectiveStats = calculateEffectiveStats(newSettings);
+            return { ...newSettings, ...effectiveStats };
+        }
+
+        return newSettings;
     });
+
+    if (itemActionSuccessful && narrativeAction) {
+         if(effectAppliedMessage) {
+            React.startTransition(() => { toast({ title: "Action d'Objet", description: effectAppliedMessage }); });
+        }
+        handleNarrativeUpdate(narrativeAction, 'user');
+        callGenerateAdventure(narrativeAction);
+    }
   }, [
     callGenerateAdventure, handleNarrativeUpdate, toast, handleUseFamiliarItem, activeCombat
   ]);
@@ -4005,6 +4005,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
