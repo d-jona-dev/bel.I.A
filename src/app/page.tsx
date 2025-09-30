@@ -1489,6 +1489,15 @@ export default function Home() {
           }
           localStorage.removeItem('loadStoryOnMount');
           localStorage.removeItem('currentAdventureState');
+      } else {
+        // This is the new logic for initial load without a saved state
+        const effectiveStats = calculateEffectiveStats(adventureSettings);
+        setAdventureSettings(prev => ({
+            ...prev,
+            ...effectiveStats,
+            playerCurrentHp: effectiveStats.playerMaxHp,
+            playerCurrentMp: effectiveStats.playerMaxMp
+        }));
       }
 
       const loadAllItemTypes = () => {
@@ -3996,6 +4005,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 
