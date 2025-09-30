@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,7 +40,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
-import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -1253,16 +1252,22 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                 <Button
                                                                     variant="outline"
                                                                     role="combobox"
-                                                                    className="w-full justify-between h-auto"
+                                                                    className="w-full justify-between h-auto text-left font-normal"
                                                                 >
-                                                                    <span className="truncate">
-                                                                        {field.value && field.value.length > 0 ? field.value.map(id => enemies.find(e => e.id === id)?.name || id).join(', ') : "Sélectionner des défenseurs..."}
-                                                                    </span>
+                                                                    {field.value && field.value.length > 0 ? (
+                                                                        <div className="flex flex-col items-start">
+                                                                            {field.value.map(id => (
+                                                                                <span key={id} className="block truncate text-xs p-0.5">- {enemies.find(e => e.id === id)?.name || id}</span>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-muted-foreground">Défenseurs...</span>
+                                                                    )}
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                                 </FormControl>
                                                             </PopoverTrigger>
-                                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
                                                                 <Command>
                                                                     <CommandInput placeholder="Rechercher un ennemi..." />
                                                                     <CommandList>
@@ -1849,3 +1854,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
