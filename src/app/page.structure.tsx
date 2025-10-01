@@ -286,7 +286,7 @@ export function PageStructure({
 
 
   return (
-    <>
+    <div className="flex w-full h-screen">
       {/* Left Sidebar: Global Actions & Navigation */}
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4 border-b border-sidebar-border">
@@ -668,7 +668,7 @@ export function PageStructure({
                                                                           <TooltipProvider>
                                                                             <Tooltip>
                                                                               <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
+                                                                                <Button variant="ghost" size="xs" className="h-7 w-7 text-destructive" onClick={() => handleUnequipItem(slot as keyof NonNullable<AdventureSettings['equippedItemIds']>)} disabled={isLoading}>
                                                                                     <Trash2Icon className="h-4 w-4" />
                                                                                 </Button>
                                                                               </TooltipTrigger>
@@ -1022,7 +1022,6 @@ export function PageStructure({
                 </AlertDialogContent>
             </AlertDialog>
         )}
-    </>
+    </div>
   );
 }
-

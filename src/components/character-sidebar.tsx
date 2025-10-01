@@ -642,7 +642,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                          )}
                     </Avatar>
-                    <span className="font-medium truncate">{char.name} {rpgMode && char.level ? `(Niv. ${char.level})` : ''} {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500"/> : ''}</span>
+                    <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
+                    {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500 flex-shrink-0"/> : ''}
                     {isPotentiallyNew && (
                         <TooltipProvider>
                             <Tooltip>
@@ -690,7 +691,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                             </Button>
                                         </DropdownMenuTrigger>
                                     </TooltipTrigger>
-                                    <TooltipContent>Style d'image</TooltipContent>
+                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                              <DropdownMenuContent>
@@ -708,11 +709,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="outline" size="sm" onClick={handleGeneratePortrait} disabled={imageLoadingStates[char.id]}>
-                                        <Wand2 className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Générer" : "Generate"}
-                                    </Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</TooltipContent>
+                                <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                         <input
@@ -725,15 +724,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}
-                                    >
-                                        <UploadCloud className="h-4 w-4 mr-1"/> {currentLanguage === 'fr' ? "Télécharger" : "Upload"}
-                                    </Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</TooltipContent>
+                                <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                         <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>

@@ -257,9 +257,23 @@ export function FamiliarSidebar({
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
-                                    <Button variant="outline" size="sm" onClick={() => handleGeneratePortrait(familiar)} disabled={imageLoadingStates[familiar.id]}><Wand2 className="h-4 w-4 mr-1"/> IA</Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait(familiar)} disabled={imageLoadingStates[familiar.id]}><Wand2 className="h-4 w-4"/></Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Générer un portrait avec l'IA.</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <input type="file" accept="image/*" id={`upload-familiar-${familiar.id}`} className="hidden" onChange={(e) => handleUploadPortrait(familiar.id, e)} />
-                                    <Button variant="outline" size="sm" onClick={() => document.getElementById(`upload-familiar-${familiar.id}`)?.click()}><UploadCloud className="h-4 w-4 mr-1"/> Télécharger</Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-familiar-${familiar.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Télécharger un portrait personnalisé.</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                            </div>
                            <Separator/>
@@ -284,7 +298,7 @@ export function FamiliarSidebar({
                                 <Button variant={familiar.isActive ? "secondary" : "default"} onClick={() => handleToggleActive(familiar.id)}>{familiar.isActive ? 'Renvoyer' : 'Faire Suivre'}</Button>
                                 <Button variant="outline" onClick={() => onSaveFamiliar(familiar)}>
                                     <Save className="h-4 w-4 mr-2" />
-                                    {familiar._lastSaved ? `Sauvegardé` : 'Sauvegarder Globalement'}
+                                    {familiar._lastSaved ? `Sauvegardé` : 'Sauvegarder'}
                                 </Button>
                            </div>
                         </AccordionContent>
