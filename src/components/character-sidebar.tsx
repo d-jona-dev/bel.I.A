@@ -106,7 +106,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
           <Card className="bg-muted/30 border">
               <CardContent className="p-3 space-y-2">
                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`${charId}-relations-${playerId}`} className="w-1/3 truncate text-sm">{playerName} (Joueur)</Label>
+                      <Label htmlFor={`${charId}-relations-${playerId}`} className="truncate text-sm shrink-0">{playerName} (Joueur)</Label>
                       <Input
                           id={`${charId}-relations-${playerId}`}
                           type="text"
@@ -120,7 +120,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 
                   {otherCharacters.map(otherChar => (
                       <div key={otherChar.id} className="flex items-center gap-2">
-                          <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="w-1/3 truncate text-sm">{otherChar.name}</Label>
+                          <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="truncate text-sm shrink-0">{otherChar.name}</Label>
                           <Input
                               id={`${charId}-relations-${otherChar.id}`}
                               type="text"
@@ -662,7 +662,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => onSaveNewCharacter(char)}>
-                                    <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder Globalement" : "Save Globally"}
+                                    <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder" : "Save"}
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures."}</TooltipContent>
@@ -1016,3 +1016,4 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
