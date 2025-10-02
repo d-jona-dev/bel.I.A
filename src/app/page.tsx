@@ -500,7 +500,7 @@ export default function Home() {
 
     // --- Core Action Handlers ---
     
-    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => {
+    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterName?: string) => {
         const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
             id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
             name: item.itemName,
@@ -524,6 +524,7 @@ export default function Home() {
             imageTransform: type === 'ai' ? imageTransform : undefined,
             loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
             lootTaken: false,
+            speakingCharacterName: speakingCharacterName,
         };
         setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
     }, []);
@@ -1160,6 +1161,7 @@ export default function Home() {
             playerName: liveSettings.playerName || "Player",
             rpgModeActive: liveSettings.rpgMode,
             relationsModeActive: liveSettings.relationsMode ?? true,
+            comicModeActive: liveSettings.comicModeActive ?? false,
             activeCombat: liveCombat,
             playerGold: liveSettings.playerGold,
             playerSkills: liveSettings.playerSkills,
@@ -1213,7 +1215,7 @@ export default function Home() {
                     let finalLoot = [...(result.itemsObtained || [])];
                     
                                     
-                    handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot);
+                    handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot, undefined, undefined, result.speakingCharacterName);
     
                     if (result.newCharacters) handleNewCharacters(result.newCharacters);
                     if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
@@ -2238,6 +2240,7 @@ export default function Home() {
                  playerName: currentTurnSettings.playerName || "Player",
                  relationsModeActive: currentTurnSettings.relationsMode ?? true,
                  rpgModeActive: currentTurnSettings.rpgMode ?? false,
+                 comicModeActive: currentTurnSettings.comicModeActive ?? false,
                  activeCombat: currentActiveCombatRegen,
                  playerGold: currentTurnSettings.playerGold,
                  playerSkills: currentTurnSettings.playerSkills,
@@ -2302,6 +2305,7 @@ export default function Home() {
                            isEquipped: false,
                         })),
                         lootTaken: false,
+                        speakingCharacterName: result.speakingCharacterName,
                     };
                     if (lastAiIndex !== -1) {
                         newNarrative.splice(lastAiIndex, 1, newAiMessage);
@@ -2677,6 +2681,9 @@ export default function Home() {
   };
   const handleToggleRelationsMode = () => {
       setAdventureSettings(prev => ({ ...prev, relationsMode: !prev.relationsMode }));
+  };
+   const handleToggleComicMode = () => {
+      setAdventureSettings(prev => ({ ...prev, comicModeActive: !prev.comicModeActive }));
   };
 
   const generateDynamicFamiliarBonus = React.useCallback((rarity: Familiar['rarity']): FamiliarPassiveBonus => {
@@ -3234,7 +3241,7 @@ export default function Home() {
     setIsLoading(false);
   }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies]);
 
-  const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number; y: number }) => {
+  const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
     setAdventureSettings(prev => {
         if (!prev.mapPointsOfInterest) return prev;
         const newPois = prev.mapPointsOfInterest.map(poi => 
@@ -3327,6 +3334,7 @@ export default function Home() {
       rpgMode: stagedAdventureSettings.rpgMode,
       relationsMode: stagedAdventureSettings.relationsMode,
       strategyMode: stagedAdventureSettings.strategyMode,
+      comicModeActive: stagedAdventureSettings.comicModeActive,
       mapPointsOfInterest: stagedAdventureSettings.mapPointsOfInterest,
       playerName: stagedAdventureSettings.playerName,
       playerClass: stagedAdventureSettings.playerClass,
@@ -4074,6 +4082,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 

@@ -65,7 +65,7 @@ interface AdventureDisplayProps {
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterName?: string) => void;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
@@ -422,6 +422,24 @@ export function AdventureDisplay({
     return (shoppingCart || []).reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
   }, [shoppingCart]);
 
+  // NEW: Function to parse and format the comic-style narrative
+  const renderFormattedNarrative = (text: string) => {
+    const parts = text.split(/(\*.*?\*)|(".*?")/g).filter(Boolean);
+    return (
+      <>
+        {parts.map((part, index) => {
+          if (part.startsWith('"') && part.endsWith('"')) {
+            return <strong key={index}>{part.slice(1, -1)}</strong>; // Dialogue
+          }
+          if (part.startsWith('*') && part.endsWith('*')) {
+            return <em key={index}>{part.slice(1, -1)}</em>; // Thought
+          }
+          return <React.Fragment key={index}>{part}</React.Fragment>; // Narration
+        })}
+      </>
+    );
+  };
+
 
   const PlayerStatusCard = () => {
     if (!adventureSettings.rpgMode) return null;
@@ -629,19 +647,26 @@ export function AdventureDisplay({
                                   const isLastAiMessage = isLastMessage && message.type === 'ai';
                                   const isFirstMessage = index === 0;
                                   const showLootInteraction = message.type === 'ai' && message.loot && message.loot.length > 0 && !message.lootTaken;
+                                  const speaker = message.type === 'ai' && message.speakingCharacterName 
+                                    ? characters.find(c => c.name === message.speakingCharacterName) 
+                                    : null;
 
                                   return (
                                       <div key={message.id} className="group relative flex flex-col">
                                           <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
                                           {message.type === 'ai' && (
                                               <Avatar className="h-8 w-8 border">
-                                                  <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                  {speaker && speaker.portraitUrl ? (
+                                                    <AvatarImage src={speaker.portraitUrl} alt={speaker.name} />
+                                                  ) : (
+                                                    <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                  )}
                                               </Avatar>
                                           )}
                                           <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
                                                   message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
                                               }`}>
-                                                  {message.content}
+                                                  {adventureSettings.comicModeActive && message.type === 'ai' ? renderFormattedNarrative(message.content) : message.content}
 
                                                   {message.type !== 'system' && !isFirstMessage && (
                                                       <div className={`absolute top-0 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>

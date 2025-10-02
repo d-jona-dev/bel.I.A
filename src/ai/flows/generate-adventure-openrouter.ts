@@ -81,6 +81,10 @@ function buildOpenRouterPrompt(
     Commence ta narration directement, sans répéter l'action du joueur.
     RÈGLE CRITIQUE : Si l'action du joueur concerne l'invocation ou l'interaction avec un FAMILIER (compagnon, animal), tu NE DOIS PAS le lister dans le champ \`newCharacters\`. Le système de jeu gère les familiers en interne.`;
     
+    if (input.comicModeActive) {
+        mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure. Identifie le personnage qui parle dans \`speakingCharacterName\`.`;
+    }
+
     const systemPromptContent = `Tu es un assistant IA qui répond TOUJOURS au format JSON. Ne fournis aucun texte en dehors de l'objet JSON.`;
     
     mainInstruction += `\n\nTu DOIS répondre EXCLUSIVEMENT avec un objet JSON valide qui respecte le format suivant. Ne fournis AUCUN texte avant ou après l'objet JSON.
@@ -89,6 +93,7 @@ function buildOpenRouterPrompt(
 \`\`\`json
 {
     "narrative": "Le texte de l'histoire généré ici...",
+    "speakingCharacterName": "Rina",
     "sceneDescriptionForImage": "Description visuelle de la scène pour un générateur d'images...",
     "newCharacters": [
         { "name": "Nouveau PNJ", "details": "Description du PNJ...", "initialHistoryEntry": "Rencontré ici." }
@@ -193,6 +198,7 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         characters: processedCharacters,
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
+        comicModeActive: input.comicModeActive ?? false,
         activeCombat: input.activeCombat,
         playerSkills: processedPlayerSkills,
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,

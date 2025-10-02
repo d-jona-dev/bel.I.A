@@ -108,6 +108,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         characters: processedCharacters,
         rpgModeActive: input.rpgModeActive ?? false,
         relationsModeActive: input.relationsModeActive ?? true,
+        comicModeActive: input.comicModeActive ?? false,
         activeCombat: input.activeCombat,
         playerSkills: processedPlayerSkills,
         playerClass: input.rpgModeActive ? (input.playerClass || "Aventurier") : undefined,
@@ -176,6 +177,9 @@ const prompt = ai.definePrompt({
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 **CRITICAL RULE: If the user action is about summoning, using, or interacting with a FAMILIAR (compagnon, animal, familier), you MUST NOT list it in the \`newCharacters\` array. The game system handles familiar creation and management internally.**
+{{#if comicModeActive}}
+**COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify which character is the main speaker or focus of the scene and put their name in the \`speakingCharacterName\` field.**
+{{/if}}
 
 World: {{{world}}}
 
@@ -281,7 +285,6 @@ Combatants (Player team listed first, then Enemies):
 Location Name: **{{playerLocation.name}}** (ID: {{playerLocation.id}})
 Current Owner: **{{playerLocation.ownerName}}**
 Location Level: {{playerLocation.level}}
-Description: {{playerLocation.description}}
 {{#if playerLocation.buildings.length}}
 Available Services: {{#each playerLocation.buildings}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
 {{else}}
@@ -339,6 +342,8 @@ Tasks:
 {{#if timeManagement.enabled}}
 8.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
 {{/if}}
+
+9.  **Identify Speaker:** In the \`speakingCharacterName\` field, provide the name of the character who is the primary speaker or focus of the narrative segment. If the focus is general narration, omit this field.
 
 **VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
 

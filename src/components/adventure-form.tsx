@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -117,6 +117,7 @@ const adventureFormSchema = z.object({
   rpgMode: z.boolean().default(true).optional(),
   relationsMode: z.boolean().default(true).optional(),
   strategyMode: z.boolean().default(true).optional(),
+  comicModeActive: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
   playerDetails: z.string().optional(),
@@ -582,6 +583,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             rpgMode: true,
             relationsMode: true,
             strategyMode: true,
+            comicModeActive: true,
             playerName: "Héros",
             playerClass: "Étudiant Combattant",
             playerLevel: 1,
@@ -858,6 +860,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
                                 <div className="space-y-0.5">
                                     <FormLabel className="flex items-center gap-2 text-sm"><Map className="h-4 w-4"/> Mode Stratégie</FormLabel>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="comicModeActive"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="flex items-center gap-2 text-sm"><Clapperboard className="h-4 w-4"/> Mode BD (Narration Avancée)</FormLabel>
                                 </div>
                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
@@ -1246,13 +1260,16 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                 render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="flex items-center gap-2"><Shield className="h-4 w-4"/> Défenseurs</FormLabel>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <FormControl>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
                                                                 <Button
                                                                     variant="outline"
                                                                     role="combobox"
-                                                                    className="w-full justify-between h-auto text-left font-normal"
+                                                                    className={cn(
+                                                                        "w-full justify-between h-auto text-left font-normal",
+                                                                        !field.value && "text-muted-foreground"
+                                                                    )}
                                                                 >
                                                                     {field.value && field.value.length > 0 ? (
                                                                         <div className="flex flex-col items-start">
@@ -1265,45 +1282,45 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                     )}
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
-                                                                </FormControl>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                                                <Command>
-                                                                    <CommandInput placeholder="Rechercher un ennemi..." />
-                                                                    <CommandList>
-                                                                    <CommandEmpty>Aucun ennemi trouvé.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {enemies.map((enemy) => (
-                                                                        <CommandItem
-                                                                            value={enemy.name}
-                                                                            key={enemy.id}
-                                                                            onSelect={() => {
-                                                                                const selected = field.value || [];
-                                                                                const newSelection = selected.includes(enemy.id)
-                                                                                    ? selected.filter(id => id !== enemy.id)
-                                                                                    : [...selected, enemy.id];
-                                                                                field.onChange(newSelection);
-                                                                            }}
-                                                                        >
-                                                                            <Check
-                                                                                className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                (field.value || []).includes(enemy.id)
-                                                                                    ? "opacity-100"
-                                                                                    : "opacity-0"
-                                                                                )}
-                                                                            />
-                                                                            {enemy.name}
-                                                                        </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                    </CommandList>
-                                                                </Command>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        <FormDescription className="text-xs">
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                            <Command>
+                                                                <CommandInput placeholder="Rechercher un ennemi..." />
+                                                                <CommandList>
+                                                                <CommandEmpty>Aucun ennemi trouvé.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {enemies.map((enemy) => (
+                                                                    <CommandItem
+                                                                        value={enemy.name}
+                                                                        key={enemy.id}
+                                                                        onSelect={() => {
+                                                                            const selected = field.value || [];
+                                                                            const newSelection = selected.includes(enemy.id)
+                                                                                ? selected.filter(id => id !== enemy.id)
+                                                                                : [...selected, enemy.id];
+                                                                            field.onChange(newSelection);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            (field.value || []).includes(enemy.id)
+                                                                                ? "opacity-100"
+                                                                                : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {enemy.name}
+                                                                    </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormDescription className="text-xs">
                                                         Garnison qui défendra ce lieu en cas d'attaque.
-                                                        </FormDescription>
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                                 )}
@@ -1854,5 +1871,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    

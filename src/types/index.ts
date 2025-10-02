@@ -120,6 +120,7 @@ export interface Message {
   imageTransform?: ImageTransform;
   loot?: PlayerInventoryItem[];
   lootTaken?: boolean;
+  speakingCharacterName?: string;
 }
 
 export const StatusEffectSchema = z.object({
@@ -443,7 +444,7 @@ const BaseCharacterSchema = z.object({
   details: z.string(),
   biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character. Provides deep context for personality and motivations. MUST be in the specified language if provided from user input in that language."),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player. 0=Hate, 50=Neutral, 100=Love/Devotion. This score dictates the character's baseline behavior and responses toward the player. Small, gradual changes for typical interactions (+/- 1-2), larger changes (+/- 5+) for major events."),
-  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, attempt to define it based on new interactions."),
+  relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player (key: character ID or 'player', value: status e.g., 'Petite amie', 'Meilleur ami', 'Ennemi juré'). This status describes the fundamental nature of their bond (e.g., family, rival, lover) and influences specific interactions. MUST be in the specified language. If 'Inconnu' or similar, use it, but prefer a more descriptive status if possible."),
   hitPoints: z.number().optional().describe("Current Hit Points. If undefined in RPG mode, assume a default like 10."),
   maxHitPoints: z.number().optional().describe("Maximum Hit Points. If undefined in RPG mode, assume a default like 10."),
   manaPoints: z.number().optional().describe("Current Mana Points. If undefined in RPG mode for a spellcaster, assume a default like 10 if applicable, or 0."),
@@ -552,6 +553,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerName: z.string().describe('The name of the player character.'),
   relationsModeActive: z.boolean().optional().default(true).describe("Indicates if the relationship and affinity system is active for the current turn. If false, affinity and relations should not be updated or heavily influence behavior."),
   rpgModeActive: z.boolean().optional().default(false).describe("Indicates if RPG systems (combat, stats, EXP, MP, Gold) are active. If true, combat rules apply."),
+  comicModeActive: z.boolean().optional().default(false).describe("Indicates if the advanced narration mode is active. If true, the AI must identify the speaking character and format the text with markers for speech (\") and thoughts (*)."),
   activeCombat: ActiveCombatSchema.optional().describe("Current state of combat, if any. If undefined or isActive is false, assume no combat is ongoing. If combat is active, ensure combatants includes the player, all their active allies (characters with isAlly: true), and all active enemies/neutrals."),
   playerGold: z.number().int().optional().describe("Player's current amount of Gold Pieces if RPG mode is active. This is a single currency value representing the player's total wealth in the game's primary currency."),
   promptConfig: z.object({
@@ -685,6 +687,7 @@ const UpdatedTimeSchema = z.object({
 
 export const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game client will display the loot separately based on the structured data provided in other fields.**'),
+  speakingCharacterName: z.string().optional().describe("The name of the character who is speaking or is the main focus of this narrative segment. If no one is speaking or the focus is general, omit this field."),
   sceneDescriptionForImage: z
     .string()
     .optional()
