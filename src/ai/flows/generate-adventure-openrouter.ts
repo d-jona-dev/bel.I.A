@@ -92,22 +92,21 @@ function buildOpenRouterPrompt(
 ### EXEMPLE DE JSON ATTENDU :
 \`\`\`json
 {
-    "narrative": "Le texte de l'histoire généré ici...",
+    "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
     "speakingCharacterName": "Rina",
-    "sceneDescriptionForImage": "Description visuelle de la scène pour un générateur d'images...",
-    "newCharacters": [
-        { "name": "Nouveau PNJ", "details": "Description du PNJ...", "initialHistoryEntry": "Rencontré ici." }
-    ],
+    "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
+    "newCharacters": [],
     "characterUpdates": [
-        { "characterName": "Ancien PNJ", "historyEntry": "A réagi comme ça." }
+        { "characterName": "Rina", "historyEntry": "Était inquiète de l'absence du joueur." },
+        { "characterName": "Kentaro", "historyEntry": "A abordé Rina pour lui demander si tout allait bien." }
     ],
     "affinityUpdates": [
-        { "characterName": "Ancien PNJ", "change": -1, "reason": "Action du joueur." }
+        { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
     ],
     "relationUpdates": [],
     "itemsObtained": [],
     "currencyGained": 0,
-    "updatedTime": { "newEvent": "Description si l'événement a changé" }
+    "updatedTime": { "newEvent": "Attente dans le couloir" }
 }
 \`\`\`
 

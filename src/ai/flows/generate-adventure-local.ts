@@ -36,13 +36,29 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     if (input.comicModeActive) {
         mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify which character is the main speaker or focus of the scene and put their name in the \`speakingCharacterName\` field.`;
     }
-    // We are now removing the detailed rules from the prompt as they are handled by the main app logic
+    
     mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
 
-    const zodSchemaString = JSON.stringify(GenerateAdventureOutputSchema.shape, null, 2);
+    const zodSchemaString = `{
+    "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
+    "speakingCharacterName": "Rina",
+    "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
+    "newCharacters": [],
+    "characterUpdates": [
+        { "characterName": "Rina", "historyEntry": "Était inquiète de l'absence du joueur." },
+        { "characterName": "Kentaro", "historyEntry": "A abordé Rina pour lui demander si tout allait bien." }
+    ],
+    "affinityUpdates": [
+        { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
+    ],
+    "relationUpdates": [],
+    "itemsObtained": [],
+    "currencyGained": 0,
+    "updatedTime": { "newEvent": "Attente dans le couloir" }
+}`;
 
     promptSections.unshift(mainInstruction);
-    promptSections.push(`## EXPECTED JSON OUTPUT SCHEMA\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
+    promptSections.push(`## EXPECTED JSON OUTPUT EXAMPLE\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
 
     // This format is a common starting point for instruction-tuned models.
     return `USER: ${promptSections.join('\n\n')}\nASSISTANT:`;
