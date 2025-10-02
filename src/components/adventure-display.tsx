@@ -65,7 +65,7 @@ interface AdventureDisplayProps {
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterName?: string) => void;
+    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => void;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
@@ -647,21 +647,29 @@ export function AdventureDisplay({
                                   const isLastAiMessage = isLastMessage && message.type === 'ai';
                                   const isFirstMessage = index === 0;
                                   const showLootInteraction = message.type === 'ai' && message.loot && message.loot.length > 0 && !message.lootTaken;
-                                  const speaker = message.type === 'ai' && message.speakingCharacterName 
-                                    ? characters.find(c => c.name === message.speakingCharacterName) 
-                                    : null;
+                                  
+                                  const speakers = (message.type === 'ai' && message.speakingCharacterNames)
+                                    ? message.speakingCharacterNames
+                                        .map(name => characters.find(c => c.name === name))
+                                        .filter((c): c is Character => !!c) // Filter out undefined
+                                        .slice(0, 3) // Limit to 3 speakers
+                                    : [];
 
                                   return (
                                       <div key={message.id} className="group relative flex flex-col">
                                           <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
                                           {message.type === 'ai' && (
-                                              <Avatar className="h-8 w-8 border">
-                                                  {speaker && speaker.portraitUrl ? (
-                                                    <AvatarImage src={speaker.portraitUrl} alt={speaker.name} />
-                                                  ) : (
-                                                    <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                                  )}
-                                              </Avatar>
+                                              <div className="flex">
+                                                {speakers.length > 0 ? speakers.map((speaker, i) => (
+                                                    <Avatar key={speaker.id} className={`h-8 w-8 border ${i > 0 ? "-ml-4" : ""}`}>
+                                                        {speaker.portraitUrl ? <AvatarImage src={speaker.portraitUrl} alt={speaker.name} /> : <AvatarFallback>{speaker.name.substring(0, 2)}</AvatarFallback>}
+                                                    </Avatar>
+                                                )) : (
+                                                    <Avatar className="h-8 w-8 border">
+                                                        <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                              </div>
                                           )}
                                           <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
                                                   message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
@@ -784,9 +792,13 @@ export function AdventureDisplay({
                                                   )}
                                               </div>
                                               {message.type === 'user' && (
-                                                  <Avatar className="h-8 w-8 border">
-                                                      <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
-                                                  </Avatar>
+                                                <Avatar className="h-8 w-8 border">
+                                                    {adventureSettings.playerPortraitUrl ? (
+                                                        <AvatarImage src={adventureSettings.playerPortraitUrl} alt={adventureSettings.playerName || 'Player'} />
+                                                    ) : (
+                                                        <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
+                                                    )}
+                                                </Avatar>
                                               )}
                                           </div>
                                       </div>

@@ -82,7 +82,7 @@ function buildOpenRouterPrompt(
     RÈGLE CRITIQUE : Si l'action du joueur concerne l'invocation ou l'interaction avec un FAMILIER (compagnon, animal), tu NE DOIS PAS le lister dans le champ \`newCharacters\`. Le système de jeu gère les familiers en interne.`;
     
     if (input.comicModeActive) {
-        mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure. Identifie le personnage qui parle dans \`speakingCharacterName\`.`;
+        mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure. Identifie les personnages qui parlent (jusqu'à 3) dans \`speakingCharacterNames\`.`;
     }
 
     const systemPromptContent = `Tu es un assistant IA qui répond TOUJOURS au format JSON. Ne fournis aucun texte en dehors de l'objet JSON.`;
@@ -93,7 +93,7 @@ function buildOpenRouterPrompt(
 \`\`\`json
 {
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "speakingCharacterName": "Rina",
+    "speakingCharacterNames": ["Rina", "Kentaro"],
     "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
     "newCharacters": [],
     "characterUpdates": [

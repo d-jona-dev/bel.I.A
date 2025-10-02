@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -120,7 +121,7 @@ export interface Message {
   imageTransform?: ImageTransform;
   loot?: PlayerInventoryItem[];
   lootTaken?: boolean;
-  speakingCharacterName?: string;
+  speakingCharacterNames?: string[];
 }
 
 export const StatusEffectSchema = z.object({
@@ -687,7 +688,7 @@ const UpdatedTimeSchema = z.object({
 
 export const GenerateAdventureOutputSchema = z.object({
   narrative: z.string().describe('The generated narrative continuation. If in combat, this includes the description of actions and outcomes for the current turn. **This field MUST contain ONLY plain text story. DO NOT include any JSON or structured data here. CRITICAL: DO NOT describe the items or gold obtained from combat loot in this narrative field. The game client will display the loot separately based on the structured data provided in other fields.**'),
-  speakingCharacterName: z.string().optional().describe("The name of the character who is speaking or is the main focus of this narrative segment. If no one is speaking or the focus is general, omit this field."),
+  speakingCharacterNames: z.array(z.string()).optional().describe("An array with the names of the characters who are speaking or are the main focus of this narrative segment. Can contain up to 3 names. If no one is speaking or the focus is general, omit this field or provide an empty array."),
   sceneDescriptionForImage: z
     .string()
     .optional()

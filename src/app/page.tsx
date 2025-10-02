@@ -500,7 +500,7 @@ export default function Home() {
 
     // --- Core Action Handlers ---
     
-    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterName?: string) => {
+    const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => {
         const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
             id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
             name: item.itemName,
@@ -524,7 +524,7 @@ export default function Home() {
             imageTransform: type === 'ai' ? imageTransform : undefined,
             loot: type === 'ai' && newItemsWithIds && newItemsWithIds.length > 0 ? newItemsWithIds : undefined,
             lootTaken: false,
-            speakingCharacterName: speakingCharacterName,
+            speakingCharacterNames: speakingCharacterNames,
         };
         setNarrativeMessages(prevNarrative => [...prevNarrative, newMessage]);
     }, []);
@@ -1215,7 +1215,7 @@ export default function Home() {
                     let finalLoot = [...(result.itemsObtained || [])];
                     
                                     
-                    handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot, undefined, undefined, result.speakingCharacterName);
+                    handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot, undefined, undefined, result.speakingCharacterNames);
     
                     if (result.newCharacters) handleNewCharacters(result.newCharacters);
                     if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
@@ -2305,7 +2305,7 @@ export default function Home() {
                            isEquipped: false,
                         })),
                         lootTaken: false,
-                        speakingCharacterName: result.speakingCharacterName,
+                        speakingCharacterNames: result.speakingCharacterNames,
                     };
                     if (lastAiIndex !== -1) {
                         newNarrative.splice(lastAiIndex, 1, newAiMessage);
@@ -2908,6 +2908,7 @@ export default function Home() {
             const familiarBonus = generateDynamicFamiliarBonus(rarity);
             const trophyName = `${physicalItem.name} de ${enemyName}`;
             const trophyDescription = `Un trophée mystérieux: un ${physicalItem.name.toLowerCase()} provenant d'un ${enemyName.toLowerCase()}. Il semble contenir une essence magique. Rareté: ${rarity}.`;
+            const familiarName = `${creatureType.name} ${descriptor.name}`;
             
             const rewardItem: PlayerInventoryItem = {
                 id: `trophy-${creatureType.name.toLowerCase()}-${uid()}`,
@@ -4082,6 +4083,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 

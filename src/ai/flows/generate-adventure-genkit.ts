@@ -23,6 +23,7 @@ export type GenerateAdventureFlowOutput = GenerateAdventureOutput & { error?: st
 const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     narrative: errorMsg ? "" : "An error occurred, narrative could not be generated.",
     sceneDescriptionForImage: undefined,
+    speakingCharacterNames: [],
     newCharacters: [],
     characterUpdates: [],
     affinityUpdates: [],
@@ -178,7 +179,7 @@ const prompt = ai.definePrompt({
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 **CRITICAL RULE: If the user action is about summoning, using, or interacting with a FAMILIAR (compagnon, animal, familier), you MUST NOT list it in the \`newCharacters\` array. The game system handles familiar creation and management internally.**
 {{#if comicModeActive}}
-**COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify which character is the main speaker or focus of the scene and put their name in the \`speakingCharacterName\` field.**
+**COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify which characters are the main speakers or focus of the scene and put their names in the \`speakingCharacterNames\` field (up to 3 characters).**
 {{/if}}
 
 World: {{{world}}}
@@ -343,7 +344,7 @@ Tasks:
 8.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
 {{/if}}
 
-9.  **Identify Speaker:** In the \`speakingCharacterName\` field, provide the name of the character who is the primary speaker or focus of the narrative segment. If the focus is general narration, omit this field.
+9.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment. If the focus is general narration, omit this field or provide an empty array.
 
 **VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
 
