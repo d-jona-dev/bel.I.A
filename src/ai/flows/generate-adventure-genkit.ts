@@ -188,7 +188,7 @@ Current Day: **Jour {{timeManagement.day}} ({{timeManagement.dayName}})**
 Current Time: **{{timeManagement.currentTime}}**
 Current Event: **{{timeManagement.currentEvent}}**
 Time to Elapse This Turn: **{{timeManagement.timeElapsedPerTurn}}**. 
-**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. DO NOT write "several hours pass" or "the meeting ends". The narrative must advance by exactly the specified duration (e.g., if duration is '00:15', narrate the next 15 minutes). The application will handle the calculation of the new time; you can suggest a new event description in 'updatedTime.newEvent' if the context changes (e.g. from "Début de la patrouille" to "Milieu de la patrouille"). You MUST return the full \`timeManagement\` object in your response under the \`updatedTime\` field, preserving all its properties like 'enabled', 'day', 'dayNames', etc.**
+**CRITICAL RULE: Your narrative MUST strictly cover the duration specified in 'Time to Elapse This Turn'. DO NOT skip large amounts of time. The application handles the time calculation; you should only suggest a new event description in 'updatedTime.newEvent' if the context changes (e.g., from "Début de la patrouille" to "Milieu de la patrouille").**
 ---
 {{/if}}
 
@@ -337,7 +337,7 @@ Tasks:
 7.  **Territory Conquest/Loss (poiOwnershipChanges):** This is now handled internally by the game. DO NOT populate \`poiOwnershipChanges\`.
 
 {{#if timeManagement.enabled}}
-8.  **Time Update:** Suggest a new event description in 'updatedTime.newEvent' if the context has changed significantly. You MUST return the full time management object provided in the input, even if nothing has changed besides the time itself.
+8.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
 {{/if}}
 
 **VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
@@ -375,7 +375,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    
-
-    

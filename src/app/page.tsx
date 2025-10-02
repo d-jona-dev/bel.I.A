@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -671,9 +670,9 @@ export default function Home() {
         toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
     }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
 
-    const handleTimeUpdate = React.useCallback((timeUpdate: Partial<TimeManagementSettings> | undefined) => {
+    const handleTimeUpdate = React.useCallback((timeUpdateFromAI: { newEvent?: string } | undefined) => {
         setAdventureSettings(prev => {
-            if (!prev.timeManagement?.enabled || !timeUpdate) return prev;
+            if (!prev.timeManagement?.enabled) return prev;
     
             const { currentTime, timeElapsedPerTurn, day, dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"] } = prev.timeManagement;
     
@@ -699,7 +698,7 @@ export default function Home() {
                     day: newDay,
                     dayName: newDayName,
                     currentTime: newCurrentTime,
-                    currentEvent: timeUpdate.newEvent || prev.timeManagement.currentEvent,
+                    currentEvent: timeUpdateFromAI?.newEvent || prev.timeManagement.currentEvent,
                 },
             };
         });
@@ -1229,7 +1228,8 @@ export default function Home() {
                     }
                     
                     if (liveSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                    if (liveSettings.timeManagement?.enabled && result.updatedTime) {
+                    
+                    if (liveSettings.timeManagement?.enabled) {
                         handleTimeUpdate(result.updatedTime);
                     }
                     
@@ -2316,7 +2316,7 @@ export default function Home() {
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
-                if (currentTurnSettings.timeManagement?.enabled && result.updatedTime) {
+                if (currentTurnSettings.timeManagement?.enabled) {
                     handleTimeUpdate(result.updatedTime);
                 }
                  if (adventureSettings.rpgMode && typeof result.currencyGained === 'number' && result.currencyGained !== 0 && adventureSettings.playerGold !== undefined) {
@@ -4074,6 +4074,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 

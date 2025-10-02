@@ -678,9 +678,9 @@ const PoiOwnershipChangeSchema = z.object({
     newOwnerId: z.string().describe("The ID of the new owner (e.g., 'player', 'frak-1')."),
 });
 
-const UpdatedTimeSchema = TimeManagementSchemaForAI.omit({ timeElapsedPerTurn: true }).extend({
-    newEvent: z.string().optional().describe("An optional updated event description (e.g., 'Milieu du cours', 'Fin de la réunion'). The AI can suggest a new event description if the narrative context has changed significantly.")
-}).deepPartial().optional();
+const UpdatedTimeSchema = z.object({
+    newEvent: z.string().optional().describe("An optional updated event description if the context has changed significantly (e.g., from 'Début de la patrouille' to 'Milieu de la patrouille')."),
+});
 
 
 export const GenerateAdventureOutputSchema = z.object({
@@ -710,7 +710,7 @@ export const GenerateAdventureOutputSchema = z.object({
   currencyGained: z.number().int().optional().describe("Total amount of Gold Pieces gained or LOST by the player this turn from NON-COMBAT means. Use a negative value for losses/expenses (e.g., -50 if player pays 50 Gold Pieces). **If currency is obtained from combat loot, it MUST be returned inside the `combatUpdates` object, not here.** IF NO CURRENCY CHANGE, PROVIDE 0."),
   poiOwnershipChanges: z.array(PoiOwnershipChangeSchema).optional().describe("This field is deprecated for AI output. POI ownership changes are now handled internally by the application. The AI should not populate this field."),
   newFamiliars: z.array(NewFamiliarSchema).optional().describe("List of new familiars the player has just acquired through capture or other special means. This should NOT be used for familiars bought from a menagerie (use itemsObtained for that)."),
-  updatedTime: UpdatedTimeSchema,
+  updatedTime: UpdatedTimeSchema.optional(),
   lootItemsText: z.string().optional().describe("A simple, comma-separated string of item names looted by the player (e.g., 'Rusty Sword, 15 Gold, Health Potion'). This is preferred over the complex `itemsObtained` field for better AI compatibility."),
 });
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;

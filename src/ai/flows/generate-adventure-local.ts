@@ -23,6 +23,11 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
         const charactersDesc = input.characters.map(char => `Name: ${char.name}, Description: ${char.details}, Affinity: ${char.affinity}/100`).join('\n');
         addSection(`CHARACTERS PRESENT`, charactersDesc);
     }
+    
+    if (input.timeManagement?.enabled) {
+        let timeSection = `Current Day: ${input.timeManagement.day}, Current Time: ${input.timeManagement.currentTime}. Narrate for a duration of ${input.timeManagement.timeElapsedPerTurn}.`;
+        addSection("TIME CONTEXT", timeSection);
+    }
 
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
 
@@ -104,6 +109,3 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
         return { error: `Erreur inattendue lors de l'appel au serveur local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-    
-    

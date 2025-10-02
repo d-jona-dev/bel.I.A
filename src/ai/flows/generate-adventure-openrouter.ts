@@ -60,6 +60,11 @@ function buildOpenRouterPrompt(
         addSection(`PERSONNAGES PRÉSENTS`, charactersDesc);
     }
     
+    if (input.timeManagement?.enabled) {
+        let timeSection = `Jour ${input.timeManagement.day} (${input.timeManagement.dayName}), ${input.timeManagement.currentTime}. Événement: ${input.timeManagement.currentEvent || 'aucun'}. Votre narration doit couvrir une durée de ${input.timeManagement.timeElapsedPerTurn}.`;
+        addSection("CONTEXTE TEMPOREL", timeSection);
+    }
+    
     if (input.merchantInventory && input.merchantInventory.length > 0) {
         const inventoryText = input.merchantInventory.map(item =>
             `- ${item.name} (Prix: ${item.price} PO)`
@@ -96,7 +101,8 @@ function buildOpenRouterPrompt(
     ],
     "relationUpdates": [],
     "itemsObtained": [],
-    "currencyGained": 0
+    "currencyGained": 0,
+    "updatedTime": { "newEvent": "Description si l'événement a changé" }
 }
 \`\`\`
 
@@ -315,7 +321,7 @@ export async function generateAdventureWithOpenRouter(
                 currencyGained: typeof parsedJson.currencyGained === 'number' ? parsedJson.currencyGained : 0,
                 poiOwnershipChanges: [], 
                 combatUpdates: undefined,
-                updatedTime: undefined,
+                updatedTime: parsedJson.updatedTime,
                 lootItemsText: parsedJson.lootItemsText || (Array.isArray(parsedJson.itemsObtained) ? parsedJson.itemsObtained.join(', ') : ""),
             };
 
@@ -345,6 +351,3 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-    
-    
