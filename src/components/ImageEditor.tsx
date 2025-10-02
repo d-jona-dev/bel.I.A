@@ -5,6 +5,9 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Message, Character } from "@/types";
+import { MessageSquarePlus } from "lucide-react";
+
 
 const bubbleTypes = {
   parole: { label: "Parole", border: "2px solid black", lineDash: [] },
@@ -21,6 +24,7 @@ interface Bubble {
   height: number;
   text: string;
   type: BubbleType;
+  color?: string; // NEW: Optional color for the bubble border
 }
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
@@ -42,13 +46,55 @@ export const compressImage = async (dataUrl: string, quality = 0.85): Promise<st
     return canvas.toDataURL('image/jpeg', quality);
 };
 
+const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
+    const style = bubbleTypes[bubble.type];
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = bubble.color || style.border.split(' ')[2]; // Use faction color if available
+    ctx.lineWidth = parseInt(style.border.split(' ')[0], 10);
+    ctx.setLineDash(style.lineDash);
+    
+    ctx.beginPath();
+    ctx.roundRect(bubble.x, bubble.y, bubble.width, bubble.height, [15]);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    ctx.fillStyle = "black";
+    ctx.font = "32px 'Comic Sans MS', sans-serif";
+    ctx.textBaseline = "top";
+
+    const words = bubble.text.split(' ');
+    let line = '';
+    let textY = bubble.y + 15;
+    const lineHeight = 35;
+    const padding = 15;
+
+    for(let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > bubble.width - padding * 2 && n > 0) {
+            ctx.fillText(line, bubble.x + padding, textY);
+            line = words[n] + ' ';
+            textY += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    ctx.fillText(line, bubble.x + padding, textY);
+};
+
 
 export default function ImageEditor({
     imageUrl,
+    message, // NEW: Pass the full message object
+    characters, // NEW: Pass all characters to find faction colors
     onSave,
     onClose,
  }: {
     imageUrl: string;
+    message: Message; // The message associated with this image
+    characters: Character[]; // All current characters
     onSave: (dataUrl: string) => void;
     onClose: () => void;
 }) {
@@ -75,37 +121,7 @@ export default function ImageEditor({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
     bubbles.forEach((bubble) => {
-      const style = bubbleTypes[bubble.type];
-      ctx.fillStyle = "white";
-      ctx.strokeStyle = style.border.split(' ')[2];
-      ctx.lineWidth = parseInt(style.border.split(' ')[0], 10);
-      ctx.setLineDash(style.lineDash);
-      ctx.beginPath();
-      ctx.rect(bubble.x, bubble.y, bubble.width, bubble.height);
-      ctx.fill();
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = "black";
-      ctx.font = "32px 'Comic Sans MS', sans-serif"; // Using a more comic-like font
-      ctx.textBaseline = "top";
-      const words = bubble.text.split(' ');
-      let line = '';
-      let textY = bubble.y + 15;
-      const lineHeight = 35;
-      const padding = 15;
-      for(let n = 0; n < words.length; n++) {
-        const testLine = line + words[n] + ' ';
-        const metrics = ctx.measureText(testLine);
-        const testWidth = metrics.width;
-        if (testWidth > bubble.width - padding * 2 && n > 0) {
-          ctx.fillText(line, bubble.x + padding, textY);
-          line = words[n] + ' ';
-          textY += lineHeight;
-        } else {
-          line = testLine;
-        }
-      }
-      ctx.fillText(line, bubble.x + padding, textY);
+      drawBubble(ctx, bubble);
       if (bubble.id === selectedBubbleId) {
         ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
         ctx.lineWidth = 3;
@@ -129,6 +145,65 @@ export default function ImageEditor({
     setBubbles([...bubbles, newBubble]);
     setSelectedBubbleId(newBubble.id);
   };
+
+  const handleAutoInsertBubbles = () => {
+      const { content, speakingCharacterNames } = message;
+      if (!content) return;
+
+      const dialogueRegex = /"([^"]*)"/g;
+      const thoughtRegex = /\*([^*]*)\*/g;
+      const newBubbles: Bubble[] = [];
+      let match;
+      let yOffset = 20;
+
+      // Find speaker colors
+      const speakerColors: { [key: string]: string | undefined } = {};
+      (speakingCharacterNames || []).forEach(name => {
+          const character = characters.find(c => c.name === name);
+          if (character) {
+              speakerColors[name] = character.factionColor;
+          }
+      });
+      const mainSpeakerColor = speakingCharacterNames && speakingCharacterNames.length > 0 ? speakerColors[speakingCharacterNames[0]] : undefined;
+
+      // Extract dialogues
+      while ((match = dialogueRegex.exec(content)) !== null) {
+          newBubbles.push({
+              id: `bubble-${Date.now()}-${newBubbles.length}`,
+              x: 20,
+              y: yOffset,
+              width: 400,
+              height: 100,
+              text: match[1],
+              type: 'parole',
+              color: mainSpeakerColor || '#000000', // Default to black if no speaker color
+          });
+          yOffset += 110;
+      }
+
+      // Extract thoughts
+      while ((match = thoughtRegex.exec(content)) !== null) {
+          newBubbles.push({
+              id: `bubble-${Date.now()}-${newBubbles.length}`,
+              x: 20,
+              y: yOffset,
+              width: 350,
+              height: 80,
+              text: match[1],
+              type: 'pensée',
+              color: '#808080' // Thoughts are always neutral gray
+          });
+          yOffset += 90;
+      }
+
+      if (newBubbles.length > 0) {
+        setBubbles(prev => [...prev, ...newBubbles]);
+        toast({ title: `${newBubbles.length} bulle(s) insérée(s) automatiquement.`});
+      } else {
+        toast({ title: "Aucun dialogue ou pensée trouvé", description: "Le texte ne contient pas de dialogues (\") ou de pensées (*).", variant: "default" });
+      }
+  };
+
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!canvasRef.current) return;
@@ -233,6 +308,9 @@ export default function ImageEditor({
                     </Select>
                 </div>
                 <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
+                <Button onClick={handleAutoInsertBubbles} size="sm" variant="outline">
+                    <MessageSquarePlus className="mr-2 h-4 w-4" /> Insérer Bulles Auto
+                </Button>
             </div>
             {selectedBubble && (
                 <div className="w-full p-3 border rounded-md bg-background space-y-3">

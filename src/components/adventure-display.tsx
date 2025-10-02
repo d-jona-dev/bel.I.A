@@ -142,6 +142,11 @@ const formatTimeToDisplay = (time24h: string, format: '12h' | '24h' | undefined)
     return `${hours12}:${String(minutes).padStart(2, '0')} ${ampm}`;
 };
 
+interface ImageToEdit {
+    url: string;
+    message: Message;
+}
+
 export function AdventureDisplay({
     playerId,
     generateAdventureAction,
@@ -210,7 +215,8 @@ export function AdventureDisplay({
   const [editContent, setEditContent] = React.useState<string>("");
   const [editImageTransform, setEditImageTransform] = React.useState<ImageTransform>({ scale: 1, translateX: 0, translateY: 0 });
   const [imageEditorOpen, setImageEditorOpen] = React.useState(false);
-  const [imageToEditUrl, setImageToEditUrl] = React.useState<string | null>(null);
+  
+  const [imageToEdit, setImageToEdit] = React.useState<ImageToEdit | null>(null);
 
   const [isCustomStyleDialogOpen, setIsCustomStyleDialogOpen] = React.useState(false);
   const [customStylePrompt, setCustomStylePrompt] = React.useState("");
@@ -1095,7 +1101,7 @@ export function AdventureDisplay({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
-                        {imageToEditUrl && <ImageEditor imageUrl={imageToEditUrl} onClose={() => setImageEditorOpen(false)} onSave={onAddToComicPage} />}
+                        {imageToEdit && <ImageEditor imageUrl={imageToEdit.url} message={imageToEdit.message} characters={characters} onClose={() => setImageEditorOpen(false)} onSave={onAddToComicPage} />}
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -1133,7 +1139,13 @@ export function AdventureDisplay({
                                             </div>
                                         </DialogContent>
                                     </Dialog>
-                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { setImageToEditUrl(messages.find(m => m.imageUrl)!.imageUrl!); setImageEditorOpen(true);}}>
+                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { 
+                                         const messageWithImage = messages.find(m => m.imageUrl);
+                                         if (messageWithImage) {
+                                            setImageToEdit({url: messageWithImage.imageUrl!, message: messageWithImage});
+                                            setImageEditorOpen(true);
+                                         }
+                                     }}>
                                         <Edit3 className="h-4 w-4" />
                                     </Button>
                                 </div>
