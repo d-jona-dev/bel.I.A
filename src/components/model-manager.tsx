@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Separator } from "./ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 
 const DEFAULT_LLM_MODELS: ModelDefinition[] = [
@@ -106,7 +107,11 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
   const handleDownloadModels = () => {
     try {
-      const dataToSave = { llmModels, imageModels };
+      // SECURITY FIX: Remove apiKey from exported data
+      const llmModelsToSave = llmModels.map(({ apiKey, ...rest }) => rest);
+      const imageModelsToSave = imageModels.map(({ apiKey, ...rest }) => rest);
+
+      const dataToSave = { llmModels: llmModelsToSave, imageModels: imageModelsToSave };
       const jsonString = JSON.stringify(dataToSave, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -331,12 +336,26 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             </div>
             <div className="flex gap-2">
                  <input type="file" ref={importFileRef} accept=".json" onChange={handleImportModels} className="hidden" />
-                 <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}>
-                     <Upload className="h-4 w-4 mr-1"/> Importer
-                 </Button>
-                 <Button variant="outline" size="sm" onClick={handleDownloadModels}>
-                     <Download className="h-4 w-4 mr-1"/> Exporter
-                 </Button>
+                 <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => importFileRef.current?.click()}>
+                                <Upload className="h-4 w-4"/>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Importer une liste de modèles</TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
+                 <TooltipProvider>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button variant="outline" size="icon" onClick={handleDownloadModels}>
+                                 <Download className="h-4 w-4"/>
+                             </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exporter la liste de modèles</TooltipContent>
+                     </Tooltip>
+                 </TooltipProvider>
             </div>
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-4">
@@ -610,5 +629,3 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     </Card>
   );
 }
-
-    
