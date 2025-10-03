@@ -6,7 +6,15 @@ import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Message, Character } from "@/types";
-import { MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus, PlusCircle, Trash2, Mic, Settings, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Slider } from "./ui/slider";
+import { Label } from "./ui/label";
 
 
 const bubbleTypes = {
@@ -24,7 +32,8 @@ interface Bubble {
   height: number;
   text: string;
   type: BubbleType;
-  color?: string; // NEW: Optional color for the bubble border
+  characterId?: string; // ID of the character speaking
+  fontSize?: number; // Optional font size
 }
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
@@ -46,10 +55,13 @@ export const compressImage = async (dataUrl: string, quality = 0.85): Promise<st
     return canvas.toDataURL('image/jpeg', quality);
 };
 
-const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
+const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: Character[]) => {
+    const character = characters.find(c => c.id === bubble.characterId);
     const style = bubbleTypes[bubble.type];
+    const color = character?.factionColor || style.border.split(' ')[2]; // Use faction color if available
+    
     ctx.fillStyle = "white";
-    ctx.strokeStyle = bubble.color || style.border.split(' ')[2]; // Use faction color if available
+    ctx.strokeStyle = color;
     ctx.lineWidth = parseInt(style.border.split(' ')[0], 10);
     ctx.setLineDash(style.lineDash);
     
@@ -60,13 +72,14 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
     
     ctx.setLineDash([]);
     ctx.fillStyle = "black";
-    ctx.font = "32px 'Comic Sans MS', sans-serif";
+    const fontSize = bubble.fontSize || 32;
+    ctx.font = `${fontSize}px 'Comic Sans MS', sans-serif`;
     ctx.textBaseline = "top";
 
     const words = bubble.text.split(' ');
     let line = '';
     let textY = bubble.y + 15;
-    const lineHeight = 35;
+    const lineHeight = fontSize * 1.1; // Adjust line height based on font size
     const padding = 15;
 
     for(let n = 0; n < words.length; n++) {
@@ -87,16 +100,20 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble) => {
 
 export default function ImageEditor({
     imageUrl,
-    message, // NEW: Pass the full message object
-    characters, // NEW: Pass all characters to find faction colors
+    message,
+    characters,
     onSave,
     onClose,
+    playerName,
+    playerId,
  }: {
     imageUrl: string;
-    message: Message; // The message associated with this image
-    characters: Character[]; // All current characters
+    message: Message;
+    characters: Character[];
     onSave: (dataUrl: string) => void;
     onClose: () => void;
+    playerName: string;
+    playerId: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -121,7 +138,7 @@ export default function ImageEditor({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
     bubbles.forEach((bubble) => {
-      drawBubble(ctx, bubble);
+      drawBubble(ctx, bubble, characters); // Pass characters to drawBubble
       if (bubble.id === selectedBubbleId) {
         ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
         ctx.lineWidth = 3;
@@ -130,9 +147,12 @@ export default function ImageEditor({
         ctx.setLineDash([]);
       }
     });
-  }, [img, bubbles, selectedBubbleId]);
+  }, [img, bubbles, selectedBubbleId, characters]);
 
-  const addBubble = () => {
+  const addBubble = (characterId: string) => {
+    const character = characters.find(c => c.id === characterId) || (characterId === playerId ? { id: playerId, name: playerName } : null);
+    if (!character) return;
+    
     const newBubble: Bubble = {
       id: `bubble-${Date.now()}`,
       x: 50,
@@ -141,6 +161,8 @@ export default function ImageEditor({
       height: 120,
       text: "Nouveau texte...",
       type: currentBubbleType,
+      characterId: character.id,
+      fontSize: 32,
     };
     setBubbles([...bubbles, newBubble]);
     setSelectedBubbleId(newBubble.id);
@@ -153,21 +175,17 @@ export default function ImageEditor({
       const dialogueRegex = /"([^"]*)"/g;
       const thoughtRegex = /\*([^*]*)\*/g;
       const newBubbles: Bubble[] = [];
-      let match;
       let yOffset = 20;
 
-      // Find speaker colors
-      const speakerColors: { [key: string]: string | undefined } = {};
-      (speakingCharacterNames || []).forEach(name => {
-          const character = characters.find(c => c.name === name);
-          if (character) {
-              speakerColors[name] = character.factionColor;
-          }
-      });
-      const mainSpeakerColor = speakingCharacterNames && speakingCharacterNames.length > 0 ? speakerColors[speakingCharacterNames[0]] : undefined;
+      const speakers = (speakingCharacterNames || [])
+        .map(name => characters.find(c => c.name === name))
+        .filter((c): c is Character => !!c);
+        
+      let speakerIndex = 0;
 
       // Extract dialogues
       while ((match = dialogueRegex.exec(content)) !== null) {
+          const speaker = speakers[speakerIndex % speakers.length];
           newBubbles.push({
               id: `bubble-${Date.now()}-${newBubbles.length}`,
               x: 20,
@@ -176,13 +194,16 @@ export default function ImageEditor({
               height: 100,
               text: match[1],
               type: 'parole',
-              color: mainSpeakerColor || '#000000', // Default to black if no speaker color
+              characterId: speaker?.id,
+              fontSize: 32,
           });
           yOffset += 110;
+          speakerIndex++; // Cycle through speakers
       }
 
       // Extract thoughts
       while ((match = thoughtRegex.exec(content)) !== null) {
+          const speaker = speakers[speakerIndex % speakers.length];
           newBubbles.push({
               id: `bubble-${Date.now()}-${newBubbles.length}`,
               x: 20,
@@ -191,7 +212,8 @@ export default function ImageEditor({
               height: 80,
               text: match[1],
               type: 'pensée',
-              color: '#808080' // Thoughts are always neutral gray
+              characterId: speaker?.id, // Thoughts are also linked to a character
+              fontSize: 30,
           });
           yOffset += 90;
       }
@@ -238,10 +260,9 @@ export default function ImageEditor({
 
   const handleMouseUp = () => setDragging(false);
 
-  const updateText = (text: string) => {
-    if (selectedBubbleId === null) return;
+  const updateBubble = (id: string, updates: Partial<Bubble>) => {
     setBubbles(currentBubbles => currentBubbles.map(b =>
-      b.id === selectedBubbleId ? { ...b, text } : b
+      b.id === id ? { ...b, ...updates } : b
     ));
   };
 
@@ -274,6 +295,9 @@ export default function ImageEditor({
 
 
   const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
+  const speakingCharacters = (message.speakingCharacterNames || [])
+      .map(name => characters.find(c => c.name === name))
+      .filter((c): c is Character => !!c);
 
   return (
     <div className="flex flex-col gap-4 items-center p-4 bg-muted/50 rounded-lg h-full">
@@ -307,44 +331,65 @@ export default function ImageEditor({
                         </SelectContent>
                     </Select>
                 </div>
-                <Button onClick={addBubble} size="sm">➕ Ajouter bulle</Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Ajouter bulle</Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                      <DropdownMenuItem onSelect={() => addBubble(playerId)}>
+                         <User className="mr-2 h-4 w-4"/> Pour {playerName} (Héros)
+                      </DropdownMenuItem>
+                       {speakingCharacters.length > 0 && <DropdownMenuSeparator />}
+                      {speakingCharacters.map(char => (
+                          <DropdownMenuItem key={char.id} onSelect={() => addBubble(char.id)}>
+                              <Mic className="mr-2 h-4 w-4" style={{color: char.factionColor}}/> Pour {char.name}
+                          </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button onClick={handleAutoInsertBubbles} size="sm" variant="outline">
                     <MessageSquarePlus className="mr-2 h-4 w-4" /> Insérer Bulles Auto
                 </Button>
             </div>
             {selectedBubble && (
-                <div className="w-full p-3 border rounded-md bg-background space-y-3">
+                <Card className="p-3 border rounded-md bg-background space-y-3">
                     <h3 className="font-semibold">Éditer la bulle sélectionnée ({bubbleTypes[selectedBubble.type].label})</h3>
                     <Textarea
                     value={selectedBubble.text}
-                    onChange={(e) => updateText(e.target.value)}
+                    onChange={(e) => updateBubble(selectedBubbleId!, { text: e.target.value })}
                     placeholder="Écrivez votre dialogue ici..."
                     rows={3}
                     />
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="bubble-type-editor">Style:</label>
-                        <Select
-                            value={selectedBubble.type}
-                            onValueChange={(value) => {
-                                if (selectedBubbleId) {
-                                    setBubbles(bubbles.map(b => b.id === selectedBubbleId ? {...b, type: value as BubbleType} : b));
-                                }
-                            }}
-                        >
-                            <SelectTrigger id="bubble-type-editor" className="flex-1">
-                                <SelectValue placeholder="Style" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                          <Label>Style</Label>
+                          <Select
+                              value={selectedBubble.type}
+                              onValueChange={(value) => updateBubble(selectedBubbleId!, { type: value as BubbleType })}
+                          >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                  {Object.entries(bubbleTypes).map(([key, { label }]) => (
+                                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="space-y-1">
+                          <Label>Taille du Texte: {selectedBubble.fontSize || 32}</Label>
+                          <Slider
+                            value={[selectedBubble.fontSize || 32]}
+                            min={12}
+                            max={72}
+                            step={2}
+                            onValueChange={(value) => updateBubble(selectedBubbleId!, { fontSize: value[0] })}
+                          />
+                      </div>
                     </div>
-                    <Button onClick={deleteBubble} variant="destructive" size="sm">
-                        🗑️ Supprimer la bulle
+                    <Button onClick={deleteBubble} variant="destructive" size="sm" className="w-full">
+                        <Trash2 className="mr-2 h-4 w-4"/>Supprimer la bulle
                     </Button>
-                </div>
+                </Card>
             )}
         </div>
         <div className="flex flex-col gap-2 md:w-40">

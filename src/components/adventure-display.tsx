@@ -435,7 +435,7 @@ export function AdventureDisplay({
       <>
         {parts.map((part, index) => {
           if (part.startsWith('"') && part.endsWith('"')) {
-            return <strong key={index}>{part.slice(1, -1)}</strong>; // Dialogue
+            return <strong key={index}>{part}</strong>; // Dialogue with quotes
           }
           if (part.startsWith('*') && part.endsWith('*')) {
             return <em key={index}>{part.slice(1, -1)}</em>; // Thought
@@ -1101,7 +1101,15 @@ export function AdventureDisplay({
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
-                        {imageToEdit && <ImageEditor imageUrl={imageToEdit.url} message={imageToEdit.message} characters={characters} onClose={() => setImageEditorOpen(false)} onSave={onAddToComicPage} />}
+                        {imageToEdit && <ImageEditor
+                             imageUrl={imageToEdit.url}
+                             message={imageToEdit.message}
+                             characters={characters}
+                             onClose={() => setImageEditorOpen(false)}
+                             onSave={onAddToComicPage}
+                             playerName={adventureSettings.playerName || "Héros"}
+                             playerId={playerId}
+                             />}
                         </div>
                     </DialogContent>
                 </Dialog>
