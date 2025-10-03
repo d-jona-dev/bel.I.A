@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { PlusCircle, Trash2, Edit2, Check, X, Loader2, Server, Folder, AlertTriangle, BrainCircuit, ImageIcon } from "lucide-react";
+import { PlusCircle, Trash2, Edit2, Check, X, Loader2, Server, Folder, AlertTriangle, BrainCircuit, ImageIcon, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AiConfig, ModelDefinition, ImageModelDefinition } from "@/types";
 import {
@@ -56,6 +56,9 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   const [localModels, setLocalModels] = React.useState<string[]>([]);
   const [isLocalServerLoading, setIsLocalServerLoading] = React.useState(true);
   const [localServerError, setLocalServerError] = React.useState<string | null>(null);
+  
+  const importFileRef = React.useRef<HTMLInputElement>(null);
+
 
   React.useEffect(() => {
     try {
@@ -99,6 +102,53 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
   const saveImageModels = (updatedModels: ImageModelDefinition[]) => {
     setImageModels(updatedModels);
     localStorage.setItem('image_models', JSON.stringify(updatedModels));
+  };
+
+  const handleDownloadModels = () => {
+    try {
+      const dataToSave = { llmModels, imageModels };
+      const jsonString = JSON.stringify(dataToSave, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aventurier_textuel_models.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Exportation Réussie", description: "La liste des modèles a été téléchargée." });
+    } catch (error) {
+      console.error("Failed to download models:", error);
+      toast({ title: "Erreur d'Exportation", variant: "destructive" });
+    }
+  };
+
+  const handleImportModels = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') throw new Error("File is not text");
+        const importedData = JSON.parse(text);
+
+        if (Array.isArray(importedData.llmModels) && Array.isArray(importedData.imageModels)) {
+          saveLlmModels(importedData.llmModels);
+          saveImageModels(importedData.imageModels);
+          toast({ title: "Importation Réussie", description: "Les listes de modèles ont été mises à jour." });
+        } else {
+          throw new Error("Invalid JSON structure.");
+        }
+      } catch (error) {
+        console.error("Failed to import models:", error);
+        toast({ title: "Erreur d'Importation", description: "Le fichier JSON est invalide ou corrompu.", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+    if (event.target) event.target.value = ''; // Reset input
   };
 
 
@@ -275,7 +325,21 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
   return (
     <Card className="bg-muted/20 border-dashed">
-        <CardContent className="p-4 space-y-4">
+        <CardHeader className="flex-row items-center justify-between pb-4">
+            <div>
+                <CardTitle className="text-base flex items-center gap-2">Configuration IA</CardTitle>
+            </div>
+            <div className="flex gap-2">
+                 <input type="file" ref={importFileRef} accept=".json" onChange={handleImportModels} className="hidden" />
+                 <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}>
+                     <Upload className="h-4 w-4 mr-1"/> Importer
+                 </Button>
+                 <Button variant="outline" size="sm" onClick={handleDownloadModels}>
+                     <Download className="h-4 w-4 mr-1"/> Exporter
+                 </Button>
+            </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-4">
             {/* LLM Config Section */}
             <div className="space-y-2">
                 <Label className="flex items-center gap-2"><BrainCircuit className="h-4 w-4"/> Modèle de Langage (LLM)</Label>
@@ -546,3 +610,5 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     </Card>
   );
 }
+
+    
