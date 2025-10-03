@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "./ui/button";
@@ -6,7 +5,7 @@ import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Message, Character } from "@/types";
-import { MessageSquarePlus, PlusCircle, Trash2, Mic, Settings, User } from "lucide-react";
+import { MessageSquarePlus, PlusCircle, Trash2, Mic, Settings, User, UploadCloud } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,7 +88,7 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: C
         if (testWidth > bubble.width - padding * 2 && n > 0) {
             ctx.fillText(line, bubble.x + padding, textY);
             line = words[n] + ' ';
-            textY += lineHeight;
+            y += lineHeight;
         } else {
             line = testLine;
         }
@@ -107,7 +106,7 @@ export default function ImageEditor({
     playerName,
     playerId,
  }: {
-    imageUrl: string;
+    imageUrl: string | null; // Can now be null
     message: Message;
     characters: Character[];
     onSave: (dataUrl: string) => void;
@@ -116,6 +115,7 @@ export default function ImageEditor({
     playerId: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [selectedBubbleId, setSelectedBubbleId] = useState<string | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
@@ -125,18 +125,37 @@ export default function ImageEditor({
   const { toast } = useToast();
 
   useEffect(() => {
-    loadImage(imageUrl).then(setImg).catch(() => console.error("Failed to load image"));
+    if (imageUrl) {
+        loadImage(imageUrl).then(setImg).catch(() => console.error("Failed to load image"));
+    } else {
+        setImg(null); // Explicitly set to null if no URL
+    }
   }, [imageUrl]);
 
   useEffect(() => {
-    if (!canvasRef.current || !img) return;
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    canvas.width = img.width;
-    canvas.height = img.height;
+    
+    // Set a default canvas size, e.g., 900x1200
+    canvas.width = img?.width || 900;
+    canvas.height = img?.height || 1200;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+    
+    if (img) {
+      ctx.drawImage(img, 0, 0);
+    } else {
+      // Draw a placeholder if no image is loaded
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#a0a0a0';
+      ctx.font = "30px sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillText("Aucune image. Téléchargez-en une.", canvas.width / 2, canvas.height / 2);
+    }
+
     bubbles.forEach((bubble) => {
       drawBubble(ctx, bubble, characters); // Pass characters to drawBubble
       if (bubble.id === selectedBubbleId) {
@@ -184,6 +203,7 @@ export default function ImageEditor({
       let speakerIndex = 0;
 
       // Extract dialogues
+      let match;
       while ((match = dialogueRegex.exec(content)) !== null) {
           const speaker = speakers[speakerIndex % speakers.length];
           newBubbles.push({
@@ -273,7 +293,14 @@ export default function ImageEditor({
   };
   
     const handleSave = async () => {
-        if (!canvasRef.current) return;
+        if (!canvasRef.current || !img) {
+            toast({
+                title: "Aucune image à sauvegarder",
+                description: "Veuillez d'abord télécharger une image.",
+                variant: "destructive"
+            });
+            return;
+        }
         
         try {
             const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
@@ -292,6 +319,19 @@ export default function ImageEditor({
             console.error(error);
         }
     };
+    
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          loadImage(e.target.result as string).then(setImg);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
 
   const selectedBubble = selectedBubbleId !== null ? bubbles.find(b => b.id === selectedBubbleId) : null;
@@ -301,7 +341,7 @@ export default function ImageEditor({
 
   return (
     <div className="flex flex-col gap-4 items-center p-4 bg-muted/50 rounded-lg h-full">
-      <div className="flex-1 w-full overflow-auto border rounded-md">
+      <div className="flex-1 w-full overflow-auto border rounded-md relative">
         <canvas
             ref={canvasRef}
             onMouseDown={handleMouseDown}
@@ -314,6 +354,22 @@ export default function ImageEditor({
                 height: "auto"
             }}
         />
+        {!img && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-200/50 backdrop-blur-sm">
+            <UploadCloud className="h-16 w-16 text-gray-500 mb-4" />
+            <p className="text-gray-600 font-semibold mb-2">Aucune image sélectionnée</p>
+            <Button onClick={() => uploadInputRef.current?.click()}>
+              Télécharger une image
+            </Button>
+            <input
+              type="file"
+              ref={uploadInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+          </div>
+        )}
       </div>
       <div className="flex flex-col md:flex-row w-full gap-4">
         <div className="flex-1 space-y-3">
@@ -339,7 +395,7 @@ export default function ImageEditor({
                       <DropdownMenuItem onSelect={() => addBubble(playerId)}>
                          <User className="mr-2 h-4 w-4"/> Pour {playerName} (Héros)
                       </DropdownMenuItem>
-                       {speakingCharacters.length > 0 && <DropdownMenuSeparator />}
+                       {speakingCharacters.length > 0 && <DropdownMenu.Separator />}
                       {speakingCharacters.map(char => (
                           <DropdownMenuItem key={char.id} onSelect={() => addBubble(char.id)}>
                               <Mic className="mr-2 h-4 w-4" style={{color: char.factionColor}}/> Pour {char.name}
@@ -393,7 +449,7 @@ export default function ImageEditor({
             )}
         </div>
         <div className="flex flex-col gap-2 md:w-40">
-             <Button onClick={handleSave} variant="default" size="lg">💾 Sauvegarder dans la BD</Button>
+             <Button onClick={handleSave} variant="default" size="lg" disabled={!img}>💾 Sauvegarder dans la BD</Button>
              <Button onClick={onClose} variant="outline" size="lg">Fermer</Button>
         </div>
       </div>

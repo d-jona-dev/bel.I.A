@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -143,7 +142,7 @@ const formatTimeToDisplay = (time24h: string, format: '12h' | '24h' | undefined)
 };
 
 interface ImageToEdit {
-    url: string;
+    url: string | null;
     message: Message;
 }
 
@@ -1115,10 +1114,10 @@ export function AdventureDisplay({
                 </Dialog>
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-                        {messages.find(m=>m.imageUrl) ? (
+                        {messages.slice().reverse().find(m=>m.imageUrl) ? (
                             <div className="relative w-full aspect-square group">
                                 <Image
-                                    src={messages.find(m=>m.imageUrl)!.imageUrl!}
+                                    src={messages.slice().reverse().find(m=>m.imageUrl)!.imageUrl!}
                                     alt="Generated Scene"
                                     fill
                                     style={{ objectFit: 'contain' }}
@@ -1139,7 +1138,7 @@ export function AdventureDisplay({
                                             </DialogHeader>
                                             <div className="relative w-full h-full">
                                                 <Image
-                                                    src={messages.find(m=>m.imageUrl)!.imageUrl!}
+                                                    src={messages.slice().reverse().find(m=>m.imageUrl)!.imageUrl!}
                                                     alt="Generated Scene in Fullscreen"
                                                     layout="fill"
                                                     objectFit="contain"
@@ -1147,15 +1146,6 @@ export function AdventureDisplay({
                                             </div>
                                         </DialogContent>
                                     </Dialog>
-                                     <Button variant="outline" size="icon" className="h-8 w-8 bg-background/50 hover:bg-background/80" onClick={() => { 
-                                         const messageWithImage = messages.find(m => m.imageUrl);
-                                         if (messageWithImage) {
-                                            setImageToEdit({url: messageWithImage.imageUrl!, message: messageWithImage});
-                                            setImageEditorOpen(true);
-                                         }
-                                     }}>
-                                        <Edit3 className="h-4 w-4" />
-                                    </Button>
                                 </div>
                             </div>
                         ) : (
@@ -1219,6 +1209,29 @@ export function AdventureDisplay({
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                             <TooltipProvider>
+                                <Tooltip>
+                                     <TooltipTrigger asChild>
+                                        <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="flex-shrink-0"
+                                            onClick={() => {
+                                                const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai');
+                                                if (lastAiMessage) {
+                                                    setImageToEdit({ url: lastAiMessage.imageUrl || null, message: lastAiMessage });
+                                                    setImageEditorOpen(true);
+                                                } else {
+                                                    toast({ title: "Aucune scène à éditer", description: "Il n'y a pas encore de réponse de l'IA à visualiser.", variant: "default" });
+                                                }
+                                            }}
+                                        >
+                                            <Edit3 className="h-4 w-4" />
+                                        </Button>
+                                     </TooltipTrigger>
+                                     <TooltipContent>Ouvrir l'éditeur d'image pour la dernière scène (même sans image).</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
