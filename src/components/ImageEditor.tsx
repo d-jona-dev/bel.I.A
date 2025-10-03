@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "./ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "./ui/slider";
 import { Label } from "./ui/label";
+import { Card } from "./ui/card";
 
 
 const bubbleTypes = {
@@ -88,7 +90,7 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: C
         if (testWidth > bubble.width - padding * 2 && n > 0) {
             ctx.fillText(line, bubble.x + padding, textY);
             line = words[n] + ' ';
-            y += lineHeight;
+            textY += lineHeight;
         } else {
             line = testLine;
         }
@@ -456,3 +458,5 @@ export default function ImageEditor({
     </div>
   );
 }
+
+    
