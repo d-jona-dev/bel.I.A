@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "./ui/slider";
@@ -397,7 +398,7 @@ export default function ImageEditor({
                       <DropdownMenuItem onSelect={() => addBubble(playerId)}>
                          <User className="mr-2 h-4 w-4"/> Pour {playerName} (Héros)
                       </DropdownMenuItem>
-                       {speakingCharacters.length > 0 && <DropdownMenu.Separator />}
+                       {speakingCharacters.length > 0 && <DropdownMenuSeparator />}
                       {speakingCharacters.map(char => (
                           <DropdownMenuItem key={char.id} onSelect={() => addBubble(char.id)}>
                               <Mic className="mr-2 h-4 w-4" style={{color: char.factionColor}}/> Pour {char.name}
@@ -458,5 +459,3 @@ export default function ImageEditor({
     </div>
   );
 }
-
-    
