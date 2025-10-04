@@ -289,8 +289,8 @@ export default function HistoiresPage() {
     newAdventureState.adventureSettings = {
         ...newAdventureState.adventureSettings,
         ...formValues,
-        world: formValues.world || "",
-        initialSituation: formValues.initialSituation || "",
+        world: formValues.world || "Monde non défini",
+        initialSituation: formValues.initialSituation || "Situation de départ non définie",
         playerName: formValues.playerName || "Héros",
         rpgMode: formValues.rpgMode ?? true,
         relationsMode: formValues.relationsMode ?? true,
@@ -303,6 +303,14 @@ export default function HistoiresPage() {
         ...c,
         id: c.id || uid(),
     } as Character));
+    
+    // Set the narrative to start with the initial situation
+    newAdventureState.narrative = [{
+        id: `msg-${Date.now()}`,
+        type: 'system',
+        content: newAdventureState.adventureSettings.initialSituation,
+        timestamp: Date.now()
+    }];
 
     const newStory: SavedStory = {
         id: newId,
@@ -312,7 +320,9 @@ export default function HistoiresPage() {
         adventureState: newAdventureState,
     };
 
-    saveStories([...savedStories, newStory]);
+    const updatedStories = [...savedStories, newStory];
+    saveStories(updatedStories);
+    
     toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
     setIsCreateModalOpen(false);
 
@@ -633,3 +643,5 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
+    
