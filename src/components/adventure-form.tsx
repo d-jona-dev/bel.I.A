@@ -75,7 +75,7 @@ interface AdventureFormProps {
     rpgMode: boolean;
     relationsMode: boolean;
     strategyMode: boolean;
-    aiConfig: AiConfig;
+    aiConfig?: AiConfig;
 }
 
 
@@ -663,7 +663,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 playerDexterity: BASE_ATTRIBUTE_VALUE_FORM,
                 playerConstitution: BASE_ATTRIBUTE_VALUE_FORM,
                 playerIntelligence: BASE_ATTRIBUTE_VALUE_FORM,
-                playerWisdom: BASE_ATTRIBUTE_VALUE_FORM,
                 playerCharisma: BASE_ATTRIBUTE_VALUE_FORM,
             });
             return;
@@ -718,65 +717,33 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         }
     }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings]);
 
-
     const renderItemManager = (type: BaseItem['type'], title: string, items: BaseItem[]) => (
-        <>
+        <div className="p-2 border rounded-lg">
             <div className="flex justify-between items-center mb-2">
-                <CardDescription>Gérez la liste des {title.toLowerCase()}.</CardDescription>
+                <h4 className="font-semibold">{title}</h4>
                 <Button size="sm" variant="outline" onClick={() => handleAddNewItem(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
             </div>
-            <ScrollArea className="h-64 border rounded-md p-2">
-                <div className="space-y-2">
+            <ScrollArea className="h-64">
+                <div className="space-y-2 pr-2">
                 {items.map(item => (
-                    <Card key={item.id} className="p-2 flex justify-between items-center bg-muted/20">
-                        <div>
-                            <p className="font-semibold text-sm">{item.name} <span className="text-xs text-muted-foreground">({item.rarity})</span></p>
-                            <p className="text-xs text-muted-foreground">{item.description}</p>
-                        </div>
-                        <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id, type)}>
-                                <Trash2 className="h-4 w-4"/>
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItemType(type); setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true);}}>
-                                <FilePenLine className="h-4 w-4"/>
-                            </Button>
+                    <Card key={item.id} className="p-2 bg-muted/20">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-sm">{item.name}</p>
+                                <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
+                            </div>
+                             <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemType(type); setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true); }}><FilePenLine className="h-4 w-4"/></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id, type)}><Trash2 className="h-4 w-4"/></Button>
+                             </div>
                         </div>
                     </Card>
                 ))}
                 </div>
             </ScrollArea>
-        </>
+        </div>
     );
-
-    const renderFamiliarComponentManager = (type: 'physical' | 'creature' | 'descriptor', title: string, components: BaseFamiliarComponent[]) => (
-        <>
-            <div className="flex justify-between items-center mb-2">
-                <CardDescription>Gérez la liste des "{title}".</CardDescription>
-                <Button size="sm" variant="outline" onClick={() => handleAddNewFamiliarComponent(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
-            </div>
-            <ScrollArea className="h-48 border rounded-md p-2">
-                <div className="space-y-2">
-                {components.map(component => (
-                    <Card key={component.id} className="p-2 flex justify-between items-center bg-muted/20">
-                        <div>
-                            <p className="font-semibold text-sm">{component.name}</p>
-                            <p className="text-xs text-muted-foreground">Univers: {component.universe}</p>
-                        </div>
-                        <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteFamiliarComponent(component.id, type)}>
-                                <Trash2 className="h-4 w-4"/>
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingFamiliarComponentType(type); setEditingFamiliarComponent(JSON.parse(JSON.stringify(component))); setIsFamiliarEditorOpen(true);}}>
-                                <FilePenLine className="h-4 w-4"/>
-                            </Button>
-                        </div>
-                    </Card>
-                ))}
-                </div>
-            </ScrollArea>
-        </>
-    );
-
+    
     const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
         switch (rarity) {
           case 'Commun': return 'text-gray-500';
@@ -787,6 +754,28 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
           default: return 'text-gray-500';
         }
     };
+    
+    const renderFamiliarComponentManager = (type: 'physical' | 'creature' | 'descriptor', title: string, components: BaseFamiliarComponent[]) => (
+        <div className="p-2 border rounded-lg bg-background">
+            <div className="flex justify-between items-center mb-2">
+                <h5 className="font-semibold text-xs">{title}</h5>
+                <Button size="xs" variant="outline" onClick={() => handleAddNewFamiliarComponent(type)}><PlusCircle className="mr-1 h-3 w-3"/> Ajouter</Button>
+            </div>
+            <ScrollArea className="h-40">
+                <div className="space-y-1 pr-2">
+                    {components.map(comp => (
+                         <div key={comp.id} className="flex justify-between items-center text-xs p-1 rounded bg-muted/50">
+                            <span>{comp.name} <span className="text-muted-foreground">({comp.universe})</span></span>
+                            <div>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingFamiliarComponentType(type); setEditingFamiliarComponent(comp); setIsFamiliarEditorOpen(true); }}><FilePenLine className="h-3 w-3"/></Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteFamiliarComponent(comp.id, type)}><Trash2 className="h-3 w-3"/></Button>
+                            </div>
+                         </div>
+                    ))}
+                </div>
+            </ScrollArea>
+        </div>
+    );
 
     return (
         <Form {...form}>
@@ -1180,7 +1169,24 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 <div className="flex gap-4 items-start">
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
-                                        <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={() => form.setValue('playerPortraitUrl', field.value)} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField
+                                            control={form.control}
+                                            name="playerPortraitUrl"
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>URL du Portrait</FormLabel>
+                                                <FormControl>
+                                                <Input
+                                                    placeholder="https://example.com/portrait.png"
+                                                    {...field}
+                                                    value={field.value || ""}
+                                                    onBlur={() => form.setValue('playerPortraitUrl', field.value, { shouldDirty: true })}
+                                                />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
                                     </div>
                                      <Avatar className="h-24 w-24">
                                         <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />
@@ -1266,7 +1272,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                              <FormField
                                                 control={form.control}
                                                 name={`mapPointsOfInterest.${index}.defenderUnitIds`}
-                                                render={({ field }) => (
+                                                render={({ field: defenderField }) => (
                                                 <FormItem>
                                                     <FormLabel className="flex items-center gap-2"><Shield className="h-4 w-4"/> Défenseurs</FormLabel>
                                                     <Popover>
@@ -1277,12 +1283,12 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                     role="combobox"
                                                                     className={cn(
                                                                         "w-full justify-between h-auto text-left font-normal",
-                                                                        !field.value && "text-muted-foreground"
+                                                                        !defenderField.value && "text-muted-foreground"
                                                                     )}
                                                                 >
-                                                                    {field.value && field.value.length > 0 ? (
+                                                                    {defenderField.value && defenderField.value.length > 0 ? (
                                                                         <div className="flex flex-col items-start">
-                                                                            {field.value.map(id => (
+                                                                            {defenderField.value.map(id => (
                                                                                 <span key={id} className="block truncate text-xs p-0.5">- {enemies.find(e => e.id === id)?.name || id}</span>
                                                                             ))}
                                                                         </div>
@@ -1304,17 +1310,17 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                         value={enemy.name}
                                                                         key={enemy.id}
                                                                         onSelect={() => {
-                                                                            const selected = field.value || [];
+                                                                            const selected = defenderField.value || [];
                                                                             const newSelection = selected.includes(enemy.id)
                                                                                 ? selected.filter(id => id !== enemy.id)
                                                                                 : [...selected, enemy.id];
-                                                                            field.onChange(newSelection);
+                                                                            defenderField.onChange(newSelection);
                                                                         }}
                                                                     >
                                                                         <Check
                                                                             className={cn(
                                                                             "mr-2 h-4 w-4",
-                                                                            (field.value || []).includes(enemy.id)
+                                                                            (defenderField.value || []).includes(enemy.id)
                                                                                 ? "opacity-100"
                                                                                 : "opacity-0"
                                                                             )}
@@ -1391,21 +1397,21 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                 key={building.id}
                                                                 control={form.control}
                                                                 name={`mapPointsOfInterest.${index}.buildings`}
-                                                                render={({ field }) => (
+                                                                render={({ field: checkboxField }) => (
                                                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                                                         <FormControl>
                                                                             <Checkbox
-                                                                                checked={field.value?.includes(building.id)}
+                                                                                checked={checkboxField.value?.includes(building.id)}
                                                                                 onCheckedChange={(checked) => {
-                                                                                    const currentBuildings = field.value || [];
+                                                                                    const currentBuildings = checkboxField.value || [];
                                                                                     if (checked) {
                                                                                         if (currentBuildings.length < buildingSlots) {
-                                                                                            field.onChange([...currentBuildings, building.id]);
+                                                                                            checkboxField.onChange([...currentBuildings, building.id]);
                                                                                         } else {
                                                                                             toast({ title: "Limite de bâtiments atteinte", variant: "destructive" });
                                                                                         }
                                                                                     } else {
-                                                                                        field.onChange(currentBuildings.filter((value) => value !== building.id));
+                                                                                        checkboxField.onChange(currentBuildings.filter((value) => value !== building.id));
                                                                                     }
                                                                                 }}
                                                                             />
@@ -1569,8 +1575,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     <FormField
                                                         control={form.control}
                                                         name={`characters.${index}.relations.player`}
-                                                        render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
+                                                        render={({ field: relationField }) => (
+                                                            <Input {...relationField} value={relationField.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
                                                         )}
                                                     />
                                                 </div>
@@ -1580,8 +1586,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                         <FormField
                                                             control={form.control}
                                                             name={`characters.${index}.relations.${otherChar.id}`}
-                                                            render={({ field }) => (
-                                                                <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                            render={({ field: relationField }) => (
+                                                                <Input {...relationField} value={relationField.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
                                                             )}
                                                         />
                                                     </div>
@@ -1887,3 +1893,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
