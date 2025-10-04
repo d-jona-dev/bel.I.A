@@ -314,9 +314,15 @@ export default function HistoiresPage() {
           date: new Date().toISOString().split('T')[0],
           adventureState: newAdventureState,
       };
+      
       saveStories([...savedStories, newStory]);
-      toast({ title: "Nouvelle Aventure Créée!", description: "Elle a été ajoutée à votre liste." });
+      toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
       setIsCreateModalOpen(false);
+
+      // Launch the newly created story
+      localStorage.setItem('currentAdventureState', JSON.stringify(newAdventureState));
+      localStorage.setItem('loadStoryOnMount', 'true');
+      window.location.href = '/';
   }
 
   
@@ -596,7 +602,7 @@ export default function HistoiresPage() {
                 </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button onClick={handleCreateNewStory} disabled={!isCreateFormValid}>Créer l'Histoire</Button>
+                    <Button onClick={handleCreateNewStory} disabled={!isCreateFormValid}>Créer et Lancer</Button>
                  </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -631,5 +637,7 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
+    
 
     
