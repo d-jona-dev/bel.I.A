@@ -656,33 +656,15 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     }
 
     const handleAvatarSelection = (avatarId: string) => {
-        if (avatarId === 'custom') {
-            const currentValues = form.getValues();
-            form.setValue('playerName', "Héros");
-            form.setValue('playerClass', "Aventurier");
-            form.setValue('playerLevel', 1);
-            form.setValue('playerDetails', "");
-            form.setValue('playerDescription', "");
-            form.setValue('playerOrientation', "");
-            form.setValue('playerPortraitUrl', null);
-            form.setValue('playerStrength', BASE_ATTRIBUTE_VALUE_FORM);
-            form.setValue('playerDexterity', BASE_ATTRIBUTE_VALUE_FORM);
-            form.setValue('playerConstitution', BASE_ATTRIBUTE_VALUE_FORM);
-            form.setValue('playerIntelligence', BASE_ATTRIBUTE_VALUE_FORM);
-            form.setValue('playerCharisma', BASE_ATTRIBUTE_VALUE_FORM);
-            return;
-        }
-
-        const selectedAvatar = savedAvatars.find(a => a.id === avatarId);
-        if (selectedAvatar) {
-            form.setValue('playerName', selectedAvatar.name, { shouldValidate: true });
-            form.setValue('playerClass', selectedAvatar.class, { shouldValidate: true });
-            form.setValue('playerLevel', selectedAvatar.level, { shouldValidate: true });
-            form.setValue('playerDetails', selectedAvatar.details, { shouldValidate: true });
-            form.setValue('playerDescription', selectedAvatar.description, { shouldValidate: true });
-            form.setValue('playerOrientation', selectedAvatar.orientation, { shouldValidate: true });
-            form.setValue('playerPortraitUrl', selectedAvatar.portraitUrl, { shouldValidate: true });
-            toast({ title: "Avatar Chargé", description: `Les informations de ${selectedAvatar.name} ont été appliquées.` });
+        const avatar = savedAvatars.find(a => a.id === avatarId);
+        if (avatar) {
+            form.setValue('playerName', avatar.name, { shouldValidate: true });
+            form.setValue('playerClass', avatar.class, { shouldValidate: true });
+            form.setValue('playerLevel', avatar.level, { shouldValidate: true });
+            form.setValue('playerDetails', avatar.details, { shouldValidate: true });
+            form.setValue('playerDescription', avatar.description, { shouldValidate: true });
+            form.setValue('playerOrientation', avatar.orientation, { shouldValidate: true });
+            form.setValue('playerPortraitUrl', avatar.portraitUrl, { shouldValidate: true });
         }
     };
 
@@ -1177,7 +1159,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>URL du Portrait</FormLabel>
-                                                <FormControl><Input placeholder="https://example.com/portrait.png" value={field.value || ""} onBlur={(e) => field.onChange(e.target.value)} /></FormControl>
+                                                <FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={(e) => form.setValue('playerPortraitUrl', e.target.value)} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}/>
@@ -1215,24 +1197,23 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                                 {ATTRIBUTES.map(attr => (
                                                     <FormField
-                                                    key={attr}
-                                                    control={form.control}
-                                                    name={attr as any}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
-                                                            <FormControl>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    {...field}
-                                                                    value={field.value || BASE_ATTRIBUTE_VALUE_FORM}
-                                                                    onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                                                                    onBlur={() => handleAttributeBlur(attr as any)}
-                                                                    className="h-8"
-                                                                />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )}
+                                                        key={attr}
+                                                        control={form.control}
+                                                        name={attr as any}
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        type="number"
+                                                                        {...field}
+                                                                        onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                                        onBlur={() => handleAttributeBlur(attr as any)}
+                                                                        className="h-8"
+                                                                    />
+                                                                </FormControl>
+                                                            </FormItem>
+                                                        )}
                                                     />
                                                 ))}
                                             </div>
