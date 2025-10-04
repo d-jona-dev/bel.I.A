@@ -88,13 +88,13 @@ const characterSchema = z.object({
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
 }).refine(data => {
-    // Si le nom ou les détails sont vides, le personnage est considéré "en cours de création" et valide
-    // Si l'un des deux est rempli, l'autre le doit aussi.
+    // Si name ET details sont vides, le personnage est en cours de création et valide.
     if (!data.name && !data.details) return true;
+    // Si l'un ou l'autre est rempli, les deux doivent l'être.
     return !!(data.name && data.details);
 }, {
-    message: "Le nom et les détails sont requis si l'un des deux est rempli.",
-    path: ['name'], // On peut attacher l'erreur à un champ spécifique si besoin
+    message: "Le nom et les détails sont tous deux requis pour définir un personnage.",
+    path: ['name'],
 });
 
 
@@ -202,23 +202,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
-        defaultValues: {
-            ...initialValues,
-            characters: initialValues.characters || [],
-            timeManagement: initialValues.timeManagement ?? {
-                enabled: false,
-                day: 1,
-                dayName: "Lundi",
-                dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
-                currentTime: '12:00',
-                timeFormat: '24h',
-                currentEvent: '',
-                timeElapsedPerTurn: '00:15',
-            },
-            activeItemUniverses: initialValues.activeItemUniverses || ['Médiéval-Fantastique'],
-        },
+        defaultValues: initialValues,
         mode: "onChange",
     });
+    
+    React.useEffect(() => {
+        form.reset(initialValues);
+    }, [initialValues, form]);
+
 
      React.useEffect(() => {
         try {
@@ -562,23 +553,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     }));
 
     React.useEffect(() => {
-        form.reset({
-            ...initialValues,
-            characters: initialValues.characters || [],
-            timeManagement: initialValues.timeManagement ?? {
-                enabled: false,
-                day: 1,
-                dayName: "Lundi",
-                dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
-                currentTime: '12:00',
-                timeFormat: '24h',
-                currentEvent: '',
-                timeElapsedPerTurn: '00:15',
-            }
-        });
-    }, [initialValues, form]);
-
-    React.useEffect(() => {
         if (onFormValidityChange) {
             const subscription = form.watch(() => {
                 onFormValidityChange(form.formState.isValid);
@@ -668,27 +642,22 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleAvatarSelection = (avatarId: string) => {
         const avatar = savedAvatars.find(a => a.id === avatarId);
-        
-        const updateValue = (field: keyof AdventureFormValues, value: any) => {
-            form.setValue(field, value, { shouldDirty: true, shouldValidate: true });
-        };
-        
         if (avatar) {
-            updateValue('playerName', avatar.name);
-            updateValue('playerClass', avatar.class);
-            updateValue('playerLevel', avatar.level);
-            updateValue('playerDetails', avatar.details);
-            updateValue('playerDescription', avatar.description);
-            updateValue('playerOrientation', avatar.orientation);
-            updateValue('playerPortraitUrl', avatar.portraitUrl);
+            form.setValue('playerName', avatar.name);
+            form.setValue('playerClass', avatar.class);
+            form.setValue('playerLevel', avatar.level);
+            form.setValue('playerDetails', avatar.details);
+            form.setValue('playerDescription', avatar.description);
+            form.setValue('playerOrientation', avatar.orientation);
+            form.setValue('playerPortraitUrl', avatar.portraitUrl);
         } else { // Custom hero reset
-            updateValue('playerName', 'Héros');
-            updateValue('playerClass', 'Aventurier');
-            updateValue('playerLevel', 1);
-            updateValue('playerDetails', '');
-            updateValue('playerDescription', '');
-            updateValue('playerOrientation', '');
-            updateValue('playerPortraitUrl', null);
+            form.setValue('playerName', 'Héros');
+            form.setValue('playerClass', 'Aventurier');
+            form.setValue('playerLevel', 1);
+            form.setValue('playerDetails', '');
+            form.setValue('playerDescription', '');
+            form.setValue('playerOrientation', '');
+            form.setValue('playerPortraitUrl', null);
         }
     };
 
@@ -728,33 +697,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         }
     }, [newPoiLevel, buildingSlotsForLevel, newPoiBuildings]);
 
-    const renderItemManager = (type: BaseItem['type'], title: string, items: BaseItem[]) => (
-        <div className="p-2 border rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-                <h4 className="font-semibold">{title}</h4>
-                <Button size="sm" variant="outline" onClick={() => handleAddNewItem(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
-            </div>
-            <ScrollArea className="h-64">
-                <div className="space-y-2 pr-2">
-                {items.map(item => (
-                    <Card key={item.id} className="p-2 bg-muted/20">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <p className="font-semibold text-sm">{item.name}</p>
-                                <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
-                            </div>
-                             <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemType(type); setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true); }}><FilePenLine className="h-4 w-4"/></Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id, type)}><Trash2 className="h-4 w-4"/></Button>
-                             </div>
-                        </div>
-                    </Card>
-                ))}
-                </div>
-            </ScrollArea>
-        </div>
-    );
-    
     const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
         switch (rarity) {
           case 'Commun': return 'text-gray-500';
@@ -783,6 +725,32 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </div>
                          </div>
                     ))}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+    const renderItemManager = (type: BaseItem['type'], title: string, items: BaseItem[]) => (
+        <div className="p-2 border rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+                <h4 className="font-semibold">{title}</h4>
+                <Button size="sm" variant="outline" onClick={() => handleAddNewItem(type)}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+            </div>
+            <ScrollArea className="h-64">
+                <div className="space-y-2 pr-2">
+                {items.map(item => (
+                    <Card key={item.id} className="p-2 bg-muted/20">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <p className="font-semibold text-sm">{item.name}</p>
+                                <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
+                            </div>
+                             <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingItemType(type); setEditingItem(JSON.parse(JSON.stringify(item))); setIsItemEditorOpen(true); }}><FilePenLine className="h-4 w-4"/></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id, type)}><Trash2 className="h-4 w-4"/></Button>
+                             </div>
+                        </div>
+                    </Card>
+                ))}
                 </div>
             </ScrollArea>
         </div>
@@ -1233,26 +1201,25 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             </div>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                                 {ATTRIBUTES.map(attr => (
-                                                    <FormField
+                                                     <FormField
                                                         key={attr}
                                                         control={form.control}
                                                         name={attr as any}
                                                         render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        {...field}
-                                                                        value={field.value ?? ''}
-                                                                        onChange={e => field.onChange(e.target.value === '' ? BASE_ATTRIBUTE_VALUE_FORM : Number(e.target.value))}
-                                                                        onBlur={() => handleAttributeBlur(attr as any)}
-                                                                        className="h-8"
-                                                                    />
-                                                                </FormControl>
-                                                            </FormItem>
+                                                          <FormItem>
+                                                            <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                                            <FormControl>
+                                                              <Input
+                                                                type="number"
+                                                                {...field}
+                                                                onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                                onBlur={() => handleAttributeBlur(attr as any)}
+                                                                className="h-8"
+                                                              />
+                                                            </FormControl>
+                                                          </FormItem>
                                                         )}
-                                                    />
+                                                      />
                                                 ))}
                                             </div>
                                         </div>
@@ -1395,7 +1362,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                             <SelectContent>
                                                                 {Object.keys(poiLevelConfig[currentPoiType as keyof typeof poiLevelConfig] || {}).map(Number).map(level => (
                                                                     <SelectItem key={level} value={String(level)}>
-                                                                        Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}
+                                                                        Niveau {level} - {poiLevelNameMap[currentPoiType]?.[level] || `Type ${level}`}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -1912,5 +1879,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    

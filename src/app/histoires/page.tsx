@@ -284,8 +284,10 @@ export default function HistoiresPage() {
     }
 
     const newId = uid();
+    // Start with a clean slate
     const newAdventureState = createNewAdventureState();
 
+    // Populate the state with values from the form
     newAdventureState.adventureSettings = {
         ...newAdventureState.adventureSettings,
         ...formValues,
@@ -320,13 +322,14 @@ export default function HistoiresPage() {
         adventureState: newAdventureState,
     };
 
+    // Save the new story to the list
     const updatedStories = [...savedStories, newStory];
     saveStories(updatedStories);
     
     toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
     setIsCreateModalOpen(false);
 
-    // Launch the newly created story using its ID
+    // Set the ID to be loaded on the main page
     localStorage.setItem('loadStoryIdOnMount', newId);
     window.location.href = '/';
   }
@@ -643,5 +646,7 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
+    
 
     

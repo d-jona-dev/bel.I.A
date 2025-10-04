@@ -275,7 +275,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
       enabled: false,
       day: 1,
       dayName: "Lundi",
-      dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+      dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi, Vendredi", "Samedi", "Dimanche"],
       currentTime: "12:00",
       timeFormat: "24h",
       currentEvent: "",
@@ -339,15 +339,12 @@ export default function Home() {
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
     
-    // Staged state for form edits
-    const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>(() => {
-        const initialState = createInitialState();
-        return {
-            ...JSON.parse(JSON.stringify(initialState.settings)),
-            characters: JSON.parse(JSON.stringify(initialState.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))))
-        };
+    // Staged state for form edits - initialized in sync with adventureSettings
+    const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>({
+        ...adventureSettings,
+        characters: characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
     });
-    const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(() => createInitialState().characters);
+    const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(characters);
     
     // UI and loading states
     const [formPropKey, setFormPropKey] = React.useState(0);
@@ -737,7 +734,7 @@ export default function Home() {
                         activeFamiliar.currentExp += updates.expGained!;
                         if (activeFamiliar.currentExp >= activeFamiliar.expToNextLevel) {
                             activeFamiliar.level += 1;
-                            activeFamiliar.currentExp -= activeFamiliar.expToNextLevel;
+                            activeFamiliar.currentExp -= activeFamiliar.currentExpToNextLevel;
                             activeFamiliar.expToNextLevel = Math.floor(100 * Math.pow(1.5, activeFamiliar.level - 1));
                             React.startTransition(() => {
                                 toast({
@@ -1345,6 +1342,14 @@ export default function Home() {
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
+
+        // This is crucial: Synchronize staged state for the form.
+        setStagedAdventureSettings({
+            ...finalSettings,
+            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
+        });
+        setStagedCharacters(stateToLoad.characters);
+        setFormPropKey(prev => prev + 1); // Force re-render of AdventureForm
         
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
 
@@ -1372,6 +1377,7 @@ export default function Home() {
   React.useEffect(() => {
       const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
       if (storyIdToLoad) {
+          localStorage.removeItem('loadStoryIdOnMount'); // Clean up immediately
           const storiesStr = localStorage.getItem('adventureStories');
           if (storiesStr) {
               try {
@@ -1387,7 +1393,6 @@ export default function Home() {
                   toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
               }
           }
-          localStorage.removeItem('loadStoryIdOnMount');
       } else {
         const effectiveStats = calculateEffectiveStats(adventureSettings);
         setAdventureSettings(prev => ({
@@ -3442,10 +3447,9 @@ export default function Home() {
     setAdventureSettings(prev => {
         const newPois = prev.mapPointsOfInterest!.map(p => {
             if (p.id === poiId) {
-                return {
-                    ...p,
-                    buildings: [...(p.buildings || []), buildingId],
-                };
+                const newLevel = (p.level || 1) + 1;
+                const newResources = poiLevelConfig[p.icon as keyof typeof poiLevelConfig]?.[newLevel]?.resources || [];
+                return { ...p, level: newLevel, resources: newResources };
             }
             return p;
         });
@@ -3959,3 +3963,5 @@ export default function Home() {
     </>
   );
 }
+
+    
