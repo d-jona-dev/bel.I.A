@@ -200,10 +200,8 @@ export default function HistoiresPage() {
   const handleLaunchStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
     if (storyToLoad) {
-        // Save the specific story state to be loaded by the main page
-        localStorage.setItem('currentAdventureState', JSON.stringify(storyToLoad.adventureState));
-        // Use a flag to indicate that a story should be loaded
-        localStorage.setItem('loadStoryOnMount', 'true');
+        // Use an ID-based loading mechanism
+        localStorage.setItem('loadStoryIdOnMount', storyId);
         window.location.href = '/';
     } else {
         toast({
@@ -318,9 +316,8 @@ export default function HistoiresPage() {
     toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
     setIsCreateModalOpen(false);
 
-    // Launch the newly created story
-    localStorage.setItem('currentAdventureState', JSON.stringify(newAdventureState));
-    localStorage.setItem('loadStoryOnMount', 'true');
+    // Launch the newly created story using its ID
+    localStorage.setItem('loadStoryIdOnMount', newId);
     window.location.href = '/';
   }
 
@@ -432,7 +429,7 @@ export default function HistoiresPage() {
       onFormValidityChange={setIsCreateFormValid}
     />
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [isCreateModalOpen]);
+  ), [isCreateModalOpen, aiConfig]);
 
 
   return (
@@ -636,7 +633,3 @@ export default function HistoiresPage() {
     </div>
   );
 }
-
-    
-
-    

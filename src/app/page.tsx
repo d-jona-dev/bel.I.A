@@ -1370,22 +1370,24 @@ export default function Home() {
   }, [toast]);
 
   React.useEffect(() => {
-      const shouldLoad = localStorage.getItem('loadStoryOnMount');
-      if (shouldLoad === 'true') {
-          const stateString = localStorage.getItem('currentAdventureState');
-          if (stateString) {
+      const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
+      if (storyIdToLoad) {
+          const storiesStr = localStorage.getItem('adventureStories');
+          if (storiesStr) {
               try {
-                  const loadedState: SaveData = JSON.parse(stateString);
-                  loadAdventureState(loadedState);
+                  const allStories: { id: string, adventureState: SaveData }[] = JSON.parse(storiesStr);
+                  const storyToLoad = allStories.find(s => s.id === storyIdToLoad);
+                  if (storyToLoad) {
+                      loadAdventureState(storyToLoad.adventureState);
+                  } else {
+                      toast({ title: "Erreur", description: "L'histoire à charger est introuvable.", variant: "destructive" });
+                  }
               } catch (e) {
-                  console.error("Failed to parse adventure state from localStorage", e);
-                  React.startTransition(() => {
-                      toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
-                  });
+                  console.error("Failed to parse stories from localStorage", e);
+                  toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
               }
           }
-          localStorage.removeItem('loadStoryOnMount');
-          localStorage.removeItem('currentAdventureState');
+          localStorage.removeItem('loadStoryIdOnMount');
       } else {
         const effectiveStats = calculateEffectiveStats(adventureSettings);
         setAdventureSettings(prev => ({
@@ -3876,7 +3878,7 @@ export default function Home() {
       }}
       isLoading={isUiLocked}
       aiConfig={aiConfig}
-      onAiConfigChange={handleAiConfigChange}
+      onConfigChange={handleAiConfigChange}
       comicDraft={comicDraft}
       onDownloadComicDraft={handleDownloadComicDraft}
       onAddComicPage={handleAddComicPage}
@@ -3957,23 +3959,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
