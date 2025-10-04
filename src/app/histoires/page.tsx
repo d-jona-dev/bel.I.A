@@ -293,7 +293,7 @@ export default function HistoiresPage() {
           ...formValues,
           world: formValues.world || "",
           initialSituation: formValues.initialSituation || "",
-          playerName: formValues.playerName,
+          playerName: formValues.playerName || "Héros",
           rpgMode: formValues.rpgMode ?? true,
           relationsMode: formValues.relationsMode ?? true,
           strategyMode: formValues.strategyMode ?? true,
@@ -301,10 +301,11 @@ export default function HistoiresPage() {
           mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
       };
 
-      newAdventureState.characters = (formValues.characters || []).map(c => ({
-          ...c, 
-          id: c.id || uid(),
+      newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({
+        ...c, 
+        id: c.id || uid(),
       } as Character));
+
 
       const newStory: SavedStory = {
           id: newId,
@@ -354,7 +355,7 @@ export default function HistoiresPage() {
     if(event.target) event.target.value = ''; // Reset for next upload
   }
 
-  function getAdventureFormValues(story: SavedStory | null): AdventureFormValues {
+  const getAdventureFormValues = (story: SavedStory | null): AdventureFormValues => {
       if (!story) {
           const defaultState = createNewAdventureState();
           return {
@@ -413,6 +414,20 @@ export default function HistoiresPage() {
     setIsCreateFormValid(false);
     setIsCreateModalOpen(true);
   }
+  
+  const createForm = React.useMemo(() => (
+    <AdventureForm
+      key={`create-${isCreateModalOpen}`} // Re-mount when modal opens to ensure clean state
+      ref={createFormRef}
+      initialValues={getAdventureFormValues(null)}
+      rpgMode={true} 
+      relationsMode={true}
+      strategyMode={true}
+      aiConfig={aiConfig}
+      onFormValidityChange={setIsCreateFormValid}
+    />
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [isCreateModalOpen]);
 
 
   return (
@@ -577,16 +592,7 @@ export default function HistoiresPage() {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                  <AdventureForm
-                      key={`create-${Date.now()}`}
-                      ref={createFormRef}
-                      initialValues={getAdventureFormValues(null)}
-                      rpgMode={true} 
-                      relationsMode={true}
-                      strategyMode={true}
-                      aiConfig={aiConfig}
-                      onFormValidityChange={setIsCreateFormValid}
-                  />
+                  {createForm}
                 </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
@@ -625,3 +631,5 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
+    

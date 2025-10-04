@@ -79,15 +79,24 @@ interface AdventureFormProps {
 
 const characterSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "Le nom est requis"),
-  details: z.string().min(1, "Les détails sont requis"),
+  name: z.string(),
+  details: z.string(),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
   faceSwapEnabled: z.boolean().optional(),
   appearanceDescription: z.string().optional(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
+}).refine(data => {
+    // Si le nom ou les détails sont vides, le personnage est considéré "en cours de création" et valide
+    // Si l'un des deux est rempli, l'autre le doit aussi.
+    if (!data.name && !data.details) return true;
+    return !!(data.name && data.details);
+}, {
+    message: "Le nom et les détails sont requis si l'un des deux est rempli.",
+    path: ['name'], // On peut attacher l'erreur à un champ spécifique si besoin
 });
+
 
 const mapPointOfInterestSchema = z.object({
     id: z.string().optional(),
@@ -118,7 +127,7 @@ const POINTS_PER_LEVEL_GAIN_FORM = 5;
 const adventureFormSchema = z.object({
   world: z.string().min(1, "La description du monde est requise."),
   initialSituation: z.string().min(1, "La situation initiale est requise."),
-  characters: z.array(characterSchema).min(0),
+  characters: z.array(characterSchema).optional(),
   rpgMode: z.boolean().default(true).optional(),
   relationsMode: z.boolean().default(true).optional(),
   strategyMode: z.boolean().default(true).optional(),
@@ -195,6 +204,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         resolver: zodResolver(adventureFormSchema),
         defaultValues: {
             ...initialValues,
+            characters: initialValues.characters || [],
             timeManagement: initialValues.timeManagement ?? {
                 enabled: false,
                 day: 1,
@@ -554,6 +564,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     React.useEffect(() => {
         form.reset({
             ...initialValues,
+            characters: initialValues.characters || [],
             timeManagement: initialValues.timeManagement ?? {
                 enabled: false,
                 day: 1,
@@ -657,33 +668,28 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleAvatarSelection = (avatarId: string) => {
         const avatar = savedAvatars.find(a => a.id === avatarId);
-        const currentWorld = form.getValues('world');
-        const currentSituation = form.getValues('initialSituation');
-        const currentCharacters = form.getValues('characters');
-        const currentMap = form.getValues('mapPointsOfInterest');
+        
+        const updateValue = (field: keyof AdventureFormValues, value: any) => {
+            form.setValue(field, value, { shouldDirty: true, shouldValidate: true });
+        };
         
         if (avatar) {
-            form.setValue('playerName', avatar.name, { shouldValidate: true });
-            form.setValue('playerClass', avatar.class, { shouldValidate: true });
-            form.setValue('playerLevel', avatar.level, { shouldValidate: true });
-            form.setValue('playerDetails', avatar.details, { shouldValidate: true });
-            form.setValue('playerDescription', avatar.description, { shouldValidate: true });
-            form.setValue('playerOrientation', avatar.orientation, { shouldValidate: true });
-            form.setValue('playerPortraitUrl', avatar.portraitUrl, { shouldValidate: true });
+            updateValue('playerName', avatar.name);
+            updateValue('playerClass', avatar.class);
+            updateValue('playerLevel', avatar.level);
+            updateValue('playerDetails', avatar.details);
+            updateValue('playerDescription', avatar.description);
+            updateValue('playerOrientation', avatar.orientation);
+            updateValue('playerPortraitUrl', avatar.portraitUrl);
         } else { // Custom hero reset
-            form.setValue('playerName', 'Héros', { shouldValidate: true });
-            form.setValue('playerClass', 'Aventurier', { shouldValidate: true });
-            form.setValue('playerLevel', 1, { shouldValidate: true });
-            form.setValue('playerDetails', '', { shouldValidate: true });
-            form.setValue('playerDescription', '', { shouldValidate: true });
-            form.setValue('playerOrientation', '', { shouldValidate: true });
-            form.setValue('playerPortraitUrl', null, { shouldValidate: true });
+            updateValue('playerName', 'Héros');
+            updateValue('playerClass', 'Aventurier');
+            updateValue('playerLevel', 1);
+            updateValue('playerDetails', '');
+            updateValue('playerDescription', '');
+            updateValue('playerOrientation', '');
+            updateValue('playerPortraitUrl', null);
         }
-
-        form.setValue('world', currentWorld);
-        form.setValue('initialSituation', currentSituation);
-        form.setValue('characters', currentCharacters);
-        form.setValue('mapPointsOfInterest', currentMap);
     };
 
     const { availableLevelsForType, buildingSlotsForLevel, availableBuildingsForType } = React.useMemo(() => {
@@ -1906,3 +1912,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
