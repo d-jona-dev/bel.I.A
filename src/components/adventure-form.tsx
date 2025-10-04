@@ -657,6 +657,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleAvatarSelection = (avatarId: string) => {
         const avatar = savedAvatars.find(a => a.id === avatarId);
+        const currentWorld = form.getValues('world');
+        const currentSituation = form.getValues('initialSituation');
+        const currentCharacters = form.getValues('characters');
+        const currentMap = form.getValues('mapPointsOfInterest');
+        
         if (avatar) {
             form.setValue('playerName', avatar.name, { shouldValidate: true });
             form.setValue('playerClass', avatar.class, { shouldValidate: true });
@@ -665,7 +670,20 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             form.setValue('playerDescription', avatar.description, { shouldValidate: true });
             form.setValue('playerOrientation', avatar.orientation, { shouldValidate: true });
             form.setValue('playerPortraitUrl', avatar.portraitUrl, { shouldValidate: true });
+        } else { // Custom hero reset
+            form.setValue('playerName', 'Héros', { shouldValidate: true });
+            form.setValue('playerClass', 'Aventurier', { shouldValidate: true });
+            form.setValue('playerLevel', 1, { shouldValidate: true });
+            form.setValue('playerDetails', '', { shouldValidate: true });
+            form.setValue('playerDescription', '', { shouldValidate: true });
+            form.setValue('playerOrientation', '', { shouldValidate: true });
+            form.setValue('playerPortraitUrl', null, { shouldValidate: true });
         }
+
+        form.setValue('world', currentWorld);
+        form.setValue('initialSituation', currentSituation);
+        form.setValue('characters', currentCharacters);
+        form.setValue('mapPointsOfInterest', currentMap);
     };
 
     const { availableLevelsForType, buildingSlotsForLevel, availableBuildingsForType } = React.useMemo(() => {
@@ -780,7 +798,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 name="world"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Monde</FormLabel>
+                    <FormLabel className="flex items-center">
+                        Monde
+                        {!field.value && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
+                    </FormLabel>
                     <FormControl>
                         <Textarea
                         placeholder="Décrivez l'univers de votre aventure..."
@@ -799,7 +820,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 name="initialSituation"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Situation Initiale</FormLabel>
+                    <FormLabel className="flex items-center">
+                        Situation Initiale
+                        {!field.value && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
+                    </FormLabel>
                     <FormControl>
                         <Textarea
                         placeholder="Comment commence l'aventure pour le héros ?"
@@ -1157,11 +1181,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>URL du Portrait</FormLabel>
-                                                <FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={(e) => form.setValue('playerPortraitUrl', e.target.value)} /></FormControl>
-                                                <FormMessage />
-                                            </FormItem>
+                                          <FormItem>
+                                            <FormLabel>URL du Portrait</FormLabel>
+                                            <FormControl>
+                                              <Input 
+                                                placeholder="https://example.com/portrait.png" 
+                                                {...field}
+                                                value={field.value || ''}
+                                                onBlur={(e) => form.setValue('playerPortraitUrl', e.target.value, { shouldValidate: true, shouldDirty: true })}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
                                         )}/>
                                     </div>
                                      <Avatar className="h-24 w-24">
@@ -1207,7 +1238,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                                     <Input
                                                                         type="number"
                                                                         {...field}
-                                                                        onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                                        value={field.value ?? ''}
+                                                                        onChange={e => field.onChange(e.target.value === '' ? BASE_ATTRIBUTE_VALUE_FORM : Number(e.target.value))}
                                                                         onBlur={() => handleAttributeBlur(attr as any)}
                                                                         className="h-8"
                                                                     />
@@ -1356,7 +1388,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                             <SelectContent>
                                                                 {Object.keys(poiLevelConfig[currentPoiType as keyof typeof poiLevelConfig] || {}).map(Number).map(level => (
-                                                                    <SelectItem key={level} value={String(level)}>Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}</SelectItem>
+                                                                    <SelectItem key={level} value={String(level)}>
+                                                                        Niveau {level} - {poiLevelNameMap[currentPoiType]?.[Number(level)]}
+                                                                    </SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -1479,8 +1513,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             </FormControl>
                                             <FormMessage />
                                           </FormItem>
-                                        )}
-                                      />
+                                        )}/>
                                     </div>
                                     <Avatar className="h-20 w-20">
                                       <AvatarImage src={characterPortrait || undefined} alt={item.name} />
@@ -1873,5 +1906,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    

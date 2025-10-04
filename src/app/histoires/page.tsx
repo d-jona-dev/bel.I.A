@@ -625,5 +625,3 @@ export default function HistoiresPage() {
     </div>
   );
 }
-
-    
