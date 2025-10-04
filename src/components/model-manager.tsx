@@ -418,30 +418,36 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {llmModels.filter(m => m.source === 'openrouter').map(model => (
-                                    <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingLlmModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
+                                    <div key={model.id} className={cn("p-2 border rounded-md", editingLlmModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingLlmModel?.id === model.id ? (
-                                            <>
+                                             <div className="space-y-2">
                                                 <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                                 <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveLlmModel}><Check className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingLlmModel(null)}><X className="h-4 w-4"/></Button>
-                                            </>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveLlmModel}><Check className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingLlmModel(null)}><X className="h-4 w-4"/></Button>
+                                                </div>
+                                             </div>
                                         ) : (
-                                            <>
-                                                <p className="flex-1 text-sm truncate">{model.name}</p>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingLlmModel(model)}><Edit2 className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLlmModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
-                                            </>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm font-medium truncate">{model.name}</p>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingLlmModel(model)}><Edit2 className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteLlmModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
                                 {editingLlmModel && editingLlmModel.id.startsWith('new-') && (
-                                        <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                                            <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                            <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                     <div className="p-2 border rounded-md bg-muted/50 space-y-2">
+                                        <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
+                                        <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <div className="flex justify-end gap-2">
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveLlmModel}><Check className="h-4 w-4"/></Button>
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingLlmModel(null)}><X className="h-4 w-4"/></Button>
                                         </div>
+                                     </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddNewLlmModel}>
                                     <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
@@ -519,30 +525,36 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {imageModels.filter(m => m.source === 'openrouter').map(model => (
-                                    <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
+                                     <div key={model.id} className={cn("p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingImageModel?.id === model.id ? (
-                                            <>
+                                             <div className="space-y-2">
                                                 <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                                 <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
-                                            </>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <>
-                                                <p className="flex-1 text-sm truncate">{model.name}</p>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
-                                            </>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm font-medium truncate">{model.name}</p>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
                                 {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'openrouter' && (
-                                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                     <div className="p-2 border rounded-md bg-muted/50 space-y-2">
                                         <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                         <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
-                                    </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                        </div>
+                                     </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('openrouter')}>
                                     <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
@@ -578,30 +590,36 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {imageModels.filter(m => m.source === 'huggingface').map(model => (
-                                    <div key={model.id} className={cn("flex items-center gap-2 p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
+                                    <div key={model.id} className={cn("p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingImageModel?.id === model.id ? (
-                                            <>
+                                             <div className="space-y-2">
                                                 <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                                 <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
-                                            </>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                                </div>
+                                             </div>
                                         ) : (
-                                            <>
-                                                <p className="flex-1 text-sm truncate">{model.name}</p>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
-                                            </>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm font-medium truncate">{model.name}</p>
+                                                <div className="flex justify-end gap-1">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingImageModel(model)}><Edit2 className="h-4 w-4"/></Button>
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteImageModel(model.id)}><Trash2 className="h-4 w-4"/></Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
                                 {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'huggingface' && (
-                                    <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                     <div className="p-2 border rounded-md bg-muted/50 space-y-2">
                                         <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
                                         <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
-                                    </div>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
+                                        </div>
+                                     </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('huggingface')}>
                                     <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
