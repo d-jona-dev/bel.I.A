@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -31,6 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
+import { ModelManager } from '@/components/model-manager';
 
 
 // Helper to generate a unique ID
@@ -52,6 +53,7 @@ const createNewAdventureState = (): SaveData => ({
         rpgMode: true,
         relationsMode: true,
         strategyMode: true,
+        comicModeActive: false,
         playerName: "Héros",
         playerClass: "Aventurier",
         playerLevel: 1,
@@ -79,6 +81,7 @@ const createNewAdventureState = (): SaveData => ({
         playerDetails: "",
         playerDescription: "",
         playerOrientation: "",
+        playerFaceSwapEnabled: false,
         timeManagement: {
             enabled: false,
             day: 1,
@@ -115,6 +118,11 @@ export default function HistoiresPage() {
   const editFormRef = React.useRef<AdventureFormHandle>(null);
   const createFormRef = React.useRef<AdventureFormHandle>(null);
 
+  const [aiConfig, setAiConfig] = React.useState<AiConfig>({
+      llm: { source: 'gemini' },
+      image: { source: 'gemini' }
+  });
+  const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
 
   const loadData = React.useCallback(() => {
     try {
@@ -130,6 +138,10 @@ export default function HistoiresPage() {
       } else {
         setSavedCharacters([]);
       }
+      const aiConfigFromStorage = localStorage.getItem('globalAiConfig');
+      if (aiConfigFromStorage) {
+        setAiConfig(JSON.parse(aiConfigFromStorage));
+      }
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
       toast({
@@ -144,6 +156,12 @@ export default function HistoiresPage() {
   React.useEffect(() => {
     loadData();
   }, [loadData]);
+  
+  const handleAiConfigChange = (newConfig: AiConfig) => {
+    setAiConfig(newConfig);
+    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+    toast({ title: "Configuration IA mise à jour."});
+  }
 
 
   const saveStories = (stories: SavedStory[]) => {
@@ -234,6 +252,7 @@ export default function HistoiresPage() {
                   rpgMode: formValues.rpgMode ?? editingStory.adventureState.adventureSettings.rpgMode,
                   relationsMode: formValues.relationsMode ?? editingStory.adventureState.adventureSettings.relationsMode,
                   strategyMode: formValues.strategyMode ?? editingStory.adventureState.adventureSettings.strategyMode,
+                  comicModeActive: formValues.comicModeActive ?? editingStory.adventureState.adventureSettings.comicModeActive,
                   mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
               },
               characters: (formValues.characters || []).map(c => ({
@@ -275,6 +294,7 @@ export default function HistoiresPage() {
           rpgMode: formValues.rpgMode ?? true,
           relationsMode: formValues.relationsMode ?? true,
           strategyMode: formValues.strategyMode ?? true,
+          comicModeActive: formValues.comicModeActive ?? false,
           mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
       };
 
@@ -341,6 +361,7 @@ export default function HistoiresPage() {
               rpgMode: true,
               relationsMode: true,
               strategyMode: true,
+              comicModeActive: false,
               playerName: 'Héros',
               playerClass: 'Aventurier',
               playerPortraitUrl: null,
@@ -360,6 +381,7 @@ export default function HistoiresPage() {
               name: c.name, 
               details: c.details,
               portraitUrl: c.portraitUrl || null,
+              faceSwapEnabled: c.faceSwapEnabled,
               factionColor: c.factionColor,
               affinity: c.affinity,
               relations: c.relations,
@@ -367,12 +389,14 @@ export default function HistoiresPage() {
           rpgMode: settings.rpgMode,
           relationsMode: settings.relationsMode,
           strategyMode: settings.strategyMode,
+          comicModeActive: settings.comicModeActive,
           playerName: settings.playerName,
           playerClass: settings.playerClass,
           playerDetails: settings.playerDetails,
           playerDescription: settings.playerDescription,
           playerOrientation: settings.playerOrientation,
           playerPortraitUrl: settings.playerPortraitUrl,
+          playerFaceSwapEnabled: settings.playerFaceSwapEnabled,
           mapPointsOfInterest: settings.mapPointsOfInterest,
           timeManagement: settings.timeManagement,
       }
@@ -415,6 +439,20 @@ export default function HistoiresPage() {
             <Button variant="outline" onClick={() => importFileRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" /> Importer
             </Button>
+            <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogDescription>
+                            Configurez les modèles d'IA utilisés pour les outils d'assistance à la création sur cette page.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                </DialogContent>
+            </Dialog>
             <Button onClick={openCreateDialog}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
             </Button>
@@ -544,6 +582,7 @@ export default function HistoiresPage() {
                       rpgMode={true} 
                       relationsMode={true}
                       strategyMode={true}
+                      aiConfig={aiConfig}
                   />
                 </div>
                  <DialogFooter>
@@ -570,6 +609,7 @@ export default function HistoiresPage() {
                            rpgMode={editingStory.adventureState.adventureSettings.rpgMode}
                            relationsMode={editingStory.adventureState.adventureSettings.relationsMode}
                            strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
+                           aiConfig={aiConfig}
                         />
                     )}
                  </div>

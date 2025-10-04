@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit, AiConfig } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,8 @@ import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
+import { describeAppearance } from "@/ai/flows/describe-appearance";
+import { ModelManager } from "./model-manager";
 
 
 export type FormCharacterDefinition = {
@@ -48,6 +50,8 @@ export type FormCharacterDefinition = {
   name: string;
   details: string;
   portraitUrl?: string | null;
+  faceSwapEnabled?: boolean;
+  appearanceDescription?: string;
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
@@ -71,6 +75,7 @@ interface AdventureFormProps {
     rpgMode: boolean;
     relationsMode: boolean;
     strategyMode: boolean;
+    aiConfig: AiConfig;
 }
 
 
@@ -79,6 +84,8 @@ const characterSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   details: z.string().min(1, "Les détails sont requis"),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
+  faceSwapEnabled: z.boolean().optional(),
+  appearanceDescription: z.string().optional(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
@@ -120,6 +127,8 @@ const adventureFormSchema = z.object({
   comicModeActive: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
+  playerFaceSwapEnabled: z.boolean().optional(),
+  playerAppearanceDescription: z.string().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
   playerOrientation: z.string().optional(),
@@ -141,7 +150,7 @@ const adventureFormSchema = z.object({
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ formPropKey, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode }, ref) => {
+    ({ formPropKey, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
@@ -577,8 +586,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             world: "Grande université populaire nommée \"hight scoole of futur\".",
             initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
+                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
             rpgMode: true,
             relationsMode: true,
@@ -1171,7 +1180,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 <div className="flex gap-4 items-start">
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
-                                        <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={() => form.setValue('playerPortraitUrl', field.value)} /></FormControl><FormMessage /></FormItem>)}/>
                                     </div>
                                      <Avatar className="h-24 w-24">
                                         <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />
@@ -1435,7 +1444,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <ScrollArea className="h-48 pr-3">
                         <div className="space-y-4">
                         <div className="hidden">
-                            
+                            {/* This block is to make sure react-hook-form tracks the field, even if not visible */}
+                            <Controller
+                                control={form.control}
+                                name="characters"
+                                render={({ field }) => (
+                                    <input {...field} type="hidden" />
+                                )}
+                            />
                         </div>
                         {fields.map((item, index) => {
                           const characterPortrait = watchedValues.characters?.[index]?.portraitUrl;
@@ -1583,7 +1599,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", portraitUrl: null, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
+                            onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", portraitUrl: null, faceSwapEnabled: false, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
                             className="mt-2 w-full"
                             >
                             <PlusCircle className="mr-2 h-4 w-4" />
