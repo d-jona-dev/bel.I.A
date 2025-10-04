@@ -236,190 +236,64 @@ const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
 // Function to create a clean, default state
 const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[], aiConfig: AiConfig } => {
-    const initialPlayerAttributes = {
-      playerInitialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER,
-      playerStrength: BASE_ATTRIBUTE_VALUE,
-      playerDexterity: BASE_ATTRIBUTE_VALUE,
-      playerConstitution: BASE_ATTRIBUTE_VALUE,
-      playerIntelligence: BASE_ATTRIBUTE_VALUE,
-      playerWisdom: BASE_ATTRIBUTE_VALUE,
-      playerCharisma: BASE_ATTRIBUTE_VALUE,
-    };
-  
-    const initialBaseDerivedStats = calculateBaseDerivedStats({
-      ...initialPlayerAttributes,
-      playerName: "Héros",
-      playerClass: "Guerrier",
-      playerLevel: 1,
-      playerExpToNextLevel: 100,
-      playerGold: 15,
-    } as AdventureSettings);
-  
-    const initialSettings: AdventureSettings = {
-      world: "Le village paisible de Bourgenval est niché au bord de la Forêt Murmurante. Récemment, des gobelins plus audacieux qu'à l'accoutumée ont commencé à attaquer les voyageurs et à piller les fermes isolées. Les villageois sont terrifiés.",
-      initialSituation: "Vous arrivez à Bourgenval, fatigué par la route. L'Impératrice Yumi, la matriarche respectée du village, vous aborde avec un regard inquiet. 'Étranger,' dit-elle, 'votre regard est celui d'un guerrier. Nous avons désespérément besoin d'aide. Les gobelins de la Grotte Grinçante sont devenus une véritable menace. Pourriez-vous nous en débarrasser ?'",
-      rpgMode: true,
-      relationsMode: true,
-      strategyMode: true,
-      comicModeActive: false, // Default to false
-      playerName: "Héros",
-      playerClass: "Guerrier",
-      playerLevel: 1,
-      playerDetails: "Un aventurier errant au regard déterminé.",
-      playerDescription: "Un passé mystérieux, à la recherche de gloire et de fortune.",
-      playerOrientation: "Inconnu",
-      playerPortraitUrl: null,
-      playerFaceSwapEnabled: false,
-      ...initialPlayerAttributes,
-      ...initialBaseDerivedStats,
-      playerCurrentHp: initialBaseDerivedStats.playerMaxHp,
-      playerCurrentMp: initialBaseDerivedStats.maxManaPoints,
-      playerCurrentExp: 0,
-      playerExpToNextLevel: 100,
-      playerGold: 15,
-      playerInventory: [
-          {id: "potion-soin-initial-1", name: "Potion de Soin Mineure", quantity: 2, description: "Une fiole rougeâtre qui restaure quelques points de vie.", effect: "Restaure 10 PV", type: "consumable", goldValue: 10, generatedImageUrl: null, isEquipped: false, statBonuses: {}},
-          {id: "dague-rouillee-initial-1", name: "Dague Rouillée", quantity: 1, description: "Une dague simple et usée.", effect: "Arme de base.", type: "weapon", goldValue: 2, damage: "1d4", generatedImageUrl: null, isEquipped: false, statBonuses: {}}
-      ],
-      equippedItemIds: { weapon: null, armor: null, jewelry: null },
-      playerSkills: [],
-      familiars: [],
-      mapPointsOfInterest: [
-          { id: 'poi-bourgenval', name: 'Bourgenval', level: 1, description: 'Un village paisible mais anxieux.', icon: 'Village', position: { x: 50, y: 50 }, ownerId: PLAYER_ID, resources: poiLevelConfig.Village[1].resources, lastCollectedTurn: undefined, buildings: [] },
-          { id: 'poi-foret', name: 'Forêt Murmurante', level: 1, description: 'Une forêt dense et ancienne, territoire du Duc Asdrubael.', icon: 'Trees', position: { x: 75, y: 30 }, ownerId: 'duc-asdrubael', resources: poiLevelConfig.Trees[1].resources, lastCollectedTurn: undefined, buildings: [] },
-          { id: 'poi-grotte', name: 'Grotte Grinçante', level: 1, description: 'Le repaire des gobelins dirigé par Frak.', icon: 'Shield', position: { x: 80, y: 70 }, ownerId: 'frak-1', resources: poiLevelConfig.Shield[1].resources, lastCollectedTurn: undefined, buildings: [] },
-      ],
-      mapImageUrl: null,
-      timeManagement: {
-        enabled: false,
-        day: 1,
-        dayName: "Lundi",
-        dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
-        currentTime: "12:00",
-        timeFormat: "24h",
-        currentEvent: "",
-        timeElapsedPerTurn: "00:15",
-      },
-      activeItemUniverses: ['Médiéval-Fantastique'],
-    };
-  
-    const initialCharacters: Character[] = [
-        {
-          id: 'yumi-1',
-          name: "Impératrice Yumi",
-          details: "Souveraine respectée de Bourgenval et de ses environs. Elle porte le fardeau des espoirs de son peuple. D'apparence sage, elle a environ 70 ans, des cheveux gris tressés, et des yeux perçants et bienveillants.",
-          biographyNotes: "Yumi a vu des générations grandir et tomber. Elle est déterminée à protéger son peuple, quitte à faire confiance à des étrangers.",
-          history: ["A demandé de l'aide au joueur pour les gobelins."],
-          portraitUrl: null,
-          faceSwapEnabled: false,
-          affinity: 60,
-          relations: { [PLAYER_ID]: "Espoir du village", 'elara-1': "Protégée" },
-          isAlly: false, 
-          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
-          level: 5, currentExp: 0, expToNextLevel: 800,
-          characterClass: "Impératrice", isHostile: false,
-          strength: 9, dexterity: 10, constitution: 12, intelligence: 16, wisdom: 17, charisma: 15,
-          hitPoints: 40, maxHitPoints: 40, manaPoints: 30, maxManaPoints: 30, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-          spells: ["Soin Léger", "Lumière", "Protection contre le Mal"],
-          factionColor: '#8A2BE2', // BlueViolet
-          locationId: 'poi-bourgenval',
-        },
-        {
-          id: 'elara-1',
-          name: "Elara",
-          details: "Une jeune aventurière talentueuse et énergique, spécialisée dans la magie de protection. Elle vous a rejoint pour vous aider dans votre quête à la demande de l'Impératrice.",
-          biographyNotes: "Elara cherche à prouver sa valeur et à protéger les innocents. Elle est loyale mais peut être un peu impulsive.",
-          history: ["S'est jointe à l'équipe du joueur."],
-          portraitUrl: null,
-          faceSwapEnabled: false,
-          affinity: 70,
-          relations: { [PLAYER_ID]: "Compagne d'aventure", 'yumi-1': "Mentor" },
-          isAlly: true,
-          initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
-          level: 1, currentExp: 0, expToNextLevel: 100,
-          characterClass: "Mage de Bataille", isHostile: false,
-          strength: 10, dexterity: 12, constitution: 12, intelligence: 15, wisdom: 13, charisma: 11,
-          hitPoints: 12, maxHitPoints: 12,
-          manaPoints: 15, maxManaPoints: 15,
-          armorClass: 11,
-          attackBonus: 2,
-          damageBonus: "1d6",
-          spells: ["Projectile Magique", "Armure de Mage"],
-          factionColor: '#00FFFF', // Cyan
-          locationId: 'poi-bourgenval',
-        },
-        {
-          id: 'duc-asdrubael',
-          name: "Duc Asdrubael",
-          details: "Un noble énigmatique et puissant qui contrôle la Forêt Murmurante. Ses intentions sont obscures.",
-          biographyNotes: "Le Duc Asdrubael est un reclus qui communique rarement avec le monde extérieur. Il est très protecteur de ses terres.",
-          history: ["Possède la Forêt Murmurante."],
-          portraitUrl: null,
-          faceSwapEnabled: false,
-          affinity: 40,
-          relations: { [PLAYER_ID]: "Inconnu" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
-          level: 5, currentExp: 0, expToNextLevel: 800,
-          characterClass: "Noble Reclus", isHostile: false,
-          strength: 12, dexterity: 10, constitution: 14, intelligence: 16, wisdom: 15, charisma: 14,
-          hitPoints: 45, maxHitPoints: 45, armorClass: 14, attackBonus: 4, damageBonus: "1d6+1",
-          
-          factionColor: '#0000FF', // Blue
-          locationId: 'poi-foret',
-          race: 'Elfe',
-        },
-        {
-          id: 'frak-1',
-          name: "Frak, Chef Gobelin",
-          details: "Un gobelin particulièrement grand et méchant, avec une cicatrice en travers du museau et armé d'une hache rouillée. Il dirige la tribu de la Grotte Grinçante.",
-          biographyNotes: "Frak est devenu plus agressif récemment, poussé par une force mystérieuse ou un besoin désespéré.",
-          history: ["Dirige les raids contre Bourgenval."],
-          portraitUrl: null,
-          faceSwapEnabled: false,
-          affinity: 5,
-          relations: { [PLAYER_ID]: "Intrus à tuer" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
-          level: 2, currentExp: 0, expToNextLevel: 150,
-          characterClass: "Chef Gobelin", isHostile: true,
-          strength: 14, dexterity: 12, constitution: 13, intelligence: 8, wisdom: 9, charisma: 7,
-          hitPoints: 25, maxHitPoints: 25, armorClass: 13, attackBonus: 3, damageBonus: "1d8+1",
-          
-          factionColor: '#FF0000', // Red
-          locationId: 'poi-grotte',
-          race: 'Gobelin',
-        },
-        {
-          id: 'snirf-1',
-          name: "Snirf, Gobelin Fureteur",
-          details: "Un petit gobelin agile et sournois, armé d'une courte dague. Sert d'éclaireur pour sa tribu.",
-          biographyNotes: "Snirf est plus couard que méchant, mais loyal à Frak par peur.",
-          history: ["A été aperçu rôdant près de Bourgenval."],
-          portraitUrl: null,
-          faceSwapEnabled: false,
-          affinity: 10,
-          relations: { [PLAYER_ID]: "Cible facile", "frak-1": "Chef redouté" },
-          isAlly: false, initialAttributePoints: INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT,
-          level: 1, currentExp: 0, expToNextLevel: 100,
-          characterClass: "Fureteur Gobelin", isHostile: true,
-          strength: 10, dexterity: 14, constitution: 10, intelligence: 7, wisdom: 8, charisma: 6,
-          hitPoints: 8, maxHitPoints: 8, armorClass: 12, attackBonus: 2, damageBonus: "1d4",
-          
-          factionColor: '#DC143C', // Crimson
-          locationId: 'poi-grotte',
-          race: 'Gobelin',
-        }
-    ];
+  const initialSettings: AdventureSettings = {
+    world: "Un nouveau monde vous attend. Décrivez-le ici.",
+    initialSituation: "Vous êtes au début de votre aventure. Que se passe-t-il ?",
+    rpgMode: true,
+    relationsMode: true,
+    strategyMode: true,
+    comicModeActive: false,
+    playerName: "Héros",
+    playerClass: "Aventurier",
+    playerLevel: 1,
+    playerDetails: "",
+    playerDescription: "",
+    playerOrientation: "",
+    playerPortraitUrl: null,
+    playerFaceSwapEnabled: false,
+    playerInitialAttributePoints: 10,
+    playerStrength: 8,
+    playerDexterity: 8,
+    playerConstitution: 8,
+    playerIntelligence: 8,
+    playerWisdom: 8,
+    playerCharisma: 8,
+    playerCurrentHp: 20,
+    playerMaxHp: 20,
+    playerCurrentMp: 0,
+    playerMaxMp: 0,
+    playerCurrentExp: 0,
+    playerExpToNextLevel: 100,
+    playerGold: 10,
+    playerInventory: [],
+    equippedItemIds: { weapon: null, armor: null, jewelry: null },
+    playerSkills: [],
+    familiars: [],
+    mapPointsOfInterest: [],
+    mapImageUrl: null,
+    timeManagement: {
+      enabled: false,
+      day: 1,
+      dayName: "Lundi",
+      dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
+      currentTime: "12:00",
+      timeFormat: "24h",
+      currentEvent: "",
+      timeElapsedPerTurn: "00:15",
+    },
+    activeItemUniverses: ['Médiéval-Fantastique'],
+  };
 
-    const initialNarrative: Message[] = [
-        { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }
-    ];
-    
-    const initialAiConfig: AiConfig = {
-      llm: { source: 'gemini' },
-      image: { source: 'gemini' }
-    };
+  const initialNarrative: Message[] = [
+      { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }
+  ];
   
-    return { settings: initialSettings, characters: initialCharacters, narrative: initialNarrative, aiConfig: initialAiConfig };
+  const initialAiConfig: AiConfig = {
+    llm: { source: 'gemini' },
+    image: { source: 'gemini' }
+  };
+
+  return { settings: initialSettings, characters: [], narrative: initialNarrative, aiConfig: initialAiConfig };
 };
 
 // NEW: Type for the state holding info about the familiar being named
@@ -4083,6 +3957,7 @@ export default function Home() {
     </>
   );
 }
+
 
 
 

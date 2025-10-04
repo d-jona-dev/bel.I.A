@@ -278,51 +278,50 @@ export default function HistoiresPage() {
   };
   
   const handleCreateNewStory = async () => {
-      if (!createFormRef.current) return;
-      const formValues = await createFormRef.current.getFormData();
-      if (!formValues) {
+    if (!createFormRef.current) return;
+    const formValues = await createFormRef.current.getFormData();
+    if (!formValues) {
         // Validation failed, the form component already showed toasts.
         return;
-      }
-      
-      const newId = uid();
-      const newAdventureState = createNewAdventureState();
-      
-      newAdventureState.adventureSettings = {
-          ...newAdventureState.adventureSettings,
-          ...formValues,
-          world: formValues.world || "",
-          initialSituation: formValues.initialSituation || "",
-          playerName: formValues.playerName || "Héros",
-          rpgMode: formValues.rpgMode ?? true,
-          relationsMode: formValues.relationsMode ?? true,
-          strategyMode: formValues.strategyMode ?? true,
-          comicModeActive: formValues.comicModeActive ?? false,
-          mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({...poi, id: poi.id ?? uid()})),
-      };
+    }
 
-      newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({
-        ...c, 
+    const newId = uid();
+    const newAdventureState = createNewAdventureState();
+
+    newAdventureState.adventureSettings = {
+        ...newAdventureState.adventureSettings,
+        ...formValues,
+        world: formValues.world || "",
+        initialSituation: formValues.initialSituation || "",
+        playerName: formValues.playerName || "Héros",
+        rpgMode: formValues.rpgMode ?? true,
+        relationsMode: formValues.relationsMode ?? true,
+        strategyMode: formValues.strategyMode ?? true,
+        comicModeActive: formValues.comicModeActive ?? false,
+        mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
+    };
+
+    newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({
+        ...c,
         id: c.id || uid(),
-      } as Character));
+    } as Character));
 
+    const newStory: SavedStory = {
+        id: newId,
+        title: formValues.world?.substring(0, 40) || "Nouvelle Histoire",
+        description: formValues.initialSituation?.substring(0, 100) || "...",
+        date: new Date().toISOString().split('T')[0],
+        adventureState: newAdventureState,
+    };
 
-      const newStory: SavedStory = {
-          id: newId,
-          title: formValues.world?.substring(0, 40) || "Nouvelle Histoire",
-          description: formValues.initialSituation?.substring(0, 100) || "...",
-          date: new Date().toISOString().split('T')[0],
-          adventureState: newAdventureState,
-      };
-      
-      saveStories([...savedStories, newStory]);
-      toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
-      setIsCreateModalOpen(false);
+    saveStories([...savedStories, newStory]);
+    toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
+    setIsCreateModalOpen(false);
 
-      // Launch the newly created story
-      localStorage.setItem('currentAdventureState', JSON.stringify(newAdventureState));
-      localStorage.setItem('loadStoryOnMount', 'true');
-      window.location.href = '/';
+    // Launch the newly created story
+    localStorage.setItem('currentAdventureState', JSON.stringify(newAdventureState));
+    localStorage.setItem('loadStoryOnMount', 'true');
+    window.location.href = '/';
   }
 
   
