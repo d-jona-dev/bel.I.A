@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye } from "lucide-react"; // Added Eye icon
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +45,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { describeAppearance } from "@/ai/flows/describe-appearance"; // NEW: Import the describe flow
+import { describeAppearance } from "@/ai/flows/describe-appearance";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -199,7 +200,7 @@ export function CharacterSidebar({
     pointsOfInterest,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
-  const [describingAppearanceStates, setDescribingAppearanceStates] = React.useState<Record<string, boolean>>({}); // NEW
+  const [describingAppearanceStates, setDescribingAppearanceStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
@@ -526,6 +527,14 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
     const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
+    const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
+
+    const disclaimerText = {
+        fr: "Je reconnais posséder les droits de cette image et ne pas l'utiliser à des fins malveillantes, que ce soit pour créer du contenu désobligeant ou dégradant, ou à des fins de détruire ou abîmer l'image ou la réputation de cette personne.",
+        en: "I acknowledge that I own the rights to this image and will not use it for malicious purposes, whether to create derogatory or demeaning content, or for the purpose of destroying or damaging the image or reputation of this person.",
+        es: "Reconozco que poseo los derechos de esta imagen y que no la utilizaré con fines maliciosos, ya sea para crear contenido despectivo o degradante, o con el fin de destruir o dañar la imagen o reputación de esta persona.",
+        de: "Ich bestätige, dass ich die Rechte an diesem Bild besitze und es nicht für böswillige Zwecke verwenden werde, sei es zur Erstellung abfälliger oder erniedrigender Inhalte oder zum Zweck der Zerstörung oder Schädigung des Ansehens oder des Rufs dieser Person.",
+    };
 
 
     React.useEffect(() => {
@@ -668,7 +677,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                          {imageLoadingStates[char.id] ? (
                             <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
                          ) : char.portraitUrl ? (
-                            <AvatarImage src={char.portraitUrl} alt={char.name} data-ai-hint={`${char.name} portrait`} />
+                            <AvatarImage src={char.portraitUrl} alt={char.name} />
                          ) : (
                             <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                          )}
@@ -706,7 +715,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         {imageLoadingStates[char.id] ? (
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
                          ) : char.portraitUrl ? (
-                            <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" data-ai-hint={`${char.name} portrait`} />
+                            <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
                          ) : (
                             <User className="h-10 w-10 text-muted-foreground"/>
                          )}
@@ -815,30 +824,47 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </div>
                  <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
-                    <div className="p-3 border rounded-md bg-muted/30 text-xs text-muted-foreground min-h-[60px]">
-                        {describingAppearanceStates[char.id]
-                            ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/>Analyse en cours...</span>
-                            : char.appearanceDescription || "Aucune description générée. Requiert un portrait."
-                        }
-                    </div>
-                     <TooltipProvider>
-                         <Tooltip>
-                             <TooltipTrigger asChild>
+                    <Textarea
+                        value={char.appearanceDescription || ""}
+                        onChange={(e) => handleFieldChange(char.id, 'appearanceDescription', e.target.value)}
+                        placeholder="Générez ou écrivez une description physique détaillée..."
+                        rows={4}
+                        className="text-xs text-muted-foreground bg-background border"
+                    />
+                    <div className="flex items-center gap-2 mt-2">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    className="w-full"
                                     onClick={() => handleDescribeAppearance(char)}
-                                    disabled={!char.portraitUrl || describingAppearanceStates[char.id]}
+                                    disabled={!char.portraitUrl || describingAppearanceStates[char.id] || !visionConsentChecked}
                                 >
-                                    <Eye className="h-4 w-4" />
+                                    {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
                                 </Button>
-                             </TooltipTrigger>
-                             <TooltipContent>
-                                 <p>{currentLanguage === 'fr' ? "Utiliser l'IA pour décrire l'apparence physique du personnage depuis son portrait." : "Use AI to describe the character's physical appearance from their portrait."}</p>
-                             </TooltipContent>
-                         </Tooltip>
-                     </TooltipProvider>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{currentLanguage === 'fr' ? "Utiliser l'IA pour décrire l'apparence physique du personnage depuis son portrait." : "Use AI to describe the character's physical appearance from their portrait."}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
+                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        </Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                        <p>{disclaimerText[currentLanguage as keyof typeof disclaimerText] || disclaimerText['en']}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                             </TooltipProvider>
+                        </div>
+                    </div>
                 </div>
 
                 {strategyMode && (
