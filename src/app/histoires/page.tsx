@@ -112,6 +112,7 @@ export default function HistoiresPage() {
   const [editingStory, setEditingStory] = React.useState<SavedStory | null>(null);
   
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isCreateFormValid, setIsCreateFormValid] = React.useState(false);
   const [formPropKey, setFormPropKey] = React.useState(0);
   const importFileRef = React.useRef<HTMLInputElement>(null);
   
@@ -280,7 +281,10 @@ export default function HistoiresPage() {
   const handleCreateNewStory = async () => {
       if (!createFormRef.current) return;
       const formValues = await createFormRef.current.getFormData();
-      if (!formValues) return;
+      if (!formValues) {
+        // Validation failed, the form component already showed toasts.
+        return;
+      }
       
       const newId = uid();
       const newAdventureState = createNewAdventureState();
@@ -408,7 +412,8 @@ export default function HistoiresPage() {
   }
   
   const openCreateDialog = () => {
-    setFormPropKey(prev => prev + 1); 
+    setFormPropKey(prev => prev + 1);
+    setIsCreateFormValid(false);
     setIsCreateModalOpen(true);
   }
 
@@ -583,11 +588,12 @@ export default function HistoiresPage() {
                       relationsMode={true}
                       strategyMode={true}
                       aiConfig={aiConfig}
+                      onFormValidityChange={setIsCreateFormValid}
                   />
                 </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button onClick={handleCreateNewStory}>Créer l'Histoire</Button>
+                    <Button onClick={handleCreateNewStory} disabled={!isCreateFormValid}>Créer l'Histoire</Button>
                  </DialogFooter>
             </DialogContent>
         </Dialog>

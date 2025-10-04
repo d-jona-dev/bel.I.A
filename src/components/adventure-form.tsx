@@ -42,7 +42,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
 import { describeAppearance } from "@/ai/flows/describe-appearance";
-import { ModelManager } from "./model-manager";
 
 
 export type FormCharacterDefinition = {
@@ -71,7 +70,7 @@ export interface AdventureFormHandle {
 interface AdventureFormProps {
     formPropKey: number;
     initialValues: AdventureFormValues;
-    onSettingsChange?: (newSettings: AdventureFormValues) => void;
+    onFormValidityChange?: (isValid: boolean) => void;
     rpgMode: boolean;
     relationsMode: boolean;
     strategyMode: boolean;
@@ -150,7 +149,7 @@ const adventureFormSchema = z.object({
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ formPropKey, initialValues, onSettingsChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
+    ({ formPropKey, initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
@@ -209,7 +208,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             },
             activeItemUniverses: initialValues.activeItemUniverses || ['Médiéval-Fantastique'],
         },
-        mode: "onBlur",
+        mode: "onChange",
     });
 
      React.useEffect(() => {
@@ -568,6 +567,15 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             }
         });
     }, [formPropKey, initialValues, form]);
+
+    React.useEffect(() => {
+        if (onFormValidityChange) {
+            const subscription = form.watch(() => {
+                onFormValidityChange(form.formState.isValid);
+            });
+            return () => subscription.unsubscribe();
+        }
+    }, [form, onFormValidityChange]);
 
 
     const { fields, append, remove } = useFieldArray({
@@ -1169,24 +1177,13 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 <div className="flex gap-4 items-start">
                                     <div className="flex-1 space-y-4">
                                         <FormField control={form.control} name="playerName" render={({ field }) => (<FormItem><FormLabel>Nom du Héros</FormLabel><FormControl><Input placeholder="Nom du héros" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>)}/>
-                                        <FormField
-                                            control={form.control}
-                                            name="playerPortraitUrl"
-                                            render={({ field }) => (
+                                        <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>URL du Portrait</FormLabel>
-                                                <FormControl>
-                                                <Input
-                                                    placeholder="https://example.com/portrait.png"
-                                                    {...field}
-                                                    value={field.value || ""}
-                                                    onBlur={() => form.setValue('playerPortraitUrl', field.value, { shouldDirty: true })}
-                                                />
-                                                </FormControl>
+                                                <FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={(e) => form.setValue('playerPortraitUrl', e.target.value)}/></FormControl>
                                                 <FormMessage />
                                             </FormItem>
-                                            )}
-                                        />
+                                        )}/>
                                     </div>
                                      <Avatar className="h-24 w-24">
                                         <AvatarImage src={watchedValues.playerPortraitUrl || undefined} alt={watchedValues.playerName || 'Héros'} />
@@ -1492,15 +1489,20 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         control={form.control}
                                         name={`characters.${index}.portraitUrl`}
                                         render={({ field }) => (
-                                            <FormItem>
+                                          <FormItem>
                                             <FormLabel>URL du Portrait</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="https://example.com/image.png" {...field} value={field.value ?? ""} className="bg-background border"/>
+                                              <Input 
+                                                placeholder="https://example.com/image.png" 
+                                                {...field}
+                                                value={field.value || ''}
+                                                onBlur={(e) => form.setValue(`characters.${index}.portraitUrl`, e.target.value, { shouldValidate: true, shouldDirty: true })}
+                                              />
                                             </FormControl>
                                             <FormMessage />
-                                            </FormItem>
+                                          </FormItem>
                                         )}
-                                        />
+                                      />
                                     </div>
                                     <Avatar className="h-20 w-20">
                                       <AvatarImage src={characterPortrait || undefined} alt={item.name} />
@@ -1893,5 +1895,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    
