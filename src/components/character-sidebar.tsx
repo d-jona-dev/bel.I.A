@@ -821,16 +821,24 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             : char.appearanceDescription || "Aucune description générée. Requiert un portrait."
                         }
                     </div>
-                     <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => handleDescribeAppearance(char)}
-                        disabled={!char.portraitUrl || describingAppearanceStates[char.id]}
-                    >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Générer/Mettre à jour la Description
-                    </Button>
+                     <TooltipProvider>
+                         <Tooltip>
+                             <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="w-full"
+                                    onClick={() => handleDescribeAppearance(char)}
+                                    disabled={!char.portraitUrl || describingAppearanceStates[char.id]}
+                                >
+                                    <Eye className="h-4 w-4" />
+                                </Button>
+                             </TooltipTrigger>
+                             <TooltipContent>
+                                 <p>{currentLanguage === 'fr' ? "Utiliser l'IA pour décrire l'apparence physique du personnage depuis son portrait." : "Use AI to describe the character's physical appearance from their portrait."}</p>
+                             </TooltipContent>
+                         </Tooltip>
+                     </TooltipProvider>
                 </div>
 
                 {strategyMode && (
