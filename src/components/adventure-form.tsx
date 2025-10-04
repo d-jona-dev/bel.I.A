@@ -68,7 +68,6 @@ export interface AdventureFormHandle {
 }
 
 interface AdventureFormProps {
-    formPropKey: number;
     initialValues: AdventureFormValues;
     onFormValidityChange?: (isValid: boolean) => void;
     rpgMode: boolean;
@@ -117,8 +116,8 @@ const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 const adventureFormSchema = z.object({
-  world: z.string().min(1, "La description du monde est requise"),
-  initialSituation: z.string().min(1, "La situation initiale est requise"),
+  world: z.string().min(1, "La description du monde est requise."),
+  initialSituation: z.string().min(1, "La situation initiale est requise."),
   characters: z.array(characterSchema).min(0),
   rpgMode: z.boolean().default(true).optional(),
   relationsMode: z.boolean().default(true).optional(),
@@ -149,7 +148,7 @@ const adventureFormSchema = z.object({
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ formPropKey, initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
+    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
     const { toast } = useToast();
     const [savedAvatars, setSavedAvatars] = React.useState<PlayerAvatar[]>([]);
     
@@ -566,7 +565,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 timeElapsedPerTurn: '00:15',
             }
         });
-    }, [formPropKey, initialValues, form]);
+    }, [initialValues, form]);
 
     React.useEffect(() => {
         if (onFormValidityChange) {
@@ -658,33 +657,31 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleAvatarSelection = (avatarId: string) => {
         if (avatarId === 'custom') {
-            form.reset({
-                ...form.getValues(),
-                playerName: "Héros",
-                playerClass: "Aventurier",
-                playerLevel: 1,
-                playerDetails: "",
-                playerDescription: "",
-                playerOrientation: "",
-                playerPortraitUrl: null,
-                playerStrength: BASE_ATTRIBUTE_VALUE_FORM,
-                playerDexterity: BASE_ATTRIBUTE_VALUE_FORM,
-                playerConstitution: BASE_ATTRIBUTE_VALUE_FORM,
-                playerIntelligence: BASE_ATTRIBUTE_VALUE_FORM,
-                playerCharisma: BASE_ATTRIBUTE_VALUE_FORM,
-            });
+            const currentValues = form.getValues();
+            form.setValue('playerName', "Héros");
+            form.setValue('playerClass', "Aventurier");
+            form.setValue('playerLevel', 1);
+            form.setValue('playerDetails', "");
+            form.setValue('playerDescription', "");
+            form.setValue('playerOrientation', "");
+            form.setValue('playerPortraitUrl', null);
+            form.setValue('playerStrength', BASE_ATTRIBUTE_VALUE_FORM);
+            form.setValue('playerDexterity', BASE_ATTRIBUTE_VALUE_FORM);
+            form.setValue('playerConstitution', BASE_ATTRIBUTE_VALUE_FORM);
+            form.setValue('playerIntelligence', BASE_ATTRIBUTE_VALUE_FORM);
+            form.setValue('playerCharisma', BASE_ATTRIBUTE_VALUE_FORM);
             return;
         }
 
         const selectedAvatar = savedAvatars.find(a => a.id === avatarId);
         if (selectedAvatar) {
-            form.setValue('playerName', selectedAvatar.name);
-            form.setValue('playerClass', selectedAvatar.class);
-            form.setValue('playerLevel', selectedAvatar.level);
-            form.setValue('playerDetails', selectedAvatar.details);
-            form.setValue('playerDescription', selectedAvatar.description);
-            form.setValue('playerOrientation', selectedAvatar.orientation);
-            form.setValue('playerPortraitUrl', selectedAvatar.portraitUrl);
+            form.setValue('playerName', selectedAvatar.name, { shouldValidate: true });
+            form.setValue('playerClass', selectedAvatar.class, { shouldValidate: true });
+            form.setValue('playerLevel', selectedAvatar.level, { shouldValidate: true });
+            form.setValue('playerDetails', selectedAvatar.details, { shouldValidate: true });
+            form.setValue('playerDescription', selectedAvatar.description, { shouldValidate: true });
+            form.setValue('playerOrientation', selectedAvatar.orientation, { shouldValidate: true });
+            form.setValue('playerPortraitUrl', selectedAvatar.portraitUrl, { shouldValidate: true });
             toast({ title: "Avatar Chargé", description: `Les informations de ${selectedAvatar.name} ont été appliquées.` });
         }
     };
@@ -1180,7 +1177,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         <FormField control={form.control} name="playerPortraitUrl" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>URL du Portrait</FormLabel>
-                                                <FormControl><Input placeholder="https://example.com/portrait.png" {...field} value={field.value || ""} onBlur={(e) => form.setValue('playerPortraitUrl', e.target.value)}/></FormControl>
+                                                <FormControl><Input placeholder="https://example.com/portrait.png" value={field.value || ""} onBlur={(e) => field.onChange(e.target.value)} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}/>
@@ -1895,3 +1892,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    

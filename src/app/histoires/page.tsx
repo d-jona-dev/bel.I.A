@@ -113,7 +113,6 @@ export default function HistoiresPage() {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [isCreateFormValid, setIsCreateFormValid] = React.useState(false);
-  const [formPropKey, setFormPropKey] = React.useState(0);
   const importFileRef = React.useRef<HTMLInputElement>(null);
   
   const editFormRef = React.useRef<AdventureFormHandle>(null);
@@ -407,12 +406,10 @@ export default function HistoiresPage() {
   }
 
   const openEditDialog = (story: SavedStory) => {
-    setFormPropKey(prev => prev + 1); 
     setEditingStory(story);
   }
   
   const openCreateDialog = () => {
-    setFormPropKey(prev => prev + 1);
     setIsCreateFormValid(false);
     setIsCreateModalOpen(true);
   }
@@ -581,7 +578,7 @@ export default function HistoiresPage() {
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                   <AdventureForm
-                      key={`create-${formPropKey}`}
+                      key={`create-${Date.now()}`}
                       ref={createFormRef}
                       initialValues={getAdventureFormValues(null)}
                       rpgMode={true} 
@@ -609,7 +606,7 @@ export default function HistoiresPage() {
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {editingStory && (
                         <AdventureForm
-                           key={`edit-${editingStory.id}-${formPropKey}`}
+                           key={`edit-${editingStory.id}`}
                            ref={editFormRef}
                            initialValues={getAdventureFormValues(editingStory)}
                            rpgMode={editingStory.adventureState.adventureSettings.rpgMode}
@@ -628,3 +625,5 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
+    
