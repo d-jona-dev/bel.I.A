@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace } from "lucide-react"; // Added ExpIcon and MapPin, Replace
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye } from "lucide-react"; // Added Eye icon
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { describeAppearance } from "@/ai/flows/describe-appearance"; // NEW: Import the describe flow
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -198,6 +199,7 @@ export function CharacterSidebar({
     pointsOfInterest,
 }: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
+  const [describingAppearanceStates, setDescribingAppearanceStates] = React.useState<Record<string, boolean>>({}); // NEW
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
@@ -361,6 +363,29 @@ export function CharacterSidebar({
         return "Devoted / Love";
     };
 
+    // NEW: Function to handle describing appearance
+    const handleDescribeAppearance = async (char: Character) => {
+        if (!char.portraitUrl || describingAppearanceStates[char.id]) return;
+
+        setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: true }));
+        toast({ title: "Analyse de l'image...", description: `L'IA décrit l'apparence de ${char.name}.`});
+
+        try {
+            const result = await describeAppearance({ portraitUrl: char.portraitUrl });
+            onCharacterUpdate({
+                ...char,
+                appearanceDescription: result.description,
+                lastAppearanceUpdate: Date.now(),
+            });
+            toast({ title: "Description Réussie!", description: `L'apparence de ${char.name} a été détaillée.` });
+        } catch (error) {
+            console.error("Error describing appearance:", error);
+            toast({ title: "Erreur de Vision", description: `Impossible de décrire l'apparence. ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
+        } finally {
+            setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: false }));
+        }
+    };
+
   return (
     <div className="w-full">
         {isClient && (
@@ -409,6 +434,8 @@ export function CharacterSidebar({
                         isClient={isClient}
                         imageLoadingStates={imageLoadingStates}
                         setImageLoadingStates={setImageLoadingStates}
+                        describingAppearanceStates={describingAppearanceStates}
+                        handleDescribeAppearance={handleDescribeAppearance}
                         onSaveNewCharacter={onSaveNewCharacter}
                         generateImageAction={generateImageAction}
                         handleUploadPortrait={handleUploadPortrait}
@@ -442,6 +469,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     isClient,
     imageLoadingStates,
     setImageLoadingStates,
+    describingAppearanceStates,
+    handleDescribeAppearance,
     onSaveNewCharacter,
     generateImageAction,
     handleUploadPortrait,
@@ -466,6 +495,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     isClient: boolean;
     imageLoadingStates: Record<string, boolean>;
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+    describingAppearanceStates: Record<string, boolean>;
+    handleDescribeAppearance: (char: Character) => Promise<void>;
     onSaveNewCharacter: (character: Character) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -782,7 +813,26 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         onCheckedChange={(checked) => handleFieldChange(char.id, 'faceSwapEnabled', checked)}
                     />
                 </div>
-                
+                 <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
+                    <div className="p-3 border rounded-md bg-muted/30 text-xs text-muted-foreground min-h-[60px]">
+                        {describingAppearanceStates[char.id]
+                            ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/>Analyse en cours...</span>
+                            : char.appearanceDescription || "Aucune description générée. Requiert un portrait."
+                        }
+                    </div>
+                     <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleDescribeAppearance(char)}
+                        disabled={!char.portraitUrl || describingAppearanceStates[char.id]}
+                    >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Générer/Mettre à jour la Description
+                    </Button>
+                </div>
+
                 {strategyMode && (
                     <div className="space-y-1">
                         <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
@@ -1016,4 +1066,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
-

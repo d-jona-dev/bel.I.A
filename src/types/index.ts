@@ -181,6 +181,8 @@ export interface Character {
   name: string;
   details: string;
   biographyNotes?: string;
+  appearanceDescription?: string; // NEW FIELD
+  lastAppearanceUpdate?: number; // NEW FIELD (Timestamp)
   history?: string[];
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
@@ -618,7 +620,7 @@ export const NewCharacterSchema = z.object({
             targetName: z.string().describe("Name of the known character or the player's name."),
             description: z.string().describe("String description of the new character's initial relationship *status* towards this target (e.g., 'Curieux', 'Indifférent', 'Ami potentiel', 'Rivale potentielle', 'Client', 'Employé'). MUST be in {{currentLanguage}}. If 'Inconnu' or similar is the only option due to lack of context, use it, but prefer a more descriptive status if possible. ALL relation descriptions MUST be in {{currentLanguage}}."),
         })
-    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: `[{\\\"targetName\\\": \\\"PLAYER_NAME_EXAMPLE\\\", \\\"description\\\": \\\"Curieux\\\"}, {\\\"targetName\\\": \\\"Rina\\\", \\\"description\\\": \\\"Indifférent\\\"}]`. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
+    ).optional().describe("An array of objects, where each object defines the new character's initial relationship status towards a known character or the player. Example: [{'targetName': 'PLAYER_NAME_EXAMPLE', 'description': 'Curieux'}, {'targetName': 'Rina', 'description': 'Indifferent'}]. If no specific interaction implies a relation for a target, use a descriptive status like 'Inconnu' (or its {{currentLanguage}} equivalent) ONLY if no other relation can be inferred. ALL relation descriptions MUST be in {{currentLanguage}}."),
     isHostile: z.boolean().optional().default(false).describe("Is this new character initially hostile to the player? Relevant if rpgModeActive is true."),
     hitPoints: z.number().optional().describe("Initial HP for the new character if introduced as a combatant in RPG mode."),
     maxHitPoints: z.number().optional().describe("Max HP, same as initial HP for new characters."),
