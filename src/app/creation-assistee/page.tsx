@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -134,8 +135,35 @@ export default function CreationAssisteePage() {
         }
     };
     
-    const handleApplySuggestion = (suggestion: { field: keyof AdventureFormValues, value: string }) => {
-        if (formRef.current) {
+    const handleApplySuggestion = async (suggestion: { field: keyof AdventureFormValues, value: string }) => {
+        if (!formRef.current) return;
+    
+        if (suggestion.field === 'characterName' || suggestion.field === 'characterDetails') {
+            const formApi = formRef.current;
+            const currentCharacters = formApi.getValues('characters') || [];
+            
+            if (suggestion.field === 'characterName') {
+                // Add a new character with the suggested name
+                formApi.appendCharacter({ id: `char-${uid()}`, name: suggestion.value, details: '' });
+                toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
+            } else if (suggestion.field === 'characterDetails') {
+                if (currentCharacters.length > 0) {
+                    // Try to fill the details of the last character if their details are empty
+                    const lastCharIndex = currentCharacters.length - 1;
+                    if (!currentCharacters[lastCharIndex].details) {
+                        formApi.setValue(`characters.${lastCharIndex}.details`, suggestion.value);
+                    } else {
+                        // Or add a new character with just details
+                        formApi.appendCharacter({ id: `char-${uid()}`, name: '', details: suggestion.value });
+                    }
+                } else {
+                    // No characters exist, add a new one with the details
+                    formApi.appendCharacter({ id: `char-${uid()}`, name: '', details: suggestion.value });
+                }
+                 toast({ title: "Suggestion Appliquée", description: `Les détails du personnage ont été mis à jour.` });
+            }
+        } else {
+            // Handle simple fields like world, initialSituation
             formRef.current.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
             toast({ title: "Suggestion Appliquée", description: `Le champ '${suggestion.field}' a été mis à jour.` });
         }
