@@ -1,3 +1,4 @@
+
 "use server";
 /**
  * @fileOverview Gemini-specific implementation for the creative assistant AI flow.
@@ -5,7 +6,6 @@
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
-import type { AiConfig } from '@/types';
 import { 
     CreativeAssistantInputSchema, 
     CreativeAssistantOutputSchema, 
@@ -19,6 +19,7 @@ const creativeAssistantPrompt = ai.definePrompt({
     system: `You are a creative assistant for a text-based adventure game creator. Your goal is to help the user brainstorm ideas for their world, story, and characters.
     - Be concise, creative, and inspiring.
     - When you provide a concrete idea for the world, initial situation, or a character, formalize it as a 'suggestion' in the output.
+    - You can also suggest toggling game modes (rpgMode, relationsMode, strategyMode, comicModeActive) by setting their boolean value in a suggestion if it makes sense for the user's request (e.g., user asks for a more complex story -> suggest activating relationsMode).
     - You can provide multiple suggestions in one response.
     - For character suggestions, provide one for 'characterName' and another for 'characterDetails'.
     - Respond in the same language as the user's request.`,

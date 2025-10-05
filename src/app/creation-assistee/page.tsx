@@ -137,15 +137,21 @@ export default function CreationAssisteePage() {
         }
     };
     
-    const handleApplySuggestion = async (suggestion: { field: keyof AdventureFormValues, value: string }) => {
+    const handleApplySuggestion = async (suggestion: { field: keyof AdventureFormValues, value: any }) => {
         if (!formRef.current) return;
     
         const formApi = formRef.current;
         const currentCharacters = formApi.getValues('characters') || [];
 
         if (suggestion.field === 'characterName') {
-            formApi.append('characters', { id: `char-${uid()}`, name: suggestion.value, details: '' });
-            toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
+            const newCharIndex = currentCharacters.length;
+            formApi.append('characters', { id: `char-${uid()}`, name: '', details: '' });
+            // We need a slight delay for the form to update with the new appended item.
+            setTimeout(() => {
+                formApi.setValue(`characters.${newCharIndex}.name`, suggestion.value, { shouldValidate: true, shouldDirty: true });
+                toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
+            }, 50);
+
         } else if (suggestion.field === 'characterDetails') {
             const lastCharIndex = currentCharacters.length - 1;
             if (lastCharIndex >= 0 && !currentCharacters[lastCharIndex].details) {
@@ -156,9 +162,12 @@ export default function CreationAssisteePage() {
                 formApi.append('characters', { id: `char-${uid()}`, name: '', details: suggestion.value });
             }
             toast({ title: "Suggestion Appliquée", description: `Les détails du personnage ont été mis à jour.` });
+        } else if (typeof suggestion.value === 'boolean') {
+             formApi.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
+             toast({ title: "Suggestion Appliquée", description: `Le mode '${suggestion.field}' a été ${suggestion.value ? 'activé' : 'désactivé'}.` });
         } else {
             // Handle simple fields like world, initialSituation
-            formRef.current.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
+            formApi.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
             toast({ title: "Suggestion Appliquée", description: `Le champ '${suggestion.field}' a été mis à jour.` });
         }
     };
