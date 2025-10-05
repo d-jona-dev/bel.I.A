@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot } from 'lucide-react';
 import Link from 'next/link';
 import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -479,12 +478,17 @@ export default function HistoiresPage() {
                     <DialogHeader>
                         <DialogTitle>Configuration Globale de l'IA</DialogTitle>
                         <DialogDescription>
-                            Configurez les modèles d'IA utilisés pour les outils d'assistance à la création sur cette page.
+                            Configurez les modèles d'IA utilisés pour la génération de texte et d'images dans toute l'application.
                         </DialogDescription>
                     </DialogHeader>
                     <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
                 </DialogContent>
             </Dialog>
+            <Link href="/creation-assistee">
+              <Button variant="default">
+                <Bot className="mr-2 h-4 w-4" /> Création Assistée
+              </Button>
+            </Link>
             <Button onClick={openCreateDialog}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
             </Button>
@@ -646,7 +650,3 @@ export default function HistoiresPage() {
     </div>
   );
 }
-
-    
-
-    
