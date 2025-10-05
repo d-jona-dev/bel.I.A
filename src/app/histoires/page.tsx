@@ -226,40 +226,37 @@ export default function HistoiresPage() {
     if (!assigningSlotsForStory) return;
 
     const placeholderChars = assigningSlotsForStory.adventureState.characters.filter(c => c.isPlaceholder);
-
-    // Check if all slots are filled
     const allSlotsFilled = placeholderChars.every(p => slotAssignments[p.id]);
+
     if (!allSlotsFilled) {
         toast({ title: "Erreur", description: "Veuillez assigner un personnage à chaque rôle.", variant: "destructive" });
         return;
     }
 
-    const tempStory = JSON.parse(JSON.stringify(assigningSlotsForStory)) as SavedStory;
+    const updatedStory = JSON.parse(JSON.stringify(assigningSlotsForStory)) as SavedStory;
 
-    // Replace placeholders with selected characters
-    tempStory.adventureState.characters = tempStory.adventureState.characters.map(char => {
+    updatedStory.adventureState.characters = updatedStory.adventureState.characters.map(char => {
         if (char.isPlaceholder) {
             const assignedCharId = slotAssignments[char.id];
             const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
             if (fullCharData) {
-                // Return the full character data, but keep the original placeholder ID to maintain any relations
-                // that might have been set up with it. Also, set its location to the player's starting location.
                 return { 
                     ...fullCharData, 
-                    id: char.id, // VERY IMPORTANT: Keep the placeholder's ID
-                    isPlaceholder: false, // Turn off the placeholder flag
-                    locationId: tempStory.adventureState.adventureSettings.playerLocationId || null
+                    id: char.id, // IMPORTANT: Keep the placeholder's ID
+                    isPlaceholder: false,
+                    locationId: updatedStory.adventureState.adventureSettings.playerLocationId || null
                 };
             }
         }
         return char;
-    }).filter(char => !!char); // Filter out any potential nulls
+    }).filter(char => !!char);
 
-    // We can't save this temporary state, so we pass it via a temporary storage key that the main page will read once.
-    const tempStorageKey = `temp_story_load_${Date.now()}`;
-    localStorage.setItem(tempStorageKey, JSON.stringify(tempStory.adventureState));
-    localStorage.setItem('loadStoryIdOnMount', tempStorageKey); // Instruct page to load from this temp key
+    // Update the story in the main state before launching
+    const updatedStories = savedStories.map(s => s.id === updatedStory.id ? updatedStory : s);
+    saveStories(updatedStories);
 
+    // Now, launch the updated story
+    localStorage.setItem('loadStoryIdOnMount', updatedStory.id);
     setAssigningSlotsForStory(null);
     window.location.href = '/';
 };
@@ -756,3 +753,4 @@ export default function HistoiresPage() {
     </div>
   );
 }
+

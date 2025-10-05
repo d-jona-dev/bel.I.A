@@ -1351,12 +1351,26 @@ export default function Home() {
         return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
     };
 
-    const initialSituationText = getLocalizedText(stateToLoad.adventureSettings.initialSituation, currentLanguage);
+    let initialSituationText = getLocalizedText(stateToLoad.adventureSettings.initialSituation, currentLanguage);
+    let settingsToLoad = stateToLoad.adventureSettings;
+
+    if (stateToLoad.currentLanguage !== currentLanguage && initialSituationText) {
+        try {
+            const translationResult = await translateText({ text: initialSituationText, language: currentLanguage });
+            initialSituationText = translationResult.translatedText;
+            // Also update the loaded settings with the new translation
+            settingsToLoad.initialSituation[currentLanguage as keyof LocalizedText] = initialSituationText;
+        } catch (e) {
+            console.error("Failed to translate initial situation on load:", e);
+            toast({ title: "Erreur de Traduction", description: "Impossible de traduire la situation initiale. Affichage dans la langue d'origine.", variant: "default" });
+        }
+    }
+
 
     React.startTransition(() => {
-        const effectiveStats = calculateEffectiveStats(stateToLoad.adventureSettings);
+        const effectiveStats = calculateEffectiveStats(settingsToLoad);
         const finalSettings = { 
-            ...stateToLoad.adventureSettings, 
+            ...settingsToLoad, 
             ...effectiveStats 
         };
 
@@ -1582,8 +1596,8 @@ export default function Home() {
                         return;
                     }
                     const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                    if (existingIndex > -1) {
-                        newInventory[existingIndex].quantity += item.quantity;
+                    if (existingItemIndex > -1) {
+                        newInventory[existingItemIndex].quantity += item.quantity;
                     } else {
                         newInventory.push({ ...item, isEquipped: false });
                     }

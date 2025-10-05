@@ -201,7 +201,7 @@ const LocalizedTextArea = ({ name, label, placeholder, rows, form }: { name: "wo
                 </FormLabel>
                 <div className="flex items-center gap-1">
                     {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
-                    <DropdownMenu>
+                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="xs" className="flex gap-1">
                                 <Languages className="h-4 w-4"/>
@@ -216,18 +216,18 @@ const LocalizedTextArea = ({ name, label, placeholder, rows, form }: { name: "wo
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    {availableLangs.map(lang => (
-                        <Button 
-                            key={lang}
-                            type="button" 
-                            size="xs"
-                            variant={currentLang === lang ? 'secondary' : 'outline'}
-                            onClick={() => setCurrentLang(lang)}
-                            className={cn(form.getValues(`${name}.${lang}`) ? "font-bold" : "font-normal", "h-6 px-2")}
-                        >
-                            {lang.toUpperCase()}
-                        </Button>
-                    ))}
+                     <Select value={currentLang} onValueChange={setCurrentLang}>
+                        <SelectTrigger className="w-[80px] h-7 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                             {availableLangs.map(lang => (
+                                <SelectItem key={lang} value={lang} className={cn(form.getValues(`${name}.${lang}`) ? "font-bold" : "font-normal")}>
+                                    {lang.toUpperCase()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
              <FormControl>
@@ -2035,3 +2035,4 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
     
 
     
+
