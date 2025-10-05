@@ -1,3 +1,4 @@
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 // It uses the Sidebar components and places the AdventureDisplay and configuration panels.
@@ -56,7 +57,6 @@ interface PageStructureProps {
   adventureSettings: AdventureSettings;
   characters: Character[];
   stagedAdventureSettings: AdventureFormValues;
-  stagedCharacters: Character[];
   formPropKey: number;
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
@@ -139,7 +139,7 @@ interface PageStructureProps {
   setComicTitle: (title: string) => void;
   comicCoverUrl: string | null;
   isGeneratingCover: boolean;
-  onGenerateCover: () => void;
+  handleGenerateCover: () => void;
   onSaveToLibrary: () => void;
   merchantInventory: SellingItem[];
   shoppingCart: SellingItem[];
@@ -155,7 +155,6 @@ export function PageStructure({
   adventureSettings,
   characters,
   stagedAdventureSettings,
-  stagedCharacters,
   formPropKey,
   handleApplyStagedChanges,
   narrativeMessages,
@@ -239,7 +238,7 @@ export function PageStructure({
   setComicTitle,
   comicCoverUrl,
   isGeneratingCover,
-  onGenerateCover,
+  handleGenerateCover,
   onSaveToLibrary,
   merchantInventory,
   shoppingCart,
@@ -249,6 +248,8 @@ export function PageStructure({
   onCloseMerchantPanel,
   handleClaimHuntReward,
 }: PageStructureProps) {
+
+  const stagedCharacters = stagedAdventureSettings?.characters || [];
 
   const getItemTypeColor = (type: PlayerInventoryItem['type'] | undefined, isEquipped?: boolean) => {
     if (isEquipped) return 'border-green-500 ring-2 ring-green-500'; 
@@ -494,7 +495,7 @@ export function PageStructure({
                     setComicTitle={setComicTitle}
                     comicCoverUrl={comicCoverUrl}
                     isGeneratingCover={isGeneratingCover}
-                    onGenerateCover={onGenerateCover}
+                    handleGenerateCover={handleGenerateCover}
                     onSaveToLibrary={onSaveToLibrary}
                     merchantInventory={merchantInventory}
                     shoppingCart={shoppingCart}

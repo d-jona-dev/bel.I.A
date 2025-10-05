@@ -339,12 +339,6 @@ export default function Home() {
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(() => JSON.parse(JSON.stringify(createInitialState().settings)));
     
-    // Staged state for form edits - initialized in sync with adventureSettings
-    const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>({
-        ...adventureSettings,
-        characters: characters.map(c => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
-    });
-    
     // UI and loading states
     const [formPropKey, setFormPropKey] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -1364,10 +1358,6 @@ export default function Home() {
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
 
-        setStagedAdventureSettings({
-            ...finalSettings,
-            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
-        });
         setFormPropKey(prev => prev + 1);
         
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
@@ -1510,10 +1500,7 @@ export default function Home() {
             ...prev,
             playerSkills: [newSkill],
           }));
-          setStagedAdventureSettings(prev => ({ 
-            ...prev,
-            playerSkills: [newSkill],
-          }));
+          
           React.startTransition(() => {
             toast({
               title: "Compétence Initiale Acquise!",
@@ -2289,47 +2276,9 @@ export default function Home() {
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
     ]);
 
-  const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
-       setCharacters(prev => {
-           return prev.map(c => {
-               if (c.id === updatedCharacter.id) {
-                   let charToUpdate = {...updatedCharacter};
-                   if (charToUpdate.isAlly && (!c.isAlly || c.level === undefined) && adventureSettings.rpgMode) { 
-                       if (charToUpdate.level === undefined) charToUpdate.level = 1;
-                       if (charToUpdate.currentExp === undefined) charToUpdate.currentExp = 0;
-                       if (charToUpdate.expToNextLevel === undefined || charToUpdate.expToNextLevel <= 0) {
-                           charToUpdate.expToNextLevel = Math.floor(100 * Math.pow(1.5, ((charToUpdate.level ?? 1) || 1) - 1));
-                       }
-                       if (charToUpdate.initialAttributePoints === undefined) {
-                           charToUpdate.initialAttributePoints = INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-                       }
-                       const attributesToInit: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-                       attributesToInit.forEach(attr => {
-                           if (charToUpdate[attr] === undefined) {
-                               (charToUpdate[attr] as any) = BASE_ATTRIBUTE_VALUE_FORM;
-                           }
-                       });
-                       const derived = calculateBaseDerivedStats(charToUpdate);
-                       charToUpdate.maxHitPoints = charToUpdate.maxHitPoints ?? derived.maxHitPoints;
-                       charToUpdate.hitPoints = charToUpdate.hitPoints ?? charToUpdate.maxHitPoints;
-                       if (charToUpdate.characterClass?.toLowerCase().includes('mage') || charToUpdate.characterClass?.toLowerCase().includes('sorcier')) {
-                           charToUpdate.maxManaPoints = charToUpdate.maxManaPoints ?? derived.maxManaPoints;
-                           charToUpdate.manaPoints = charToUpdate.manaPoints ?? charToUpdate.maxManaPoints;
-                       } else if (charToUpdate.maxManaPoints === undefined) {
-                           charToUpdate.maxManaPoints = 0;
-                           charToUpdate.manaPoints = 0;
-                       }
-                       charToUpdate.armorClass = charToUpdate.armorClass ?? derived.armorClass;
-                       charToUpdate.attackBonus = charToUpdate.attackBonus ?? derived.attackBonus;
-                       charToUpdate.damageBonus = charToUpdate.damageBonus ?? derived.damageBonus;
-
-                   }
-                   return charToUpdate;
-               }
-               return c;
-           });
-       });
-   }, [adventureSettings.rpgMode]);
+  const handleCharacterUpdate = (updatedCharacter: Character) => {
+    setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
+  };
 
 
   const handleSaveNewCharacter = React.useCallback((character: Character) => {
@@ -2510,10 +2459,7 @@ export default function Home() {
         })));
         const initialSitText = getLocalizedText(newLiveAdventureSettings.initialSituation, currentLanguage);
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }]);
-        setStagedAdventureSettings({
-            ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
-            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
-        });
+        
         setActiveCombat(undefined);
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
@@ -2581,7 +2527,7 @@ export default function Home() {
             updatedCharacters = updatedCharacters.map(char => {
                 const formCharData = formCharactersMap.get(char.id);
                 if (formCharData) {
-                    formCharactersMap.delete(char.id); // Remove from map to track new ones
+                    formCharactersMap.delete(char.id!); // Remove from map to track new ones
                     return { ...char, ...formCharData };
                 }
                 return char;
@@ -3505,6 +3451,66 @@ export default function Home() {
         localStorage.setItem('adventure_language', lang);
     }
   
+  const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
+    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
+    if (!poi || poi.ownerId !== PLAYER_ID) {
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
+        });
+        return;
+    }
+
+    const buildingDef = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
+    if (!buildingDef) {
+        React.startTransition(() => {
+            toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
+        });
+        return;
+    }
+
+    const currentBuildings = poi.buildings || [];
+    if (currentBuildings.includes(buildingId)) {
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
+        });
+        return;
+    }
+
+    const maxSlots = BUILDING_SLOTS[poi.icon]?.[poi.level || 1] ?? 0;
+    if (currentBuildings.length >= maxSlots) {
+        React.startTransition(() => {
+            toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
+        });
+        return;
+    }
+
+    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length] ?? Infinity;
+    if ((adventureSettings.playerGold || 0) < cost) {
+        React.startTransition(() => {
+            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
+        });
+        return;
+    }
+
+    setAdventureSettings(prev => {
+        const newPois = prev.mapPointsOfInterest!.map(p => {
+            if (p.id === poiId) {
+                return { ...p, buildings: [...(p.buildings || []), buildingId] };
+            }
+            return p;
+        });
+        return {
+            ...prev,
+            playerGold: (prev.playerGold || 0) - cost,
+            mapPointsOfInterest: newPois,
+        };
+    });
+
+    React.startTransition(() => {
+        toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
+    });
+  }, [adventureSettings, toast]);
+    
     // This is the key change. We derive the form values from the main state.
     // This makes the main state the single source of truth.
     const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
@@ -3678,68 +3684,7 @@ export default function Home() {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
     
-  const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
-    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi || poi.ownerId !== playerId) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const buildingDef = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
-    if (!buildingDef) {
-        React.startTransition(() => {
-            toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const currentBuildings = poi.buildings || [];
-    if (currentBuildings.includes(buildingId)) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
-        });
-        return;
-    }
-
-    const maxSlots = BUILDING_SLOTS[poi.icon]?.[poi.level || 1] ?? 0;
-    if (currentBuildings.length >= maxSlots) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length] ?? Infinity;
-    if ((adventureSettings.playerGold || 0) < cost) {
-        React.startTransition(() => {
-            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
-        });
-        return;
-    }
-
-    setAdventureSettings(prev => {
-        const newPois = prev.mapPointsOfInterest!.map(p => {
-            if (p.id === poiId) {
-                const newLevel = (p.level || 1) + 1;
-                const newResources = poiLevelConfig[p.icon as keyof typeof poiLevelConfig]?.[newLevel]?.resources || [];
-                return { ...p, level: newLevel, resources: newResources };
-            }
-            return p;
-        });
-        return {
-            ...prev,
-            playerGold: (prev.playerGold || 0) - cost,
-            mapPointsOfInterest: newPois,
-        };
-    });
-
-    React.startTransition(() => {
-        toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
-    });
-  }, [adventureSettings, toast]);
-    
+  
   const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
         setAdventureSettings(prevSettings => {
             let newSettings = { ...prevSettings };
@@ -3803,6 +3748,11 @@ export default function Home() {
     }, [toast]);
 
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
+    const handleCloseMerchantPanel = () => {
+        setMerchantInventory([]);
+        setShoppingCart([]);
+    };
+    const handleOnGenerateCover = () => {};
 
   return (
     <>
@@ -3911,15 +3861,14 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
-      onGenerateCover={handleGenerateCover}
+      handleGenerateCover={handleGenerateCover}
       onSaveToLibrary={onSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
       onRemoveFromCart={handleRemoveFromCart}
       onFinalizePurchase={onFinalizePurchase}
-      onCloseMerchantPanel={() => { setMerchantInventory([]); setShoppingCart([]); }}
+      onCloseMerchantPanel={handleCloseMerchantPanel}
       handleClaimHuntReward={handleClaimHuntReward}
     />
      {isTargeting && itemToUse && (
