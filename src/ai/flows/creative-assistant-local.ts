@@ -78,6 +78,11 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             };
         }
 
+        if (!parsedJson.response && parsedJson.suggestions && parsedJson.suggestions.length > 0) {
+            parsedJson.response = "Voici quelques suggestions basées sur votre demande :";
+        }
+
+
         const validationResult = CreativeAssistantOutputSchema.safeParse(parsedJson);
 
         if (!validationResult.success) {

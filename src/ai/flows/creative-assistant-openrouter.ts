@@ -81,12 +81,15 @@ export async function creativeAssistantWithOpenRouter(input: CreativeAssistantIn
 
         let parsedJson = JSON.parse(content);
         
-        // FIX: Handle cases where the model returns an array of suggestions directly
         if (Array.isArray(parsedJson)) {
             parsedJson = {
                 response: "Voici quelques suggestions :",
                 suggestions: parsedJson,
             };
+        }
+
+        if (!parsedJson.response && parsedJson.suggestions && parsedJson.suggestions.length > 0) {
+            parsedJson.response = "Voici quelques suggestions basées sur votre demande :";
         }
 
 

@@ -46,22 +46,39 @@ export async function creativeAssistantWithGemini(input: CreativeAssistantInput)
             { history: historyForAI } 
         );
         
-        if (!output) {
+        let parsedOutput = output;
+
+        if (!parsedOutput) {
             return { error: "AI response was empty.", response: "" };
         }
         
-        // FIX: Handle cases where the model returns an array of suggestions directly
-        if (Array.isArray(output)) {
-            const suggestions = CreativeAssistantOutputSchema.shape.suggestions.parse(output);
-            return {
+        // Handle cases where the model returns an array of suggestions directly
+        if (Array.isArray(parsedOutput)) {
+            parsedOutput = {
                 response: "Voici quelques suggestions :",
-                suggestions: suggestions,
-                error: undefined,
-            }
+                suggestions: parsedOutput,
+            };
+        }
+
+        // Ensure response field exists if suggestions are present
+        if (!parsedOutput.response && parsedOutput.suggestions && parsedOutput.suggestions.length > 0) {
+            parsedOutput.response = "Voici quelques suggestions basées sur votre demande :";
         }
 
 
-        return { ...output, error: undefined };
+        const validationResult = CreativeAssistantOutputSchema.safeParse(parsedOutput);
+
+        if (!validationResult.success) {
+            console.error("Zod validation failed (Gemini):", validationResult.error.errors);
+            return {
+                response: (parsedOutput as any).response || "L'IA a retourné une réponse malformée.",
+                suggestions: (parsedOutput as any).suggestions || [],
+                error: `Zod validation failed: ${validationResult.error.message}`
+            };
+        }
+
+        return { ...validationResult.data, error: undefined };
+
     } catch (e: any) {
         console.error("Error in creativeAssistantWithGemini flow:", e);
         const errorMessage = e.message || String(e);
