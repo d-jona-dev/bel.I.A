@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -14,8 +15,8 @@ const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).subst
 
 const createNewAdventureState = (): SaveData => ({
     adventureSettings: {
-        world: "",
-        initialSituation: "",
+        world: { fr: "" },
+        initialSituation: { fr: "" },
         rpgMode: true,
         relationsMode: true,
         strategyMode: true,
@@ -105,8 +106,8 @@ export default function CreationAssisteePage() {
         newAdventureState.adventureSettings = {
             ...newAdventureState.adventureSettings,
             ...formValues,
-            world: formValues.world || "Monde non défini",
-            initialSituation: formValues.initialSituation || "Situation de départ non définie",
+            world: formValues.world.fr ? formValues.world : { fr: "Monde non défini" },
+            initialSituation: formValues.initialSituation.fr ? formValues.initialSituation : { fr: "Situation de départ non définie" },
             playerName: formValues.playerName || "Héros",
             rpgMode: formValues.rpgMode ?? true,
             relationsMode: formValues.relationsMode ?? true,
@@ -115,13 +116,13 @@ export default function CreationAssisteePage() {
             mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
         };
         newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({...c, id: c.id || uid()} as Character));
-        newAdventureState.narrative = [{ id: `msg-${Date.now()}`, type: 'system', content: newAdventureState.adventureSettings.initialSituation, timestamp: Date.now() }];
+        newAdventureState.narrative = [{ id: `msg-${Date.now()}`, type: 'system', content: newAdventureState.adventureSettings.initialSituation.fr, timestamp: Date.now() }];
         newAdventureState.aiConfig = aiConfig;
         
         const newStory = {
             id: newId,
-            title: formValues.world?.substring(0, 40) || "Nouvelle Histoire Assistée",
-            description: formValues.initialSituation?.substring(0, 100) || "...",
+            title: formValues.world.fr?.substring(0, 40) || "Nouvelle Histoire Assistée",
+            description: formValues.initialSituation.fr?.substring(0, 100) || "...",
             date: new Date().toISOString().split('T')[0],
             adventureState: newAdventureState,
         };
@@ -142,40 +143,46 @@ export default function CreationAssisteePage() {
         }
     };
     
-    const handleApplySuggestion = async (suggestion: { field: keyof AdventureFormValues, value: any }) => {
+    const handleApplySuggestion = (suggestion: { field: keyof AdventureFormValues, value: any }) => {
         if (!formRef.current) return;
-    
+
         const formApi = formRef.current;
         const currentCharacters = formApi.getValues('characters') || [];
 
         if (suggestion.field === 'characterName') {
-            const newCharIndex = currentCharacters.length;
-            formApi.append('characters', { id: `char-${uid()}`, name: '', details: '' });
-            // We need a slight delay for the form to update with the new appended item.
-            setTimeout(() => {
-                formApi.setValue(`characters.${newCharIndex}.name`, suggestion.value, { shouldValidate: true, shouldDirty: true });
-                toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
-            }, 50);
+            formApi.append('characters', { id: `char-${uid()}`, name: suggestion.value, details: '' });
+            toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
 
         } else if (suggestion.field === 'characterDetails') {
             const lastCharIndex = currentCharacters.length - 1;
             if (lastCharIndex >= 0 && !currentCharacters[lastCharIndex].details) {
-                // Fill details of the last character if they are empty
                 formApi.setValue(`characters.${lastCharIndex}.details`, suggestion.value, { shouldValidate: true, shouldDirty: true });
             } else {
-                // Otherwise, add a new character with just the details
                 formApi.append('characters', { id: `char-${uid()}`, name: '', details: suggestion.value });
             }
             toast({ title: "Suggestion Appliquée", description: `Les détails du personnage ont été mis à jour.` });
+
         } else if (typeof suggestion.value === 'boolean') {
              formApi.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
              toast({ title: "Suggestion Appliquée", description: `Le mode '${suggestion.field}' a été ${suggestion.value ? 'activé' : 'désactivé'}.` });
+        
+        } else if (suggestion.field === 'world' || suggestion.field === 'initialSituation') {
+             // NEW: Handle localized text object
+            if (typeof suggestion.value === 'object' && suggestion.value !== null) {
+                formApi.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
+            } else if (typeof suggestion.value === 'string') {
+                // Fallback for models that still return a string
+                formApi.setValue(suggestion.field, { fr: suggestion.value }, { shouldValidate: true, shouldDirty: true });
+            }
+            toast({ title: "Suggestion Appliquée", description: `Le champ '${suggestion.field}' a été mis à jour.` });
+
         } else {
-            // Handle simple fields like world, initialSituation
+            // Handle other simple string fields
             formApi.setValue(suggestion.field, suggestion.value, { shouldValidate: true, shouldDirty: true });
             toast({ title: "Suggestion Appliquée", description: `Le champ '${suggestion.field}' a été mis à jour.` });
         }
     };
+
 
     return (
         <div className="flex h-full">

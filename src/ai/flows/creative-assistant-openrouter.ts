@@ -17,17 +17,25 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function buildOpenRouterMessages(input: CreativeAssistantInput): Array<{role: 'system' | 'user' | 'assistant', content: string}> {
     const systemPrompt = `You are a creative assistant for a text-based adventure game creator. Your goal is to help the user brainstorm ideas for their world, story, and characters.
-    - Be concise, creative, and inspiring.
-    - When you provide a concrete idea for the world, initial situation, or a character, formalize it as a 'suggestion' in the output JSON.
-    - You can also suggest toggling game modes (rpgMode, relationsMode, strategyMode, comicModeActive) by setting their boolean value in a suggestion if it makes sense for the user's request.
-    - You can provide multiple suggestions in one response.
-    - For character suggestions, provide one for 'characterName' and another for 'characterDetails'.
-    - You MUST respond with a valid JSON object matching this schema:
-    {
-        "response": "string (your conversational response)",
-        "suggestions": [ { "field": "world" | "initialSituation" | "characterName" | "characterDetails" | "rpgMode" | "relationsMode" | "strategyMode" | "comicModeActive", "value": "string" | boolean } ]
-    }
-    - Respond in the same language as the user's request.`;
+- Be concise, creative, and inspiring.
+- You MUST respond with a valid JSON object. Do not add any text outside the JSON object.
+- Respond in the same language as the user's request.
+
+The JSON object MUST match this schema:
+{
+    "response": "string (your conversational response)",
+    "suggestions": [ 
+        { 
+          "field": "world" | "initialSituation" | "characterName" | "characterDetails" | "rpgMode" | "relationsMode" | "strategyMode" | "comicModeActive", 
+          "value": "string" | "boolean" | "object" 
+        } 
+    ]
+}
+
+CRITICAL RULES FOR THE 'value' in suggestions:
+- For "world" and "initialSituation", the value MUST be a JSON object with language codes as keys. Example: { "fr": "Un monde de...", "en": "A world of..." }.
+- For "characterName" and "characterDetails", the value MUST be a string.
+- For "rpgMode", "relationsMode", etc., the value MUST be a boolean (true or false).`;
     
     const history = (input.history || []).map(msg => ({
         role: msg.role === 'user' ? 'user' : 'assistant',
