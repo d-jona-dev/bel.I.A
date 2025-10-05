@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -16,13 +17,13 @@ interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    suggestions?: Array<{ field: keyof any; value: string }>;
+    suggestions?: Array<{ field: keyof any; value: any }>;
 }
 
 interface AssistantChatProps {
     aiConfig: AiConfig;
     onConfigChange: (newConfig: AiConfig) => void;
-    onApplySuggestion: (suggestion: { field: any; value: string }) => void;
+    onApplySuggestion: (suggestion: { field: any; value: any }) => void;
 }
 
 export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggestion }: AssistantChatProps) {
@@ -91,8 +92,9 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
         }
     };
     
-    const handleCopySuggestion = (text: string, id: string) => {
-        navigator.clipboard.writeText(text);
+    const handleCopySuggestion = (value: any, id: string) => {
+        const textToCopy = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+        navigator.clipboard.writeText(textToCopy);
         setCopiedStates(prev => ({ ...prev, [id]: true }));
         setTimeout(() => setCopiedStates(prev => ({ ...prev, [id]: false })), 2000);
         toast({ title: "Copié!", description: "La suggestion a été copiée dans le presse-papiers." });
@@ -116,25 +118,28 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                                     {message.role === 'assistant' && message.suggestions && message.suggestions.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-muted-foreground/20 space-y-2">
                                             <p className="text-xs font-semibold">Suggestions :</p>
-                                            {message.suggestions.map((suggestion, index) => (
-                                                <div key={index} className="p-2 bg-background/50 rounded-md">
-                                                    <p className="text-xs text-muted-foreground">Pour le champ : <span className="font-bold">{suggestion.field}</span></p>
-                                                    <p className="text-sm my-1 italic">"{suggestion.value}"</p>
-                                                    <div className="flex gap-2">
-                                                        <Button size="xs" variant="outline" onClick={() => onApplySuggestion(suggestion)}>
-                                                            <Wand2 className="mr-2 h-3 w-3"/>Appliquer
-                                                        </Button>
-                                                         <Button
-                                                            size="xs"
-                                                            variant="ghost"
-                                                            onClick={() => handleCopySuggestion(suggestion.value, `${message.id}-${index}`)}
-                                                        >
-                                                            {copiedStates[`${message.id}-${index}`] ? <Check className="mr-2 h-3 w-3 text-green-500"/> : <Clipboard className="mr-2 h-3 w-3"/>}
-                                                            Copier
-                                                        </Button>
+                                            {message.suggestions.map((suggestion, index) => {
+                                                const suggestionValueText = typeof suggestion.value === 'object' ? JSON.stringify(suggestion.value, null, 2) : String(suggestion.value);
+                                                return (
+                                                    <div key={index} className="p-2 bg-background/50 rounded-md">
+                                                        <p className="text-xs text-muted-foreground">Pour le champ : <span className="font-bold">{suggestion.field}</span></p>
+                                                        <pre className="text-sm my-1 italic whitespace-pre-wrap font-sans">"{suggestionValueText}"</pre>
+                                                        <div className="flex gap-2">
+                                                            <Button size="xs" variant="outline" onClick={() => onApplySuggestion(suggestion)}>
+                                                                <Wand2 className="mr-2 h-3 w-3"/>Appliquer
+                                                            </Button>
+                                                             <Button
+                                                                size="xs"
+                                                                variant="ghost"
+                                                                onClick={() => handleCopySuggestion(suggestion.value, `${message.id}-${index}`)}
+                                                            >
+                                                                {copiedStates[`${message.id}-${index}`] ? <Check className="mr-2 h-3 w-3 text-green-500"/> : <Clipboard className="mr-2 h-3 w-3"/>}
+                                                                Copier
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     )}
                                 </div>
