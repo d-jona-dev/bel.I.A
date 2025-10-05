@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages, Loader2, UserCog } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages, Loader2, UserCog, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -200,7 +200,7 @@ const LocalizedTextArea = ({ name, label, placeholder, rows, form }: { name: "wo
                     {!form.watch(`${name}.${currentLang}`) && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
                 </FormLabel>
                 <div className="flex items-center gap-1">
-                    {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
+                     {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="xs" className="flex gap-1">
@@ -1195,7 +1195,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
-                
+
+
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="player-character-config">
                         <AccordionTrigger>Configuration du Héros</AccordionTrigger>
@@ -1674,27 +1675,27 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </Card>
                           )
                         })}
-                        <div className="flex gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => append({ id: `new-char-${Date.now()}`, name: "", details: "", isPlaceholder: false, portraitUrl: null, faceSwapEnabled: false, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
-                                className="mt-2 flex-1"
-                                >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Ajouter un personnage
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => append({ id: `placeholder-${Date.now()}`, name: "", details: "", isPlaceholder: true })}
-                                className="mt-2 flex-1"
-                                >
-                                <UserCog className="mr-2 h-4 w-4" />
-                                Ajouter un emplacement
-                            </Button>
+                        <div className="flex gap-2 mt-2">
+                            <TooltipProvider>
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                    <Button type="button" variant="outline" size="icon" onClick={() => append({ id: `new-char-${Date.now()}`, name: "", details: "", isPlaceholder: false, portraitUrl: null, faceSwapEnabled: false, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}>
+                                        <UserPlus className="h-5 w-5"/>
+                                    </Button>
+                                 </TooltipTrigger>
+                                 <TooltipContent><p>Ajouter un personnage</p></TooltipContent>
+                               </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button type="button" variant="outline" size="icon" onClick={() => append({ id: `placeholder-${Date.now()}`, name: "", details: "", isPlaceholder: true })}>
+                                            <UserCog className="h-5 w-5"/>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Ajouter un emplacement de personnage</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                         <FormDescription className="mt-2 text-xs">
                             Les détails complets (stats, etc.) sont gérés dans le panneau latéral une fois l'aventure commencée.
@@ -2035,4 +2036,5 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
     
 
     
+
 

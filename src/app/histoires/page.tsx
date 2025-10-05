@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -240,9 +240,11 @@ export default function HistoiresPage() {
             const assignedCharId = slotAssignments[char.id];
             const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
             if (fullCharData) {
+                // Smart merge: keep story-specific relations, use global character data as base
                 return { 
-                    ...fullCharData, 
-                    id: char.id, // IMPORTANT: Keep the placeholder's ID
+                    ...fullCharData, // Base data from global character
+                    relations: { ...fullCharData.relations, ...char.relations }, // Merge relations, keeping the placeholder's
+                    id: char.id, // IMPORTANT: Keep the placeholder's ID for consistency within the story
                     isPlaceholder: false,
                     locationId: updatedStory.adventureState.adventureSettings.playerLocationId || null
                 };
@@ -632,7 +634,13 @@ export default function HistoiresPage() {
       </section>
 
       <section>
-        <h2 className="text-2xl font-semibold mb-4">Chatter avec un Personnage</h2>
+        <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-2xl font-semibold">Chatter avec un Personnage</h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <UsersIcon className="h-4 w-4" />
+                <span>{savedCharacters.length} Personnage(s) Sauvegardé(s)</span>
+            </div>
+        </div>
         <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
           {isLoading ? (
             <p className="text-muted-foreground text-center py-10">Chargement des personnages...</p>
@@ -753,4 +761,5 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
 
