@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon, UserCog } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon, UserCog, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -232,10 +232,11 @@ export default function HistoiresPage() {
         toast({ title: "Erreur", description: "Veuillez assigner un personnage à chaque rôle.", variant: "destructive" });
         return;
     }
+    
+    // Create a temporary copy for the session, DO NOT modify the original story
+    const temporaryAdventureState = JSON.parse(JSON.stringify(assigningSlotsForStory.adventureState)) as SaveData;
 
-    const updatedStory = JSON.parse(JSON.stringify(assigningSlotsForStory)) as SavedStory;
-
-    updatedStory.adventureState.characters = updatedStory.adventureState.characters.map(char => {
+    temporaryAdventureState.characters = temporaryAdventureState.characters.map(char => {
         if (char.isPlaceholder) {
             const assignedCharId = slotAssignments[char.id];
             const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
@@ -243,22 +244,20 @@ export default function HistoiresPage() {
                 // Smart merge: keep story-specific relations, use global character data as base
                 return { 
                     ...fullCharData, // Base data from global character
-                    relations: { ...fullCharData.relations, ...char.relations }, // Merge relations, keeping the placeholder's
+                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) }, // Merge relations, keeping the placeholder's
                     id: char.id, // IMPORTANT: Keep the placeholder's ID for consistency within the story
-                    isPlaceholder: false,
-                    locationId: updatedStory.adventureState.adventureSettings.playerLocationId || null
+                    isPlaceholder: false, // Mark as filled
+                    locationId: temporaryAdventureState.adventureSettings.playerLocationId || null
                 };
             }
         }
         return char;
     }).filter(char => !!char);
 
-    // Update the story in the main state before launching
-    const updatedStories = savedStories.map(s => s.id === updatedStory.id ? updatedStory : s);
-    saveStories(updatedStories);
+    // Save the fully resolved temporary state to localStorage for the adventure page to pick up.
+    localStorage.setItem('tempAdventureState', JSON.stringify(temporaryAdventureState));
+    localStorage.removeItem('loadStoryIdOnMount'); // Clean up old launch mechanism
 
-    // Now, launch the updated story
-    localStorage.setItem('loadStoryIdOnMount', updatedStory.id);
     setAssigningSlotsForStory(null);
     window.location.href = '/';
 };
@@ -761,5 +760,6 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
 
 

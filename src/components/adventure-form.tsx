@@ -2038,3 +2038,6 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
     
 
 
+
+
+    

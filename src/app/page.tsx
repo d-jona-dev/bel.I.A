@@ -1351,21 +1351,11 @@ export default function Home() {
         return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
     };
 
-    let initialSituationText = getLocalizedText(stateToLoad.adventureSettings.initialSituation, currentLanguage);
     let settingsToLoad = stateToLoad.adventureSettings;
-
-    if (stateToLoad.currentLanguage !== currentLanguage && initialSituationText) {
-        try {
-            const translationResult = await translateText({ text: initialSituationText, language: currentLanguage });
-            initialSituationText = translationResult.translatedText;
-            // Also update the loaded settings with the new translation
-            settingsToLoad.initialSituation[currentLanguage as keyof LocalizedText] = initialSituationText;
-        } catch (e) {
-            console.error("Failed to translate initial situation on load:", e);
-            toast({ title: "Erreur de Traduction", description: "Impossible de traduire la situation initiale. Affichage dans la langue d'origine.", variant: "default" });
-        }
-    }
-
+    const initialSitText = getLocalizedText(settingsToLoad.initialSituation, currentLanguage);
+    let finalNarrative = [{ id: `msg-loaded-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }];
+    
+    // No translation needed here, just select the right text.
 
     React.startTransition(() => {
         const effectiveStats = calculateEffectiveStats(settingsToLoad);
@@ -1376,7 +1366,7 @@ export default function Home() {
 
         setAdventureSettings(finalSettings);
         setCharacters(stateToLoad.characters);
-        setNarrativeMessages([{ id: `msg-loaded-${Date.now()}`, type: 'system', content: initialSituationText, timestamp: Date.now() }]);
+        setNarrativeMessages(finalNarrative);
         setActiveCombat(stateToLoad.activeCombat);
         setCurrentLanguage(stateToLoad.currentLanguage || 'fr');
         setAiConfig(stateToLoad.aiConfig || createInitialState().aiConfig);
@@ -1418,32 +1408,44 @@ export default function Home() {
       const savedLang = localStorage.getItem('adventure_language') || 'fr';
       setCurrentLanguage(savedLang);
 
-      const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
-      if (storyIdToLoad) {
-          localStorage.removeItem('loadStoryIdOnMount'); // Clean up immediately
-          const storiesStr = localStorage.getItem('adventureStories');
-          if (storiesStr) {
-              try {
-                  const allStories: { id: string, adventureState: SaveData }[] = JSON.parse(storiesStr);
-                  const storyToLoad = allStories.find(s => s.id === storyIdToLoad);
-                  if (storyToLoad) {
-                      loadAdventureState(storyToLoad.adventureState);
-                  } else {
-                      toast({ title: "Erreur", description: "L'histoire à charger est introuvable.", variant: "destructive" });
-                  }
-              } catch (e) {
-                  console.error("Failed to parse stories from localStorage", e);
-                  toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
-              }
+      const tempStateString = localStorage.getItem('tempAdventureState');
+      if (tempStateString) {
+          localStorage.removeItem('tempAdventureState'); // Clean up immediately
+          try {
+              const tempState = JSON.parse(tempStateString);
+              loadAdventureState(tempState);
+          } catch(e) {
+              console.error("Failed to parse temp adventure state:", e);
+              toast({ title: "Erreur", description: "Impossible de charger l'histoire temporaire.", variant: "destructive" });
           }
       } else {
-        const effectiveStats = calculateEffectiveStats(adventureSettings);
-        setAdventureSettings(prev => ({
-            ...prev,
-            ...effectiveStats,
-            playerCurrentHp: prev.playerCurrentHp ?? effectiveStats.playerMaxHp,
-            playerCurrentMp: prev.playerCurrentMp ?? effectiveStats.playerMaxMp
-        }));
+        const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
+        if (storyIdToLoad) {
+            localStorage.removeItem('loadStoryIdOnMount'); // Clean up immediately
+            const storiesStr = localStorage.getItem('adventureStories');
+            if (storiesStr) {
+                try {
+                    const allStories: { id: string, adventureState: SaveData }[] = JSON.parse(storiesStr);
+                    const storyToLoad = allStories.find(s => s.id === storyIdToLoad);
+                    if (storyToLoad) {
+                        loadAdventureState(storyToLoad.adventureState);
+                    } else {
+                        toast({ title: "Erreur", description: "L'histoire à charger est introuvable.", variant: "destructive" });
+                    }
+                } catch (e) {
+                    console.error("Failed to parse stories from localStorage", e);
+                    toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
+                }
+            }
+        } else {
+          const effectiveStats = calculateEffectiveStats(adventureSettings);
+          setAdventureSettings(prev => ({
+              ...prev,
+              ...effectiveStats,
+              playerCurrentHp: prev.playerCurrentHp ?? effectiveStats.playerMaxHp,
+              playerCurrentMp: prev.playerCurrentMp ?? effectiveStats.playerMaxMp
+          }));
+        }
       }
 
       const loadAllItemTypes = () => {
@@ -3397,6 +3399,92 @@ export default function Home() {
     }
     }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
 
+  const handleAddComicPage = React.useCallback(() => {
+    setComicDraft(prev => [...prev, createNewComicPage()]);
+    setCurrentComicPageIndex(comicDraft.length);
+  }, [comicDraft.length]);
+
+  const handleAddComicPanel = React.useCallback(() => {
+    if (comicDraft.length === 0) {
+        handleAddComicPage();
+    } else {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
+
+  const handleRemoveLastComicPanel = React.useCallback(() => {
+    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex]);
+
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setComicDraft(prev => prev.map((p, i) =>
+            i === pageIndex
+            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
+            : p
+        ));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
+    setComicDraft(prev => {
+        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
+        let pageUpdated = false;
+        let targetPageIndex = currentComicPageIndex;
+
+        for (let i = targetPageIndex; i < draft.length; i++) {
+            const page = draft[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
+            if (firstEmptyPanelIndex !== -1) {
+                const newPanels = [...page.panels];
+                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
+                draft[i] = { ...page, panels: newPanels };
+                pageUpdated = true;
+                React.startTransition(() => {
+                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
+                });
+                break;
+            }
+        }
+        
+        if (!pageUpdated) {
+            const newPage = createNewComicPage();
+            newPage.panels[0].imageUrl = dataUrl;
+            draft.push(newPage);
+            setCurrentComicPageIndex(draft.length - 1);
+            React.startTransition(() => {
+                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
+            });
+        }
+        
+        return draft;
+    });
+  }, [currentComicPageIndex, toast]);
+
+  const handleDownloadComicDraft = React.useCallback(() => {
+    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
+        React.startTransition(() => {
+            toast({
+                title: "Rien à télécharger",
+                description: "Il n'y a pas de planche de BD active à télécharger.",
+                variant: "destructive"
+            });
+        });
+        return;
+    }
+    const currentPage = comicDraft[currentComicPageIndex];
+    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
+  }, [comicDraft, currentComicPageIndex, toast]);
+
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {
         const pois = prev.mapPointsOfInterest || [];
@@ -3760,92 +3848,6 @@ export default function Home() {
         });
     }, [toast]);
 
-  const handleAddComicPage = React.useCallback(() => {
-    setComicDraft(prev => [...prev, createNewComicPage()]);
-    setCurrentComicPageIndex(comicDraft.length);
-  }, [comicDraft.length]);
-
-  const handleAddComicPanel = React.useCallback(() => {
-    if (comicDraft.length === 0) {
-        handleAddComicPage();
-    } else {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
-
-  const handleRemoveLastComicPanel = React.useCallback(() => {
-    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex]);
-
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setComicDraft(prev => prev.map((p, i) =>
-            i === pageIndex
-            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
-            : p
-        ));
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
-    setComicDraft(prev => {
-        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
-        let pageUpdated = false;
-        let targetPageIndex = currentComicPageIndex;
-
-        for (let i = targetPageIndex; i < draft.length; i++) {
-            const page = draft[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-            if (firstEmptyPanelIndex !== -1) {
-                const newPanels = [...page.panels];
-                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
-                draft[i] = { ...page, panels: newPanels };
-                pageUpdated = true;
-                React.startTransition(() => {
-                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
-                });
-                break;
-            }
-        }
-        
-        if (!pageUpdated) {
-            const newPage = createNewComicPage();
-            newPage.panels[0].imageUrl = dataUrl;
-            draft.push(newPage);
-            setCurrentComicPageIndex(draft.length - 1);
-            React.startTransition(() => {
-                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
-            });
-        }
-        
-        return draft;
-    });
-  }, [currentComicPageIndex, toast]);
-
-  const handleDownloadComicDraft = React.useCallback(() => {
-    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
-        React.startTransition(() => {
-            toast({
-                title: "Rien à télécharger",
-                description: "Il n'y a pas de planche de BD active à télécharger.",
-                variant: "destructive"
-            });
-        });
-        return;
-    }
-    const currentPage = comicDraft[currentComicPageIndex];
-    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
-  }, [comicDraft, currentComicPageIndex, toast]);
-
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -4025,5 +4027,9 @@ export default function Home() {
 }
 
     
+
+    
+
+
 
     
