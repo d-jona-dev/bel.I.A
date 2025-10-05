@@ -203,12 +203,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
-        defaultValues: initialValues,
+        defaultValues: {
+          ...initialValues,
+          characters: initialValues.characters || [],
+        },
         mode: "onChange",
     });
     
     React.useEffect(() => {
-        form.reset(initialValues);
+        form.reset({
+          ...initialValues,
+          characters: initialValues.characters || [],
+        });
     }, [initialValues, form]);
 
 
@@ -1882,3 +1888,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
