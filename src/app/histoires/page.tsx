@@ -441,6 +441,7 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
     />
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isCreateModalOpen, aiConfig]);
 
 

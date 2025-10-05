@@ -319,7 +319,7 @@ export default function Home() {
 
     // Item definitions
     const [allConsumables, setAllConsumables] = React.useState<BaseItem[]>([]);
-    const [allWeapons, setAllWeapons] = React.useState<BaseItem[]>([]);
+    const [allWeapons, setWeapons] = React.useState<BaseItem[]>([]);
     const [allArmors, setAllArmors] = React.useState<BaseItem[]>([]);
     const [allJewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
     const [physicalFamiliarItems, setPhysicalFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
@@ -378,7 +378,7 @@ export default function Home() {
             quantity: item.quantity,
             description: item.description,
             effect: item.effect,
-            type: item.itemType,
+            itemType: item.itemType,
             goldValue: item.goldValue,
             statBonuses: item.statBonuses,
             generatedImageUrl: null,
@@ -1136,6 +1136,17 @@ export default function Home() {
     ]);
     // --- End Core Action Handlers ---
 
+    const generateSceneImageActionWrapper = React.useCallback(
+        async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
+            const result = await generateSceneImage(input, aiConfig);
+            if (result.error) {
+                React.startTransition(() => {
+                    toast({ title: "Erreur de Génération d'Image IA", description: result.error, variant: "destructive" });
+                });
+                return { imageUrl: "", error: result.error };
+            }
+            return result;
+        }, [toast, aiConfig]);
 
     const handleSendSpecificAction = React.useCallback(async (action: string) => {
         if (!action || isLoading) return;
@@ -1322,34 +1333,55 @@ export default function Home() {
         setMerchantInventory([]); // Close merchant panel after purchase
     }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, handleNewCharacters, setAdventureSettings, setShoppingCart, setMerchantInventory]);
    
-  const loadAdventureState = React.useCallback((stateToLoad: SaveData) => {
+  const loadAdventureState = React.useCallback(async (stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
         React.startTransition(() => {
             toast({ title: "Erreur de Chargement", description: "Le fichier de sauvegarde est invalide ou corrompu.", variant: "destructive" });
         });
         return;
     }
+
+    const savedLang = stateToLoad.currentLanguage || 'fr';
+    const targetLang = currentLanguage;
+    let initialSituation = stateToLoad.adventureSettings.initialSituation;
+    let initialNarrative = stateToLoad.narrative;
+    
+    if (targetLang !== savedLang) {
+        toast({ title: "Traduction en cours...", description: `Traduction de l'histoire en ${targetLang}.` });
+        try {
+            const translationResult = await translateText({ text: initialSituation, language: targetLang });
+            initialSituation = translationResult.translatedText;
+            initialNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: initialSituation, timestamp: Date.now() }];
+            toast({ title: "Traduction terminée!", description: "L'aventure est prête à commencer dans votre langue." });
+        } catch (e) {
+            toast({ title: "Erreur de traduction", description: "Impossible de traduire l'histoire. Lancement dans la langue d'origine.", variant: "destructive" });
+        }
+    }
+    
     React.startTransition(() => {
         const effectiveStats = calculateEffectiveStats(stateToLoad.adventureSettings);
-        const finalSettings = { ...stateToLoad.adventureSettings, ...effectiveStats };
+        const finalSettings = { 
+            ...stateToLoad.adventureSettings, 
+            initialSituation: initialSituation, // Use potentially translated text
+            ...effectiveStats 
+        };
 
         setAdventureSettings(finalSettings);
         setCharacters(stateToLoad.characters);
-        setNarrativeMessages(stateToLoad.narrative);
+        setNarrativeMessages(initialNarrative);
         setActiveCombat(stateToLoad.activeCombat);
-        setCurrentLanguage(stateToLoad.currentLanguage || "fr");
+        setCurrentLanguage(targetLang); // Set to the user's selected language
         setAiConfig(stateToLoad.aiConfig || createInitialState().aiConfig);
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(stateToLoad.characters)));
 
-        // This is crucial: Synchronize staged state for the form.
         setStagedAdventureSettings({
             ...finalSettings,
             characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
         });
         setStagedCharacters(stateToLoad.characters);
-        setFormPropKey(prev => prev + 1); // Force re-render of AdventureForm
+        setFormPropKey(prev => prev + 1);
         
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
 
@@ -1372,9 +1404,12 @@ export default function Home() {
             }, 500);
         }
     });
-  }, [toast]);
+  }, [toast, currentLanguage]);
 
   React.useEffect(() => {
+      const savedLang = localStorage.getItem('adventure_language') || 'fr';
+      setCurrentLanguage(savedLang);
+
       const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
       if (storyIdToLoad) {
           localStorage.removeItem('loadStoryIdOnMount'); // Clean up immediately
@@ -1414,7 +1449,7 @@ export default function Home() {
               return baseData;
           };
           setAllConsumables(loadData('custom_consumables', BASE_CONSUMABLES));
-          setAllWeapons(loadData('custom_weapons', BASE_WEAPONS));
+          setWeapons(loadData('custom_weapons', BASE_WEAPONS));
           setAllArmors(loadData('custom_armors', BASE_ARMORS));
           setAllJewelry(loadData('custom_jewelry', BASE_JEWELRY));
           setPhysicalFamiliarItems(loadData('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
@@ -1435,7 +1470,6 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAdventureState, toast]);
 
     const fetchInitialSkill = React.useCallback(async () => {
@@ -2415,7 +2449,7 @@ export default function Home() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const jsonString = e.target?.result as string;
                 const loadedData: Partial<SaveData> = JSON.parse(jsonString);
@@ -2423,7 +2457,7 @@ export default function Home() {
                 if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
                     throw new Error("Structure de fichier de sauvegarde invalide ou manquante.");
                 }
-                loadAdventureState(loadedData as SaveData);
+                await loadAdventureState(loadedData as SaveData);
 
             } catch (error: any) {
                 console.error("Error loading adventure:", error);
@@ -3121,7 +3155,7 @@ export default function Home() {
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleNewFamiliar, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleUseFamiliarItem, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
     setAdventureSettings(prev => {
@@ -3168,6 +3202,260 @@ export default function Home() {
     });
 }, [toast]);
   
+
+  const handleMapImageUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        React.startTransition(() => {
+            toast({
+                title: "Fichier Invalide",
+                description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
+                variant: "destructive",
+            });
+        });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imageUrl = e.target?.result as string;
+        setAdventureSettings(prev => ({ ...prev, mapImageUrl: imageUrl }));
+        React.startTransition(() => {
+            toast({
+                title: "Image de Carte Chargée",
+                description: "Le fond de la carte a été mis à jour avec votre image.",
+            });
+        });
+    };
+    reader.readAsDataURL(file);
+    if(event.target) event.target.value = '';
+  }, [toast]);
+
+  const handleMapImageUrlChange = React.useCallback((url: string) => {
+    setAdventureSettings(prev => ({ ...prev, mapImageUrl: url }));
+    React.startTransition(() => {
+        toast({
+            title: "Image de Carte Chargée",
+            description: "Le fond de la carte a été mis à jour depuis l'URL.",
+        });
+    });
+  }, [toast]);
+    
+  const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
+    setAiConfig(newConfig);
+    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+    React.startTransition(() => {
+        toast({ title: "Configuration IA mise à jour" });
+    });
+  }, [toast]);
+  
+    const handleAddToCart = React.useCallback((item: SellingItem) => {
+        setShoppingCart(prevCart => {
+            const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
+            if (existingItem) {
+                return prevCart.map(cartItem => 
+                    cartItem.baseItemId === item.baseItemId && cartItem.name === item.name 
+                    ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
+                    : cartItem
+                );
+            }
+            return [...prevCart, { ...item, quantity: 1 }];
+        });
+    }, []);
+
+    const handleRemoveFromCart = React.useCallback((itemName: string) => {
+        setShoppingCart(prevCart => {
+            const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
+            if (existingItem && existingItem.quantity! > 1) {
+                 return prevCart.map(cartItem => 
+                    cartItem.name === itemName
+                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
+                    : cartItem
+                );
+            }
+            return prevCart.filter(cartItem => cartItem.name !== itemName);
+        });
+    }, []);
+
+    const handleGenerateCover = React.useCallback(async () => {
+    setIsGeneratingCover(true);
+    React.startTransition(() => {
+        toast({ title: "Génération de la couverture..."});
+    });
+
+    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
+
+    try {
+        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+        if (result.imageUrl) {
+            setComicCoverUrl(result.imageUrl);
+            React.startTransition(() => {
+                toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
+            });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        React.startTransition(() => {
+            toast({
+                title: "Erreur de Génération",
+                description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
+                variant: "destructive"
+            });
+        });
+    } finally {
+        setIsGeneratingCover(false);
+    }
+    }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
+
+    const onSaveToLibrary = React.useCallback(async () => {
+    if (!comicTitle.trim()) {
+        React.startTransition(() => {
+            toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
+        });
+        return;
+    }
+    
+    try {
+        const compressedDraft: ComicPage[] = await Promise.all(
+            comicDraft.map(async (page) => ({
+                ...page,
+                panels: await Promise.all(page.panels.map(async (panel) => ({
+                    ...panel,
+                    imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
+                }))),
+            }))
+        );
+
+        const newComic = {
+            id: uid(),
+            title: comicTitle,
+            coverUrl: comicCoverUrl,
+            comicDraft: compressedDraft,
+            createdAt: new Date().toISOString(),
+        };
+
+        const existingComicsStr = localStorage.getItem('savedComics_v1');
+        const existingComics: any[] = existingComicsStr ? JSON.parse(existingComicsStr) : [];
+        
+        const comicIndex = existingComics.findIndex((c: { id: string }) => c.id === newComic.id);
+        
+        if (comicIndex > -1) {
+            existingComics[comicIndex] = newComic;
+        } else {
+            existingComics.push(newComic);
+        }
+        
+        localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
+        
+        React.startTransition(() => {
+            toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
+        });
+        setIsSaveComicDialogOpen(false);
+        setComicTitle("");
+        setComicCoverUrl(null);
+    } catch (e) {
+        console.error("Failed to save comic to library:", e);
+        React.startTransition(() => {
+            toast({
+                title: "Erreur de Sauvegarde",
+                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
+                variant: "destructive"
+            });
+        });
+    }
+    }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
+
+  const handleAddComicPage = React.useCallback(() => {
+    setComicDraft(prev => [...prev, createNewComicPage()]);
+    setCurrentComicPageIndex(comicDraft.length);
+  }, [comicDraft.length]);
+
+  const handleAddComicPanel = React.useCallback(() => {
+    if (comicDraft.length === 0) {
+        handleAddComicPage();
+    } else {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
+
+  const handleRemoveLastComicPanel = React.useCallback(() => {
+    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex]);
+
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setComicDraft(prev => prev.map((p, i) =>
+            i === pageIndex
+            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
+            : p
+        ));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
+    setComicDraft(prev => {
+        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
+        let pageUpdated = false;
+        let targetPageIndex = currentComicPageIndex;
+
+        for (let i = targetPageIndex; i < draft.length; i++) {
+            const page = draft[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
+            if (firstEmptyPanelIndex !== -1) {
+                const newPanels = [...page.panels];
+                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
+                draft[i] = { ...page, panels: newPanels };
+                pageUpdated = true;
+                React.startTransition(() => {
+                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
+                });
+                break;
+            }
+        }
+        
+        if (!pageUpdated) {
+            const newPage = createNewComicPage();
+            newPage.panels[0].imageUrl = dataUrl;
+            draft.push(newPage);
+            setCurrentComicPageIndex(draft.length - 1);
+            React.startTransition(() => {
+                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
+            });
+        }
+        
+        return draft;
+    });
+  }, [currentComicPageIndex, toast]);
+
+  const handleDownloadComicDraft = React.useCallback(() => {
+    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
+        React.startTransition(() => {
+            toast({
+                title: "Rien à télécharger",
+                description: "Il n'y a pas de planche de BD active à télécharger.",
+                variant: "destructive"
+            });
+        });
+        return;
+    }
+    const currentPage = comicDraft[currentComicPageIndex];
+    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
+  }, [comicDraft, currentComicPageIndex, toast]);
+  
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {
         const pois = prev.mapPointsOfInterest || [];
@@ -3193,6 +3481,10 @@ export default function Home() {
     });
   }, [toast]);
 
+  const handleSetCurrentLanguage = (lang: string) => {
+        setCurrentLanguage(lang);
+        localStorage.setItem('adventure_language', lang);
+    }
 
   const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
     return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })));
@@ -3290,19 +3582,7 @@ export default function Home() {
     }
   }, [narrativeMessages, characterNamesForQuestHook, worldForQuestHook, currentLanguage, toast, setIsSuggestingQuest, adventureSettings.playerName]);
 
-  const generateSceneImageActionWrapper = React.useCallback(
-    async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
-        const result = await generateSceneImage(input, aiConfig);
-        if (result.error) {
-            React.startTransition(() => {
-                toast({ title: "Erreur de Génération d'Image IA", description: result.error, variant: "destructive" });
-            });
-            return { imageUrl: "", error: result.error };
-        }
-        return result;
-    }, [toast, aiConfig]);
-
-    const handleGenerateMapImage = React.useCallback(async () => {
+  const handleGenerateMapImage = React.useCallback(async () => {
         setIsGeneratingMap(true);
         React.startTransition(() => {
             toast({ title: "Génération de la carte...", description: "L'IA dessine votre monde." });
@@ -3534,261 +3814,6 @@ export default function Home() {
         });
     }, [toast]);
 
-  const handleMapImageUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-        React.startTransition(() => {
-            toast({
-                title: "Fichier Invalide",
-                description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
-                variant: "destructive",
-            });
-        });
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setAdventureSettings(prev => ({ ...prev, mapImageUrl: imageUrl }));
-        React.startTransition(() => {
-            toast({
-                title: "Image de Carte Chargée",
-                description: "Le fond de la carte a été mis à jour avec votre image.",
-            });
-        });
-    };
-    reader.readAsDataURL(file);
-    if(event.target) event.target.value = '';
-  }, [toast]);
-
-  const handleMapImageUrlChange = React.useCallback((url: string) => {
-    setAdventureSettings(prev => ({ ...prev, mapImageUrl: url }));
-    React.startTransition(() => {
-        toast({
-            title: "Image de Carte Chargée",
-            description: "Le fond de la carte a été mis à jour depuis l'URL.",
-        });
-    });
-  }, [toast]);
-    
-  const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
-    setAiConfig(newConfig);
-    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
-    React.startTransition(() => {
-        toast({ title: "Configuration IA mise à jour" });
-    });
-  }, [toast]);
-  
-    const handleAddToCart = React.useCallback((item: SellingItem) => {
-        setShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
-            if (existingItem) {
-                return prevCart.map(cartItem => 
-                    cartItem.baseItemId === item.baseItemId && cartItem.name === item.name 
-                    ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
-                    : cartItem
-                );
-            }
-            return [...prevCart, { ...item, quantity: 1 }];
-        });
-    }, []);
-
-    const handleRemoveFromCart = React.useCallback((itemName: string) => {
-        setShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
-            if (existingItem && existingItem.quantity! > 1) {
-                 return prevCart.map(cartItem => 
-                    cartItem.name === itemName
-                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
-                    : cartItem
-                );
-            }
-            return prevCart.filter(cartItem => cartItem.name !== itemName);
-        });
-    }, []);
-
-    const onSaveToLibrary = React.useCallback(async () => {
-    if (!comicTitle.trim()) {
-        React.startTransition(() => {
-            toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
-        });
-        return;
-    }
-    
-    try {
-        const compressedDraft: ComicPage[] = await Promise.all(
-            comicDraft.map(async (page) => ({
-                ...page,
-                panels: await Promise.all(page.panels.map(async (panel) => ({
-                    ...panel,
-                    imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
-                }))),
-            }))
-        );
-
-        const newComic = {
-            id: uid(),
-            title: comicTitle,
-            coverUrl: comicCoverUrl,
-            comicDraft: compressedDraft,
-            createdAt: new Date().toISOString(),
-        };
-
-        const existingComicsStr = localStorage.getItem('savedComics_v1');
-        const existingComics: any[] = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-        
-        const comicIndex = existingComics.findIndex((c: { id: string }) => c.id === newComic.id);
-        
-        if (comicIndex > -1) {
-            existingComics[comicIndex] = newComic;
-        } else {
-            existingComics.push(newComic);
-        }
-        
-        localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
-        
-        React.startTransition(() => {
-            toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
-        });
-        setIsSaveComicDialogOpen(false);
-        setComicTitle("");
-        setComicCoverUrl(null);
-    } catch (e) {
-        console.error("Failed to save comic to library:", e);
-        React.startTransition(() => {
-            toast({
-                title: "Erreur de Sauvegarde",
-                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
-                variant: "destructive"
-            });
-        });
-    }
-  }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
-    
-  const handleGenerateCover = React.useCallback(async () => {
-    setIsGeneratingCover(true);
-    React.startTransition(() => {
-        toast({ title: "Génération de la couverture..."});
-    });
-
-    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
-
-    try {
-        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-        if (result.imageUrl) {
-            setComicCoverUrl(result.imageUrl);
-            React.startTransition(() => {
-                toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
-            });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        React.startTransition(() => {
-            toast({
-                title: "Erreur de Génération",
-                description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
-                variant: "destructive"
-            });
-        });
-    } finally {
-        setIsGeneratingCover(false);
-    }
-  }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
-
-
-  const handleAddComicPage = React.useCallback(() => {
-    setComicDraft(prev => [...prev, createNewComicPage()]);
-    setCurrentComicPageIndex(comicDraft.length);
-  }, [comicDraft.length]);
-
-  const handleAddComicPanel = React.useCallback(() => {
-    if (comicDraft.length === 0) {
-        handleAddComicPage();
-    } else {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
-
-  const handleRemoveLastComicPanel = React.useCallback(() => {
-    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex]);
-
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setComicDraft(prev => prev.map((p, i) =>
-            i === pageIndex
-            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
-            : p
-        ));
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
-    setComicDraft(prev => {
-        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
-        let pageUpdated = false;
-        let targetPageIndex = currentComicPageIndex;
-
-        for (let i = targetPageIndex; i < draft.length; i++) {
-            const page = draft[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-            if (firstEmptyPanelIndex !== -1) {
-                const newPanels = [...page.panels];
-                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
-                draft[i] = { ...page, panels: newPanels };
-                pageUpdated = true;
-                React.startTransition(() => {
-                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
-                });
-                break;
-            }
-        }
-        
-        if (!pageUpdated) {
-            const newPage = createNewComicPage();
-            newPage.panels[0].imageUrl = dataUrl;
-            draft.push(newPage);
-            setCurrentComicPageIndex(draft.length - 1);
-            React.startTransition(() => {
-                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
-            });
-        }
-        
-        return draft;
-    });
-  }, [currentComicPageIndex, toast]);
-
-  const handleDownloadComicDraft = React.useCallback(() => {
-    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
-        React.startTransition(() => {
-            toast({
-                title: "Rien à télécharger",
-                description: "Il n'y a pas de planche de BD active à télécharger.",
-                variant: "destructive"
-            });
-        });
-        return;
-    }
-    const currentPage = comicDraft[currentComicPageIndex];
-    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
-  }, [comicDraft, currentComicPageIndex, toast]);
-  
-
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3837,7 +3862,7 @@ export default function Home() {
       handleAddStagedCharacter={handleAddStagedCharacter}
       handleSave={handleSave}
       handleLoad={handleLoad}
-      setCurrentLanguage={setCurrentLanguage}
+      setCurrentLanguage={handleSetCurrentLanguage}
       translateTextAction={translateText}
       generateAdventureAction={callGenerateAdventure}
       generateSceneImageAction={generateSceneImageActionWrapper}
@@ -3883,8 +3908,8 @@ export default function Home() {
       onMapImageUrlChange={handleMapImageUrlChange}
       onAddPoiToMap={handleAddPoiToMap}
       isLoading={isUiLocked}
-      aiConfig={aiConfig}
       onAiConfigChange={handleAiConfigChange}
+      aiConfig={aiConfig}
       comicDraft={comicDraft}
       onDownloadComicDraft={handleDownloadComicDraft}
       onAddComicPage={handleAddComicPage}
