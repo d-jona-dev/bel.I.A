@@ -378,7 +378,7 @@ export default function Home() {
             quantity: item.quantity,
             description: item.description,
             effect: item.effect,
-            itemType: item.itemType,
+            type: item.itemType,
             goldValue: item.goldValue,
             statBonuses: item.statBonuses,
             generatedImageUrl: null,
@@ -1200,7 +1200,7 @@ export default function Home() {
 
         const newFamiliar: Familiar = {
             ...namingFamiliarState.baseFamiliar,
-            id: `familiar-${newFamiliarName.toLowerCase().replace(/\s+/g, '-')}-${uid()}`,
+            id: `familiar-${newFamiliarName.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
             name: newFamiliarName.trim(),
             isActive: false, 
         };
@@ -1346,15 +1346,21 @@ export default function Home() {
     let initialSituation = stateToLoad.adventureSettings.initialSituation;
     let initialNarrative = stateToLoad.narrative;
     
-    if (targetLang !== savedLang) {
+    if (targetLang !== savedLang && initialSituation) {
         toast({ title: "Traduction en cours...", description: `Traduction de l'histoire en ${targetLang}.` });
         try {
             const translationResult = await translateText({ text: initialSituation, language: targetLang });
             initialSituation = translationResult.translatedText;
-            initialNarrative = [{ id: `msg-${Date.now()}`, type: 'system', content: initialSituation, timestamp: Date.now() }];
+            initialNarrative = [{ 
+                id: `msg-translated-${Date.now()}`, 
+                type: 'system', 
+                content: initialSituation, 
+                timestamp: Date.now() 
+            }];
             toast({ title: "Traduction terminée!", description: "L'aventure est prête à commencer dans votre langue." });
         } catch (e) {
             toast({ title: "Erreur de traduction", description: "Impossible de traduire l'histoire. Lancement dans la langue d'origine.", variant: "destructive" });
+            // Keep original initialSituation and narrative if translation fails
         }
     }
     
@@ -2213,7 +2219,7 @@ export default function Home() {
                            quantity: item.quantity,
                            description: item.description,
                            effect: item.effect,
-                           itemType: item.itemType,
+                           type: item.itemType,
                            goldValue: item.goldValue,
                            statBonuses: item.statBonuses,
                            generatedImageUrl: null,
@@ -2789,7 +2795,7 @@ export default function Home() {
 
             const enemyName = `${creatureType.name} ${descriptor.name}`;
             
-            const tempEnemyId = `nocturnal-${creatureType.name.toLowerCase().replace(/\s+/g, '-')}-${uid()}`;
+            const tempEnemyId = `nocturnal-${creatureType.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`;
             const tempEnemyLevel = (poi.level || 1) + Math.floor(Math.random() * 2);
             const tempEnemyStats = {
                 level: tempEnemyLevel,
