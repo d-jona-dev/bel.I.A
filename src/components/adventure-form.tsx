@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -1441,12 +1442,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <ScrollArea className="h-48 pr-3">
                         <div className="space-y-4">
                         <div className="hidden">
-                            {/* This block is to make sure react-hook-form tracks the field, even if not visible */}
-                            <Controller
+                           <Controller
                                 control={form.control}
                                 name="characters"
                                 render={({ field }) => (
-                                    <input {...field} type="hidden" />
+                                    <input {...field} value={field.value || []} type="hidden" />
                                 )}
                             />
                         </div>
@@ -1567,11 +1567,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             <AccordionContent className="space-y-2">
                                                 <div className="flex items-center gap-2">
                                                     <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
-                                                    <FormField
+                                                     <FormField
                                                         control={form.control}
                                                         name={`characters.${index}.relations.player`}
-                                                        render={({ field: relationField }) => (
-                                                            <Input {...relationField} value={relationField.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
+                                                        render={({ field }) => (
+                                                            <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
                                                         )}
                                                     />
                                                 </div>
@@ -1581,8 +1581,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                         <FormField
                                                             control={form.control}
                                                             name={`characters.${index}.relations.${otherChar.id}`}
-                                                            render={({ field: relationField }) => (
-                                                                <Input {...relationField} value={relationField.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                            render={({ field }) => (
+                                                                <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
                                                             )}
                                                         />
                                                     </div>
@@ -1889,4 +1889,55 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 });
 AdventureForm.displayName = "AdventureForm";
 
+const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false, control, fields }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean, control: any, fields: any[] }) => {
+    const otherCharacters = characters.filter(c => c.id !== charId);
+  
+    return (
+        <div className="space-y-2">
+            <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
+            <Card className="bg-muted/30 border">
+                <CardContent className="p-3 space-y-2">
+                     <div className="flex items-center gap-2">
+                        <Label htmlFor={`${charId}-relations-${playerId}`} className="truncate text-sm shrink-0">{playerName} (Joueur)</Label>
+                        <FormField
+                            control={control}
+                            name={`relations.${playerId}`}
+                            render={({ field }) => (
+                                <Input
+                                    id={`${charId}-relations-${playerId}`}
+                                    {...field}
+                                    value={field.value || ''}
+                                    className="h-8 text-sm flex-1 bg-background border"
+                                    placeholder={currentLanguage === 'fr' ? "Ami, Ennemi..." : "Friend, Enemy..."}
+                                    disabled={disabled}
+                                />
+                            )}
+                        />
+                     </div>
+  
+                    {otherCharacters.map(otherChar => (
+                        <div key={otherChar.id} className="flex items-center gap-2">
+                            <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="truncate text-sm shrink-0">{otherChar.name}</Label>
+                            <FormField
+                                control={control}
+                                name={`relations.${otherChar.id}`}
+                                render={({ field }) => (
+                                    <Input
+                                        id={`${charId}-relations-${otherChar.id}`}
+                                        {...field}
+                                        value={field.value || ''}
+                                        className="h-8 text-sm flex-1 bg-background border"
+                                        placeholder={currentLanguage === 'fr' ? "Ami, Ennemi..." : "Friend, Enemy..."}
+                                        disabled={disabled}
+                                    />
+                                )}
+                            />
+                        </div>
+                    ))}
+                     <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
     
