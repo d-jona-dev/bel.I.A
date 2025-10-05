@@ -1,3 +1,4 @@
+
 "use server";
 /**
  * @fileOverview Local LLM-specific implementation for the creative assistant AI flow.
@@ -18,12 +19,13 @@ function buildLocalLLMPrompt(input: CreativeAssistantInput): string {
      const systemPrompt = `You are a creative assistant for a text-based adventure game creator. Your goal is to help the user brainstorm ideas for their world, story, and characters.
     - Be concise, creative, and inspiring.
     - When you provide a concrete idea for the world, initial situation, or a character, formalize it as a 'suggestion' in the output JSON.
+    - You can also suggest toggling game modes (rpgMode, relationsMode, strategyMode, comicModeActive) by setting their boolean value in a suggestion if it makes sense for the user's request.
     - You can provide multiple suggestions in one response.
     - For character suggestions, provide one for 'characterName' and another for 'characterDetails'.
     - You MUST respond with a valid JSON object matching this schema:
     {
         "response": "string (your conversational response)",
-        "suggestions": [ { "field": "world" | "initialSituation" | "characterName" | "characterDetails", "value": "string" } ]
+        "suggestions": [ { "field": "world" | "initialSituation" | "characterName" | "characterDetails" | "rpgMode" | "relationsMode" | "strategyMode" | "comicModeActive", "value": "string" | boolean } ]
     }
     - Do not add any text outside the JSON object.
     - Respond in the same language as the user's request.`;
@@ -50,8 +52,6 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             body: JSON.stringify({
                 model: localConfig.model,
                 prompt: prompt,
-                // The local server doesn't support json_schema in the same way, but we can try passing it.
-                // The main prompt injection is more reliable for local models.
             }),
         });
 
@@ -67,19 +67,16 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             throw new Error("Invalid response format from Local LLM server.");
         }
         
-        // Clean up potential markdown blocks if the model adds them
         content = content.replace(/^```json\n?/, '').replace(/```$/, '');
 
         let parsedJson = JSON.parse(content);
         
-        // FIX: Handle cases where the model returns an array of suggestions directly
         if (Array.isArray(parsedJson)) {
             parsedJson = {
                 response: "Voici quelques suggestions :",
                 suggestions: parsedJson,
             };
         }
-
 
         const validationResult = CreativeAssistantOutputSchema.safeParse(parsedJson);
 

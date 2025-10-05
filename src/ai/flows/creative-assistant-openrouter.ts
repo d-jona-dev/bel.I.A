@@ -1,3 +1,4 @@
+
 "use server";
 /**
  * @fileOverview OpenRouter-specific implementation for the creative assistant AI flow.
@@ -18,12 +19,13 @@ function buildOpenRouterMessages(input: CreativeAssistantInput): Array<{role: 's
     const systemPrompt = `You are a creative assistant for a text-based adventure game creator. Your goal is to help the user brainstorm ideas for their world, story, and characters.
     - Be concise, creative, and inspiring.
     - When you provide a concrete idea for the world, initial situation, or a character, formalize it as a 'suggestion' in the output JSON.
+    - You can also suggest toggling game modes (rpgMode, relationsMode, strategyMode, comicModeActive) by setting their boolean value in a suggestion if it makes sense for the user's request.
     - You can provide multiple suggestions in one response.
     - For character suggestions, provide one for 'characterName' and another for 'characterDetails'.
     - You MUST respond with a valid JSON object matching this schema:
     {
         "response": "string (your conversational response)",
-        "suggestions": [ { "field": "world" | "initialSituation" | "characterName" | "characterDetails", "value": "string" } ]
+        "suggestions": [ { "field": "world" | "initialSituation" | "characterName" | "characterDetails" | "rpgMode" | "relationsMode" | "strategyMode" | "comicModeActive", "value": "string" | boolean } ]
     }
     - Respond in the same language as the user's request.`;
     
