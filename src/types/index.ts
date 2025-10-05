@@ -183,7 +183,8 @@ export interface Character {
   id: string;
   name: string;
   details: string;
-  isPlaceholder?: boolean; // NEW: Flag to identify character slots
+  isPlaceholder?: boolean;
+  roleInStory?: string;
   biographyNotes?: string;
   appearanceDescription?: string; // NEW FIELD
   lastAppearanceUpdate?: number; // NEW FIELD (Timestamp)

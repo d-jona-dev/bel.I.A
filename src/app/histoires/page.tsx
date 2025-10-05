@@ -241,13 +241,16 @@ export default function HistoiresPage() {
             const assignedCharId = slotAssignments[char.id];
             const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
             if (fullCharData) {
-                // Smart merge: keep story-specific relations, use global character data as base
+                // Smart merge: use global character as base, but preserve specific slot relations.
                 return { 
-                    ...fullCharData, // Base data from global character
-                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) }, // Merge relations, keeping the placeholder's
-                    id: char.id, // IMPORTANT: Keep the placeholder's ID for consistency within the story
-                    isPlaceholder: false, // Mark as filled
-                    locationId: temporaryAdventureState.adventureSettings.playerLocationId || null
+                    ...fullCharData, 
+                    // Keep the slot's original relations and merge the global character's relations underneath
+                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) },
+                    id: char.id, 
+                    isPlaceholder: false,
+                    locationId: temporaryAdventureState.adventureSettings.playerLocationId || null,
+                    // NEW: Store the placeholder's name as the 'role'
+                    roleInStory: char.name, 
                 };
             }
         }
@@ -760,6 +763,7 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
 
 
 
