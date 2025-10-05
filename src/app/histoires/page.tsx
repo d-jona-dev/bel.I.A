@@ -441,7 +441,6 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
     />
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isCreateModalOpen, aiConfig]);
 
 
@@ -487,7 +486,7 @@ export default function HistoiresPage() {
             </Dialog>
             <Link href="/creation-assistee">
               <Button variant="default">
-                <Bot className="mr-2 h-4 w-4" /> Création Assistée
+                <Bot className="mr-2 h-4 w-4" /> Création Assistée (expérimental)
               </Button>
             </Link>
             <Button onClick={openCreateDialog}>
