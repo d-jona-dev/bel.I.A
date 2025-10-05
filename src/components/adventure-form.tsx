@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -805,58 +805,64 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </div>
     );
 
-    const availableLangs = ['fr', 'en', 'es', 'it', 'ja', 'zh', 'de', 'ru'];
+    const availableLangs = ['fr', 'en', 'es', 'it', 'ja', 'de', 'ru', 'zh'];
 
-    const LocalizedTextArea = ({ name, label, placeholder, rows }: { name: "world" | "initialSituation", label: string, placeholder: string, rows: number }) => (
-        <FormItem>
-            <div className="flex justify-between items-center">
-                <FormLabel className="flex items-center">
-                    {label}
-                    {!watchedValues[name]?.[currentFormFieldLang] && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
-                </FormLabel>
-                <div className="flex items-center gap-1">
-                     {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="xs" className="flex gap-1">
-                                <Languages className="h-4 w-4"/>
-                                Traduire
+    const LocalizedTextArea = React.useCallback(({ name, label, placeholder, rows }: { name: "world" | "initialSituation", label: string, placeholder: string, rows: number }) => {
+        const value = form.watch(`${name}.${currentFormFieldLang}`);
+        const hasTextInCurrentLang = !!value;
+    
+        return (
+            <FormItem>
+                <div className="flex justify-between items-center">
+                    <FormLabel className="flex items-center">
+                        {label}
+                        {!hasTextInCurrentLang && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
+                    </FormLabel>
+                    <div className="flex items-center gap-1">
+                        {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="xs" className="flex gap-1">
+                                    <Languages className="h-4 w-4"/>
+                                    Traduire
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {availableLangs.filter(lang => lang !== currentFormFieldLang).map(lang => (
+                                    <DropdownMenuItem key={lang} onSelect={() => handleTranslateField(name, lang)}>
+                                        vers {lang.toUpperCase()}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        {availableLangs.map(lang => (
+                            <Button 
+                                key={lang}
+                                type="button" 
+                                size="xs"
+                                variant={currentFormFieldLang === lang ? 'secondary' : 'outline'}
+                                onClick={() => setCurrentFormFieldLang(lang)}
+                                className={cn(form.getValues(`${name}.${lang}`) ? "font-bold" : "font-normal", "h-6 px-2")}
+                            >
+                                {lang.toUpperCase()}
                             </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {availableLangs.filter(lang => lang !== currentFormFieldLang).map(lang => (
-                                <DropdownMenuItem key={lang} onSelect={() => handleTranslateField(name, lang)}>
-                                    vers {lang.toUpperCase()}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                     </DropdownMenu>
-                    {availableLangs.map(lang => (
-                        <Button 
-                            key={lang}
-                            type="button" 
-                            size="xs"
-                            variant={currentFormFieldLang === lang ? 'secondary' : 'outline'}
-                            onClick={() => setCurrentFormFieldLang(lang)}
-                            className={cn(watchedValues[name]?.[lang] ? "font-bold" : "font-normal", "h-6 px-2")}
-                        >
-                            {lang.toUpperCase()}
-                        </Button>
-                    ))}
+                        ))}
+                    </div>
                 </div>
-            </div>
-             <FormControl>
-                <Textarea
-                    placeholder={placeholder}
-                    value={watchedValues[name]?.[currentFormFieldLang] || ''}
-                    onChange={(e) => form.setValue(`${name}.${currentFormFieldLang}`, e.target.value, { shouldValidate: true, shouldDirty: true })}
-                    rows={rows}
-                    className="bg-background border"
-                />
-            </FormControl>
-            <FormMessage />
-        </FormItem>
-    );
+                <FormControl>
+                    <Textarea
+                        placeholder={placeholder}
+                        value={value || ''}
+                        onChange={(e) => form.setValue(`${name}.${currentFormFieldLang}`, e.target.value, { shouldValidate: true, shouldDirty: true })}
+                        rows={rows}
+                        className="bg-background border"
+                    />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+        );
+    }, [form, currentFormFieldLang, isTranslating, handleTranslateField, availableLangs]);
+    
 
     return (
         <Form {...form}>
@@ -2003,6 +2009,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
         </div>
     );
 };
+    
+
     
 
     
