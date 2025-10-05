@@ -6,9 +6,10 @@
  */
 
 import type { AiConfig } from '@/types';
-import { creativeAssistantWithGemini, type CreativeAssistantInput, type CreativeAssistantOutput } from '@/ai/flows/creative-assistant-gemini';
+import { creativeAssistantWithGemini } from '@/ai/flows/creative-assistant-gemini';
 import { creativeAssistantWithOpenRouter } from '@/ai/flows/creative-assistant-openrouter';
 import { creativeAssistantWithLocalLlm } from '@/ai/flows/creative-assistant-local';
+import type { CreativeAssistantInput, CreativeAssistantOutput } from './creative-assistant-schemas';
 
 export async function creativeAssistant(input: CreativeAssistantInput): Promise<CreativeAssistantOutput> {
     const { aiConfig } = input;

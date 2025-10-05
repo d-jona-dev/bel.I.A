@@ -6,31 +6,13 @@
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
 import type { AiConfig } from '@/types';
+import { 
+    CreativeAssistantInputSchema, 
+    CreativeAssistantOutputSchema, 
+    type CreativeAssistantInput, 
+    type CreativeAssistantOutput 
+} from './creative-assistant-schemas';
 
-// Schemas are defined here but can be shared across different flow implementations
-const SuggestionSchema = z.object({
-  field: z.enum(['world', 'initialSituation', 'characterName', 'characterDetails']).describe("The target form field for the suggestion."),
-  value: z.string().describe("The suggested text content for that field."),
-});
-
-const HistoryMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
-
-export const CreativeAssistantInputSchema = z.object({
-  userRequest: z.string().describe("The user's latest request for creative help."),
-  history: z.array(HistoryMessageSchema).optional().describe("The conversation history between the user and the assistant."),
-  aiConfig: z.custom<AiConfig>().optional(),
-});
-
-export const CreativeAssistantOutputSchema = z.object({
-  response: z.string().describe("The assistant's helpful and creative response to the user's request."),
-  suggestions: z.array(SuggestionSchema).optional().describe("Specific, actionable suggestions that can be directly applied to form fields."),
-});
-
-export type CreativeAssistantInput = z.infer<typeof CreativeAssistantInputSchema>;
-export type CreativeAssistantOutput = z.infer<typeof CreativeAssistantOutputSchema> & { error?: string };
 
 const creativeAssistantPrompt = ai.definePrompt({
     name: 'creativeAssistantPrompt',
@@ -58,9 +40,11 @@ export async function creativeAssistantWithGemini(input: CreativeAssistantInput)
     }));
 
     try {
+        // Since the prompt input only expects userRequest, we create a sub-object.
+        // History is passed in the second argument.
         const { output } = await creativeAssistantPrompt(
             { userRequest: input.userRequest },
-            { history: historyForAI.slice(0, -1) } // Pass history excluding the last message
+            { history: historyForAI } 
         );
         
         if (!output) {

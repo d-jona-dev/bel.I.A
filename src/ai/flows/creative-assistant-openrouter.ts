@@ -5,11 +5,16 @@
  */
 
 import { z } from 'zod';
-import { CreativeAssistantInputSchema, CreativeAssistantOutputSchema, type CreativeAssistantInput, type CreativeAssistantOutput } from './creative-assistant-gemini';
+import { 
+    CreativeAssistantInputSchema, 
+    CreativeAssistantOutputSchema, 
+    type CreativeAssistantInput, 
+    type CreativeAssistantOutput 
+} from './creative-assistant-schemas';
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-function buildOpenRouterPrompt(input: CreativeAssistantInput): string {
+function buildOpenRouterMessages(input: CreativeAssistantInput): Array<{role: 'system' | 'user' | 'assistant', content: string}> {
     const systemPrompt = `You are a creative assistant for a text-based adventure game creator. Your goal is to help the user brainstorm ideas for their world, story, and characters.
     - Be concise, creative, and inspiring.
     - When you provide a concrete idea for the world, initial situation, or a character, formalize it as a 'suggestion' in the output JSON.
@@ -22,9 +27,16 @@ function buildOpenRouterPrompt(input: CreativeAssistantInput): string {
     }
     - Respond in the same language as the user's request.`;
     
-    const history = (input.history || []).map(msg => `${msg.role === 'user' ? 'USER' : 'ASSISTANT'}: ${msg.content}`).join('\n');
-    
-    return `${systemPrompt}\n\n${history}\nUSER: ${input.userRequest}\nASSISTANT:`;
+    // The history and user request are formatted as a sequence of messages
+    const messages = (input.history || []).map(msg => ({
+        role: msg.role,
+        content: msg.content
+    }));
+
+    return [
+        { role: "system", content: systemPrompt },
+        ...messages
+    ];
 }
 
 export async function creativeAssistantWithOpenRouter(input: CreativeAssistantInput): Promise<CreativeAssistantOutput> {
@@ -34,7 +46,7 @@ export async function creativeAssistantWithOpenRouter(input: CreativeAssistantIn
         return { error: "OpenRouter API key or model name is missing.", response: "" };
     }
 
-    const prompt = buildOpenRouterPrompt(input);
+    const messages = buildOpenRouterMessages(input);
 
     try {
         const response = await fetch(OPENROUTER_API_URL, {
@@ -45,7 +57,7 @@ export async function creativeAssistantWithOpenRouter(input: CreativeAssistantIn
             },
             body: JSON.stringify({
                 model: openRouterConfig.model,
-                messages: [{ role: "user", content: prompt }],
+                messages: messages,
                 response_format: { type: "json_object" }
             }),
         });

@@ -8,7 +8,8 @@ import '@/ai/flows/suggest-quest-hook.ts'; // Add the new quest hook flow
 import '@/ai/flows/suggest-player-skill.ts'; // Add the new player skill suggestion flow
 import '@/ai/flows/generate-adventure-local'; // Add the new local adventure flow
 import '@/ai/flows/describe-appearance'; // NEW: Add the appearance description flow
-import '@/ai/flows/creative-assistant'; // NEW: Add the creative assistant flow
+import '@/ai/flows/creative-assistant-gemini'; // NEW: Add the creative assistant flow
 
 // Note: prompt-styles.ts is not a flow, so it doesn't need to be imported here.
+// Note: creative-assistant.ts acts as a router and its sub-flows are imported, so it doesn't need to be imported itself if it doesn't define a genkit flow directly.
     

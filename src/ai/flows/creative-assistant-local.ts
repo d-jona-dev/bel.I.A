@@ -5,7 +5,12 @@
  */
 
 import { z } from 'zod';
-import { CreativeAssistantInputSchema, CreativeAssistantOutputSchema, type CreativeAssistantInput, type CreativeAssistantOutput } from './creative-assistant-gemini';
+import { 
+    CreativeAssistantInputSchema, 
+    CreativeAssistantOutputSchema, 
+    type CreativeAssistantInput, 
+    type CreativeAssistantOutput 
+} from './creative-assistant-schemas';
 
 const LOCAL_LLM_API_URL = "http://localhost:9000/api/local-llm/generate";
 
@@ -45,7 +50,8 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             body: JSON.stringify({
                 model: localConfig.model,
                 prompt: prompt,
-                json_schema: CreativeAssistantOutputSchema.shape,
+                // The local server doesn't support json_schema in the same way, but we can try passing it.
+                // The main prompt injection is more reliable for local models.
             }),
         });
 
@@ -61,6 +67,7 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             throw new Error("Invalid response format from Local LLM server.");
         }
         
+        // Clean up potential markdown blocks if the model adds them
         content = content.replace(/^```json\n?/, '').replace(/```$/, '');
 
         const parsedJson = JSON.parse(content);
