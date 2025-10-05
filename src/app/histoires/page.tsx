@@ -442,7 +442,7 @@ export default function HistoiresPage() {
   
   const createForm = React.useMemo(() => (
     <AdventureForm
-      key={`create-${isCreateModalOpen}`} // Re-mount when modal opens to ensure clean state
+      key={`create-${isCreateModalOpen}`}
       ref={createFormRef}
       initialValues={getAdventureFormValues(null)}
       rpgMode={true} 
@@ -451,7 +451,24 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
     />
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isCreateModalOpen, aiConfig]);
+
+  const editForm = React.useMemo(() => {
+    if (!editingStory) return null;
+    return (
+        <AdventureForm
+           key={`edit-${editingStory.id}`}
+           ref={editFormRef}
+           initialValues={getAdventureFormValues(editingStory)}
+           rpgMode={editingStory.adventureState.adventureSettings.rpgMode}
+           relationsMode={editingStory.adventureState.adventureSettings.relationsMode}
+           strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
+           aiConfig={aiConfig}
+        />
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingStory, aiConfig]);
 
 
   return (
@@ -639,17 +656,7 @@ export default function HistoiresPage() {
                     </DialogDescription>
                 </DialogHeader>
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
-                    {editingStory && (
-                        <AdventureForm
-                           key={`edit-${editingStory.id}`}
-                           ref={editFormRef}
-                           initialValues={getAdventureFormValues(editingStory)}
-                           rpgMode={editingStory.adventureState.adventureSettings.rpgMode}
-                           relationsMode={editingStory.adventureState.adventureSettings.relationsMode}
-                           strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
-                           aiConfig={aiConfig}
-                        />
-                    )}
+                    {editForm}
                  </div>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>

@@ -161,6 +161,86 @@ const adventureFormSchema = z.object({
 });
 
 
+const LocalizedTextArea = ({ name, label, placeholder, rows, form }: { name: "world" | "initialSituation", label: string, placeholder: string, rows: number, form: any }) => {
+    const { toast } = useToast();
+    const [currentLang, setCurrentLang] = React.useState('fr');
+    const [isTranslating, setIsTranslating] = React.useState(false);
+
+    const availableLangs = ['fr', 'en', 'es', 'it', 'ja', 'de', 'ru', 'zh'];
+
+    const handleTranslateField = async (targetLang: string) => {
+        const sourceText = form.getValues(`${name}.${currentLang}`);
+        if (!sourceText) {
+            toast({ title: "Texte manquant", description: "Veuillez d'abord écrire une description dans la langue actuelle.", variant: "destructive" });
+            return;
+        }
+        setIsTranslating(true);
+        try {
+            const result = await translateText({ text: sourceText, language: targetLang });
+            form.setValue(`${name}.${targetLang}`, result.translatedText, { shouldValidate: true, shouldDirty: true });
+            setCurrentLang(targetLang);
+            toast({ title: "Traduction réussie!" });
+        } catch (e) {
+            console.error(e);
+            toast({ title: "Erreur de traduction", description: e instanceof Error ? e.message : "Erreur inconnue", variant: "destructive" });
+        } finally {
+            setIsTranslating(false);
+        }
+    };
+    
+    return (
+        <FormItem>
+            <div className="flex justify-between items-center">
+                <FormLabel className="flex items-center">
+                    {label}
+                    {!form.watch(`${name}.${currentLang}`) && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
+                </FormLabel>
+                <div className="flex items-center gap-1">
+                    {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="xs" className="flex gap-1">
+                                <Languages className="h-4 w-4"/>
+                                Traduire
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {availableLangs.filter(lang => lang !== currentLang).map(lang => (
+                                <DropdownMenuItem key={lang} onSelect={() => handleTranslateField(lang)}>
+                                    vers {lang.toUpperCase()}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {availableLangs.map(lang => (
+                        <Button 
+                            key={lang}
+                            type="button" 
+                            size="xs"
+                            variant={currentLang === lang ? 'secondary' : 'outline'}
+                            onClick={() => setCurrentLang(lang)}
+                            className={cn(form.getValues(`${name}.${lang}`) ? "font-bold" : "font-normal", "h-6 px-2")}
+                        >
+                            {lang.toUpperCase()}
+                        </Button>
+                    ))}
+                </div>
+            </div>
+             <FormControl>
+                <Textarea
+                    placeholder={placeholder}
+                    value={form.getValues(`${name}.${currentLang}`) || ''}
+                    onChange={(e) => form.setValue(`${name}.${currentLang}`, e.target.value, { shouldValidate: true, shouldDirty: true })}
+                    rows={rows}
+                    className="bg-background border"
+                />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    );
+};
+
+
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
     ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
     const { toast } = useToast();
@@ -204,31 +284,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const [editingEnemy, setEditingEnemy] = React.useState<EnemyUnit | null>(null);
     const [isEnemyEditorOpen, setIsEnemyEditorOpen] = React.useState(false);
 
-    // NEW: Language state for form fields
-    const [currentFormFieldLang, setCurrentFormFieldLang] = React.useState('fr');
-    const [isTranslating, setIsTranslating] = React.useState(false);
-
-
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
-        defaultValues: {
-          ...initialValues,
-          characters: initialValues.characters || [],
-          rpgMode: initialValues.rpgMode ?? true,
-          relationsMode: initialValues.relationsMode ?? true,
-          strategyMode: initialValues.strategyMode ?? true,
-          comicModeActive: initialValues.comicModeActive ?? false,
-          world: initialValues.world || { fr: "" },
-          initialSituation: initialValues.initialSituation || { fr: "" },
-        },
+        defaultValues: initialValues,
         mode: "onChange",
     });
     
     React.useEffect(() => {
-        form.reset({
-          ...initialValues,
-          characters: initialValues.characters || [],
-        });
+        form.reset(initialValues);
     }, [initialValues, form]);
 
 
@@ -737,26 +800,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         }
     };
 
-    const handleTranslateField = async (field: 'world' | 'initialSituation', targetLang: string) => {
-        const sourceText = form.getValues(`${field}.${currentFormFieldLang}`);
-        if (!sourceText) {
-            toast({ title: "Texte manquant", description: "Veuillez d'abord écrire une description dans la langue actuelle.", variant: "destructive" });
-            return;
-        }
-        setIsTranslating(true);
-        try {
-            const result = await translateText({ text: sourceText, language: targetLang });
-            form.setValue(`${field}.${targetLang}`, result.translatedText, { shouldValidate: true, shouldDirty: true });
-            setCurrentFormFieldLang(targetLang);
-            toast({ title: "Traduction réussie!" });
-        } catch (e) {
-            console.error(e);
-            toast({ title: "Erreur de traduction", description: e instanceof Error ? e.message : "Erreur inconnue", variant: "destructive" });
-        } finally {
-            setIsTranslating(false);
-        }
-    };
-    
     const renderFamiliarComponentManager = (type: 'physical' | 'creature' | 'descriptor', title: string, components: BaseFamiliarComponent[]) => (
         <div className="p-2 border rounded-lg bg-background">
             <div className="flex justify-between items-center mb-2">
@@ -805,65 +848,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </div>
     );
 
-    const availableLangs = ['fr', 'en', 'es', 'it', 'ja', 'de', 'ru', 'zh'];
-
-    const LocalizedTextArea = React.useCallback(({ name, label, placeholder, rows }: { name: "world" | "initialSituation", label: string, placeholder: string, rows: number }) => {
-        const value = form.watch(`${name}.${currentFormFieldLang}`);
-        const hasTextInCurrentLang = !!value;
-    
-        return (
-            <FormItem>
-                <div className="flex justify-between items-center">
-                    <FormLabel className="flex items-center">
-                        {label}
-                        {!hasTextInCurrentLang && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
-                    </FormLabel>
-                    <div className="flex items-center gap-1">
-                        {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="xs" className="flex gap-1">
-                                    <Languages className="h-4 w-4"/>
-                                    Traduire
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {availableLangs.filter(lang => lang !== currentFormFieldLang).map(lang => (
-                                    <DropdownMenuItem key={lang} onSelect={() => handleTranslateField(name, lang)}>
-                                        vers {lang.toUpperCase()}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        {availableLangs.map(lang => (
-                            <Button 
-                                key={lang}
-                                type="button" 
-                                size="xs"
-                                variant={currentFormFieldLang === lang ? 'secondary' : 'outline'}
-                                onClick={() => setCurrentFormFieldLang(lang)}
-                                className={cn(form.getValues(`${name}.${lang}`) ? "font-bold" : "font-normal", "h-6 px-2")}
-                            >
-                                {lang.toUpperCase()}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-                <FormControl>
-                    <Textarea
-                        placeholder={placeholder}
-                        value={value || ''}
-                        onChange={(e) => form.setValue(`${name}.${currentFormFieldLang}`, e.target.value, { shouldValidate: true, shouldDirty: true })}
-                        rows={rows}
-                        className="bg-background border"
-                    />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        );
-    }, [form, currentFormFieldLang, isTranslating, handleTranslateField, availableLangs]);
-    
-
     return (
         <Form {...form}>
         <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
@@ -880,6 +864,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     label="Monde"
                     placeholder="Décrivez l'univers de votre aventure..."
                     rows={4}
+                    form={form}
                 />
                 
                 <LocalizedTextArea
@@ -887,6 +872,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     label="Situation Initiale"
                     placeholder="Comment commence l'aventure pour le héros ?"
                     rows={3}
+                    form={form}
                 />
 
                  <Card className="p-4 space-y-3 bg-muted/20 border-dashed">
@@ -2009,8 +1995,6 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
         </div>
     );
 };
-    
-
     
 
     
