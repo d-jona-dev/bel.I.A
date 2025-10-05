@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -207,6 +206,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         defaultValues: {
           ...initialValues,
           characters: initialValues.characters || [],
+          rpgMode: initialValues.rpgMode ?? true,
+          relationsMode: initialValues.relationsMode ?? true,
+          strategyMode: initialValues.strategyMode ?? true,
+          comicModeActive: initialValues.comicModeActive ?? false,
         },
         mode: "onChange",
     });
@@ -1441,7 +1444,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <AccordionContent>
                     <ScrollArea className="h-48 pr-3">
                         <div className="space-y-4">
-                        <div className="hidden">
+                        <div>
                            <Controller
                                 control={form.control}
                                 name="characters"
@@ -1901,12 +1904,12 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                         <Label htmlFor={`${charId}-relations-${playerId}`} className="truncate text-sm shrink-0">{playerName} (Joueur)</Label>
                         <FormField
                             control={control}
-                            name={`relations.${playerId}`}
+                            name={`relations.player`}
                             render={({ field }) => (
                                 <Input
                                     id={`${charId}-relations-${playerId}`}
                                     {...field}
-                                    value={field.value || ''}
+                                    value={field.value || ""}
                                     className="h-8 text-sm flex-1 bg-background border"
                                     placeholder={currentLanguage === 'fr' ? "Ami, Ennemi..." : "Friend, Enemy..."}
                                     disabled={disabled}
@@ -1925,7 +1928,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                                     <Input
                                         id={`${charId}-relations-${otherChar.id}`}
                                         {...field}
-                                        value={field.value || ''}
+                                        value={field.value || ""}
                                         className="h-8 text-sm flex-1 bg-background border"
                                         placeholder={currentLanguage === 'fr' ? "Ami, Ennemi..." : "Friend, Enemy..."}
                                         disabled={disabled}
@@ -1940,4 +1943,6 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
         </div>
     );
 };
+    
+
     
