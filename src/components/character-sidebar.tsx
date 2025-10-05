@@ -428,10 +428,11 @@ export function CharacterSidebar({
             <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini pour l'aventure en cours." : "No secondary characters defined for the current adventure."}</p>
         ) : (
             <Accordion type="multiple" className="w-full">
-                {characters.map((char) => (
+                {characters.map((char, index) => (
                     <CharacterAccordionItem
                         key={char.id}
                         character={char}
+                        characterIndex={index}
                         isClient={isClient}
                         imageLoadingStates={imageLoadingStates}
                         setImageLoadingStates={setImageLoadingStates}
@@ -467,6 +468,7 @@ export function CharacterSidebar({
 // Memoized Character item to prevent re-renders of all characters when one is updated.
 const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     character: char,
+    characterIndex,
     isClient,
     imageLoadingStates,
     setImageLoadingStates,
@@ -493,6 +495,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     allCharacters,
 }: {
     character: Character;
+    characterIndex: number;
     isClient: boolean;
     imageLoadingStates: Record<string, boolean>;
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -1100,3 +1103,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+    
