@@ -87,7 +87,7 @@ interface CharacterSidebarProps {
 
 // Helper Components (defined outside CharacterSidebar)
 
-const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string | number, disabled?: boolean }) => (
+const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string, disabled?: boolean }) => (
     <div className="space-y-1">
           <Label htmlFor={id}>{label}</Label>
           {rows ? (
@@ -392,9 +392,23 @@ export function CharacterSidebar({
         {isClient && (
             <Card className="mb-4 border-dashed">
                 <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <UserPlus className="h-5 w-5" />
-                        {currentLanguage === 'fr' ? 'Ajouter un Personnage Sauvegardé' : 'Add Saved Character'}
+                    <CardTitle className="text-base flex items-center justify-between">
+                         <span className="flex items-center gap-2">
+                           <UserPlus className="h-5 w-5" />
+                           Personnages Globaux
+                         </span>
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                     <div className="flex items-center justify-center h-6 w-6 bg-muted text-muted-foreground rounded-full text-xs font-bold">
+                                        {globalCharactersList.length}
+                                     </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Nombre de personnages sauvegardés globalement.</p>
+                                </TooltipContent>
+                            </Tooltip>
+                         </TooltipProvider>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -405,7 +419,7 @@ export function CharacterSidebar({
                     ) : availableGlobalChars.length > 0 ? (
                         <Select onValueChange={handleAddGlobalCharToAdventure}>
                             <SelectTrigger>
-                                <SelectValue placeholder={currentLanguage === 'fr' ? 'Sélectionner pour ajouter...' : 'Select to add...'} />
+                                <SelectValue placeholder={currentLanguage === 'fr' ? 'Ajouter un personnage existant...' : 'Add existing character...'} />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableGlobalChars.map(gc => (
@@ -1133,3 +1147,4 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     
 
     
+

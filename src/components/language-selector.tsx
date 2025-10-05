@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -18,7 +19,10 @@ const availableLanguages = [
   { code: "en", name: "English" },
   { code: "es", name: "Español" },
   { code: "de", name: "Deutsch" },
-  // Add more languages as needed
+  { code: "it", name: "Italiano" },
+  { code: "ja", name: "日本語" },
+  { code: "ru", name: "Русский" },
+  { code: "zh", name: "中文" },
 ];
 
 // Define prop types for the AI function and state management

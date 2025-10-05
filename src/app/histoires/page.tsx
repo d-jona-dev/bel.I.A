@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dialog";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 import { ModelManager } from '@/components/model-manager';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 
 // Helper to generate a unique ID
@@ -245,6 +247,7 @@ export default function HistoiresPage() {
                 return { 
                     ...fullCharData, 
                     id: char.id, // VERY IMPORTANT: Keep the placeholder's ID
+                    isPlaceholder: false, // Turn off the placeholder flag
                     locationId: tempStory.adventureState.adventureSettings.playerLocationId || null
                 };
             }

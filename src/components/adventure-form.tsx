@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages, Loader2, UserCog } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,6 +53,7 @@ export type FormCharacterDefinition = {
   portraitUrl?: string | null;
   faceSwapEnabled?: boolean;
   appearanceDescription?: string;
+  isPlaceholder?: boolean;
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
@@ -86,6 +87,7 @@ const characterSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   details: z.string(),
+  isPlaceholder: z.boolean().optional(),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
   faceSwapEnabled: z.boolean().optional(),
   appearanceDescription: z.string().optional(),
@@ -93,12 +95,14 @@ const characterSchema = z.object({
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
 }).refine(data => {
-    // Si name ET details sont vides, le personnage est en cours de création et valide.
-    if (!data.name && !data.details) return true;
-    // Si l'un ou l'autre est rempli, les deux doivent l'être.
-    return !!(data.name && data.details);
+    // Si c'est un placeholder, seul le nom est requis
+    if (data.isPlaceholder) return !!data.name;
+    // Si ce n'est pas un placeholder et qu'un champ est rempli, les deux doivent l'être
+    if (data.name || data.details) return !!(data.name && data.details);
+    // Si les deux sont vides, c'est ok (en cours de création)
+    return true;
 }, {
-    message: "Le nom et les détails sont tous deux requis pour définir un personnage.",
+    message: "Le nom et les détails sont tous deux requis pour définir un personnage complet.",
     path: ['name'],
 });
 
@@ -1507,8 +1511,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         </div>
                         {fields.map((item, index) => {
                           const characterPortrait = watchedValues.characters?.[index]?.portraitUrl;
+                          const isPlaceholder = watchedValues.characters?.[index]?.isPlaceholder;
                           return (
-                            <Card key={item.id} className="relative pt-6 bg-muted/30 border">
+                            <Card key={item.id} className={cn("relative pt-6 bg-muted/30 border", isPlaceholder && "border-dashed border-primary")}>
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -1519,154 +1524,184 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             <CardContent className="space-y-2 p-3">
-                                <div className="flex gap-4 items-start">
-                                    <div className="flex-1 space-y-2">
-                                        <FormField
+                                {isPlaceholder ? (
+                                    <FormField
                                         control={form.control}
                                         name={`characters.${index}.name`}
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Nom du Personnage</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Nom" {...field} className="bg-background border"/>
-                                            </FormControl>
-                                            <FormMessage />
+                                                <FormLabel className="text-primary flex items-center gap-2"><UserCog className="h-4 w-4"/>Rôle du personnage (Emplacement)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Le/la partenaire romantique, le rival..." {...field} className="bg-background border-primary"/>
+                                                </FormControl>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
-                                        />
-                                        <FormField
-                                        control={form.control}
-                                        name={`characters.${index}.portraitUrl`}
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <FormLabel>URL du Portrait</FormLabel>
-                                            <FormControl>
-                                              <Input 
-                                                placeholder="https://example.com/image.png" 
-                                                {...field}
-                                                value={field.value || ''}
-                                                onBlur={(e) => form.setValue(`characters.${index}.portraitUrl`, e.target.value, { shouldValidate: true, shouldDirty: true })}
-                                              />
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}/>
+                                    />
+                                ) : (
+                                <>
+                                    <div className="flex gap-4 items-start">
+                                        <div className="flex-1 space-y-2">
+                                            <FormField
+                                            control={form.control}
+                                            name={`characters.${index}.name`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                <FormLabel>Nom du Personnage</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Nom" {...field} className="bg-background border"/>
+                                                </FormControl>
+                                                <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                            <FormField
+                                            control={form.control}
+                                            name={`characters.${index}.portraitUrl`}
+                                            render={({ field }) => (
+                                              <FormItem>
+                                                <FormLabel>URL du Portrait</FormLabel>
+                                                <FormControl>
+                                                  <Input 
+                                                    placeholder="https://example.com/image.png" 
+                                                    {...field}
+                                                    value={field.value || ''}
+                                                    onBlur={(e) => form.setValue(`characters.${index}.portraitUrl`, e.target.value, { shouldValidate: true, shouldDirty: true })}
+                                                  />
+                                                </FormControl>
+                                                <FormMessage />
+                                              </FormItem>
+                                            )}/>
+                                        </div>
+                                        <Avatar className="h-20 w-20">
+                                          <AvatarImage src={characterPortrait || undefined} alt={item.name} />
+                                          <AvatarFallback><Users/></AvatarFallback>
+                                        </Avatar>
                                     </div>
-                                    <Avatar className="h-20 w-20">
-                                      <AvatarImage src={characterPortrait || undefined} alt={item.name} />
-                                      <AvatarFallback><Users/></AvatarFallback>
-                                    </Avatar>
-                                </div>
-                                <FormField
-                                control={form.control}
-                                name={`characters.${index}.details`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Détails (Description Initiale)</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                        placeholder="Caractère, physique, rôle initial..."
-                                        {...field}
-                                        rows={3}
-                                        className="bg-background border"
+                                    <FormField
+                                    control={form.control}
+                                    name={`characters.${index}.details`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Détails (Description Initiale)</FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                            placeholder="Caractère, physique, rôle initial..."
+                                            {...field}
+                                            rows={3}
+                                            className="bg-background border"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
+                                     {watchedValues.strategyMode && (
+                                        <FormField
+                                            control={form.control}
+                                            name={`characters.${index}.factionColor`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Couleur de Faction</FormLabel>
+                                                    <FormControl>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input type="color" {...field} value={field.value || ''} className="w-10 h-10 p-1"/>
+                                                            <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
                                         />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
-                                 {watchedValues.strategyMode && (
-                                    <FormField
-                                        control={form.control}
-                                        name={`characters.${index}.factionColor`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Couleur de Faction</FormLabel>
-                                                <FormControl>
+                                     )}
+                                     {watchedValues.relationsMode && (
+                                         <>
+                                        <FormField
+                                            control={form.control}
+                                            name={`characters.${index}.affinity`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="flex items-center gap-2"><Heart className="h-4 w-4"/> Affinité avec {watchedValues.playerName || "le Héros"}</FormLabel>
+                                                    <FormControl>
+                                                        <div className="flex items-center gap-2">
+                                                            <Slider
+                                                                min={0} max={100} step={1}
+                                                                defaultValue={[50]}
+                                                                value={[field.value ?? 50]}
+                                                                onValueChange={(value) => field.onChange(value[0])}
+                                                            />
+                                                            <span className="text-sm font-medium w-8 text-center">{field.value ?? 50}</span>
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Accordion type="single" collapsible className="w-full">
+                                            <AccordionItem value="relations">
+                                                <AccordionTrigger className="text-sm p-2 hover:no-underline">Relations</AccordionTrigger>
+                                                <AccordionContent className="space-y-2">
                                                     <div className="flex items-center gap-2">
-                                                        <Input type="color" {...field} value={field.value || ''} className="w-10 h-10 p-1"/>
-                                                        <Input placeholder="#RRGGBB" {...field} value={field.value || ''} className="bg-background border"/>
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                 )}
-                                 {watchedValues.relationsMode && (
-                                     <>
-                                    <FormField
-                                        control={form.control}
-                                        name={`characters.${index}.affinity`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="flex items-center gap-2"><Heart className="h-4 w-4"/> Affinité avec {watchedValues.playerName || "le Héros"}</FormLabel>
-                                                <FormControl>
-                                                    <div className="flex items-center gap-2">
-                                                        <Slider
-                                                            min={0} max={100} step={1}
-                                                            defaultValue={[50]}
-                                                            value={[field.value ?? 50]}
-                                                            onValueChange={(value) => field.onChange(value[0])}
-                                                        />
-                                                        <span className="text-sm font-medium w-8 text-center">{field.value ?? 50}</span>
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Accordion type="single" collapsible className="w-full">
-                                        <AccordionItem value="relations">
-                                            <AccordionTrigger className="text-sm p-2 hover:no-underline">Relations</AccordionTrigger>
-                                            <AccordionContent className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
-                                                     <FormField
-                                                        control={form.control}
-                                                        name={`characters.${index}.relations.player` as any}
-                                                        render={({ field }) => (
-                                                            <Input {...field} value={field.value || ""} placeholder="Relation avec le joueur" className="h-8"/>
-                                                        )}
-                                                    />
-                                                </div>
-                                                {fields.filter((_, otherIndex) => otherIndex !== index).map(otherChar => (
-                                                     <div key={otherChar.id} className="flex items-center gap-2">
-                                                        <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
-                                                        <FormField
+                                                        <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
+                                                         <FormField
                                                             control={form.control}
-                                                            name={`characters.${index}.relations.${otherChar.id}` as any}
+                                                            name={`characters.${index}.relations.player` as any}
                                                             render={({ field }) => (
-                                                                <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                                <Input {...field} value={field.value || ""} placeholder="Relation avec le joueur" className="h-8"/>
                                                             )}
                                                         />
                                                     </div>
-                                                ))}
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
-                                    </>
-                                 )}
+                                                    {fields.filter((_, otherIndex) => otherIndex !== index).map(otherChar => (
+                                                         <div key={otherChar.id} className="flex items-center gap-2">
+                                                            <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
+                                                            <FormField
+                                                                control={form.control}
+                                                                name={`characters.${index}.relations.${otherChar.id}` as any}
+                                                                render={({ field }) => (
+                                                                    <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                        </>
+                                     )}
+                                </>
+                                )}
                             </CardContent>
                             </Card>
                           )
                         })}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => append({ id: `new-${Date.now()}`, name: "", details: "", portraitUrl: null, faceSwapEnabled: false, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
-                            className="mt-2 w-full"
-                            >
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter un personnage
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => append({ id: `new-char-${Date.now()}`, name: "", details: "", isPlaceholder: false, portraitUrl: null, faceSwapEnabled: false, affinity: 50, relations: {}, factionColor: `#${Math.floor(Math.random()*16777215).toString(16)}` })}
+                                className="mt-2 flex-1"
+                                >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter un personnage
                             </Button>
-                            <FormDescription className="mt-2 text-xs">
-                                Les détails complets (stats, etc.) sont gérés dans le panneau latéral une fois l'aventure commencée.
-                            </FormDescription>
-                            </div>
-                        </ScrollArea>
-                        </AccordionContent>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => append({ id: `placeholder-${Date.now()}`, name: "", details: "", isPlaceholder: true })}
+                                className="mt-2 flex-1"
+                                >
+                                <UserCog className="mr-2 h-4 w-4" />
+                                Ajouter un emplacement
+                            </Button>
+                        </div>
+                        <FormDescription className="mt-2 text-xs">
+                            Les détails complets (stats, etc.) sont gérés dans le panneau latéral une fois l'aventure commencée.
+                        </FormDescription>
+                        </div>
+                    </ScrollArea>
+                    </AccordionContent>
                     </AccordionItem>
                 </Accordion>
             </div>
