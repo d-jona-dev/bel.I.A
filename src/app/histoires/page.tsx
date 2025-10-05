@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot } from 'lucide-react';
+import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -118,6 +118,11 @@ export default function HistoiresPage() {
   const editFormRef = React.useRef<AdventureFormHandle>(null);
   const createFormRef = React.useRef<AdventureFormHandle>(null);
 
+  // New state for character slot assignment
+  const [assigningSlotsForStory, setAssigningSlotsForStory] = React.useState<SavedStory | null>(null);
+  const [slotAssignments, setSlotAssignments] = React.useState<Record<string, string>>({});
+
+
   const [aiConfig, setAiConfig] = React.useState<AiConfig>({
       llm: { source: 'gemini' },
       image: { source: 'gemini' }
@@ -199,18 +204,63 @@ export default function HistoiresPage() {
   
   const handleLaunchStory = (storyId: string) => {
     const storyToLoad = savedStories.find(s => s.id === storyId);
-    if (storyToLoad) {
-        // Use an ID-based loading mechanism
+    if (!storyToLoad) {
+      toast({ title: "Erreur", description: `Impossible de charger l'histoire.`, variant: 'destructive' });
+      return;
+    }
+
+    const placeholderChars = storyToLoad.adventureState.characters.filter(c => c.isPlaceholder);
+
+    if (placeholderChars.length > 0) {
+        setAssigningSlotsForStory(storyToLoad);
+        setSlotAssignments({}); // Reset previous assignments
+    } else {
         localStorage.setItem('loadStoryIdOnMount', storyId);
         window.location.href = '/';
-    } else {
-        toast({
-          title: "Erreur",
-          description: `Impossible de charger l'histoire.`,
-          variant: 'destructive'
-        });
     }
   };
+
+  const handleConfirmSlotAssignmentsAndLaunch = () => {
+    if (!assigningSlotsForStory) return;
+
+    const placeholderChars = assigningSlotsForStory.adventureState.characters.filter(c => c.isPlaceholder);
+
+    // Check if all slots are filled
+    const allSlotsFilled = placeholderChars.every(p => slotAssignments[p.id]);
+    if (!allSlotsFilled) {
+        toast({ title: "Erreur", description: "Veuillez assigner un personnage à chaque rôle.", variant: "destructive" });
+        return;
+    }
+
+    const tempStory = JSON.parse(JSON.stringify(assigningSlotsForStory)) as SavedStory;
+
+    // Replace placeholders with selected characters
+    tempStory.adventureState.characters = tempStory.adventureState.characters.map(char => {
+        if (char.isPlaceholder) {
+            const assignedCharId = slotAssignments[char.id];
+            const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
+            if (fullCharData) {
+                // Return the full character data, but keep the original placeholder ID to maintain any relations
+                // that might have been set up with it. Also, set its location to the player's starting location.
+                return { 
+                    ...fullCharData, 
+                    id: char.id, // VERY IMPORTANT: Keep the placeholder's ID
+                    locationId: tempStory.adventureState.adventureSettings.playerLocationId || null
+                };
+            }
+        }
+        return char;
+    }).filter(char => !!char); // Filter out any potential nulls
+
+    // We can't save this temporary state, so we pass it via a temporary storage key that the main page will read once.
+    const tempStorageKey = `temp_story_load_${Date.now()}`;
+    localStorage.setItem(tempStorageKey, JSON.stringify(tempStory.adventureState));
+    localStorage.setItem('loadStoryIdOnMount', tempStorageKey); // Instruct page to load from this temp key
+
+    setAssigningSlotsForStory(null);
+    window.location.href = '/';
+};
+
 
   const confirmDeleteStory = () => {
     if (storyToDelete) {
@@ -301,7 +351,7 @@ export default function HistoiresPage() {
         mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
     };
 
-    newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({
+    newAdventureState.characters = (formValues.characters || []).filter(c => c.name).map(c => ({
         ...c,
         id: c.id || uid(),
     } as Character));
@@ -329,9 +379,7 @@ export default function HistoiresPage() {
     toast({ title: "Nouvelle Aventure Créée!", description: "Lancement de l'histoire..." });
     setIsCreateModalOpen(false);
 
-    // Set the ID to be loaded on the main page
-    localStorage.setItem('loadStoryIdOnMount', newId);
-    window.location.href = '/';
+    handleLaunchStory(newId);
   }
 
   
@@ -409,6 +457,7 @@ export default function HistoiresPage() {
               id: c.id, 
               name: c.name, 
               details: c.details,
+              isPlaceholder: c.isPlaceholder, // Pass this new flag
               portraitUrl: c.portraitUrl || null,
               faceSwapEnabled: c.faceSwapEnabled,
               factionColor: c.factionColor,
@@ -451,7 +500,6 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
     />
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isCreateModalOpen, aiConfig]);
 
   const editForm = React.useMemo(() => {
@@ -467,7 +515,6 @@ export default function HistoiresPage() {
            aiConfig={aiConfig}
         />
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingStory, aiConfig]);
 
 
@@ -664,6 +711,45 @@ export default function HistoiresPage() {
                  </DialogFooter>
             </DialogContent>
         </Dialog>
+        
+        <Dialog open={!!assigningSlotsForStory} onOpenChange={() => setAssigningSlotsForStory(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Assigner des Personnages</DialogTitle>
+                    <DialogDescription>
+                        Cette histoire contient des rôles à remplir. Choisissez qui jouera chaque rôle parmi vos personnages sauvegardés.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    {(assigningSlotsForStory?.adventureState.characters || []).filter(c => c.isPlaceholder).map(slot => (
+                        <div key={slot.id} className="space-y-2">
+                             <Label>Rôle : <span className="font-semibold">{slot.name}</span></Label>
+                            <Select onValueChange={(charId) => setSlotAssignments(prev => ({...prev, [slot.id]: charId}))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Choisir un personnage..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {savedCharacters.length > 0 ? (
+                                        savedCharacters.map(char => (
+                                            <SelectItem key={char.id} value={char.id}>{char.name}</SelectItem>
+                                        ))
+                                     ) : (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">
+                                            Aucun personnage sauvegardé.
+                                        </div>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    ))}
+                </div>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setAssigningSlotsForStory(null)}>Annuler</Button>
+                    <Button onClick={handleConfirmSlotAssignmentsAndLaunch}>Lancer l'Aventure</Button>
+                 </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
     </div>
   );
 }

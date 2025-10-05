@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye, AlertTriangle } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye, AlertTriangle, UserCog } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -532,6 +532,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
 
+    const isPlaceholder = char.isPlaceholder ?? false;
+
     const disclaimerText = {
         fr: "Je reconnais posséder les droits de cette image et ne pas l'utiliser à des fins malveillantes, que ce soit pour créer du contenu désobligeant ou dégradant, ou à des fins de détruire ou abîmer l'image ou la réputation de cette personne.",
         en: "I acknowledge that I own the rights to this image and will not use it for malicious purposes, whether to create derogatory or demeaning content, or for the purpose of destroying or damaging the image or reputation of this person.",
@@ -671,6 +673,31 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const tooltipContent = isAllySwitchDisabled
         ? `L'affinité doit être d'au moins ${AFFINITY_THRESHOLD} pour recruter ce dirigeant. (Actuelle: ${char.affinity ?? 50})`
         : null;
+
+    if (isPlaceholder) {
+        return (
+            <AccordionItem value={char.id}>
+                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarFallback><UserCog /></AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium truncate">{char.name}</span>
+                        <span className="text-xs text-muted-foreground italic">(Emplacement)</span>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
+                     <EditableField
+                        label="Rôle ou Nom du Placeholder"
+                        id={`${char.id}-name`}
+                        value={char.name}
+                        onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                        placeholder="Ex: Le/la partenaire romantique..."
+                    />
+                </AccordionContent>
+            </AccordionItem>
+        );
+    }
 
     return (
         <AccordionItem value={char.id}>
@@ -1103,5 +1130,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+    
 
     
