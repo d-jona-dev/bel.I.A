@@ -70,14 +70,24 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
         // Clean up potential markdown blocks if the model adds them
         content = content.replace(/^```json\n?/, '').replace(/```$/, '');
 
-        const parsedJson = JSON.parse(content);
+        let parsedJson = JSON.parse(content);
+        
+        // FIX: Handle cases where the model returns an array of suggestions directly
+        if (Array.isArray(parsedJson)) {
+            parsedJson = {
+                response: "Voici quelques suggestions :",
+                suggestions: parsedJson,
+            };
+        }
+
+
         const validationResult = CreativeAssistantOutputSchema.safeParse(parsedJson);
 
         if (!validationResult.success) {
             console.error("Zod validation failed (Local LLM):", validationResult.error.errors);
             return {
                 response: parsedJson.response || "L'IA locale a retourné une réponse malformée.",
-                suggestions: [],
+                suggestions: parsedJson.suggestions || [],
                 error: `Zod validation failed: ${validationResult.error.message}`
             };
         }

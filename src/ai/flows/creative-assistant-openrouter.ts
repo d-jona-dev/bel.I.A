@@ -27,16 +27,19 @@ function buildOpenRouterMessages(input: CreativeAssistantInput): Array<{role: 's
     }
     - Respond in the same language as the user's request.`;
     
-    // The history and user request are formatted as a sequence of messages
-    const messages = (input.history || []).map(msg => ({
-        role: msg.role,
+    const history = (input.history || []).map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
         content: msg.content
     }));
 
-    return [
+    const allMessages = [
         { role: "system", content: systemPrompt },
-        ...messages
+        ...history,
+        { role: 'user', content: input.userRequest }
     ];
+
+    // Filter out any potential empty messages, just in case
+    return allMessages.filter(msg => msg.content);
 }
 
 export async function creativeAssistantWithOpenRouter(input: CreativeAssistantInput): Promise<CreativeAssistantOutput> {
@@ -74,7 +77,17 @@ export async function creativeAssistantWithOpenRouter(input: CreativeAssistantIn
             throw new Error("Invalid response format from OpenRouter.");
         }
 
-        const parsedJson = JSON.parse(content);
+        let parsedJson = JSON.parse(content);
+        
+        // FIX: Handle cases where the model returns an array of suggestions directly
+        if (Array.isArray(parsedJson)) {
+            parsedJson = {
+                response: "Voici quelques suggestions :",
+                suggestions: parsedJson,
+            };
+        }
+
+
         const validationResult = CreativeAssistantOutputSchema.safeParse(parsedJson);
 
         if (!validationResult.success) {
@@ -82,7 +95,7 @@ export async function creativeAssistantWithOpenRouter(input: CreativeAssistantIn
             // Attempt to return at least the response text if parsing fails
             return {
                 response: parsedJson.response || "L'IA a retourné une réponse malformée.",
-                suggestions: [],
+                suggestions: parsedJson.suggestions || [],
                 error: `Zod validation failed: ${validationResult.error.message}`
             };
         }

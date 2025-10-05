@@ -40,8 +40,6 @@ export async function creativeAssistantWithGemini(input: CreativeAssistantInput)
     }));
 
     try {
-        // Since the prompt input only expects userRequest, we create a sub-object.
-        // History is passed in the second argument.
         const { output } = await creativeAssistantPrompt(
             { userRequest: input.userRequest },
             { history: historyForAI } 
@@ -50,6 +48,17 @@ export async function creativeAssistantWithGemini(input: CreativeAssistantInput)
         if (!output) {
             return { error: "AI response was empty.", response: "" };
         }
+        
+        // FIX: Handle cases where the model returns an array of suggestions directly
+        if (Array.isArray(output)) {
+            const suggestions = CreativeAssistantOutputSchema.shape.suggestions.parse(output);
+            return {
+                response: "Voici quelques suggestions :",
+                suggestions: suggestions,
+                error: undefined,
+            }
+        }
+
 
         return { ...output, error: undefined };
     } catch (e: any) {
