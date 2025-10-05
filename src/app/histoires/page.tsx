@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -48,8 +48,8 @@ interface SavedStory {
 
 const createNewAdventureState = (): SaveData => ({
     adventureSettings: {
-        world: "",
-        initialSituation: "",
+        world: { fr: "" },
+        initialSituation: { fr: "" },
         rpgMode: true,
         relationsMode: true,
         strategyMode: true,
@@ -262,8 +262,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: formValues.world?.substring(0, 30) || editingStory.title,
-              description: formValues.initialSituation?.substring(0, 100) || editingStory.description,
+              title: formValues.world['fr']?.substring(0, 30) || editingStory.title,
+              description: formValues.initialSituation['fr']?.substring(0, 100) || editingStory.description,
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
@@ -291,8 +291,8 @@ export default function HistoiresPage() {
     newAdventureState.adventureSettings = {
         ...newAdventureState.adventureSettings,
         ...formValues,
-        world: formValues.world || "Monde non défini",
-        initialSituation: formValues.initialSituation || "Situation de départ non définie",
+        world: formValues.world,
+        initialSituation: formValues.initialSituation,
         playerName: formValues.playerName || "Héros",
         rpgMode: formValues.rpgMode ?? true,
         relationsMode: formValues.relationsMode ?? true,
@@ -306,18 +306,18 @@ export default function HistoiresPage() {
         id: c.id || uid(),
     } as Character));
     
-    // Set the narrative to start with the initial situation
+    // Set the narrative to start with the initial situation in french
     newAdventureState.narrative = [{
         id: `msg-${Date.now()}`,
         type: 'system',
-        content: newAdventureState.adventureSettings.initialSituation,
+        content: newAdventureState.adventureSettings.initialSituation.fr || newAdventureState.adventureSettings.initialSituation.en || '',
         timestamp: Date.now()
     }];
 
     const newStory: SavedStory = {
         id: newId,
-        title: formValues.world?.substring(0, 40) || "Nouvelle Histoire",
-        description: formValues.initialSituation?.substring(0, 100) || "...",
+        title: formValues.world['fr']?.substring(0, 40) || "Nouvelle Histoire",
+        description: formValues.initialSituation['fr']?.substring(0, 100) || "...",
         date: new Date().toISOString().split('T')[0],
         adventureState: newAdventureState,
     };
@@ -350,12 +350,22 @@ export default function HistoiresPage() {
             }
 
             const newId = uid();
+            const worldText = typeof importedState.adventureSettings.world === 'string' ? { fr: importedState.adventureSettings.world } : importedState.adventureSettings.world;
+            const situationText = typeof importedState.adventureSettings.initialSituation === 'string' ? { fr: importedState.adventureSettings.initialSituation } : importedState.adventureSettings.initialSituation;
+
             const newStory: SavedStory = {
                 id: newId,
-                title: importedState.adventureSettings.world.substring(0, 40) || "Histoire Importée",
-                description: importedState.adventureSettings.initialSituation.substring(0, 100) || "...",
+                title: (worldText.fr || worldText.en || "Histoire Importée").substring(0, 40),
+                description: (situationText.fr || situationText.en || "...").substring(0, 100),
                 date: new Date().toISOString().split('T')[0],
-                adventureState: importedState,
+                adventureState: {
+                    ...importedState,
+                    adventureSettings: {
+                        ...importedState.adventureSettings,
+                        world: worldText,
+                        initialSituation: situationText
+                    }
+                },
             };
 
             saveStories([...savedStories, newStory]);
@@ -371,11 +381,11 @@ export default function HistoiresPage() {
   }
 
   const getAdventureFormValues = (story: SavedStory | null): AdventureFormValues => {
+      const defaultState = createNewAdventureState();
       if (!story) {
-          const defaultState = createNewAdventureState();
           return {
-              world: '',
-              initialSituation: '',
+              world: defaultState.adventureSettings.world,
+              initialSituation: defaultState.adventureSettings.initialSituation,
               characters: [],
               rpgMode: true,
               relationsMode: true,
@@ -441,7 +451,6 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
     />
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isCreateModalOpen, aiConfig]);
 
 

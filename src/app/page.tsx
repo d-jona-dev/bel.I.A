@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent, EnemyUnit } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent, EnemyUnit, LocalizedText } from "@/types";
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -237,8 +237,8 @@ const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 // Function to create a clean, default state
 const createInitialState = (): { settings: AdventureSettings; characters: Character[]; narrative: Message[], aiConfig: AiConfig } => {
   const initialSettings: AdventureSettings = {
-    world: "Un nouveau monde vous attend. Décrivez-le ici.",
-    initialSituation: "Vous êtes au début de votre aventure. Que se passe-t-il ?",
+    world: { fr: "Un nouveau monde vous attend. Décrivez-le ici." },
+    initialSituation: { fr: "Vous êtes au début de votre aventure. Que se passe-t-il ?" },
     rpgMode: true,
     relationsMode: true,
     strategyMode: true,
@@ -285,7 +285,7 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
   };
 
   const initialNarrative: Message[] = [
-      { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation, timestamp: Date.now() }
+      { id: `msg-${Date.now()}`, type: 'system', content: initialSettings.initialSituation.fr, timestamp: Date.now() }
   ];
   
   const initialAiConfig: AiConfig = {
@@ -1022,10 +1022,15 @@ export default function Home() {
         }
     
         const effectiveStatsThisTurn = calculateEffectiveStats(liveSettings);
+        
+        const worldText = liveSettings.world[currentLanguage] || liveSettings.world['en'] || Object.values(liveSettings.world)[0] || "";
+        const initialSituationText = liveSettings.initialSituation[currentLanguage] || liveSettings.initialSituation['en'] || Object.values(liveSettings.initialSituation)[0] || "";
+        const contextSituation = narrativeMessages.length > 1 ? [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${liveSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : initialSituationText;
+
     
         const input: GenerateAdventureInput = {
-            world: liveSettings.world,
-            initialSituation: [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${liveSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n'),
+            world: worldText,
+            initialSituation: contextSituation,
             characters: presentCharacters, 
             userAction: turnLog.length > 0 ? turnLog.join('\n') : userActionText,
             currentLanguage,
@@ -1340,43 +1345,26 @@ export default function Home() {
         });
         return;
     }
+    
+    // Fallback logic for localized text
+    const getLocalizedText = (field: LocalizedText, lang: string) => {
+        return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
+    };
 
-    const savedLang = stateToLoad.currentLanguage || 'fr';
-    const targetLang = currentLanguage;
-    let initialSituation = stateToLoad.adventureSettings.initialSituation;
-    let initialNarrative = stateToLoad.narrative;
-    
-    if (targetLang !== savedLang && initialSituation) {
-        toast({ title: "Traduction en cours...", description: `Traduction de l'histoire en ${targetLang}.` });
-        try {
-            const translationResult = await translateText({ text: initialSituation, language: targetLang });
-            initialSituation = translationResult.translatedText;
-            initialNarrative = [{ 
-                id: `msg-translated-${Date.now()}`, 
-                type: 'system', 
-                content: initialSituation, 
-                timestamp: Date.now() 
-            }];
-            toast({ title: "Traduction terminée!", description: "L'aventure est prête à commencer dans votre langue." });
-        } catch (e) {
-            toast({ title: "Erreur de traduction", description: "Impossible de traduire l'histoire. Lancement dans la langue d'origine.", variant: "destructive" });
-            // Keep original initialSituation and narrative if translation fails
-        }
-    }
-    
+    const initialSituationText = getLocalizedText(stateToLoad.adventureSettings.initialSituation, currentLanguage);
+
     React.startTransition(() => {
         const effectiveStats = calculateEffectiveStats(stateToLoad.adventureSettings);
         const finalSettings = { 
             ...stateToLoad.adventureSettings, 
-            initialSituation: initialSituation, // Use potentially translated text
             ...effectiveStats 
         };
 
         setAdventureSettings(finalSettings);
         setCharacters(stateToLoad.characters);
-        setNarrativeMessages(initialNarrative);
+        setNarrativeMessages([{ id: `msg-loaded-${Date.now()}`, type: 'system', content: initialSituationText, timestamp: Date.now() }]);
         setActiveCombat(stateToLoad.activeCombat);
-        setCurrentLanguage(targetLang); // Set to the user's selected language
+        setCurrentLanguage(stateToLoad.currentLanguage || 'fr');
         setAiConfig(stateToLoad.aiConfig || createInitialState().aiConfig);
 
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
@@ -1594,8 +1582,8 @@ export default function Home() {
                         return;
                     }
                     const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
-                    if (existingItemIndex > -1) {
-                        newInventory[existingItemIndex].quantity += item.quantity;
+                    if (existingIndex > -1) {
+                        newInventory[existingIndex].quantity += item.quantity;
                     } else {
                         newInventory.push({ ...item, isEquipped: false });
                     }
@@ -2150,11 +2138,24 @@ export default function Home() {
         ? currentTurnSettings.mapPointsOfInterest?.find(poi => poi.id === currentTurnSettings.playerLocationId)
         : undefined;
 
+        const worldText = currentTurnSettings.world[currentLanguage] || currentTurnSettings.world['en'] || Object.values(currentTurnSettings.world)[0] || "";
+        const contextSituationText = contextMessages.map(msg => {
+            if (msg.type === 'user') return `${currentTurnSettings.playerName || 'Player'}: ${msg.content}`;
+            // For system message, check if it's the initial one from a localized source
+            if (msg.type === 'system') {
+                const initialSit = currentTurnSettings.initialSituation;
+                if (initialSit[currentLanguage] === msg.content || initialSit['en'] === msg.content || Object.values(initialSit).includes(msg.content)) {
+                    return getLocalizedText(initialSit, currentLanguage);
+                }
+            }
+            return msg.content;
+        }).join('\n\n');
+
 
          try {
              const input: GenerateAdventureInput = {
-                 world: currentTurnSettings.world,
-                 initialSituation: contextMessages.map(msg => msg.type === 'user' ? `${currentTurnSettings.playerName || 'Player'}: ${msg.content}` : msg.content ).join('\n\n'),
+                 world: worldText,
+                 initialSituation: contextSituationText,
                  characters: currentGlobalCharactersRegen.filter(c => c.locationId === currentTurnSettings.playerLocationId), 
                  userAction: lastUserAction,
                  currentLanguage: currentLanguage,
@@ -2275,13 +2276,13 @@ export default function Home() {
                 setIsRegenerating(false);
              });
          }
-     }, [
+    }, [
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNewFamiliar,
          handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
          handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
-     ]);
+    ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
        setStagedCharacters(prev => {
@@ -2502,6 +2503,8 @@ export default function Home() {
             manaPoints: char.maxManaPoints,
             statusEffects: [],
         })));
+        const initialSitText = getLocalizedText(newLiveAdventureSettings.initialSituation, currentLanguage);
+        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }]);
         setStagedAdventureSettings({
             ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
             characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
@@ -2514,7 +2517,6 @@ export default function Home() {
             manaPoints: char.maxManaPoints,
             statusEffects: [],
         })));
-        setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveAdventureSettings.initialSituation, timestamp: Date.now() }]);
         setActiveCombat(undefined);
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
@@ -2522,7 +2524,7 @@ export default function Home() {
      React.startTransition(() => {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
     });
-  }, [baseAdventureSettings, baseCharacters, toast]);
+  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -2560,7 +2562,10 @@ export default function Home() {
         if (newLiveSettings.rpgMode) {
             const effectiveStats = calculateEffectiveStats(newLiveSettings);
             Object.assign(newLiveSettings, effectiveStats);
-            if (formData.initialSituation !== adventureSettings.initialSituation) {
+            const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+            const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+
+            if (newInitialSituation !== oldInitialSituation) {
                 newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
                 newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
                 newLiveSettings.playerCurrentExp = 0;
@@ -2584,8 +2589,10 @@ export default function Home() {
         setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
 
-        if (formData.initialSituation !== adventureSettings.initialSituation) {
-            setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newLiveSettings.initialSituation, timestamp: Date.now() }]);
+        const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+        const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+        if (newInitialSituation !== oldInitialSituation) {
+            setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
             if (activeCombat) setActiveCombat(undefined);
         }
 
@@ -3286,36 +3293,36 @@ export default function Home() {
     }, []);
 
     const handleGenerateCover = React.useCallback(async () => {
-    setIsGeneratingCover(true);
-    React.startTransition(() => {
-        toast({ title: "Génération de la couverture..."});
-    });
-
-    const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-    const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-    const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
-
-    try {
-        const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-        if (result.imageUrl) {
-            setComicCoverUrl(result.imageUrl);
-            React.startTransition(() => {
-                toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
-            });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
+        setIsGeneratingCover(true);
         React.startTransition(() => {
-            toast({
-                title: "Erreur de Génération",
-                description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
-                variant: "destructive"
-            });
+            toast({ title: "Génération de la couverture..."});
         });
-    } finally {
-        setIsGeneratingCover(false);
-    }
+
+        const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
+        const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
+        const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
+
+        try {
+            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
+            if (result.imageUrl) {
+                setComicCoverUrl(result.imageUrl);
+                React.startTransition(() => {
+                    toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            React.startTransition(() => {
+                toast({
+                    title: "Erreur de Génération",
+                    description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
+                    variant: "destructive"
+                });
+            });
+        } finally {
+            setIsGeneratingCover(false);
+        }
     }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
 
     const onSaveToLibrary = React.useCallback(async () => {
@@ -3376,92 +3383,6 @@ export default function Home() {
     }
     }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
 
-  const handleAddComicPage = React.useCallback(() => {
-    setComicDraft(prev => [...prev, createNewComicPage()]);
-    setCurrentComicPageIndex(comicDraft.length);
-  }, [comicDraft.length]);
-
-  const handleAddComicPanel = React.useCallback(() => {
-    if (comicDraft.length === 0) {
-        handleAddComicPage();
-    } else {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
-
-  const handleRemoveLastComicPanel = React.useCallback(() => {
-    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex]);
-
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setComicDraft(prev => prev.map((p, i) =>
-            i === pageIndex
-            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
-            : p
-        ));
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
-    setComicDraft(prev => {
-        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
-        let pageUpdated = false;
-        let targetPageIndex = currentComicPageIndex;
-
-        for (let i = targetPageIndex; i < draft.length; i++) {
-            const page = draft[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-            if (firstEmptyPanelIndex !== -1) {
-                const newPanels = [...page.panels];
-                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
-                draft[i] = { ...page, panels: newPanels };
-                pageUpdated = true;
-                React.startTransition(() => {
-                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
-                });
-                break;
-            }
-        }
-        
-        if (!pageUpdated) {
-            const newPage = createNewComicPage();
-            newPage.panels[0].imageUrl = dataUrl;
-            draft.push(newPage);
-            setCurrentComicPageIndex(draft.length - 1);
-            React.startTransition(() => {
-                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
-            });
-        }
-        
-        return draft;
-    });
-  }, [currentComicPageIndex, toast]);
-
-  const handleDownloadComicDraft = React.useCallback(() => {
-    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
-        React.startTransition(() => {
-            toast({
-                title: "Rien à télécharger",
-                description: "Il n'y a pas de planche de BD active à télécharger.",
-                variant: "destructive"
-            });
-        });
-        return;
-    }
-    const currentPage = comicDraft[currentComicPageIndex];
-    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
-  }, [comicDraft, currentComicPageIndex, toast]);
-  
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {
         const pois = prev.mapPointsOfInterest || [];
@@ -3538,8 +3459,12 @@ export default function Home() {
       activeItemUniverses: stagedAdventureSettings.activeItemUniverses || ['Médiéval-Fantastique'],
     };
   }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
+  
+  const getLocalizedText = (field: LocalizedText, lang: string) => {
+    return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
+  };
 
-  const worldForQuestHook = adventureSettings.world;
+  const worldForQuestHook = getLocalizedText(adventureSettings.world, currentLanguage);
   const characterNamesForQuestHook = React.useMemo(() => characters.map(c => c.name).join(", "), [characters]);
 
   const callSuggestQuestHook = React.useCallback(async () => {
@@ -3595,9 +3520,10 @@ export default function Home() {
         });
 
         const { world, mapPointsOfInterest } = adventureSettings;
+        const worldText = getLocalizedText(world, 'en'); // Use English for better image gen results
         const poiNames = mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues';
 
-        const prompt = `A fantasy map of a world. The style should be that of a hand-drawn map from a classic fantasy novel like "The Lord of the Rings". The map is on aged, weathered parchment. Include artistic details like a compass rose, sea monsters in any oceans, and rolling hills or mountains. Key locations to feature with calligraphic labels are: ${poiNames}. The overall atmosphere is one of ancient adventure. World description for context: ${world}`;
+        const prompt = `A fantasy map of a world. The style should be that of a hand-drawn map from a classic fantasy novel like "The Lord of the Rings". The map is on aged, weathered parchment. Include artistic details like a compass rose, sea monsters in any oceans, and rolling hills or mountains. Key locations to feature with calligraphic labels are: ${poiNames}. The overall atmosphere is one of ancient adventure. World description for context: ${worldText}`;
 
         try {
             const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
@@ -3820,6 +3746,92 @@ export default function Home() {
         });
     }, [toast]);
 
+  const handleAddComicPage = React.useCallback(() => {
+    setComicDraft(prev => [...prev, createNewComicPage()]);
+    setCurrentComicPageIndex(comicDraft.length);
+  }, [comicDraft.length]);
+
+  const handleAddComicPanel = React.useCallback(() => {
+    if (comicDraft.length === 0) {
+        handleAddComicPage();
+    } else {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
+
+  const handleRemoveLastComicPanel = React.useCallback(() => {
+    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
+        setComicDraft(prev => prev.map((page, index) => 
+            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
+        ));
+    }
+  }, [comicDraft, currentComicPageIndex]);
+
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setComicDraft(prev => prev.map((p, i) =>
+            i === pageIndex
+            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
+            : p
+        ));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
+    setComicDraft(prev => {
+        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
+        let pageUpdated = false;
+        let targetPageIndex = currentComicPageIndex;
+
+        for (let i = targetPageIndex; i < draft.length; i++) {
+            const page = draft[i];
+            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
+            if (firstEmptyPanelIndex !== -1) {
+                const newPanels = [...page.panels];
+                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
+                draft[i] = { ...page, panels: newPanels };
+                pageUpdated = true;
+                React.startTransition(() => {
+                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
+                });
+                break;
+            }
+        }
+        
+        if (!pageUpdated) {
+            const newPage = createNewComicPage();
+            newPage.panels[0].imageUrl = dataUrl;
+            draft.push(newPage);
+            setCurrentComicPageIndex(draft.length - 1);
+            React.startTransition(() => {
+                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
+            });
+        }
+        
+        return draft;
+    });
+  }, [currentComicPageIndex, toast]);
+
+  const handleDownloadComicDraft = React.useCallback(() => {
+    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
+        React.startTransition(() => {
+            toast({
+                title: "Rien à télécharger",
+                description: "Il n'y a pas de planche de BD active à télécharger.",
+                variant: "destructive"
+            });
+        });
+        return;
+    }
+    const currentPage = comicDraft[currentComicPageIndex];
+    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
+  }, [comicDraft, currentComicPageIndex, toast]);
+
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
   return (
@@ -3997,5 +4009,7 @@ export default function Home() {
     </>
   );
 }
+
+    
 
     

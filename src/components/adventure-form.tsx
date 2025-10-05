@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle } from "lucide-react";
+import { PlusCircle, Trash2, Upload, User, Users, Gamepad2, Coins, Dices, HelpCircle, BarChart2, Map, MapIcon, Link as LinkIcon, Heart, Clock, Box, FilePenLine, Search, PawPrint, ShieldHalf, Shield, Check, ChevronsUpDown, Clapperboard, BrainCircuit, Wand2, Eye, Replace, AlertTriangle, Languages } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit, AiConfig } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit, AiConfig, LocalizedText } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
 import { describeAppearance } from "@/ai/flows/describe-appearance";
+import { translateText } from "@/ai/flows/translate-text";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 export type FormCharacterDefinition = {
@@ -57,7 +59,9 @@ export type FormCharacterDefinition = {
 };
 
 
-export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters'>> & {
+export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' | 'world' | 'initialSituation'>> & {
+    world: LocalizedText;
+    initialSituation: LocalizedText;
     characters: FormCharacterDefinition[];
 };
 
@@ -126,8 +130,8 @@ const BASE_ATTRIBUTE_VALUE_FORM = 8;
 const POINTS_PER_LEVEL_GAIN_FORM = 5;
 
 const adventureFormSchema = z.object({
-  world: z.string().min(1, "La description du monde est requise."),
-  initialSituation: z.string().min(1, "La situation initiale est requise."),
+  world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
+  initialSituation: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La situation initiale est requise dans au moins une langue."}),
   characters: z.array(characterSchema).optional(),
   rpgMode: z.boolean().default(true).optional(),
   relationsMode: z.boolean().default(true).optional(),
@@ -200,6 +204,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const [editingEnemy, setEditingEnemy] = React.useState<EnemyUnit | null>(null);
     const [isEnemyEditorOpen, setIsEnemyEditorOpen] = React.useState(false);
 
+    // NEW: Language state for form fields
+    const [currentFormFieldLang, setCurrentFormFieldLang] = React.useState('fr');
+    const [isTranslating, setIsTranslating] = React.useState(false);
+
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
@@ -210,6 +218,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
           relationsMode: initialValues.relationsMode ?? true,
           strategyMode: initialValues.strategyMode ?? true,
           comicModeActive: initialValues.comicModeActive ?? false,
+          world: initialValues.world || { fr: "" },
+          initialSituation: initialValues.initialSituation || { fr: "" },
         },
         mode: "onChange",
     });
@@ -588,8 +598,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const handleLoadPrompt = () => {
         const loadedData: AdventureFormValues = {
-            world: "Grande université populaire nommée \"hight scoole of futur\".",
-            initialSituation: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
+            world: {
+                fr: "Grande université populaire nommée \"hight scoole of futur\".",
+                en: "Large popular university named 'hight scoole of futur'."
+            },
+            initialSituation: {
+                fr: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
+                en: "User is walking down the halls of 'hight scoole of futur' and discovers his girlfriend talking with his best friend, they seem very close, too close..."
+            },
             characters: [
                 { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
                 { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
@@ -720,6 +736,26 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
           default: return 'text-gray-500';
         }
     };
+
+    const handleTranslateField = async (field: 'world' | 'initialSituation', targetLang: string) => {
+        const sourceText = form.getValues(`${field}.${currentFormFieldLang}`);
+        if (!sourceText) {
+            toast({ title: "Texte manquant", description: "Veuillez d'abord écrire une description dans la langue actuelle.", variant: "destructive" });
+            return;
+        }
+        setIsTranslating(true);
+        try {
+            const result = await translateText({ text: sourceText, language: targetLang });
+            form.setValue(`${field}.${targetLang}`, result.translatedText, { shouldValidate: true, shouldDirty: true });
+            setCurrentFormFieldLang(targetLang);
+            toast({ title: "Traduction réussie!" });
+        } catch (e) {
+            console.error(e);
+            toast({ title: "Erreur de traduction", description: e instanceof Error ? e.message : "Erreur inconnue", variant: "destructive" });
+        } finally {
+            setIsTranslating(false);
+        }
+    };
     
     const renderFamiliarComponentManager = (type: 'physical' | 'creature' | 'descriptor', title: string, components: BaseFamiliarComponent[]) => (
         <div className="p-2 border rounded-lg bg-background">
@@ -769,6 +805,59 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </div>
     );
 
+    const availableLangs = ['fr', 'en', 'es', 'it', 'ja', 'zh', 'de', 'ru'];
+
+    const LocalizedTextArea = ({ name, label, placeholder, rows }: { name: "world" | "initialSituation", label: string, placeholder: string, rows: number }) => (
+        <FormItem>
+            <div className="flex justify-between items-center">
+                <FormLabel className="flex items-center">
+                    {label}
+                    {!watchedValues[name]?.[currentFormFieldLang] && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
+                </FormLabel>
+                <div className="flex items-center gap-1">
+                     {isTranslating && <Loader2 className="h-4 w-4 animate-spin"/>}
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="xs" className="flex gap-1">
+                                <Languages className="h-4 w-4"/>
+                                Traduire
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {availableLangs.filter(lang => lang !== currentFormFieldLang).map(lang => (
+                                <DropdownMenuItem key={lang} onSelect={() => handleTranslateField(name, lang)}>
+                                    vers {lang.toUpperCase()}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                     </DropdownMenu>
+                    {availableLangs.map(lang => (
+                        <Button 
+                            key={lang}
+                            type="button" 
+                            size="xs"
+                            variant={currentFormFieldLang === lang ? 'secondary' : 'outline'}
+                            onClick={() => setCurrentFormFieldLang(lang)}
+                            className={cn(watchedValues[name]?.[lang] ? "font-bold" : "font-normal", "h-6 px-2")}
+                        >
+                            {lang.toUpperCase()}
+                        </Button>
+                    ))}
+                </div>
+            </div>
+             <FormControl>
+                <Textarea
+                    placeholder={placeholder}
+                    value={watchedValues[name]?.[currentFormFieldLang] || ''}
+                    onChange={(e) => form.setValue(`${name}.${currentFormFieldLang}`, e.target.value, { shouldValidate: true, shouldDirty: true })}
+                    rows={rows}
+                    className="bg-background border"
+                />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    );
+
     return (
         <Form {...form}>
         <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
@@ -780,49 +869,20 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     </Button>
                 </div>
                 
-                <FormField
-                control={form.control}
-                name="world"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="flex items-center">
-                        Monde
-                        {!field.value && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
-                    </FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="Décrivez l'univers de votre aventure..."
-                        {...field}
-                        rows={4}
-                        className="bg-background border"
-                        />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                <LocalizedTextArea
+                    name="world"
+                    label="Monde"
+                    placeholder="Décrivez l'univers de votre aventure..."
+                    rows={4}
+                />
+                
+                <LocalizedTextArea
+                    name="initialSituation"
+                    label="Situation Initiale"
+                    placeholder="Comment commence l'aventure pour le héros ?"
+                    rows={3}
                 />
 
-                <FormField
-                control={form.control}
-                name="initialSituation"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="flex items-center">
-                        Situation Initiale
-                        {!field.value && <AlertTriangle className="h-4 w-4 text-amber-500 ml-2" />}
-                    </FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="Comment commence l'aventure pour le héros ?"
-                        {...field}
-                        rows={3}
-                        className="bg-background border"
-                        />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
                  <Card className="p-4 space-y-3 bg-muted/20 border-dashed">
                     <CardDescription>Activez ou désactivez les systèmes de jeu.</CardDescription>
                      <FormField
@@ -1449,7 +1509,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 control={form.control}
                                 name="characters"
                                 render={({ field }) => (
-                                    <input {...field} value={field.value || []} type="hidden" />
+                                    <input {...field} value={field.value as any} type="hidden" />
                                 )}
                             />
                         </div>
@@ -1572,9 +1632,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     <Label className="w-1/3 truncate text-xs">{watchedValues.playerName || 'Héros'}</Label>
                                                      <FormField
                                                         control={form.control}
-                                                        name={`characters.${index}.relations.player`}
+                                                        name={`characters.${index}.relations.player` as any}
                                                         render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder="Relation avec le joueur" className="h-8"/>
+                                                            <Input {...field} value={field.value || ""} placeholder="Relation avec le joueur" className="h-8"/>
                                                         )}
                                                     />
                                                 </div>
@@ -1583,7 +1643,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                         <Label className="w-1/3 truncate text-xs">{otherChar.name}</Label>
                                                         <FormField
                                                             control={form.control}
-                                                            name={`characters.${index}.relations.${otherChar.id}`}
+                                                            name={`characters.${index}.relations.${otherChar.id}` as any}
                                                             render={({ field }) => (
                                                                 <Input {...field} value={field.value || ''} placeholder={`Relation avec ${otherChar.name}`} className="h-8"/>
                                                             )}
@@ -1928,9 +1988,9 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                                     <Input
                                         id={`${charId}-relations-${otherChar.id}`}
                                         {...field}
-                                        value={field.value || ""}
+                                        value={field.value || ''}
                                         className="h-8 text-sm flex-1 bg-background border"
-                                        placeholder={currentLanguage === 'fr' ? "Ami, Ennemi..." : "Friend, Enemy..."}
+                                        placeholder={`Relation avec ${otherChar.name}`}
                                         disabled={disabled}
                                     />
                                 )}
@@ -1943,6 +2003,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
         </div>
     );
 };
+    
+
     
 
     

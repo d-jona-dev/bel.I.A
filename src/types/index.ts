@@ -2,6 +2,9 @@
 // src/types/index.ts
 import { z } from 'genkit';
 
+// NEW: Type for localized text fields
+export type LocalizedText = { [key: string]: string };
+
 // NEW: Base definition for items in our database
 export interface BaseItem {
   id: string;
@@ -293,8 +296,8 @@ export interface TimeManagementSettings {
 }
 
 export interface AdventureSettings {
-  world: string;
-  initialSituation: string;
+  world: LocalizedText;
+  initialSituation: LocalizedText;
   rpgMode: boolean;
   relationsMode: boolean;
   strategyMode: boolean;
@@ -550,8 +553,8 @@ const SellingItemSchemaForAI = z.object({
 });
 
 export const GenerateAdventureInputSchema = z.object({
-  world: z.string().describe('Detailed description of the game world.'),
-  initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff.'),
+  world: z.string().describe('Detailed description of the game world. This is a single string for the current language.'),
+  initialSituation: z.string().describe('The current situation or narrative state, including recent events and dialogue. If combat is active, this should describe the last action or current standoff. This is a single string for the current language.'),
   characters: z.array(CharacterWithContextSummarySchema).describe('Array of currently known characters who are PRESENT at the player\'s location, with their details, including current affinity, relationship statuses summary, and history summary. Relations and history summaries MUST be in the specified language. Include isAlly status.'),
   userAction: z.string().describe('The action taken by the user. If in combat, this is their combat action (e.g., "I attack Kentaro with my sword", "I cast Fireball at the Intimidator", "I use a Potion of Healing", "J\'achète l\'épée", "Je vends Dague Rouillée", "J\'utilise ma compétence : Coup Puissant"). If not in combat, it is a general narrative action or skill use.'),
   currentLanguage: z.string().describe('The current language code (e.g., "fr", "en") for generating history entries and new character details.'),
@@ -595,7 +598,7 @@ export const GenerateAdventureInputSchema = z.object({
   merchantInventory: z.array(SellingItemSchemaForAI).optional().describe("A list of items currently being sold by a local merchant. This is for context only; the AI should not invent new items."),
 });
 
-export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig' | 'timeManagement' | 'merchantInventory'> & {
+export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputSchema>, 'characters' | 'activeCombat' | 'playerSkills' | 'mapPointsOfInterest' | 'playerLocation' | 'aiConfig' | 'timeManagement' | 'merchantInventory' | 'world' | 'initialSituation'> & {
     characters: Character[];
     activeCombat?: z.infer<typeof ActiveCombatSchema>;
     playerSkills?: PlayerSkill[];
@@ -603,6 +606,8 @@ export type GenerateAdventureInput = Omit<z.infer<typeof GenerateAdventureInputS
     aiConfig?: AiConfig;
     timeManagement?: TimeManagementSettings;
     merchantInventory?: SellingItem[];
+    world: string; // Keep as string for the flow
+    initialSituation: string; // Keep as string for the flow
 };
 
 // Represents the output from the flow to the main application, including potential errors.
