@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -88,6 +87,12 @@ export default function CreationAssisteePage() {
             console.error("Failed to load AI config from localStorage:", error);
         }
     }, []);
+    
+    const handleAiConfigChange = (newConfig: AiConfig) => {
+        setAiConfig(newConfig);
+        localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+        toast({ title: "Configuration IA mise à jour." });
+    };
 
     const handleCreateAndLaunch = async () => {
         if (!formRef.current) return;
@@ -183,7 +188,7 @@ export default function CreationAssisteePage() {
                     <CardContent className="flex-1 overflow-hidden">
                         <AssistantChat
                             aiConfig={aiConfig}
-                            onConfigChange={setAiConfig}
+                            onConfigChange={handleAiConfigChange}
                             onApplySuggestion={handleApplySuggestion}
                         />
                     </CardContent>
