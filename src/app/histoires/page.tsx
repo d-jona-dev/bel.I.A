@@ -645,4 +645,9 @@ export default function HistoiresPage() {
                  <DialogFooter>
                     <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
                     <Button onClick={handleSaveChanges}>Enregistrer les Modifications</Button>
-                 
+                 </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </div>
+  );
+}
