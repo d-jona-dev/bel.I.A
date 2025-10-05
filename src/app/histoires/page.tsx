@@ -244,12 +244,12 @@ export default function HistoiresPage() {
                 // Smart merge: use global character as base, but preserve specific slot relations.
                 return { 
                     ...fullCharData, 
-                    // Keep the slot's original relations and merge the global character's relations underneath
-                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) },
                     id: char.id, 
                     isPlaceholder: false,
+                    // Keep the slot's original relations and merge the global character's relations underneath
+                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) },
                     locationId: temporaryAdventureState.adventureSettings.playerLocationId || null,
-                    // NEW: Store the placeholder's name as the 'role'
+                    // Store the placeholder's name as the 'role'
                     roleInStory: char.name, 
                 };
             }
@@ -461,12 +461,13 @@ export default function HistoiresPage() {
               id: c.id, 
               name: c.name, 
               details: c.details,
-              isPlaceholder: c.isPlaceholder, // Pass this new flag
+              isPlaceholder: c.isPlaceholder,
               portraitUrl: c.portraitUrl || null,
               faceSwapEnabled: c.faceSwapEnabled,
               factionColor: c.factionColor,
               affinity: c.affinity,
               relations: c.relations,
+              roleInStory: c.roleInStory,
           })),
           rpgMode: settings.rpgMode,
           relationsMode: settings.relationsMode,
@@ -734,7 +735,7 @@ export default function HistoiresPage() {
                     {(assigningSlotsForStory?.adventureState.characters || []).filter(c => c.isPlaceholder).map(slot => (
                         <div key={slot.id} className="space-y-2">
                              <Label>Rôle : <span className="font-semibold">{slot.name}</span></Label>
-                            <Select onValueChange={(charId) => setSlotAssignments(prev => ({...prev, [slot.id]: charId}))}>
+                            <Select onValueChange={(charId) => setSlotAssignments(prev => ({...prev, [slot.id!]: charId}))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Choisir un personnage..." />
                                 </SelectTrigger>
@@ -767,3 +768,6 @@ export default function HistoiresPage() {
 
 
 
+
+
+    

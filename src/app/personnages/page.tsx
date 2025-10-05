@@ -67,7 +67,7 @@ export default function PersonnagesPage() {
   // State for modals
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [editingCharacter, setEditingCharacter] = React.useState<Character | null>(null);
-  const [newCharacterData, setNewCharacterData] = React.useState({ name: '', details: '', history: '', affinity: 50 });
+  const [newCharacterData, setNewCharacterData] = React.useState<Partial<Character>>({ name: '', details: '', affinity: 50, relations: { player: "Inconnu" } });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
@@ -168,7 +168,7 @@ export default function PersonnagesPage() {
 
 
   const handleCreateCharacter = () => {
-    if (!newCharacterData.name.trim() || !newCharacterData.details.trim()) {
+    if (!newCharacterData.name?.trim() || !newCharacterData.details?.trim()) {
         toast({ title: "Champs requis manquants", description: "Le nom et les détails du personnage sont obligatoires.", variant: "destructive" });
         return;
     }
@@ -177,10 +177,12 @@ export default function PersonnagesPage() {
         id: uid(),
         name: newCharacterData.name,
         details: newCharacterData.details,
-        history: newCharacterData.history ? [newCharacterData.history] : [],
+        history: newCharacterData.history || [],
         affinity: newCharacterData.affinity,
+        biographyNotes: newCharacterData.biographyNotes,
+        appearanceDescription: newCharacterData.appearanceDescription,
         portraitUrl: null,
-        relations: {},
+        relations: { player: newCharacterData.relations?.player || "Inconnu" },
         isAlly: false,
     };
     
@@ -188,7 +190,7 @@ export default function PersonnagesPage() {
     saveCharactersToStorage(updatedChars);
     toast({ title: "Personnage Créé", description: `"${newChar.name}" est maintenant prêt !` });
     setIsCreateModalOpen(false);
-    setNewCharacterData({ name: '', details: '', history: '', affinity: 50 }); // Reset form
+    setNewCharacterData({ name: '', details: '', affinity: 50, relations: { player: "Inconnu" } });
   }
 
   const handleUpdateCharacter = () => {
@@ -259,17 +261,6 @@ export default function PersonnagesPage() {
                     <div className="space-y-2">
                         <Label htmlFor="new-char-details">Détails (Description)</Label>
                         <Textarea id="new-char-details" value={newCharacterData.details} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder="Description physique, personnalité, rôle..."/>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="new-char-history">Historique Initial (Optionnel)</Label>
-                        <Textarea id="new-char-history" value={newCharacterData.history} onChange={e => setNewCharacterData({...newCharacterData, history: e.target.value})} placeholder="Comment le joueur l'a-t-il rencontré ?"/>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="new-char-affinity">Affinité (avec le joueur)</Label>
-                        <div className="flex items-center gap-4">
-                            <Slider id="new-char-affinity" min={0} max={100} step={1} value={[newCharacterData.affinity]} onValueChange={value => setNewCharacterData({...newCharacterData, affinity: value[0]})}/>
-                            <span className="text-sm font-medium w-8 text-center">{newCharacterData.affinity}</span>
-                        </div>
                     </div>
                 </div>
                 <DialogFooter>
@@ -388,21 +379,20 @@ export default function PersonnagesPage() {
                                 <Label>Détails</Label>
                                 <Textarea value={editingCharacter.details} onChange={e => setEditingCharacter({...editingCharacter!, details: e.target.value})} rows={4}/>
                              </div>
+                             <div className="space-y-2">
+                                <Label>Biographie / Notes Privées</Label>
+                                <Textarea value={editingCharacter.biographyNotes || ''} onChange={e => setEditingCharacter({...editingCharacter!, biographyNotes: e.target.value})} rows={3} placeholder="Passé, secrets, objectifs..."/>
+                              </div>
+                               <div className="space-y-2">
+                                <Label>Description de l'Apparence (par IA)</Label>
+                                <Textarea value={editingCharacter.appearanceDescription || ''} onChange={e => setEditingCharacter({...editingCharacter!, appearanceDescription: e.target.value})} rows={4} placeholder="Description physique détaillée pour la génération d'images..."/>
+                              </div>
                               <div className="space-y-2">
-                                <Label>Historique</Label>
-                                 <ScrollArea className="h-24 border rounded-md p-2">
-                                 {editingCharacter.history && editingCharacter.history.map((entry, index) => (
-                                      <Textarea key={index} value={entry} className="mb-2" onChange={e => {
-                                          const newHistory = [...(editingCharacter!.history || [])];
-                                          newHistory[index] = e.target.value;
-                                          setEditingCharacter({...editingCharacter!, history: newHistory});
-                                      }}/>
-                                  ))}
-                                  </ScrollArea>
-                                   <Button variant="outline" size="sm" onClick={() => setEditingCharacter({...editingCharacter!, history: [...(editingCharacter!.history || []), ""]})}>Ajouter entrée</Button>
+                                <Label>Relation par défaut avec le Joueur</Label>
+                                <Input value={editingCharacter.relations?.player || 'Inconnu'} onChange={e => setEditingCharacter({...editingCharacter!, relations: {...editingCharacter!.relations, player: e.target.value}})} placeholder="Ami, Rival, Inconnu..."/>
                              </div>
                               <div className="space-y-2">
-                                <Label>Affinité (avec le joueur) : {editingCharacter.affinity}</Label>
+                                <Label>Affinité par défaut : {editingCharacter.affinity}</Label>
                                 <Slider min={0} max={100} step={1} value={[editingCharacter.affinity || 50]} onValueChange={value => setEditingCharacter({...editingCharacter!, affinity: value[0]})}/>
                              </div>
                           </div>
@@ -457,3 +447,5 @@ export default function PersonnagesPage() {
     </div>
   );
 }
+
+    
