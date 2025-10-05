@@ -47,6 +47,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { Checkbox } from "@/components/ui/checkbox";
+import { i18n, type Language } from "@/lib/i18n";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -548,12 +549,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
     const isPlaceholder = char.isPlaceholder ?? false;
 
-    const disclaimerText = {
-        fr: "Je reconnais posséder les droits de cette image et ne pas l'utiliser à des fins malveillantes, que ce soit pour créer du contenu désobligeant ou dégradant, ou à des fins de détruire ou abîmer l'image ou la réputation de cette personne.",
-        en: "I acknowledge that I own the rights to this image and will not use it for malicious purposes, whether to create derogatory or demeaning content, or for the purpose of destroying or damaging the image or reputation of this person.",
-        es: "Reconozco que poseo los derechos de esta imagen y que no la utilizaré con fines maliciosos, ya sea para crear contenido despectivo o degradante, o con el fin de destruir o dañar la imagen o reputación de esta persona.",
-        de: "Ich bestätige, dass ich die Rechte an diesem Bild besitze und es nicht für böswillige Zwecke verwenden werde, sei es zur Erstellung abfälliger oder erniedrigender Inhalte oder zum Zweck der Zerstörung oder Schädigung des Ansehens oder des Rufs dieser Person.",
-    };
+    const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n['en'].visionConsent;
 
 
     React.useEffect(() => {
@@ -696,16 +692,16 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <Avatar className="h-8 w-8 flex-shrink-0">
                             <AvatarFallback><UserCog /></AvatarFallback>
                         </Avatar>
-                        <span className="font-medium truncate">{char.name}</span>
+                        <span className="font-medium truncate">{char.roleInStory || `Emplacement Vide ${characterIndex + 1}`}</span>
                         <span className="text-xs text-muted-foreground italic">(Emplacement)</span>
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
                      <EditableField
-                        label="Rôle ou Nom du Placeholder"
-                        id={`${char.id}-name`}
-                        value={char.name}
-                        onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                        label="Rôle du personnage (Emplacement)"
+                        id={`${char.id}-roleInStory`}
+                        value={char.roleInStory}
+                        onChange={(e) => handleFieldChange(char.id, 'roleInStory', e.target.value)}
                         placeholder="Ex: Le/la partenaire romantique..."
                     />
                 </AccordionContent>
@@ -780,9 +776,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             </TooltipProvider>
                              <DropdownMenuContent>
                                 {defaultImageStyles.map((style) => (
-                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>
-                                        {style.name}
-                                    </DropdownMenuItem>
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
                                 ))}
                                 {customStyles.length > 0 && <DropdownMenuSeparator />}
                                 {customStyles.map((style) => (
@@ -889,7 +883,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{currentLanguage === 'fr' ? "Utiliser l'IA pour décrire l'apparence physique du personnage depuis son portrait." : "Use AI to describe the character's physical appearance from their portrait."}</p>
+                                    <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -903,7 +897,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                         </Label>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" className="max-w-xs">
-                                        <p>{disclaimerText[currentLanguage as keyof typeof disclaimerText] || disclaimerText['en']}</p>
+                                        <p>{disclaimerText}</p>
                                     </TooltipContent>
                                 </Tooltip>
                              </TooltipProvider>
@@ -1144,7 +1138,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
-    
-
-    
-

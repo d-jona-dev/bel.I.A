@@ -342,9 +342,8 @@ export default function Home() {
     // Staged state for form edits - initialized in sync with adventureSettings
     const [stagedAdventureSettings, setStagedAdventureSettings] = React.useState<AdventureFormValues>({
         ...adventureSettings,
-        characters: characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
+        characters: characters.map(c => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
     });
-    const [stagedCharacters, setStagedCharacters] = React.useState<Character[]>(characters);
     
     // UI and loading states
     const [formPropKey, setFormPropKey] = React.useState(0);
@@ -429,7 +428,8 @@ export default function Home() {
 
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
-        setStagedCharacters(prevChars => {
+        
+        setCharacters(prevChars => {
             let changed = false;
             const updatedChars = prevChars.map(char => {
                 const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
@@ -449,12 +449,12 @@ export default function Home() {
     }, []);
 
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
-        const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
+        const currentRelationsMode = adventureSettings.relationsMode ?? true;
         if (!currentRelationsMode || !updates || updates.length === 0) return;
 
         const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
 
-        setStagedCharacters(prevChars => {
+        setCharacters(prevChars => {
             let changed = false;
             const updatedChars = prevChars.map(char => {
                 const affinityUpdate = updates.find(u => u.characterName.toLowerCase() === char.name.toLowerCase());
@@ -480,17 +480,17 @@ export default function Home() {
             return prevChars;
         });
         toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
-    }, [toast, stagedAdventureSettings.relationsMode]);
+    }, [toast, adventureSettings.relationsMode]);
 
     const handleRelationUpdatesFromAI = React.useCallback((updates: RelationUpdateSchema[]) => {
-        const currentRelationsMode = stagedAdventureSettings.relationsMode ?? true;
-        const currentPlayerName = stagedAdventureSettings.playerName || "Player";
+        const currentRelationsMode = adventureSettings.relationsMode ?? true;
+        const currentPlayerName = adventureSettings.playerName || "Player";
         if (!currentRelationsMode || !updates || !updates.length) return;
 
         const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
         const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
 
-        setStagedCharacters(prevChars => {
+        setCharacters(prevChars => {
             let charsCopy = JSON.parse(JSON.stringify(prevChars)) as Character[];
             let changed = false;
 
@@ -540,7 +540,7 @@ export default function Home() {
             return prevChars;
         });
         toastsToShow.forEach(toastArgs => React.startTransition(() => { toast(toastArgs); }));
-    }, [currentLanguage, stagedAdventureSettings.playerName, toast, stagedAdventureSettings.relationsMode]);
+    }, [currentLanguage, adventureSettings.playerName, toast, adventureSettings.relationsMode]);
 
     const handleTimeUpdate = React.useCallback((timeUpdateFromAI: { newEvent?: string } | undefined) => {
         setAdventureSettings(prev => {
@@ -665,7 +665,6 @@ export default function Home() {
                         });
                     }
                 });
-                setStagedCharacters(updatedChars);
                 return updatedChars;
             });
     
@@ -807,14 +806,6 @@ export default function Home() {
                 toast(toastArgs);
             });
         });
-
-        setStagedAdventureSettings(prevStaged => {
-            const updatedLiveState = { ...prevStaged, mapPointsOfInterest: prevStaged.mapPointsOfInterest || [] } as AdventureSettings;
-            const finalPois = updater(updatedLiveState).mapPointsOfInterest;
-            return { ...prevStaged, mapPointsOfInterest: finalPois };
-        });
-        setFormPropKey(k => k + 1);
-
     }, [toast, characters, adventureSettings.playerName]);
 
     const resolveCombatTurn = React.useCallback(
@@ -1085,7 +1076,6 @@ export default function Home() {
                     if (locationIdOverride) {
                         setAdventureSettings(prev => ({...prev, playerLocationId: locationIdOverride}));
                         setCharacters(liveCharacters);
-                        setStagedCharacters(liveCharacters);
                     }
                     
                     let finalLoot = [...(result.itemsObtained || [])];
@@ -1376,9 +1366,8 @@ export default function Home() {
 
         setStagedAdventureSettings({
             ...finalSettings,
-            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
+            characters: stateToLoad.characters.map(c => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })),
         });
-        setStagedCharacters(stateToLoad.characters);
         setFormPropKey(prev => prev + 1);
         
         toast({ title: "Aventure Chargée", description: "L'état de l'aventure a été restauré." });
@@ -2301,7 +2290,7 @@ export default function Home() {
     ]);
 
   const handleCharacterUpdate = React.useCallback((updatedCharacter: Character) => {
-       setStagedCharacters(prev => {
+       setCharacters(prev => {
            return prev.map(c => {
                if (c.id === updatedCharacter.id) {
                    let charToUpdate = {...updatedCharacter};
@@ -2359,7 +2348,7 @@ export default function Home() {
                 React.startTransition(() => {
                     toast({ title: "Personnage Sauvegardé Globalement", description: `${character.name} est maintenant disponible pour d'autres aventures et pour le chat.` });
                 });
-                setStagedCharacters(prev => prev.map(c => c.id === character.id ? { ...c, _lastSaved: Date.now() } : c));
+                setCharacters(prev => prev.map(c => c.id === character.id ? { ...c, _lastSaved: Date.now() } : c));
             } catch (error) {
                  console.error("Failed to save character to localStorage:", error);
                  React.startTransition(() => { toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le personnage globalement.", variant: "destructive" }); });
@@ -2372,7 +2361,7 @@ export default function Home() {
     }, [toast]);
 
   const handleAddStagedCharacter = (globalCharToAdd: Character) => {
-    const isAlreadyInAdventure = stagedCharacters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
+    const isAlreadyInAdventure = characters.some(sc => sc.id === globalCharToAdd.id || sc.name.toLowerCase() === globalCharToAdd.name.toLowerCase());
 
     if (isAlreadyInAdventure) {
         React.startTransition(() => {
@@ -2421,8 +2410,8 @@ export default function Home() {
         newChar.relations[PLAYER_ID] = defaultRelation;
     }
     
-    setStagedCharacters(prevStagedChars => {
-        const updatedPrevChars = prevStagedChars.map(existingChar => {
+    setCharacters(prevChars => {
+        const updatedPrevChars = prevChars.map(existingChar => {
             if (adventureSettings.relationsMode ?? true) {
                 const updatedRelations = { ...(existingChar.relations || {}), [newChar.id]: defaultRelation };
                 if (newChar.relations && !newChar.relations[existingChar.id]) {
@@ -2523,16 +2512,8 @@ export default function Home() {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }]);
         setStagedAdventureSettings({
             ...JSON.parse(JSON.stringify(newLiveAdventureSettings)),
-            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
+            characters: JSON.parse(JSON.stringify(baseCharacters)).map((c: Character) => ({ id: c.id, name: c.name, details: c.details, isPlaceholder: c.isPlaceholder, roleInStory: c.roleInStory, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled }))
         });
-        setStagedCharacters(JSON.parse(JSON.stringify(baseCharacters)).map((char: Character) => ({
-            ...char,
-            currentExp: char.level === 1 && initialSettingsFromBase.rpgMode ? 0 : char.currentExp,
-            expToNextLevel: char.level === 1 && initialSettingsFromBase.rpgMode ? Math.floor(100 * Math.pow(1.5, ((char.level ?? 1) || 1) - 1)) : char.expToNextLevel,
-            hitPoints: char.maxHitPoints,
-            manaPoints: char.maxManaPoints,
-            statusEffects: [],
-        })));
         setActiveCombat(undefined);
         setFormPropKey(prev => prev + 1);
         setShowRestartConfirm(false);
@@ -2555,63 +2536,77 @@ export default function Home() {
     }
 
     React.startTransition(() => {
-        const newLiveSettings: AdventureSettings = {
-            ...adventureSettings,
-            ...formData,
-            playerCurrentHp: adventureSettings.playerCurrentHp,
-            playerCurrentMp: adventureSettings.playerCurrentMp,
-            playerCurrentExp: adventureSettings.playerCurrentExp,
-            playerInventory: adventureSettings.playerInventory,
-            equippedItemIds: adventureSettings.equippedItemIds,
-            playerSkills: adventureSettings.playerSkills,
-            familiars: adventureSettings.familiars,
+        // This function will merge the form data with the existing adventure state
+        const mergeAndUpdateState = (prevSettings: AdventureSettings, prevCharacters: Character[]) => {
+            const newLiveSettings: AdventureSettings = {
+                ...prevSettings,
+                ...formData,
+                playerCurrentHp: prevSettings.playerCurrentHp,
+                playerCurrentMp: prevSettings.playerCurrentMp,
+                playerCurrentExp: prevSettings.playerCurrentExp,
+                playerInventory: prevSettings.playerInventory,
+                equippedItemIds: prevSettings.equippedItemIds,
+                playerSkills: prevSettings.playerSkills,
+                familiars: prevSettings.familiars,
+            };
+
+            const livePoisMap = new Map((prevSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
+            const stagedPois = newLiveSettings.mapPointsOfInterest || [];
+            const mergedPois = stagedPois.map(stagedPoi => {
+                const livePoi = livePoisMap.get(stagedPoi.id);
+                return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
+            });
+            newLiveSettings.mapPointsOfInterest = mergedPois;
+
+            if (newLiveSettings.rpgMode) {
+                const effectiveStats = calculateEffectiveStats(newLiveSettings);
+                Object.assign(newLiveSettings, effectiveStats);
+                const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
+                const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+
+                if (newInitialSituation !== oldInitialSituation) {
+                    newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
+                    newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
+                    newLiveSettings.playerCurrentExp = 0;
+                } else {
+                    newLiveSettings.playerCurrentHp = Math.min(prevSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
+                    newLiveSettings.playerCurrentMp = Math.min(prevSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
+                }
+            }
+
+            const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
+            let updatedCharacters = [...prevCharacters];
+            
+            // Update existing characters
+            updatedCharacters = updatedCharacters.map(char => {
+                const formCharData = formCharactersMap.get(char.id);
+                if (formCharData) {
+                    formCharactersMap.delete(char.id); // Remove from map to track new ones
+                    return { ...char, ...formCharData };
+                }
+                return char;
+            });
+
+            // Add new characters from the form
+            formCharactersMap.forEach(newChar => {
+                updatedCharacters.push(newChar as Character);
+            });
+            
+            setAdventureSettings(newLiveSettings);
+            setCharacters(updatedCharacters);
+            setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
+            setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
+
+            const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
+            const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+            if (newInitialSituation !== oldInitialSituation) {
+                setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
+                if (activeCombat) setActiveCombat(undefined);
+            }
         };
 
-        const livePoisMap = new Map((adventureSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
-        const stagedPois = newLiveSettings.mapPointsOfInterest || [];
-        const mergedPois = stagedPois.map(stagedPoi => {
-            const livePoi = livePoisMap.get(stagedPoi.id);
-            return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
-        });
-        newLiveSettings.mapPointsOfInterest = mergedPois;
-
-        if (newLiveSettings.rpgMode) {
-            const effectiveStats = calculateEffectiveStats(newLiveSettings);
-            Object.assign(newLiveSettings, effectiveStats);
-            const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
-            const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
-
-            if (newInitialSituation !== oldInitialSituation) {
-                newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
-                newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
-                newLiveSettings.playerCurrentExp = 0;
-            } else {
-                 newLiveSettings.playerCurrentHp = Math.min(adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
-                 newLiveSettings.playerCurrentMp = Math.min(adventureSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
-            }
-        }
+        mergeAndUpdateState(adventureSettings, characters);
         
-        const formCharactersMap = new Map(formData.characters.map(fc => [fc.id, fc]));
-        const updatedCharacters = stagedCharacters.map(sc => {
-            const formChar = formCharactersMap.get(sc.id);
-            return formChar ? { ...sc, ...formChar } : sc;
-        });
-
-        const newCharactersFromForm = formData.characters.filter(fc => !stagedCharacters.some(sc => sc.id === fc.id));
-        updatedCharacters.push(...(newCharactersFromForm as Character[]));
-
-        setAdventureSettings(newLiveSettings);
-        setCharacters(updatedCharacters); 
-        setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
-        setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
-
-        const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
-        const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
-        if (newInitialSituation !== oldInitialSituation) {
-            setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
-            if (activeCombat) setActiveCombat(undefined);
-        }
-
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
 };
@@ -3217,11 +3212,6 @@ export default function Home() {
     });
 
     setAdventureSettings(updater);
-    setStagedAdventureSettings(prev => ({
-        ...prev,
-        mapPointsOfInterest: updater(prev as AdventureSettings).mapPointsOfInterest,
-    }));
-    setFormPropKey(prev => prev + 1);
     
     React.startTransition(() => {
         toast({
@@ -3514,53 +3504,24 @@ export default function Home() {
         setCurrentLanguage(lang);
         localStorage.setItem('adventure_language', lang);
     }
-
-  const stringifiedStagedCharsForFormMemo = React.useMemo(() => {
-    return JSON.stringify(stagedCharacters.map(c => ({ id: c.id, name: c.name, details: c.details, factionColor: c.factionColor, affinity: c.affinity, relations: c.relations, portraitUrl: c.portraitUrl, faceSwapEnabled: c.faceSwapEnabled })));
-  }, [stagedCharacters]);
-
-
-  const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => {
-    const formCharacters: FormCharacterDefinition[] = JSON.parse(stringifiedStagedCharsForFormMemo);
-
-    const creationPoints = stagedAdventureSettings.playerInitialAttributePoints || INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER;
-    const levelPoints = (stagedAdventureSettings.playerLevel && stagedAdventureSettings.playerLevel > 1)
-                        ? ((stagedAdventureSettings.playerLevel - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM)
-                        : 0;
-    const totalDistributable = creationPoints + levelPoints;
-
-
-    return {
-      world: stagedAdventureSettings.world,
-      initialSituation: stagedAdventureSettings.initialSituation,
-      characters: formCharacters,
-      rpgMode: stagedAdventureSettings.rpgMode,
-      relationsMode: stagedAdventureSettings.relationsMode,
-      strategyMode: stagedAdventureSettings.strategyMode,
-      comicModeActive: stagedAdventureSettings.comicModeActive,
-      mapPointsOfInterest: stagedAdventureSettings.mapPointsOfInterest,
-      playerName: stagedAdventureSettings.playerName,
-      playerClass: stagedAdventureSettings.playerClass,
-      playerLevel: stagedAdventureSettings.playerLevel,
-      playerPortraitUrl: stagedAdventureSettings.playerPortraitUrl,
-      playerDetails: stagedAdventureSettings.playerDetails,
-      playerDescription: stagedAdventureSettings.playerDescription,
-      playerOrientation: stagedAdventureSettings.playerOrientation,
-      playerFaceSwapEnabled: stagedAdventureSettings.playerFaceSwapEnabled,
-      playerInitialAttributePoints: creationPoints,
-      totalDistributableAttributePoints: totalDistributable,
-      playerStrength: stagedAdventureSettings.playerStrength,
-      playerDexterity: stagedAdventureSettings.playerDexterity,
-      playerConstitution: stagedAdventureSettings.playerConstitution,
-      playerIntelligence: stagedAdventureSettings.playerIntelligence,
-      playerWisdom: stagedAdventureSettings.playerWisdom,
-      playerCharisma: stagedAdventureSettings.playerCharisma,
-      playerGold: stagedAdventureSettings.playerGold,
-      familiars: stagedAdventureSettings.familiars || [],
-      timeManagement: stagedAdventureSettings.timeManagement,
-      activeItemUniverses: stagedAdventureSettings.activeItemUniverses || ['Médiéval-Fantastique'],
-    };
-  }, [stagedAdventureSettings, stringifiedStagedCharsForFormMemo]);
+  
+    // This is the key change. We derive the form values from the main state.
+    // This makes the main state the single source of truth.
+    const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
+        ...adventureSettings,
+        characters: characters.map(c => ({ 
+            id: c.id, 
+            name: c.name, 
+            details: c.details, 
+            isPlaceholder: c.isPlaceholder, 
+            roleInStory: c.roleInStory,
+            portraitUrl: c.portraitUrl,
+            faceSwapEnabled: c.faceSwapEnabled,
+            factionColor: c.factionColor,
+            affinity: c.affinity,
+            relations: c.relations,
+        })),
+    }), [adventureSettings, characters]);
   
   const getLocalizedText = (field: LocalizedText, lang: string) => {
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
@@ -3792,8 +3753,6 @@ export default function Home() {
             const newEffectiveStats = calculateEffectiveStats(newSettings);
             const finalSettings = { ...newSettings, ...newEffectiveStats };
             
-            setStagedAdventureSettings(prevStaged => ({...prevStaged, familiars: finalSettings.familiars }));
-            
             return finalSettings;
         });
     }, []);
@@ -3836,11 +3795,6 @@ export default function Home() {
             }
             const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
             
-            setStagedAdventureSettings(stagedPrev => ({
-                ...stagedPrev,
-                familiars: [...(stagedPrev.familiars || []), familiarToAdd]
-            }));
-
             React.startTransition(() => {
                 toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
             });
@@ -3856,7 +3810,6 @@ export default function Home() {
       adventureSettings={adventureSettings}
       characters={characters}
       stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
-      stagedCharacters={stagedCharacters}
       formPropKey={formPropKey}
       handleApplyStagedChanges={handleApplyStagedChanges}
       narrativeMessages={narrativeMessages}
@@ -3874,7 +3827,7 @@ export default function Home() {
       handleRelationUpdate={(charId, targetId, newRelation) => {
            const currentRelationsMode = adventureSettings.relationsMode ?? true;
            if (!currentRelationsMode) return;
-           setStagedCharacters(prevChars =>
+           setCharacters(prevChars =>
              prevChars.map(char => {
                if (char.id === charId) {
                  const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
@@ -4025,11 +3978,3 @@ export default function Home() {
     </>
   );
 }
-
-    
-
-    
-
-
-
-    
