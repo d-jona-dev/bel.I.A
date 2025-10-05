@@ -76,7 +76,6 @@ export default function CreationAssisteePage() {
       image: { source: 'gemini' }
     });
 
-    // FIX: Memoize the initial state to prevent form re-initialization on re-renders.
     const initialAdventureState = React.useMemo(() => createNewAdventureState(), []);
 
     React.useEffect(() => {
@@ -96,7 +95,6 @@ export default function CreationAssisteePage() {
         if (!formValues) return;
 
         const newId = uid();
-        // Use the memoized initial state as the base, not a new one.
         const newAdventureState = JSON.parse(JSON.stringify(initialAdventureState));
 
         newAdventureState.adventureSettings = {
@@ -146,7 +144,7 @@ export default function CreationAssisteePage() {
         const currentCharacters = formApi.getValues('characters') || [];
 
         if (suggestion.field === 'characterName') {
-            formApi.appendCharacter({ id: `char-${uid()}`, name: suggestion.value, details: '' });
+            formApi.append('characters', { id: `char-${uid()}`, name: suggestion.value, details: '' });
             toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
         } else if (suggestion.field === 'characterDetails') {
             const lastCharIndex = currentCharacters.length - 1;
@@ -155,7 +153,7 @@ export default function CreationAssisteePage() {
                 formApi.setValue(`characters.${lastCharIndex}.details`, suggestion.value, { shouldValidate: true, shouldDirty: true });
             } else {
                 // Otherwise, add a new character with just the details
-                formApi.appendCharacter({ id: `char-${uid()}`, name: '', details: suggestion.value });
+                formApi.append('characters', { id: `char-${uid()}`, name: '', details: suggestion.value });
             }
             toast({ title: "Suggestion Appliquée", description: `Les détails du personnage ont été mis à jour.` });
         } else {

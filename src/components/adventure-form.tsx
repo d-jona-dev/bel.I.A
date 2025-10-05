@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller, UseFieldArrayAppend } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,7 +64,8 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters'>>
 export interface AdventureFormHandle {
     getFormData: () => Promise<AdventureFormValues | null>;
     getValues: (name?: keyof AdventureFormValues | (keyof AdventureFormValues)[]) => any;
-    setValue: (name: keyof AdventureFormValues, value: any, options?: { shouldValidate?: boolean, shouldDirty?: boolean }) => void;
+    setValue: (name: any, value: any, options?: { shouldValidate?: boolean, shouldDirty?: boolean }) => void;
+    append: UseFieldArrayAppend<AdventureFormValues, "characters">;
 }
 
 interface AdventureFormProps {
@@ -535,6 +536,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         setIsDebugItemsOpen(true);
     };
 
+    const { fields, append, remove, update } = useFieldArray({
+        control: form.control,
+        name: "characters",
+    });
+
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
             const isValid = await form.trigger();
@@ -550,6 +556,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         },
         getValues: form.getValues,
         setValue: form.setValue,
+        append: append as UseFieldArrayAppend<AdventureFormValues, "characters">,
     }));
 
     React.useEffect(() => {
@@ -562,10 +569,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     }, [form, onFormValidityChange]);
 
 
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "characters",
-    });
     
     const { fields: poiFields, append: appendPoi, remove: removePoi, update: updatePoi } = useFieldArray({
         control: form.control,
