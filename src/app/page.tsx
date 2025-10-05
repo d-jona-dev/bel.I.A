@@ -1121,7 +1121,7 @@ export default function Home() {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error("[LOG_PAGE_TSX][callGenerateAdventure] Critical Error:", error);
             React.startTransition(() => {
-                toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue s'est produite: ${errorMessage}`, variant: "destructive" });
+                toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${errorMessage}`, variant: "destructive" });
             });
         } finally {
             setIsLoading(false);
@@ -3135,7 +3135,7 @@ export default function Home() {
   
   const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; defenderUnitIds?: string[] }) => {
     const newPoi: MapPointOfInterest = {
-        id: `poi-${data.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+        id: `poi-${data.name.toLowerCase().replace(/\s/g, '-')}-${Date.now()}`,
         name: data.name,
         description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
         icon: data.type,
@@ -3405,7 +3405,7 @@ export default function Home() {
     
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi || poi.ownerId !== PLAYER_ID) {
+    if (!poi || poi.ownerId !== playerId) {
         React.startTransition(() => {
             toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
         });
@@ -3576,6 +3576,7 @@ export default function Home() {
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
     setAiConfig(newConfig);
+    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
     React.startTransition(() => {
         toast({ title: "Configuration IA mise à jour" });
     });
@@ -3701,12 +3702,12 @@ export default function Home() {
   }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
 
 
-  const handleAddComicPage = () => {
+  const handleAddComicPage = React.useCallback(() => {
     setComicDraft(prev => [...prev, createNewComicPage()]);
     setCurrentComicPageIndex(comicDraft.length);
-  };
+  }, [comicDraft.length]);
 
-  const handleAddComicPanel = () => {
+  const handleAddComicPanel = React.useCallback(() => {
     if (comicDraft.length === 0) {
         handleAddComicPage();
     } else {
@@ -3714,23 +3715,36 @@ export default function Home() {
             index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
         ));
     }
-  };
+  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
 
-  const handleRemoveLastComicPanel = () => {
+  const handleRemoveLastComicPanel = React.useCallback(() => {
     if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
         setComicDraft(prev => prev.map((page, index) => 
             index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
         ));
     }
-  };
+  }, [comicDraft, currentComicPageIndex]);
 
-    
-  const handleAddToComicPage = (dataUrl: string) => {
+  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setComicDraft(prev => prev.map((p, i) =>
+            i === pageIndex
+            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
+            : p
+        ));
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
     setComicDraft(prev => {
         const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
         let pageUpdated = false;
+        let targetPageIndex = currentComicPageIndex;
 
-        for (let i = currentComicPageIndex; i < draft.length; i++) {
+        for (let i = targetPageIndex; i < draft.length; i++) {
             const page = draft[i];
             const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
             if (firstEmptyPanelIndex !== -1) {
@@ -3757,7 +3771,7 @@ export default function Home() {
         
         return draft;
     });
-  };
+  }, [currentComicPageIndex, toast]);
 
   const handleDownloadComicDraft = React.useCallback(() => {
     if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
@@ -3868,26 +3882,15 @@ export default function Home() {
       onMapImageUpload={handleMapImageUpload}
       onMapImageUrlChange={handleMapImageUrlChange}
       onAddPoiToMap={handleAddPoiToMap}
-      onUploadToComicPanel={(pageIndex, panelIndex, file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const url = e.target?.result as string;
-            setComicDraft(prev => prev.map((p, i) => 
-                i === pageIndex 
-                ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
-                : p
-            ));
-        };
-        reader.readAsDataURL(file);
-      }}
       isLoading={isUiLocked}
       aiConfig={aiConfig}
-      onConfigChange={handleAiConfigChange}
+      onAiConfigChange={handleAiConfigChange}
       comicDraft={comicDraft}
       onDownloadComicDraft={handleDownloadComicDraft}
       onAddComicPage={handleAddComicPage}
       onAddComicPanel={handleAddComicPanel}
       onRemoveLastComicPanel={handleRemoveLastComicPanel}
+      onUploadToComicPanel={handleUploadToComicPanel}
       currentComicPageIndex={currentComicPageIndex}
       onComicPageChange={setCurrentComicPageIndex}
       onAddToComicPage={handleAddToComicPage}
