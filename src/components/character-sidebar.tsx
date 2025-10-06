@@ -186,7 +186,7 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
 
 
 export function CharacterSidebar({
-    characters,
+    characters: initialCharacters,
     onCharacterUpdate,
     onSaveNewCharacter,
     onAddStagedCharacter,
@@ -205,6 +205,22 @@ export function CharacterSidebar({
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
+
+  // Internal state to manage characters being edited
+  const [characters, setCharacters] = React.useState(initialCharacters);
+
+  // Sync with external changes
+  React.useEffect(() => {
+    setCharacters(initialCharacters);
+  }, [initialCharacters]);
+
+
+  const handleLocalUpdate = (updatedCharacter: Character) => {
+      setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
+      // Propagate the change upwards
+      onCharacterUpdate(updatedCharacter);
+  };
+
 
   React.useEffect(() => {
     setIsClient(true);
@@ -255,7 +271,7 @@ export function CharacterSidebar({
     reader.onloadend = () => {
         const character = characters.find(c => c.id === characterId);
         if (character) {
-            onCharacterUpdate({ ...character, portraitUrl: reader.result as string });
+            handleLocalUpdate({ ...character, portraitUrl: reader.result as string });
             toast({ title: "Portrait Téléchargé", description: `Le portrait de ${character.name} a été mis à jour.` });
         }
     };
@@ -289,7 +305,7 @@ export function CharacterSidebar({
             } else if ((field === 'currentExp' || field === 'expToNextLevel') && typeof processedValue === 'number') {
                 processedValue = Math.max(0, processedValue);
             }
-            onCharacterUpdate({ ...character, [field]: processedValue });
+            handleLocalUpdate({ ...character, [field]: processedValue });
         }
    };
 
@@ -319,7 +335,7 @@ export function CharacterSidebar({
         if (character && character[field]) {
             const updatedArray = [...character[field]!];
             updatedArray[index] = value;
-            onCharacterUpdate({ ...character, [field]: updatedArray });
+            handleLocalUpdate({ ...character, [field]: updatedArray });
         }
     };
 
@@ -327,7 +343,7 @@ export function CharacterSidebar({
         const character = characters.find(c => c.id === charId);
         if (character) {
             const currentArray = character[field] || [];
-            onCharacterUpdate({ ...character, [field]: [...currentArray, ""] });
+            handleLocalUpdate({ ...character, [field]: [...currentArray, ""] });
         }
     };
 
@@ -336,7 +352,7 @@ export function CharacterSidebar({
          if (character && character[field]) {
             const updatedArray = [...character[field]!];
             updatedArray.splice(index, 1);
-            onCharacterUpdate({ ...character, [field]: updatedArray });
+            handleLocalUpdate({ ...character, [field]: updatedArray });
         }
     };
 
@@ -369,7 +385,7 @@ export function CharacterSidebar({
 
         try {
             const result = await describeAppearance({ portraitUrl: char.portraitUrl });
-            onCharacterUpdate({
+            handleLocalUpdate({
                 ...char,
                 appearanceDescription: result.description,
                 lastAppearanceUpdate: Date.now(),
@@ -457,7 +473,7 @@ export function CharacterSidebar({
                         handleArrayFieldChange={handleArrayFieldChange}
                         addArrayFieldItem={addArrayFieldItem}
                         removeArrayFieldItem={removeArrayFieldItem}
-                        onCharacterUpdate={onCharacterUpdate}
+                        onCharacterUpdate={handleLocalUpdate}
                         getAffinityLabel={getAffinityLabel}
                         rpgMode={rpgMode}
                         relationsMode={relationsMode}
@@ -782,7 +798,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
                                 </TooltipTrigger>
                                 <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
                             </Tooltip>
@@ -1133,5 +1149,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
 
     
