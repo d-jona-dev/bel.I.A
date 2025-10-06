@@ -57,6 +57,7 @@ export type FormCharacterDefinition = {
   factionColor?: string;
   affinity?: number;
   relations?: Record<string, string>;
+  roleInStory?: string;
 };
 
 
@@ -94,6 +95,7 @@ const characterSchema = z.object({
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
   relations: z.record(z.string()).optional(),
+  roleInStory: z.string().optional(),
 }).refine(data => {
     // Si c'est un placeholder, seul le nom est requis
     if (data.isPlaceholder) return !!data.name;
@@ -256,8 +258,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     // Item States
     const [consumables, setConsumables] = React.useState<BaseItem[]>([]);
     const [weapons, setWeapons] = React.useState<BaseItem[]>([]);
-    const [armors, setArmors] = React.useState<BaseItem[]>([]);
-    const [jewelry, setJewelry] = React.useState<BaseItem[]>([]);
+    const [armors, setAllArmors] = React.useState<BaseItem[]>([]);
+    const [jewelry, setAllJewelry] = React.useState<BaseItem[]>([]);
 
     // Familiar Component States
     const [physicalFamiliarItems, setPhysicalFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
@@ -321,8 +323,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             
             setConsumables(loadData('custom_consumables', BASE_CONSUMABLES));
             setWeapons(loadData('custom_weapons', BASE_WEAPONS));
-            setArmors(loadData('custom_armors', BASE_ARMORS));
-            setJewelry(loadData('custom_jewelry', BASE_JEWELRY));
+            setAllArmors(loadData('custom_armors', BASE_ARMORS));
+            setAllJewelry(loadData('custom_jewelry', BASE_JEWELRY));
             setPhysicalFamiliarItems(loadData('custom_familiar_physical', BASE_FAMILIAR_PHYSICAL_ITEMS));
             setCreatureFamiliarItems(loadData('custom_familiar_creatures', BASE_FAMILIAR_CREATURES));
             setDescriptorFamiliarItems(loadData('custom_familiar_descriptors', BASE_FAMILIAR_DESCRIPTORS));
@@ -434,8 +436,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         const stateSetterMap = {
             consumable: setConsumables,
             weapon: setWeapons,
-            armor: setArmors,
-            jewelry: setJewelry,
+            armor: setAllArmors,
+            jewelry: setAllJewelry,
         };
         
         const key = keyMap[type as keyof typeof keyMap];
@@ -674,7 +676,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 en: "User is walking down the halls of 'hight scoole of futur' and discovers his girlfriend talking with his best friend, they seem very close, too close..."
             },
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" } },
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" }, roleInStory: "Petite amie" },
                 { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
             rpgMode: true,
@@ -1531,9 +1533,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         name={`characters.${index}.name`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-primary flex items-center gap-2"><UserCog className="h-4 w-4"/>Rôle du personnage (Emplacement)</FormLabel>
+                                                <FormLabel className="text-primary flex items-center gap-2"><UserCog className="h-4 w-4"/>Rôle Conseillé</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Ex: Le/la partenaire romantique, le rival..." {...field} className="bg-background border-primary"/>
+                                                    <Input placeholder="Ex: Partenaire romantique, rival..." {...field} className="bg-background border-primary"/>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -2017,8 +2019,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
                                         id={`${charId}-relations-${otherChar.id}`}
                                         {...field}
                                         value={field.value || ''}
-                                        className="h-8 text-sm flex-1 bg-background border"
                                         placeholder={`Relation avec ${otherChar.name}`}
+                                        className="h-8 text-sm flex-1 bg-background border"
                                         disabled={disabled}
                                     />
                                 )}
@@ -2039,5 +2041,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 
 
 
+
+    
 
     

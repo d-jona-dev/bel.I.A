@@ -226,7 +226,7 @@ export default function HistoiresPage() {
     if (!assigningSlotsForStory) return;
 
     const placeholderChars = assigningSlotsForStory.adventureState.characters.filter(c => c.isPlaceholder);
-    const allSlotsFilled = placeholderChars.every(p => slotAssignments[p.id]);
+    const allSlotsFilled = placeholderChars.every(p => slotAssignments[p.id!]);
 
     if (!allSlotsFilled) {
         toast({ title: "Erreur", description: "Veuillez assigner un personnage à chaque rôle.", variant: "destructive" });
@@ -238,16 +238,19 @@ export default function HistoiresPage() {
 
     temporaryAdventureState.characters = temporaryAdventureState.characters.map(char => {
         if (char.isPlaceholder) {
-            const assignedCharId = slotAssignments[char.id];
+            const assignedCharId = slotAssignments[char.id!];
             const fullCharData = savedCharacters.find(sc => sc.id === assignedCharId);
             if (fullCharData) {
-                // Smart merge: use global character as base, but preserve specific slot relations.
+                // Create a fresh copy of the global character
+                const charCopy = JSON.parse(JSON.stringify(fullCharData));
+                
+                // Return a new object with the correct structure, but without merging relations
                 return { 
-                    ...fullCharData, 
+                    ...charCopy, 
                     id: char.id, 
                     isPlaceholder: false,
-                    // Keep the slot's original relations and merge the global character's relations underneath
-                    relations: { ...(fullCharData.relations || {}), ...(char.relations || {}) },
+                    // Keep the global character's relations as is
+                    relations: charCopy.relations || {},
                     locationId: temporaryAdventureState.adventureSettings.playerLocationId || null,
                     // Store the placeholder's name as the 'role'
                     roleInStory: char.name, 
@@ -462,12 +465,12 @@ export default function HistoiresPage() {
               name: c.name, 
               details: c.details,
               isPlaceholder: c.isPlaceholder,
+              roleInStory: c.roleInStory,
               portraitUrl: c.portraitUrl || null,
               faceSwapEnabled: c.faceSwapEnabled,
               factionColor: c.factionColor,
               affinity: c.affinity,
               relations: c.relations,
-              roleInStory: c.roleInStory,
           })),
           rpgMode: settings.rpgMode,
           relationsMode: settings.relationsMode,
@@ -734,7 +737,7 @@ export default function HistoiresPage() {
                 <div className="space-y-4 py-4">
                     {(assigningSlotsForStory?.adventureState.characters || []).filter(c => c.isPlaceholder).map(slot => (
                         <div key={slot.id} className="space-y-2">
-                             <Label>Rôle : <span className="font-semibold">{slot.name}</span></Label>
+                             <Label>Rôle conseillé : <span className="font-semibold">{slot.name}</span></Label>
                             <Select onValueChange={(charId) => setSlotAssignments(prev => ({...prev, [slot.id!]: charId}))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Choisir un personnage..." />
@@ -769,5 +772,7 @@ export default function HistoiresPage() {
 
 
 
+
+    
 
     
