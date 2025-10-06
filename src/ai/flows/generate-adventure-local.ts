@@ -31,7 +31,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
 
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
 
-    let mainInstruction = `You are an interactive fiction engine. Your task is to generate the continuation of the story based on the provided context. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object that adheres to the following Zod schema. Do NOT provide any text outside the JSON object. Do not wrap the JSON in quotes or markdown backticks. CRITICAL RULE: If the user action is about summoning, using, or interacting with a FAMILIAR (compagnon, animal, familier), you MUST NOT list it in the \`newCharacters\` array. The game system handles familiar creation and management internally.`;
+    let mainInstruction = `You are an interactive fiction engine. Your task is to generate the continuation of the story based on the provided context. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object that adheres to the following Zod schema. Do NOT provide any text outside the JSON object. Do not wrap the JSON in quotes or markdown backticks. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
     
     if (input.comicModeActive) {
         mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify the main characters speaking or in focus (up to 3) and put their names in the \`speakingCharacterNames\` array.`;
@@ -43,7 +43,6 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
     "speakingCharacterNames": ["Rina", "Kentaro"],
     "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
-    "newCharacters": [],
     "characterUpdates": [
         { "characterName": "Rina", "historyEntry": "Était inquiète de l'absence du joueur." },
         { "characterName": "Kentaro", "historyEntry": "A abordé Rina pour lui demander si tout allait bien." }
@@ -68,7 +67,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
 export async function generateAdventureWithLocalLlm(input: GenerateAdventureInput): Promise<GenerateAdventureFlowOutput> {
     const { aiConfig } = input;
 
-    if (!aiConfig?.local?.model) {
+    if (!aiConfig?.llm.local?.model) {
         return { error: "Nom du modèle local manquant.", narrative: "" };
     }
 
@@ -81,7 +80,7 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: aiConfig.local.model,
+                model: aiConfig.llm.local.model,
                 prompt: prompt,
                 json_schema: GenerateAdventureOutputSchema.shape, // Pass the schema shape
             }),
@@ -128,3 +127,5 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
         return { error: `Erreur inattendue lors de l'appel au serveur local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    

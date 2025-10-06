@@ -24,7 +24,6 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     narrative: errorMsg ? "" : "An error occurred, narrative could not be generated.",
     sceneDescriptionForImage: undefined,
     speakingCharacterNames: [],
-    newCharacters: [],
     characterUpdates: [],
     affinityUpdates: [],
     relationUpdates: [],
@@ -326,27 +325,26 @@ Tasks:
     *   **If NOT in combat AND rpgModeActive is true:**
         *   **Player Buying/Selling:** If userAction indicates buying or selling, simply narrate the successful transaction. The game system handles all inventory and gold changes. Do NOT set \`currencyGained\` or \`itemsObtained\`.
 
-2.  **Identify New Characters (all text in {{currentLanguage}}):** List any newly mentioned characters in \`newCharacters\`. Include name, details, portraitUrl, biographyNotes, and \`initialHistoryEntry\`. If RPG mode, set \`isHostile\` and base stats. If bought, set \`isAlly: true\`. If relations mode, set \`initialRelations\`.
+2.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe setting, mood, and characters by appearance, not name.
 
-3.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe setting, mood, and characters by appearance, not name.
-
-4.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in \`characterUpdates\`. Format MUST be \`[{"characterName": "Rina", "historyEntry": "A semblé troublée..."}]\`.
+3.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in \`characterUpdates\`. Format MUST be \`[{"characterName": "Rina", "historyEntry": "A semblé troublée..."}]\`.
 
 {{#if relationsModeActive}}
-5.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
+4.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 
-6.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
+5.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 {{/if}}
 
-7.  **Territory Conquest/Loss (poiOwnershipChanges):** This is now handled internally by the game. DO NOT populate \`poiOwnershipChanges\`.
+6.  **Territory Conquest/Loss (poiOwnershipChanges):** This is now handled internally by the game. DO NOT populate \`poiOwnershipChanges\`.
 
 {{#if timeManagement.enabled}}
-8.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
+7.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
 {{/if}}
 
-9.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment. If the focus is general narration, omit this field or provide an empty array.
+8.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment. If the focus is general narration, omit this field or provide an empty array.
 
 **VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
+**VERY IMPORTANT: You are NO LONGER responsible for detecting new characters. This is handled by a separate user action.**
 
 Narrative Continuation (in {{currentLanguage}}):
 [Generate ONLY the narrative text here. Do NOT include any JSON, code, or non-narrative text. Do NOT describe items or gold from combat loot here; a game client displays loot separately from the structured data.]
@@ -381,3 +379,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    

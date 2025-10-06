@@ -1,4 +1,5 @@
 
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -704,10 +705,6 @@ export const GenerateAdventureOutputSchema = z.object({
     .string()
     .optional()
     .describe('A concise visual description of the current scene, suitable for an image generation prompt. Describe characters using their physical appearance, not their names. Include key actions or mood if relevant.'),
-  newCharacters: z
-    .array(NewCharacterSchema)
-    .optional()
-    .describe('List of characters newly introduced in this narrative segment. All textual fields (details, history, relations) MUST be in the specified language. If rpgModeActive, include combat stats for new hostiles.'),
   characterUpdates: z
     .array(CharacterUpdateSchema)
     .optional()
@@ -740,3 +737,5 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+
+    
