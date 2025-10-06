@@ -3840,6 +3840,7 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
+      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
       onSaveToLibrary={onSaveToLibrary}
       merchantInventory={merchantInventory}
