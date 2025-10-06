@@ -46,6 +46,7 @@ const BASE_ATTRIBUTE_VALUE = 8;
 const INITIAL_CREATION_ATTRIBUTE_POINTS_PLAYER = 10; // For player
 const INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT = 5; // Default for NPCs
 const ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM = 5;
+const BASE_ATTRIBUTE_VALUE_FORM = 8; // Correction de l'erreur
 
 // Calculates base stats derived from attributes, before equipment
 const calculateBaseDerivedStats = (settings: Partial<AdventureSettings & Character>) => {
@@ -3907,5 +3908,3 @@ export default function Home() {
     </>
   );
 }
-
-    
