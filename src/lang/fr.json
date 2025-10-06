@@ -2,5 +2,7 @@
 {
     "addCharacterTooltip": "Ajouter un personnage",
     "addPlaceholderTooltip": "Ajouter un emplacement de personnage",
-    "visionConsent": "Je comprends que l'image sera envoyée à un modèle d'IA pour analyse et pourrait ne pas rester privée. N'utilisez pas d'images personnelles ou sensibles."
+    "visionConsent": "Je comprends que l'image sera envoyée à un modèle d'IA pour analyse et pourrait ne pas rester privée. N'utilisez pas d'images personnelles ou sensibles.",
+    "memory": "Mémoire",
+    "addMemory": "Ajouter un souvenir"
 }

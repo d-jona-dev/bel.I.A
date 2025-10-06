@@ -190,6 +190,7 @@ export interface Character {
   appearanceDescription?: string; // NEW FIELD
   lastAppearanceUpdate?: number; // NEW FIELD (Timestamp)
   history?: string[];
+  memory?: string[]; // NEW MEMORY FIELD
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
   faceSwapEnabled?: boolean; // Added for FaceSwap feature
