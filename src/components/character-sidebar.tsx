@@ -326,13 +326,8 @@ export function CharacterSidebar({
     const addArrayFieldItem = (charId: string, field: 'history' | 'spells') => {
         const character = characters.find(c => c.id === charId);
         if (character) {
-             let promptMessage = `Ajouter un nouvel élément à ${field} :`;
-             if (field === 'history') promptMessage = "Ajouter une entrée à l'historique (action, citation...):"
-             const value = prompt(promptMessage);
-             if (value) {
-                 const currentArray = character[field] || [];
-                 onCharacterUpdate({ ...character, [field]: [...currentArray, value] });
-             }
+            const currentArray = character[field] || [];
+            onCharacterUpdate({ ...character, [field]: [...currentArray, ""] });
         }
     };
 
@@ -702,7 +697,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         id={`${char.id}-roleInStory`}
                         value={char.roleInStory}
                         onChange={(e) => handleFieldChange(char.id, 'roleInStory', e.target.value)}
-                        placeholder="Ex: Le/la partenaire romantique..."
+                        placeholder="Ex: Le/la partenaire romantique, rival..."
                     />
                 </AccordionContent>
             </AccordionItem>
@@ -1138,3 +1133,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+    
