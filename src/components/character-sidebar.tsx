@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -149,7 +148,19 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => (
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+   
+    const handleAddItem = () => {
+        const character = { id: charId, [field]: data || [] };
+        const updatedCharacter = {
+            ...character,
+            [field]: [...(character[field] || []), ""]
+        };
+        // This is a stand-in. The parent component's `onCharacterUpdate` needs to handle the full character object.
+        console.log("Adding item, need parent to update:", updatedCharacter);
+    };
+
+    return (
    <div className="space-y-2">
        <Label className="flex items-center gap-1"><Icon className="h-4 w-4"/> {title}</Label>
        <Card className="bg-muted/30 border">
@@ -183,7 +194,8 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
            </CardContent>
        </Card>
    </div>
-);
+    )
+};
 
 
 export function CharacterSidebar({
@@ -1052,6 +1064,18 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                     rows={5}
                     placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
                 />
+                 <div className="space-y-2">
+                    <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
+                    <Textarea
+                        id={`${char.id}-memory`}
+                        value={char.memory || ""}
+                        onChange={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
+                        onBlur={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
+                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
+                        rows={5}
+                        className="text-sm bg-background border"
+                    />
+                </div>
                 
                 {relationsMode && (
                     <>
@@ -1133,18 +1157,20 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                     </>
                 )}
                 <Separator />
-                 <EditableField
-                    label={memoryLabel}
-                    id={`${char.id}-memory`}
-                    value={char.memory || ""}
-                    onChange={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
-                    onBlur={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
-                    rows={5}
-                    placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
+                <ArrayEditableCard
+                    charId={char.id}
+                    field="history"
+                    title="Historique Narratif"
+                    icon={History}
+                    data={char.history}
+                    addLabel="Ajouter Entrée Historique"
+                    onUpdate={handleArrayFieldChange}
+                    onRemove={removeArrayFieldItem}
+                    onAdd={addArrayFieldItem}
+                    currentLanguage={currentLanguage}
                 />
                 
             </AccordionContent>
         </AccordionItem>
     );
 });
-
