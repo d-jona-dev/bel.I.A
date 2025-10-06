@@ -48,7 +48,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { Checkbox } from "@/components/ui/checkbox";
 import { i18n, type Language } from "@/lib/i18n";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, Controller } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
@@ -150,7 +150,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
 
     const handleAddItem = () => {
         onAdd(charId, field);
@@ -433,6 +433,7 @@ export function CharacterSidebar({
                         imageLoadingStates={imageLoadingStates}
                         setImageLoadingStates={setImageLoadingStates}
                         describingAppearanceStates={describingAppearanceStates}
+                        setDescribingAppearanceStates={setDescribingAppearanceStates}
                         onSaveNewCharacter={onSaveNewCharacter}
                         generateImageAction={generateImageAction}
                         handleUploadPortrait={handleUploadPortrait}
@@ -468,6 +469,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     imageLoadingStates,
     setImageLoadingStates,
     describingAppearanceStates,
+    setDescribingAppearanceStates,
     onSaveNewCharacter,
     generateImageAction,
     handleUploadPortrait,
@@ -494,6 +496,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     imageLoadingStates: Record<string, boolean>;
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     describingAppearanceStates: Record<string, boolean>;
+    setDescribingAppearanceStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     onSaveNewCharacter: (character: Character) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -862,20 +865,33 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </div>
 
                     <Separator />
-                    <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
+                     <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
                         <div className="space-y-0.5">
                             <Label htmlFor={`${char.id}-faceSwap`} className="flex items-center gap-2"><Replace className="h-4 w-4"/> Activer FaceSwap</Label>
                             <UICardDescription className="text-xs">
                             Tente d'utiliser ce portrait dans les scènes générées.
                             </UICardDescription>
                         </div>
-                        <Switch
-                            id={`${char.id}-faceSwap`}
-                            checked={char.faceSwapEnabled ?? false}
-                            onCheckedChange={(checked) => handleFieldChange(char.id, 'faceSwapEnabled', checked)}
+                        <FormField
+                            control={formMethods.control}
+                            name="faceSwapEnabled"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormControl>
+                                    <Switch
+                                    checked={field.value}
+                                    onCheckedChange={(checked) => {
+                                        field.onChange(checked);
+                                        handleFieldChange(char.id, 'faceSwapEnabled', checked);
+                                    }}
+                                    id={`${char.id}-faceSwap`}
+                                    />
+                                </FormControl>
+                                </FormItem>
+                            )}
                         />
                     </div>
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                         <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
                          <FormField
                             control={formMethods.control}
@@ -927,6 +943,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             </div>
                         </div>
                     </div>
+
 
                     {strategyMode && (
                         <div className="space-y-1">
@@ -1067,7 +1084,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                         rows={4}
                     />
-                     <FormField
+                    <FormField
                         control={formMethods.control}
                         name="biographyNotes"
                         render={({ field }) => (
@@ -1204,5 +1221,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </FormProvider>
     );
 });
-
-    
