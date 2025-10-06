@@ -11,10 +11,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon, Wand2 } from 'lucide-react'; // Added Download and fixed FontIcon
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, Zap as ZapIcon, BarChart2 as BarChart2Icon, Briefcase, Package, PlayCircle, Trash2 as Trash2Icon, Coins, ImageIcon, Dices, PackageOpen, Shirt, ShieldIcon as ArmorIcon, Sword, Gem, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, BookImage, RefreshCw, Download, Gamepad2, Link as LinkIcon, History as HistoryIcon, Map, Users as UsersIcon, MapPin, Type as FontIcon, Wand2, UserPlus } from 'lucide-react'; // Added Download and fixed FontIcon
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage, SellingItem } from "@/types";
-import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure-genkit";
+import type { Character, AdventureSettings, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, Familiar, AiConfig, ComicPage, SellingItem, NewCharacterSchema } from "@/types";
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewFamiliarSchema, CombatUpdatesSchema } from "@/ai/flows/generate-adventure-genkit";
 import { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -68,6 +68,7 @@ interface PageStructureProps {
   handleToggleStrategyMode: () => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
+  onMaterializeCharacter: (context: string) => Promise<void>;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
   handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
@@ -139,7 +140,7 @@ interface PageStructureProps {
   setComicTitle: (title: string) => void;
   comicCoverUrl: string | null;
   isGeneratingCover: boolean;
-  handleGenerateCover: () => void;
+  onGenerateCover: () => void;
   onSaveToLibrary: () => void;
   merchantInventory: SellingItem[];
   shoppingCart: SellingItem[];
@@ -167,6 +168,7 @@ export function PageStructure({
   onNarrativeChange,
   handleCharacterUpdate,
   handleNewCharacters,
+  onMaterializeCharacter,
   handleCharacterHistoryUpdate,
   handleAffinityUpdates,
   handleRelationUpdate,
@@ -238,7 +240,7 @@ export function PageStructure({
   setComicTitle,
   comicCoverUrl,
   isGeneratingCover,
-  handleGenerateCover,
+  onGenerateCover,
   onSaveToLibrary,
   merchantInventory,
   shoppingCart,
@@ -461,6 +463,7 @@ export function PageStructure({
                     onEditMessage={handleEditMessage}
                     onRegenerateLastResponse={handleRegenerateLastResponse}
                     onUndoLastMessage={handleUndoLastMessage}
+                    onMaterializeCharacter={onMaterializeCharacter}
                     activeCombat={activeCombat}
                     onCombatUpdates={onCombatUpdates}
                     onRestartAdventure={onRestartAdventure}
@@ -495,7 +498,7 @@ export function PageStructure({
                     setComicTitle={setComicTitle}
                     comicCoverUrl={comicCoverUrl}
                     isGeneratingCover={isGeneratingCover}
-                    handleGenerateCover={handleGenerateCover}
+                    onGenerateCover={onGenerateCover}
                     onSaveToLibrary={onSaveToLibrary}
                     merchantInventory={merchantInventory}
                     shoppingCart={shoppingCart}

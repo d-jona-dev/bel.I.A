@@ -2274,8 +2274,8 @@ export default function Home() {
             manaPoints: globalCharToAdd.manaPoints ?? globalCharToAdd.maxManaPoints ?? 0, maxManaPoints: globalCharToAdd.maxManaPoints ?? 0,
             armorClass: globalCharToAdd.armorClass ?? 10, attackBonus: globalCharToAdd.attackBonus ?? 0, damageBonus: globalCharToAdd.damageBonus ?? "1",
             isHostile: globalCharToAdd.isHostile ?? false,
-            strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE, dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE, constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE,
-            intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE, wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE, charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE,
+            strength: globalCharToAdd.strength ?? BASE_ATTRIBUTE_VALUE_FORM, dexterity: globalCharToAdd.dexterity ?? BASE_ATTRIBUTE_VALUE_FORM, constitution: globalCharToAdd.constitution ?? BASE_ATTRIBUTE_VALUE_FORM,
+            intelligence: globalCharToAdd.intelligence ?? BASE_ATTRIBUTE_VALUE_FORM, wisdom: globalCharToAdd.wisdom ?? BASE_ATTRIBUTE_VALUE_FORM, charisma: globalCharToAdd.charisma ?? BASE_ATTRIBUTE_VALUE_FORM,
 
         } : {
             level: undefined, characterClass: undefined, hitPoints: undefined, maxHitPoints: undefined, manaPoints: undefined, maxManaPoints: undefined,
@@ -3445,9 +3445,9 @@ export default function Home() {
     });
   }, [adventureSettings, toast]);
     
-    // This is the key change. We derive the form values from the main state.
-    // This makes the main state the single source of truth.
-    const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
+  // This is the key change. We derive the form values from the main state.
+  // This makes the main state the single source of truth.
+  const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
         ...adventureSettings,
         characters: characters.map(c => ({ 
             id: c.id, 
@@ -3686,7 +3686,11 @@ export default function Home() {
         setMerchantInventory([]);
         setShoppingCart([]);
     };
-    const handleOnGenerateCover = () => {};
+
+    const handleNewCharacters = (newChars: NewCharacterSchema[]) => {
+      // This function is no longer called by the AI, but we keep it for potential future use or manual triggering.
+      console.log("handleNewCharacters called with:", newChars);
+    };
 
   return (
     <>
@@ -3705,6 +3709,7 @@ export default function Home() {
       handleToggleStrategyMode={handleToggleStrategyMode}
       onNarrativeChange={handleNarrativeUpdate}
       handleCharacterUpdate={handleCharacterUpdate}
+      handleNewCharacters={handleNewCharacters}
       onMaterializeCharacter={handleMaterializeCharacter}
       handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
       handleAffinityUpdates={handleAffinityUpdates}
@@ -3795,7 +3800,8 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      handleGenerateCover={handleGenerateCover}
+      isGeneratingCover={isGeneratingCover}
+      onGenerateCover={handleGenerateCover}
       onSaveToLibrary={onSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
