@@ -7,7 +7,7 @@ import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, Pla
 import { PageStructure } from "./page.structure";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureFlowOutput, GenerateAdventureOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import { translateText } from "@/ai/flows/translate-text";
@@ -16,6 +16,8 @@ import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput, SuggestQuestHookOutput } from "@/ai/flows/suggest-quest-hook";
 import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
+import { materializeCharacter } from "@/ai/flows/materialize-character";
+import type { MaterializeCharacterInput, MaterializeCharacterOutput } from "@/ai/flows/materialize-character";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
@@ -569,108 +571,42 @@ export default function Home() {
             };
         });
     }, []);
+    
+    // UPDATED to call the new flow
+    const handleMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
+        setIsLoading(true);
+        toast({ title: "Analyse du personnage...", description: "L'IA identifie et crée la fiche du personnage." });
 
-    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
-        if (!newChars || newChars.length === 0) return;
-    
-        const toastsToShow: Array<Parameters<typeof toast>[0]> = [];
-    
-        setAdventureSettings(currentSettings => {
-            const defaultRelationDesc = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
-    
-            const newCharactersToAdd: Character[] = newChars.map(nc => {
-                const newId = `${nc.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-                
-                let initialRelations: Record<string, string> = {};
-                if (currentSettings.relationsMode) {
-                    initialRelations[PLAYER_ID] = defaultRelationDesc;
-                    if (nc.initialRelations) {
-                        nc.initialRelations.forEach(rel => {
-                            const targetChar = characters.find(c => c.name.toLowerCase() === rel.targetName.toLowerCase());
-                            if (targetChar) {
-                                initialRelations[targetChar.id] = rel.description;
-                            } else if (rel.targetName.toLowerCase() === (currentSettings.playerName || "player").toLowerCase()) {
-                                initialRelations[PLAYER_ID] = rel.description;
-                            }
-                        });
-                    }
-                }
-                
-                const npcLevel = nc.level ?? 1;
-                const npcBaseDerivedStats = calculateBaseDerivedStats({
-                    level: npcLevel,
-                    characterClass: nc.characterClass || "PNJ",
-                    strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                    intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-                });
-    
-                return {
-                    id: newId,
-                    name: nc.name,
-                    details: nc.details || (currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
-                    biographyNotes: nc.biographyNotes || (currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
-                    history: nc.initialHistoryEntry ? [nc.initialHistoryEntry] : [],
-                    portraitUrl: null,
-                    faceSwapEnabled: false,
-                    affinity: currentSettings.relationsMode ? 50 : undefined,
-                    relations: currentSettings.relationsMode ? initialRelations : undefined,
-                    isAlly: nc.isAlly ?? false,
-                    initialAttributePoints: currentSettings.rpgMode ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : undefined,
-                    currentExp: currentSettings.rpgMode ? 0 : undefined,
-                    expToNextLevel: currentSettings.rpgMode ? Math.floor(100 * Math.pow(1.5, npcLevel - 1)) : undefined,
-                    locationId: currentSettings.playerLocationId,
-                    ...(currentSettings.rpgMode ? {
-                        level: npcLevel,
-                        characterClass: nc.characterClass || "PNJ",
-                        strength: BASE_ATTRIBUTE_VALUE, dexterity: BASE_ATTRIBUTE_VALUE, constitution: BASE_ATTRIBUTE_VALUE,
-                        intelligence: BASE_ATTRIBUTE_VALUE, wisdom: BASE_ATTRIBUTE_VALUE, charisma: BASE_ATTRIBUTE_VALUE,
-                        hitPoints: nc.hitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                        maxHitPoints: nc.maxHitPoints ?? npcBaseDerivedStats.maxHitPoints,
-                        manaPoints: nc.manaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                        maxManaPoints: nc.maxManaPoints ?? npcBaseDerivedStats.maxManaPoints,
-                        armorClass: nc.armorClass ?? npcBaseDerivedStats.armorClass,
-                        attackBonus: nc.attackBonus ?? npcBaseDerivedStats.attackBonus,
-                        damageBonus: nc.damageBonus ?? npcBaseDerivedStats.damageBonus,
-                        isHostile: nc.isHostile ?? false,
-                    } : {})
-                };
-            });
-    
-            setCharacters(currentChars => {
-                const updatedChars = [...currentChars];
-                newCharactersToAdd.forEach(newChar => {
-                    if (!updatedChars.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase())) {
-                        updatedChars.push(newChar);
-                        if (currentSettings.relationsMode) {
-                            for (let i = 0; i < updatedChars.length - 1; i++) {
-                                if (!updatedChars[i].relations) updatedChars[i].relations = {};
-                                if (!updatedChars[i].relations![newChar.id]) {
-                                    updatedChars[i].relations![newChar.id] = defaultRelationDesc;
-                                }
-                                if (!newChar.relations) newChar.relations = {};
-                                if (!newChar.relations![updatedChars[i].id]) {
-                                    newChar.relations![updatedChars[i].id] = defaultRelationDesc;
-                                }
-                            }
-                        }
-                        toastsToShow.push({
-                            title: "Nouveau Personnage Rencontré!",
-                            description: `${newChar.name} a été ajouté à votre aventure. Vous pouvez voir ses détails dans le panneau de configuration.`
-                        });
-                    }
-                });
-                return updatedChars;
-            });
-    
-            return currentSettings;
-        });
-    
-        React.startTransition(() => {
-            toastsToShow.forEach(toastArgs => {
-                toast(toastArgs);
-            });
-        });
-    }, [currentLanguage, characters, toast]);
+        const existingCharacterNames = characters.map(c => c.name);
+
+        try {
+            const input: MaterializeCharacterInput = {
+                narrativeContext: narrativeContext,
+                existingCharacters: existingCharacterNames,
+                rpgMode: adventureSettings.rpgMode,
+                currentLanguage,
+            };
+
+            const newCharData = await materializeCharacter(input);
+            
+            // This is the new character creation logic, adapted for a single character
+            const newCharacter = {
+                ...newCharData,
+                id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
+                locationId: adventureSettings.playerLocationId,
+            };
+            
+            setCharacters(prev => [...prev, newCharacter]);
+
+            toast({ title: "Personnage Ajouté!", description: `${newCharData.name} a été ajouté à la liste des personnages.` });
+
+        } catch (error) {
+            console.error("Error materializing character:", error);
+            toast({ title: "Erreur de Création", description: `Impossible de créer le personnage: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [characters, adventureSettings.rpgMode, adventureSettings.playerLocationId, currentLanguage, toast]);
 
 
     const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
@@ -1077,7 +1013,6 @@ export default function Home() {
                                     
                     handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot, undefined, undefined, result.speakingCharacterNames);
     
-                    if (result.newCharacters) handleNewCharacters(result.newCharacters);
                     if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
                     if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                     
@@ -1117,7 +1052,7 @@ export default function Home() {
         }
     }, [
         currentLanguage, narrativeMessages, toast,
-        handleNewFamiliar, handleNarrativeUpdate, handleNewCharacters,
+        handleNewFamiliar, handleNarrativeUpdate, 
         handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
         handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
@@ -1305,7 +1240,7 @@ export default function Home() {
                     locationId: adventureSettings.playerLocationId,
                 };
             });
-            handleNewCharacters(newCharactersToAdd);
+            //handleNewCharacters(newCharactersToAdd);
         }
 
         // Update player gold
@@ -1320,7 +1255,7 @@ export default function Home() {
         
         setShoppingCart([]);
         setMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, handleNewCharacters, setAdventureSettings, setShoppingCart, setMerchantInventory]);
+    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory]);
    
   const loadAdventureState = React.useCallback(async (stateToLoad: SaveData) => {
     if (!stateToLoad.adventureSettings || !stateToLoad.characters || !stateToLoad.narrative || !Array.isArray(stateToLoad.narrative)) {
@@ -2229,7 +2164,6 @@ export default function Home() {
                     return newNarrative;
                 });
 
-                if (result.newCharacters) handleNewCharacters(result.newCharacters);
                  if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
                 if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
@@ -2271,7 +2205,7 @@ export default function Home() {
     }, [
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNewFamiliar,
-         handleNewCharacters, handleCharacterHistoryUpdate, handleAffinityUpdates,
+         handleCharacterHistoryUpdate, handleAffinityUpdates,
          handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
     ]);
@@ -3771,7 +3705,7 @@ export default function Home() {
       handleToggleStrategyMode={handleToggleStrategyMode}
       onNarrativeChange={handleNarrativeUpdate}
       handleCharacterUpdate={handleCharacterUpdate}
-      handleNewCharacters={handleNewCharacters}
+      onMaterializeCharacter={handleMaterializeCharacter}
       handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
       handleAffinityUpdates={handleAffinityUpdates}
       handleRelationUpdate={(charId, targetId, newRelation) => {

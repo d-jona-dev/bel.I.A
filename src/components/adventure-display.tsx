@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, NewCharacterSchema, CombatUpdatesSchema, SellingItem } from "@/types";
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema, SellingItem } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
@@ -70,7 +70,7 @@ interface AdventureDisplayProps {
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
-    onMaterializeCharacter: (name: string, context: string) => Promise<void>; // New prop
+    onMaterializeCharacter: (narrativeContext: string) => Promise<void>; // New prop
     activeCombat?: ActiveCombat;
     onCombatUpdates: (updates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
@@ -406,9 +406,9 @@ export function AdventureDisplay({
         }
     };
     
-  const handleMaterializeCharacter = async (name: string, context: string) => {
-    toast({ title: `Matérialisation de ${name}...`, description: "L'IA crée la fiche du personnage." });
-    await onMaterializeCharacter(name, context);
+  const handleMaterializeCharacter = async (context: string) => {
+    toast({ title: `Matérialisation en cours...`, description: "L'IA crée la fiche du personnage." });
+    await onMaterializeCharacter(context);
   };
 
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -669,11 +669,6 @@ export function AdventureDisplay({
                                         .slice(0, 3) // Limit to 3 speakers
                                     : [];
 
-                                    const mentionedCharacters = (message.content.match(/[A-Z][a-z]+/g) || [])
-                                        .filter(name => name.length > 2 && name !== (adventureSettings.playerName || 'Player')) // Filter out short words and player name
-                                        .filter((name, idx, self) => self.indexOf(name) === idx) // Unique names
-                                        .filter(name => !characters.some(c => c.name === name)); // Filter out existing characters
-
                                   return (
                                       <div key={message.id} className="group relative flex flex-col">
                                           <div className={`flex items-start gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
@@ -752,35 +747,17 @@ export function AdventureDisplay({
                                                                   <TooltipContent side="top">Copier</TooltipContent>
                                                               </Tooltip>
                                                           </TooltipProvider>
-
                                                             {message.type === 'ai' && (
-                                                                <DropdownMenu>
-                                                                    <TooltipProvider>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <DropdownMenuTrigger asChild>
-                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
-                                                                                        <UserPlus className="h-4 w-4" />
-                                                                                    </Button>
-                                                                                </DropdownMenuTrigger>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent side="top">Matérialiser un PNJ</TooltipContent>
-                                                                        </Tooltip>
-                                                                    </TooltipProvider>
-                                                                    <DropdownMenuContent>
-                                                                        <DropdownMenuLabel>Personnages mentionnés</DropdownMenuLabel>
-                                                                        <DropdownMenuSeparator />
-                                                                        {mentionedCharacters.length > 0 ? (
-                                                                            mentionedCharacters.map((charName) => (
-                                                                                <DropdownMenuItem key={charName} onSelect={() => handleMaterializeCharacter(charName, message.content)}>
-                                                                                    {charName}
-                                                                                </DropdownMenuItem>
-                                                                            ))
-                                                                        ) : (
-                                                                            <DropdownMenuItem disabled>Aucun nom détecté</DropdownMenuItem>
-                                                                        )}
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleMaterializeCharacter(message.content)}>
+                                                                                <UserPlus className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Matérialiser un PNJ</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
                                                             )}
                                                           {isLastAiMessage && (
                                                               <TooltipProvider>

@@ -354,5 +354,3 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-    

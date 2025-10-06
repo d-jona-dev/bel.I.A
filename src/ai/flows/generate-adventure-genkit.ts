@@ -13,7 +13,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, NewCharacterSchema as FlowNewCharacterSchema, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect, SellingItem } from '@/types';
+import type { Character, PlayerSkill, MapPointOfInterest, AiConfig, GenerateAdventureInput as GenkitFlowInputType, GenerateAdventureOutput, CombatUpdatesSchema, AffinityUpdateSchema, RelationUpdateSchema, CharacterUpdateSchema, NewFamiliarSchema, Combatant, StatusEffect, SellingItem } from '@/types';
 import { GenerateAdventureInputSchema, GenerateAdventureOutputSchema, RpgContextSchema, CharacterWithContextSummarySchema, ActiveCombatSchema } from '@/types';
 
 
@@ -379,5 +379,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    
