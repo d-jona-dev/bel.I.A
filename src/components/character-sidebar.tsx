@@ -48,6 +48,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { Checkbox } from "@/components/ui/checkbox";
 import { i18n, type Language } from "@/lib/i18n";
+import { useForm, FormProvider } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -149,15 +151,9 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 };
 
 const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
-   
+
     const handleAddItem = () => {
-        const character = { id: charId, [field]: data || [] };
-        const updatedCharacter = {
-            ...character,
-            [field]: [...(character[field] || []), ""]
-        };
-        // This is a stand-in. The parent component's `onCharacterUpdate` needs to handle the full character object.
-        console.log("Adding item, need parent to update:", updatedCharacter);
+        onAdd(charId, field);
     };
 
     return (
@@ -187,7 +183,7 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                    <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
                )}
                 {addDialog || (
-                     <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onAdd(charId, field)} disabled={disabled}>
+                     <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddItem} disabled={disabled}>
                        <PlusCircle className="mr-1 h-4 w-4"/> {addLabel}
                    </Button>
                 )}
@@ -336,14 +332,11 @@ export function CharacterSidebar({
         }
     };
 
-    const addArrayFieldItem = (charId: string, field: 'history' | 'spells') => {
+    const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'memory') => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
-            const updatedCharacter = {
-              ...character,
-              [field]: [...(character[field as 'history' | 'spells'] || []), ""]
-            };
-            onCharacterUpdate(updatedCharacter);
+            const updatedArray = [...(character[field as 'history' | 'spells'] || []), ""];
+            onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
 
@@ -534,7 +527,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleNestedFieldChange: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void;
     removeNestedField: (charId: string, field: 'relations', key: string) => void;
     handleArrayFieldChange: (charId: string, field: 'history' | 'spells', index: number, value: string) => void;
-    addArrayFieldItem: (charId: string, field: 'history' | 'spells') => void;
+    addArrayFieldItem: (charId: string, field: 'history' | 'spells' | 'memory') => void;
     removeArrayFieldItem: (charId: string, field: 'history' | 'spells', index: number) => void;
     onCharacterUpdate: (updatedCharacter: Character) => void;
     getAffinityLabel: (affinity: number | undefined) => string;
@@ -557,6 +550,20 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
+
+    const formMethods = useForm({
+        defaultValues: char,
+    });
+    
+    // Sync form with external prop changes
+    React.useEffect(() => {
+        formMethods.reset(char);
+    }, [char, formMethods]);
+    
+    const handleBlur = (field: keyof Character) => () => {
+        const value = formMethods.getValues(field);
+        handleFieldChange(char.id, field, value);
+    };
 
     const isPlaceholder = char.isPlaceholder ?? false;
 
@@ -721,456 +728,467 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     }
 
     return (
-        <AccordionItem value={char.id}>
-           <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                         {imageLoadingStates[char.id] ? (
-                            <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
-                         ) : char.portraitUrl ? (
-                            <AvatarImage src={char.portraitUrl} alt={char.name} />
-                         ) : (
-                            <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                         )}
-                    </Avatar>
-                    <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
-                    {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500 flex-shrink-0"/> : ''}
+        <FormProvider {...formMethods}>
+            <AccordionItem value={char.id}>
+            <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                            {imageLoadingStates[char.id] ? (
+                                <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
+                            ) : char.portraitUrl ? (
+                                <AvatarImage src={char.portraitUrl} alt={char.name} />
+                            ) : (
+                                <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            )}
+                        </Avatar>
+                        <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
+                        {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500 flex-shrink-0"/> : ''}
+                        {isPotentiallyNew && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">{currentLanguage === 'fr' ? "Nouveau personnage non sauvegardé globalement." : "New character not saved globally."}</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
                     {isPotentiallyNew && (
                         <TooltipProvider>
                             <Tooltip>
-                                 <TooltipTrigger asChild>
-                                    <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => onSaveNewCharacter(char)}>
+                                        <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder" : "Save"}
+                                    </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="top">{currentLanguage === 'fr' ? "Nouveau personnage non sauvegardé globalement." : "New character not saved globally."}</TooltipContent>
+                                <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures."}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     )}
-                </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                {isPotentiallyNew && (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm" className="w-full mb-2" onClick={() => onSaveNewCharacter(char)}>
-                                    <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder" : "Save"}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures."}</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
 
-               <div className="flex flex-col items-center gap-2">
-                    <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
-                        {imageLoadingStates[char.id] ? (
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
-                         ) : char.portraitUrl ? (
-                            <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
-                         ) : (
-                            <User className="h-10 w-10 text-muted-foreground"/>
-                         )}
-                    </div>
-                    <div className="flex gap-2">
-                        <DropdownMenu>
+                <div className="flex flex-col items-center gap-2">
+                        <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
+                            {imageLoadingStates[char.id] ? (
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
+                            ) : char.portraitUrl ? (
+                                <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
+                            ) : (
+                                <User className="h-10 w-10 text-muted-foreground"/>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <DropdownMenu>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8">
+                                                    <Palette className="h-4 w-4"/>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <DropdownMenuContent>
+                                    {defaultImageStyles.map((style) => (
+                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                    ))}
+                                    {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                    {customStyles.map((style) => (
+                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8">
-                                                <Palette className="h-4 w-4"/>
-                                            </Button>
-                                        </DropdownMenuTrigger>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
                                     </TooltipTrigger>
-                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
+                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                             <DropdownMenuContent>
-                                {defaultImageStyles.map((style) => (
-                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
-                                ))}
-                                {customStyles.length > 0 && <DropdownMenuSeparator />}
-                                {customStyles.map((style) => (
-                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            id={`upload-portrait-${char.id}`}
-                            className="hidden"
-                            onChange={(e) => handleUploadPortrait(char.id, e)}
+                            <input
+                                type="file"
+                                accept="image/*"
+                                id={`upload-portrait-${char.id}`}
+                                className="hidden"
+                                onChange={(e) => handleUploadPortrait(char.id, e)}
+                            />
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8">
+                                                    <LinkIcon className="h-4 w-4"/>
+                                                </Button>
+                                            </DialogTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
+                                        <DialogDescription>
+                                            Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {char.name}.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="py-4">
+                                        <Label htmlFor="portrait-url">URL de l'image</Label>
+                                        <Input
+                                            id="portrait-url"
+                                            value={portraitUrl}
+                                            onChange={(e) => setPortraitUrl(e.target.value)}
+                                            placeholder="https://example.com/portrait.jpg"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
+                                        <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                </div>
+
+                    <Separator />
+                    <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
+                        <div className="space-y-0.5">
+                            <Label htmlFor={`${char.id}-faceSwap`} className="flex items-center gap-2"><Replace className="h-4 w-4"/> Activer FaceSwap</Label>
+                            <UICardDescription className="text-xs">
+                            Tente d'utiliser ce portrait dans les scènes générées.
+                            </UICardDescription>
+                        </div>
+                        <Switch
+                            id={`${char.id}-faceSwap`}
+                            checked={char.faceSwapEnabled ?? false}
+                            onCheckedChange={(checked) => handleFieldChange(char.id, 'faceSwapEnabled', checked)}
                         />
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
+                        <Textarea
+                            value={char.appearanceDescription || ""}
+                            onChange={(e) => handleFieldChange(char.id, 'appearanceDescription', e.target.value)}
+                            placeholder="Générez ou écrivez une description physique détaillée..."
+                            rows={4}
+                            className="text-xs text-muted-foreground bg-background border"
+                        />
+                        <div className="flex items-center gap-2 mt-2">
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8">
-                                                <LinkIcon className="h-4 w-4"/>
-                                            </Button>
-                                        </DialogTrigger>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => handleDescribeAppearance(char)}
+                                        disabled={!char.portraitUrl || describingAppearanceStates[char.id] || !visionConsentChecked}
+                                    >
+                                        {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
+                                    </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
-                                    <DialogDescription>
-                                        Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {char.name}.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                    <Label htmlFor="portrait-url">URL de l'image</Label>
-                                    <Input
-                                        id="portrait-url"
-                                        value={portraitUrl}
-                                        onChange={(e) => setPortraitUrl(e.target.value)}
-                                        placeholder="https://example.com/portrait.jpg"
-                                        className="mt-1"
-                                    />
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
-                                    <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-               </div>
-
-                <Separator />
-                 <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
-                    <div className="space-y-0.5">
-                        <Label htmlFor={`${char.id}-faceSwap`} className="flex items-center gap-2"><Replace className="h-4 w-4"/> Activer FaceSwap</Label>
-                        <UICardDescription className="text-xs">
-                           Tente d'utiliser ce portrait dans les scènes générées.
-                        </UICardDescription>
-                    </div>
-                    <Switch
-                        id={`${char.id}-faceSwap`}
-                        checked={char.faceSwapEnabled ?? false}
-                        onCheckedChange={(checked) => handleFieldChange(char.id, 'faceSwapEnabled', checked)}
-                    />
-                </div>
-                 <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
-                    <Textarea
-                        value={char.appearanceDescription || ""}
-                        onChange={(e) => handleFieldChange(char.id, 'appearanceDescription', e.target.value)}
-                        placeholder="Générez ou écrivez une description physique détaillée..."
-                        rows={4}
-                        className="text-xs text-muted-foreground bg-background border"
-                    />
-                    <div className="flex items-center gap-2 mt-2">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handleDescribeAppearance(char)}
-                                    disabled={!char.portraitUrl || describingAppearanceStates[char.id] || !visionConsentChecked}
-                                >
-                                    {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
-                                </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
-                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                        </Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-xs">
-                                        <p>{disclaimerText}</p>
+                                    <TooltipContent>
+                                        <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
                                     </TooltipContent>
                                 </Tooltip>
-                             </TooltipProvider>
-                        </div>
-                    </div>
-                </div>
-
-                {strategyMode && (
-                    <div className="space-y-1">
-                        <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
-                        <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
-                            <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
-                                <SelectValue placeholder="Sélectionner un lieu..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
-                                {pointsOfInterest.map(poi => (
-                                    <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
-
-                {rpgMode && (
-                    <TooltipProvider>
-                        <Tooltip delayDuration={300}>
-                            <TooltipTrigger asChild>
-                                <div className={`flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30 ${isAllySwitchDisabled ? 'cursor-not-allowed' : ''}`}>
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
-                                        <UICardDescription className="text-xs">
-                                            Permet de modifier ses attributs et de l'intégrer à l'équipe.
-                                        </UICardDescription>
-                                    </div>
-                                    {/* The span wrapper is a trick to make tooltips work on disabled elements */}
-                                    <span tabIndex={isAllySwitchDisabled ? 0 : -1}>
-                                        <Switch
-                                            id={`${char.id}-isAlly`}
-                                            checked={char.isAlly ?? false}
-                                            onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
-                                            disabled={isAllySwitchDisabled}
-                                        />
-                                    </span>
-                                </div>
-                            </TooltipTrigger>
-                            {tooltipContent && (
-                                <TooltipContent>
-                                    <p>{tooltipContent}</p>
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
-
-                {rpgMode && (
-                    <Card className="border-dashed bg-muted/20">
-                        <CardHeader className="pb-2 pt-4">
-                            <UICardDescription className="text-xs uppercase tracking-wider flex items-center gap-1">
-                                <FilePenLine className="h-3 w-3" />
-                                Fiche Personnage {char.isAlly ? "(Modifiable si Allié)" : "(Lecture Seule)"}
-                            </UICardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} onBlur={e => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
-                            <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} onBlur={e => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
-                            {char.level !== undefined && char.level >=1 && (
-                                <>
-                                <div className="flex justify-between items-center mb-0.5">
-                                    <Label htmlFor={`${char.id}-exp`} className="text-xs font-medium flex items-center"><ExpIcon className="h-3 w-3 mr-1 text-yellow-500"/>EXP</Label>
-                                    <span className="text-xs text-muted-foreground">{char.currentExp ?? 0} / {char.expToNextLevel ?? (100 * Math.pow(1.5, char.level -1))}</span>
-                                </div>
-                                <Progress id={`${char.id}-exp`} value={(((char.currentExp ?? 0) / (char.expToNextLevel || 1))) * 100} className="h-1.5 [&>div]:bg-yellow-500" />
-                                </>
-                            )}
-                            <Separator className="my-1"/>
-                            <div className="flex justify-between items-center">
-                                <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                                <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
-                            </div>
-                            <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
-                            {(char.maxManaPoints ?? 0) > 0 && (
-                                <>
-                                <div className="flex justify-between items-center mt-1">
-                                    <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                                    <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
-                                </div>
-                                <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
-                                </>
-                            )}
-                            <Separator className="my-1"/>
-                            <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
-                                <span>CA: {char.armorClass ?? 'N/A'}</span>
-                                <span className="truncate">Atk: +{char.attackBonus ?? 'N/A'}</span>
-                                <span className="truncate">Dmg: {char.damageBonus || 'N/A'}</span>
-                            </div>
-                             {char.isHostile !== undefined && (
-                                <div className={`text-xs ${char.isHostile ? 'text-destructive' : 'text-green-600'}`}>
-                                    {char.isHostile ? (currentLanguage === 'fr' ? 'Hostile' : 'Hostile') : (currentLanguage === 'fr' ? 'Non-Hostile' : 'Non-Hostile')}
-                                </div>
-                            )}
-                            {isAllyAndRpg && (
-                                <>
-                                    <Separator className="my-2"/>
-                                    <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
-                                    <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} onBlur={e => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
-                                    
-                                     <div className="p-1 border rounded-md bg-background text-center text-xs">
-                                        Points d'attributs restants : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {ATTRIBUTES.map(attr => (
-                                            <EditableField 
-                                                key={attr} 
-                                                label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
-                                                id={`${char.id}-${attr}`} type="number" 
-                                                value={char[attr]} 
-                                                onChange={(e) => onCharacterUpdate({ ...char, [attr]: e.target.value ? parseInt(e.target.value, 10) : BASE_ATTRIBUTE_VALUE_FORM })}
-                                                onBlur={() => handleNpcAttributeBlur(attr)} 
-                                                min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
-                                                disabled={!isAllyAndRpg}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-                <Separator />
-                <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
-                <EditableField
-                    label="Nom"
-                    id={`${char.id}-name`}
-                    value={char.name}
-                    onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
-                    onBlur={(e) => handleFieldChange(char.id, 'name', e.target.value)}
-                />
-                <EditableField
-                    label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
-                    id={`${char.id}-details`}
-                    value={char.details}
-                    onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
-                    onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
-                    rows={4}
-                />
-                 <EditableField
-                    label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
-                    id={`${char.id}-biographyNotes`}
-                    value={char.biographyNotes || ""}
-                    onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
-                    onBlur={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
-                    rows={5}
-                    placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
-                />
-                 <div className="space-y-2">
-                    <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
-                    <Textarea
-                        id={`${char.id}-memory`}
-                        value={char.memory || ""}
-                        onChange={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
-                        onBlur={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
-                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
-                        rows={5}
-                        className="text-sm bg-background border"
-                    />
-                </div>
-                
-                {relationsMode && (
-                    <>
-                        <div className="space-y-2">
-                            <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id={`${char.id}-affinity`}
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    defaultValue={currentAffinity}
-                                    onBlur={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
-                                    className="h-8 text-sm w-20 flex-none bg-background border"
-                                />
-                                <Progress value={currentAffinity} className="flex-1 h-2" />
-                                <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                            </TooltipProvider>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
+                                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                            </Label>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" className="max-w-xs">
+                                            <p>{disclaimerText}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                         </div>
-                        <RelationsEditableCard
-                            charId={char.id}
-                            data={char.relations}
-                            characters={allCharacters}
-                            playerId={playerId}
-                            playerName={playerName}
-                            currentLanguage={currentLanguage}
-                            onUpdate={handleNestedFieldChange}
-                            onRemove={removeNestedField}
-                        />
-                    </>
-                )}
-                {rpgMode && (
-                    <>
-                        <Separator />
-                        <ArrayEditableCard
-                            charId={char.id}
-                            field="spells"
-                            title="Sorts"
-                            icon={Zap}
-                            data={char.spells}
-                            addLabel="Ajouter Sort"
-                            onUpdate={handleArrayFieldChange}
-                            onRemove={removeArrayFieldItem}
-                            onAdd={addArrayFieldItem}
-                            currentLanguage={currentLanguage}
-                            disabled={!isAllyAndRpg}
-                            addDialog={
-                                <AlertDialog open={isAddSpellDialogOpen} onOpenChange={setIsAddSpellDialogOpen}>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm" className="w-full mt-2" disabled={!isAllyAndRpg}>
-                                            <PlusCircle className="mr-1 h-4 w-4" /> Ajouter Sort
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Ajouter un nouveau sort</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Entrez le nom du sort à ajouter pour {char.name}.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <div className="py-4">
-                                            <Label htmlFor="new-spell-name">Nom du Sort</Label>
-                                            <Input
-                                                id="new-spell-name"
-                                                value={newSpellName}
-                                                onChange={(e) => setNewSpellName(e.target.value)}
-                                                className="mt-1"
-                                                placeholder="Ex: Boule de Feu"
-                                            />
+                    </div>
+
+                    {strategyMode && (
+                        <div className="space-y-1">
+                            <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
+                            <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
+                                <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
+                                    <SelectValue placeholder="Sélectionner un lieu..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
+                                    {pointsOfInterest.map(poi => (
+                                        <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {rpgMode && (
+                        <TooltipProvider>
+                            <Tooltip delayDuration={300}>
+                                <TooltipTrigger asChild>
+                                    <div className={`flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30 ${isAllySwitchDisabled ? 'cursor-not-allowed' : ''}`}>
+                                        <div className="space-y-0.5">
+                                            <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
+                                            <UICardDescription className="text-xs">
+                                                Permet de modifier ses attributs et de l'intégrer à l'équipe.
+                                            </UICardDescription>
                                         </div>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setNewSpellName("")}>Annuler</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleAddSpell}>Ajouter</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            }
+                                        {/* The span wrapper is a trick to make tooltips work on disabled elements */}
+                                        <span tabIndex={isAllySwitchDisabled ? 0 : -1}>
+                                            <Switch
+                                                id={`${char.id}-isAlly`}
+                                                checked={char.isAlly ?? false}
+                                                onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
+                                                disabled={isAllySwitchDisabled}
+                                            />
+                                        </span>
+                                    </div>
+                                </TooltipTrigger>
+                                {tooltipContent && (
+                                    <TooltipContent>
+                                        <p>{tooltipContent}</p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+
+                    {rpgMode && (
+                        <Card className="border-dashed bg-muted/20">
+                            <CardHeader className="pb-2 pt-4">
+                                <UICardDescription className="text-xs uppercase tracking-wider flex items-center gap-1">
+                                    <FilePenLine className="h-3 w-3" />
+                                    Fiche Personnage {char.isAlly ? "(Modifiable si Allié)" : "(Lecture Seule)"}
+                                </UICardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                                <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} onBlur={e => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
+                                <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} onBlur={e => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
+                                {char.level !== undefined && char.level >=1 && (
+                                    <>
+                                    <div className="flex justify-between items-center mb-0.5">
+                                        <Label htmlFor={`${char.id}-exp`} className="text-xs font-medium flex items-center"><ExpIcon className="h-3 w-3 mr-1 text-yellow-500"/>EXP</Label>
+                                        <span className="text-xs text-muted-foreground">{char.currentExp ?? 0} / {char.expToNextLevel ?? (100 * Math.pow(1.5, char.level -1))}</span>
+                                    </div>
+                                    <Progress id={`${char.id}-exp`} value={(((char.currentExp ?? 0) / (char.expToNextLevel || 1))) * 100} className="h-1.5 [&>div]:bg-yellow-500" />
+                                    </>
+                                )}
+                                <Separator className="my-1"/>
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
+                                    <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
+                                </div>
+                                <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
+                                {(char.maxManaPoints ?? 0) > 0 && (
+                                    <>
+                                    <div className="flex justify-between items-center mt-1">
+                                        <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                                        <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
+                                    </div>
+                                    <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
+                                    </>
+                                )}
+                                <Separator className="my-1"/>
+                                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
+                                    <span>CA: {char.armorClass ?? 'N/A'}</span>
+                                    <span className="truncate">Atk: +{char.attackBonus ?? 'N/A'}</span>
+                                    <span className="truncate">Dmg: {char.damageBonus || 'N/A'}</span>
+                                </div>
+                                {char.isHostile !== undefined && (
+                                    <div className={`text-xs ${char.isHostile ? 'text-destructive' : 'text-green-600'}`}>
+                                        {char.isHostile ? (currentLanguage === 'fr' ? 'Hostile' : 'Hostile') : (currentLanguage === 'fr' ? 'Non-Hostile' : 'Non-Hostile')}
+                                    </div>
+                                )}
+                                {isAllyAndRpg && (
+                                    <>
+                                        <Separator className="my-2"/>
+                                        <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
+                                        <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} onBlur={e => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
+                                        
+                                        <div className="p-1 border rounded-md bg-background text-center text-xs">
+                                            Points d'attributs restants : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {ATTRIBUTES.map(attr => (
+                                                <EditableField 
+                                                    key={attr} 
+                                                    label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
+                                                    id={`${char.id}-${attr}`} type="number" 
+                                                    value={char[attr]} 
+                                                    onChange={(e) => onCharacterUpdate({ ...char, [attr]: e.target.value ? parseInt(e.target.value, 10) : BASE_ATTRIBUTE_VALUE_FORM })}
+                                                    onBlur={() => handleNpcAttributeBlur(attr)} 
+                                                    min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
+                                                    disabled={!isAllyAndRpg}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                    <Separator />
+                    <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
+                    <EditableField
+                        label="Nom"
+                        id={`${char.id}-name`}
+                        value={char.name}
+                        onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                        onBlur={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                    />
+                    <EditableField
+                        label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
+                        id={`${char.id}-details`}
+                        value={char.details}
+                        onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
+                        onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
+                        rows={4}
+                    />
+                    <EditableField
+                        label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
+                        id={`${char.id}-biographyNotes`}
+                        value={char.biographyNotes || ""}
+                        onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
+                        onBlur={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
+                        rows={5}
+                        placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
+                    />
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
+                        <FormField
+                            control={formMethods.control}
+                            name="memory"
+                            render={({ field }) => (
+                                <FormControl>
+                                    <Textarea
+                                        {...field}
+                                        onBlur={handleBlur("memory")}
+                                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
+                                        rows={5}
+                                        className="text-sm bg-background border"
+                                    />
+                                </FormControl>
+                            )}
                         />
-                    </>
-                )}
-                <Separator />
-                <ArrayEditableCard
-                    charId={char.id}
-                    field="history"
-                    title="Historique Narratif"
-                    icon={History}
-                    data={char.history}
-                    addLabel="Ajouter Entrée Historique"
-                    onUpdate={handleArrayFieldChange}
-                    onRemove={removeArrayFieldItem}
-                    onAdd={addArrayFieldItem}
-                    currentLanguage={currentLanguage}
-                />
-                
-            </AccordionContent>
-        </AccordionItem>
+                    </div>
+                    
+                    {relationsMode && (
+                        <>
+                            <div className="space-y-2">
+                                <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        id={`${char.id}-affinity`}
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        defaultValue={currentAffinity}
+                                        onBlur={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
+                                        className="h-8 text-sm w-20 flex-none bg-background border"
+                                    />
+                                    <Progress value={currentAffinity} className="flex-1 h-2" />
+                                    <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                                </div>
+                            </div>
+                            <RelationsEditableCard
+                                charId={char.id}
+                                data={char.relations}
+                                characters={allCharacters}
+                                playerId={playerId}
+                                playerName={playerName}
+                                currentLanguage={currentLanguage}
+                                onUpdate={handleNestedFieldChange}
+                                onRemove={removeNestedField}
+                            />
+                        </>
+                    )}
+                    {rpgMode && (
+                        <>
+                            <Separator />
+                            <ArrayEditableCard
+                                charId={char.id}
+                                field="spells"
+                                title="Sorts"
+                                icon={Zap}
+                                data={char.spells}
+                                addLabel="Ajouter Sort"
+                                onUpdate={handleArrayFieldChange}
+                                onRemove={removeArrayFieldItem}
+                                onAdd={addArrayFieldItem}
+                                currentLanguage={currentLanguage}
+                                disabled={!isAllyAndRpg}
+                                addDialog={
+                                    <AlertDialog open={isAddSpellDialogOpen} onOpenChange={setIsAddSpellDialogOpen}>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="w-full mt-2" disabled={!isAllyAndRpg}>
+                                                <PlusCircle className="mr-1 h-4 w-4" /> Ajouter Sort
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Ajouter un nouveau sort</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Entrez le nom du sort à ajouter pour {char.name}.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <div className="py-4">
+                                                <Label htmlFor="new-spell-name">Nom du Sort</Label>
+                                                <Input
+                                                    id="new-spell-name"
+                                                    value={newSpellName}
+                                                    onChange={(e) => setNewSpellName(e.target.value)}
+                                                    className="mt-1"
+                                                    placeholder="Ex: Boule de Feu"
+                                                />
+                                            </div>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={() => setNewSpellName("")}>Annuler</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleAddSpell}>Ajouter</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                }
+                            />
+                        </>
+                    )}
+                    <Separator />
+                    <ArrayEditableCard
+                        charId={char.id}
+                        field="history"
+                        title="Historique Narratif"
+                        icon={History}
+                        data={char.history}
+                        addLabel="Ajouter Entrée Historique"
+                        onUpdate={handleArrayFieldChange}
+                        onRemove={removeArrayFieldItem}
+                        onAdd={addArrayFieldItem}
+                        currentLanguage={currentLanguage}
+                    />
+                    
+                </AccordionContent>
+            </AccordionItem>
+        </FormProvider>
     );
 });
+
+    
