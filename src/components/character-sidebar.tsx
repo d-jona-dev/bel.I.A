@@ -323,7 +323,7 @@ export function CharacterSidebar({
         }
     };
 
-    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells', index: number, value: string) => {
+    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'memory', index: number, value: string) => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
             const updatedArray = [...(character[field as 'history' | 'spells'] || [])];
@@ -335,7 +335,7 @@ export function CharacterSidebar({
     const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'memory') => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
-            const updatedArray = [...(character[field as 'history' | 'spells'] || []), ""];
+            const updatedArray = [...(character[field as 'history' | 'spells' | 'memory'] || []), ""];
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
@@ -367,29 +367,6 @@ export function CharacterSidebar({
         if (value <= 70) return "Friendly";
         if (value <= 90) return "Loyal";
         return "Devoted / Love";
-    };
-
-    // NEW: Function to handle describing appearance
-    const handleDescribeAppearance = async (char: Character) => {
-        if (!char.portraitUrl || describingAppearanceStates[char.id]) return;
-
-        setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: true }));
-        toast({ title: "Analyse de l'image...", description: `L'IA décrit l'apparence de ${char.name}.`});
-
-        try {
-            const result = await describeAppearance({ portraitUrl: char.portraitUrl });
-            onCharacterUpdate({
-                ...char,
-                appearanceDescription: result.description,
-                lastAppearanceUpdate: Date.now(),
-            });
-            toast({ title: "Description Réussie!", description: `L'apparence de ${char.name} a été détaillée.` });
-        } catch (error) {
-            console.error("Error describing appearance:", error);
-            toast({ title: "Erreur de Vision", description: `Impossible de décrire l'apparence. ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
-        } finally {
-            setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: false }));
-        }
     };
 
   return (
@@ -456,7 +433,6 @@ export function CharacterSidebar({
                         imageLoadingStates={imageLoadingStates}
                         setImageLoadingStates={setImageLoadingStates}
                         describingAppearanceStates={describingAppearanceStates}
-                        handleDescribeAppearance={handleDescribeAppearance}
                         onSaveNewCharacter={onSaveNewCharacter}
                         generateImageAction={generateImageAction}
                         handleUploadPortrait={handleUploadPortrait}
@@ -492,7 +468,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     imageLoadingStates,
     setImageLoadingStates,
     describingAppearanceStates,
-    handleDescribeAppearance,
     onSaveNewCharacter,
     generateImageAction,
     handleUploadPortrait,
@@ -519,7 +494,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     imageLoadingStates: Record<string, boolean>;
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     describingAppearanceStates: Record<string, boolean>;
-    handleDescribeAppearance: (char: Character) => Promise<void>;
     onSaveNewCharacter: (character: Character) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -581,6 +555,28 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         }
     }, []);
 
+    const handleDescribeAppearance = async (char: Character) => {
+        if (!char.portraitUrl || describingAppearanceStates[char.id]) return;
+
+        setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: true }));
+        toast({ title: "Analyse de l'image...", description: `L'IA décrit l'apparence de ${char.name}.`});
+
+        try {
+            const result = await describeAppearance({ portraitUrl: char.portraitUrl });
+            formMethods.setValue('appearanceDescription', result.description);
+            onCharacterUpdate({
+                ...char,
+                appearanceDescription: result.description,
+                lastAppearanceUpdate: Date.now(),
+            });
+            toast({ title: "Description Réussie!", description: `L'apparence de ${char.name} a été détaillée.` });
+        } catch (error) {
+            console.error("Error describing appearance:", error);
+            toast({ title: "Erreur de Vision", description: `Impossible de décrire l'apparence. ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
+        } finally {
+            setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: false }));
+        }
+    };
     const { total: totalDistributablePoints, spent: spentPoints } = React.useMemo(() => {
         if (!rpgMode || !char.isAlly) return { total: 0, spent: 0 };
         const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
@@ -881,12 +877,20 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                     </div>
                     <div className="space-y-2">
                         <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
-                        <Textarea
-                            value={char.appearanceDescription || ""}
-                            onChange={(e) => handleFieldChange(char.id, 'appearanceDescription', e.target.value)}
-                            placeholder="Générez ou écrivez une description physique détaillée..."
-                            rows={4}
-                            className="text-xs text-muted-foreground bg-background border"
+                         <FormField
+                            control={formMethods.control}
+                            name="appearanceDescription"
+                            render={({ field }) => (
+                                <FormControl>
+                                <Textarea
+                                    {...field}
+                                    onBlur={handleBlur("appearanceDescription")}
+                                    placeholder="Générez ou écrivez une description physique détaillée..."
+                                    rows={4}
+                                    className="text-xs text-muted-foreground bg-background border"
+                                />
+                                </FormControl>
+                            )}
                         />
                         <div className="flex items-center gap-2 mt-2">
                             <TooltipProvider>
@@ -1063,14 +1067,24 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
                         rows={4}
                     />
-                    <EditableField
-                        label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
-                        id={`${char.id}-biographyNotes`}
-                        value={char.biographyNotes || ""}
-                        onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
-                        onBlur={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
-                        rows={5}
-                        placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
+                     <FormField
+                        control={formMethods.control}
+                        name="biographyNotes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>{currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        {...field}
+                                        onBlur={handleBlur("biographyNotes")}
+                                        placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
+                                        rows={5}
+                                        className="text-sm bg-background border"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
                     
                     <div className="space-y-2">
