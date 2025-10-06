@@ -705,10 +705,6 @@ export const GenerateAdventureOutputSchema = z.object({
     .string()
     .optional()
     .describe('A concise visual description of the current scene, suitable for an image generation prompt. Describe characters using their physical appearance, not their names. Include key actions or mood if relevant.'),
-  characterUpdates: z
-    .array(CharacterUpdateSchema)
-    .optional()
-    .describe('List of significant events or quotes involving known characters in this narrative segment, for logging in their history. MUST be in the specified language.'),
   affinityUpdates: z
     .array(AffinityUpdateSchema)
     .optional()
@@ -737,5 +733,7 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+
+    
 
     

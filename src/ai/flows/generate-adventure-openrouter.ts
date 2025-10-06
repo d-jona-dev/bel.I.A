@@ -79,7 +79,8 @@ function buildOpenRouterPrompt(
     La langue de sortie OBLIGATOIRE est : **${input.currentLanguage}**.
     Ne décris que les conséquences de l'action du joueur et les réactions des PNJ.
     Commence ta narration directement, sans répéter l'action du joueur.
-    RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.`;
+    RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.
+    RÈGLE CRITIQUE : Tu n'es PLUS responsable de la création d'entrées d'historique.`;
     
     if (input.comicModeActive) {
         mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure. Identifie les personnages qui parlent (jusqu'à 3) dans \`speakingCharacterNames\`.`;
@@ -95,10 +96,6 @@ function buildOpenRouterPrompt(
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
     "speakingCharacterNames": ["Rina", "Kentaro"],
     "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
-    "characterUpdates": [
-        { "characterName": "Rina", "historyEntry": "Était inquiète de l'absence du joueur." },
-        { "characterName": "Kentaro", "historyEntry": "A abordé Rina pour lui demander si tout allait bien." }
-    ],
     "affinityUpdates": [
         { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
     ],
@@ -314,7 +311,6 @@ export async function generateAdventureWithOpenRouter(
             const cleanedJson = {
                 ...parsedJson,
                 narrative: narrative,
-                characterUpdates: Array.isArray(parsedJson.characterUpdates) ? parsedJson.characterUpdates : [],
                 affinityUpdates: (Array.isArray(parsedJson.affinityUpdates) ? parsedJson.affinityUpdates : []).map((u: any) => ({
                     ...u,
                     change: Math.max(-10, Math.min(10, u.change || 0)), // Clamp affinity change
@@ -354,3 +350,5 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    

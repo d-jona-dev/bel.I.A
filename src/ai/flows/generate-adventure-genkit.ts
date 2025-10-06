@@ -24,7 +24,6 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     narrative: errorMsg ? "" : "An error occurred, narrative could not be generated.",
     sceneDescriptionForImage: undefined,
     speakingCharacterNames: [],
-    characterUpdates: [],
     affinityUpdates: [],
     relationUpdates: [],
     combatUpdates: undefined,
@@ -327,23 +326,15 @@ Tasks:
 
 2.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe setting, mood, and characters by appearance, not name.
 
-3.  **Log Character Updates (in {{currentLanguage}}):** For KNOWN characters, log significant actions/quotes in \`characterUpdates\`. Format MUST be \`[{"characterName": "Rina", "historyEntry": "A semblé troublée..."}]\`.
+3.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 
-{{#if relationsModeActive}}
-4.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
+4.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 
-5.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
-{{/if}}
+5.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
 
-6.  **Territory Conquest/Loss (poiOwnershipChanges):** This is now handled internally by the game. DO NOT populate \`poiOwnershipChanges\`.
+6.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment. If the focus is general narration, omit this field or provide an empty array.
 
-{{#if timeManagement.enabled}}
-7.  **Time Update:** If the context changes significantly, suggest a new event description in 'updatedTime.newEvent'. For example, if a meeting starts, you could suggest "Réunion avec le conseil".
-{{/if}}
-
-8.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment. If the focus is general narration, omit this field or provide an empty array.
-
-**VERY IMPORTANT: You are no longer responsible for calculating combat outcomes or distributing rewards. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\` or \`itemsObtained\` from combat in your JSON response.**
+**VERY IMPORTANT: You are no longer responsible for calculating combat outcomes, distributing rewards, or logging character history. The game engine does that. Your ONLY job in combat is to narrate the provided turn log. DO NOT populate \`combatUpdates\`, \`itemsObtained\`, or \`characterUpdates\` in your JSON response.**
 **VERY IMPORTANT: You are NO LONGER responsible for detecting new characters. This is handled by a separate user action.**
 
 Narrative Continuation (in {{currentLanguage}}):
@@ -379,3 +370,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    
