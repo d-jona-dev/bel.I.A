@@ -190,7 +190,7 @@ export interface Character {
   appearanceDescription?: string; // NEW FIELD
   lastAppearanceUpdate?: number; // NEW FIELD (Timestamp)
   history?: string[];
-  memory?: string[]; // NEW MEMORY FIELD
+  memory?: string; // NEW MEMORY FIELD: Changed from string[] to string
   opinion?: Record<string, string>;
   portraitUrl?: string | null;
   faceSwapEnabled?: boolean; // Added for FaceSwap feature
@@ -738,3 +738,4 @@ export interface GenerateSceneImageFlowOutput {
     
 
     
+

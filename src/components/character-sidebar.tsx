@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -314,30 +315,30 @@ export function CharacterSidebar({
         }
     };
 
-    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'memory', index: number, value: string) => {
+    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells', index: number, value: string) => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
-            const updatedArray = [...(character[field as 'history' | 'spells' | 'memory'] || [])];
+            const updatedArray = [...(character[field as 'history' | 'spells'] || [])];
             updatedArray[index] = value;
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
 
-    const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'memory') => {
+    const addArrayFieldItem = (charId: string, field: 'history' | 'spells') => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
             const updatedCharacter = {
               ...character,
-              [field]: [...(character[field as 'history' | 'spells' | 'memory'] || []), ""]
+              [field]: [...(character[field as 'history' | 'spells'] || []), ""]
             };
             onCharacterUpdate(updatedCharacter);
         }
     };
 
-    const removeArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'memory', index: number) => {
+    const removeArrayFieldItem = (charId: string, field: 'history' | 'spells', index: number) => {
         const character = initialCharacters.find(c => c.id === charId);
-         if (character && character[field as 'history' | 'spells' | 'memory']) {
-            const updatedArray = [...character[field as 'history' | 'spells' | 'memory']!];
+         if (character && character[field as 'history' | 'spells']) {
+            const updatedArray = [...character[field as 'history' | 'spells']!];
             updatedArray.splice(index, 1);
             onCharacterUpdate({ ...character, [field]: updatedArray });
         }
@@ -520,9 +521,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleFieldChange: (charId: string, field: keyof Character, value: any) => void;
     handleNestedFieldChange: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void;
     removeNestedField: (charId: string, field: 'relations', key: string) => void;
-    handleArrayFieldChange: (charId: string, field: 'history' | 'spells' | 'memory', index: number, value: string) => void;
-    addArrayFieldItem: (charId: string, field: 'history' | 'spells' | 'memory') => void;
-    removeArrayFieldItem: (charId: string, field: 'history' | 'spells' | 'memory', index: number) => void;
+    handleArrayFieldChange: (charId: string, field: 'history' | 'spells', index: number, value: string) => void;
+    addArrayFieldItem: (charId: string, field: 'history' | 'spells') => void;
+    removeArrayFieldItem: (charId: string, field: 'history' | 'spells', index: number) => void;
     onCharacterUpdate: (updatedCharacter: Character) => void;
     getAffinityLabel: (affinity: number | undefined) => string;
     rpgMode: boolean;
@@ -549,8 +550,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
     const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n['en'].visionConsent;
     const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n['en'].memory;
-    const addMemoryLabel = i18n[currentLanguage as Language]?.addMemory || i18n['en'].addMemory;
-
 
     React.useEffect(() => {
         try {
@@ -1134,42 +1133,18 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                     </>
                 )}
                 <Separator />
-                 <ArrayEditableCard charId={char.id} field="history" title={currentLanguage === 'fr' ? "Historique Narratif" : "Narrative History"} icon={History} data={char.history} addLabel={currentLanguage === 'fr' ? "Ajouter Entrée Historique" : "Add History Entry"} onUpdate={handleArrayFieldChange} onRemove={removeArrayFieldItem} onAdd={addArrayFieldItem} currentLanguage={currentLanguage}/>
-
-                 {/* NEW MEMORY SECTION */}
-                <Separator />
-                 <div className="space-y-2">
-                    <Label className="flex items-center gap-1"><Brain className="h-4 w-4"/> {memoryLabel}</Label>
-                    <Card className="bg-muted/30 border">
-                        <CardContent className="p-3 space-y-2">
-                            {char.memory && char.memory.length > 0 ? (
-                                <ScrollArea className="h-32">
-                                  {char.memory.map((item, index) => (
-                                      <div key={index} className="flex items-center gap-2 mb-1">
-                                          <Textarea
-                                              value={item}
-                                              onChange={(e) => handleArrayFieldChange(char.id, 'memory', index, e.target.value)}
-                                              className="text-sm flex-1 bg-background border"
-                                              placeholder={`${currentLanguage === 'fr' ? 'Souvenir' : 'Memory'} ${index + 1}`}
-                                              rows={2}
-                                          />
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => removeArrayFieldItem(char.id, 'memory', index)}>
-                                              <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                      </div>
-                                  ))}
-                               </ScrollArea>
-                           ) : (
-                               <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun souvenir ajouté.` : `No memories added.`}</p>
-                           )}
-                           <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => addArrayFieldItem(char.id, 'memory')}>
-                               <PlusCircle className="mr-1 h-4 w-4"/> {addMemoryLabel}
-                           </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-
+                 <EditableField
+                    label={memoryLabel}
+                    id={`${char.id}-memory`}
+                    value={char.memory || ""}
+                    onChange={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
+                    onBlur={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
+                    rows={5}
+                    placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
+                />
+                
             </AccordionContent>
         </AccordionItem>
     );
 });
+
