@@ -18,6 +18,8 @@ import { suggestPlayerSkill } from "@/ai/flows/suggest-player-skill";
 import type { SuggestPlayerSkillInput, SuggestPlayerSkillFlowOutput } from "@/ai/flows/suggest-player-skill";
 import { materializeCharacter } from "@/ai/flows/materialize-character";
 import type { MaterializeCharacterInput, MaterializeCharacterOutput } from "@/ai/flows/materialize-character";
+import { summarizeHistory } from "@/ai/flows/summarize-history";
+import type { SummarizeHistoryInput, SummarizeHistoryOutput } from "@/ai/flows/summarize-history";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import ImageEditor, { compressImage } from "@/components/ImageEditor";
@@ -439,10 +441,16 @@ export default function Home() {
                 }
                 return char;
             });
-            if (changed) return updatedChars;
+            if (changed) {
+                 toast({
+                    title: "Souvenir Enregistré",
+                    description: `L'historique de ${updates.map(u => u.characterName).join(', ')} a été mis à jour.`,
+                });
+                return updatedChars;
+            }
             return prevChars;
         });
-    }, []);
+    }, [toast]);
 
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
         const currentRelationsMode = adventureSettings.relationsMode ?? true;
@@ -607,6 +615,39 @@ export default function Home() {
             setIsLoading(false);
         }
     }, [characters, adventureSettings.rpgMode, adventureSettings.playerLocationId, currentLanguage, toast]);
+    
+    // NEW: Function to handle summarizing history
+    const handleSummarizeHistory = React.useCallback(async (narrativeContext: string) => {
+        setIsLoading(true);
+        toast({ title: "Mémorisation en cours...", description: "L'IA résume les points clés de l'événement." });
+        
+        const involvedCharacterNames = characters
+            .filter(c => narrativeContext.toLowerCase().includes(c.name.toLowerCase()))
+            .map(c => c.name);
+
+        try {
+            const input: SummarizeHistoryInput = {
+                narrativeContext,
+                involvedCharacters: involvedCharacterNames,
+                currentLanguage,
+            };
+
+            const historyUpdates = await summarizeHistory(input);
+            
+            if (historyUpdates && historyUpdates.length > 0) {
+                handleCharacterHistoryUpdate(historyUpdates);
+            } else {
+                toast({ title: "Rien à Mémoriser", description: "L'IA n'a trouvé aucun événement significatif à enregistrer pour les personnages impliqués.", variant: "default" });
+            }
+
+        } catch (error) {
+             console.error("Error summarizing history:", error);
+             toast({ title: "Erreur de Mémorisation", description: `Impossible de résumer l'événement: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+
+    }, [characters, currentLanguage, toast, handleCharacterHistoryUpdate]);
 
 
     const handleCombatUpdates = React.useCallback((updates: CombatUpdatesSchema) => {
@@ -1014,7 +1055,6 @@ export default function Home() {
                     handleNarrativeUpdate(narrativeContent, 'ai', result.sceneDescriptionForImage, finalLoot, undefined, undefined, result.speakingCharacterNames);
     
                     if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
-                    if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                     
                     if (liveSettings.relationsMode && result.affinityUpdates) {
                         const clampedAffinityUpdates = result.affinityUpdates.map(u => ({
@@ -1053,7 +1093,7 @@ export default function Home() {
     }, [
         currentLanguage, narrativeMessages, toast,
         handleNewFamiliar, handleNarrativeUpdate, 
-        handleCharacterHistoryUpdate, handleAffinityUpdates, handleRelationUpdatesFromAI,
+        handleAffinityUpdates, handleRelationUpdatesFromAI,
         handleCombatUpdates, handlePoiOwnershipChange, addCurrencyToPlayer,
         handleTimeUpdate, resolveCombatTurn, adventureSettings,
         characters, activeCombat, aiConfig, baseCharacters, merchantInventory
@@ -2165,7 +2205,6 @@ export default function Home() {
                 });
 
                  if (result.newFamiliars) result.newFamiliars.forEach(f => handleNewFamiliar(f as Familiar));
-                if (result.characterUpdates) handleCharacterHistoryUpdate(result.characterUpdates);
                 if (adventureSettings.relationsMode && result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                 if (adventureSettings.relationsMode && result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 if (currentTurnSettings.timeManagement?.enabled) {
@@ -2205,7 +2244,7 @@ export default function Home() {
     }, [
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNewFamiliar,
-         handleCharacterHistoryUpdate, handleAffinityUpdates,
+         handleAffinityUpdates,
          handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate
     ]);
@@ -3711,6 +3750,7 @@ export default function Home() {
       handleCharacterUpdate={handleCharacterUpdate}
       handleNewCharacters={handleNewCharacters}
       onMaterializeCharacter={handleMaterializeCharacter}
+      onSummarizeHistory={handleSummarizeHistory}
       handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
       handleAffinityUpdates={handleAffinityUpdates}
       handleRelationUpdate={(charId, targetId, newRelation) => {
@@ -3800,7 +3840,6 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
       onSaveToLibrary={onSaveToLibrary}
       merchantInventory={merchantInventory}
@@ -3867,3 +3906,5 @@ export default function Home() {
     </>
   );
 }
+
+    

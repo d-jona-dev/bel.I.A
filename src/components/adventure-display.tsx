@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X, Diamond, UserPlus } from "lucide-react";
+import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X, Diamond, UserPlus, BrainCircuit } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -62,6 +62,7 @@ interface AdventureDisplayProps {
     generateAdventureAction: (userActionText: string) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>; // Updated prop type
     suggestQuestHookAction: () => Promise<void>;
+    onSummarizeHistory: (narrativeContext: string) => Promise<void>;
     adventureSettings: AdventureSettings;
     characters: Character[]; // Global list of all characters
     initialMessages: Message[];
@@ -154,6 +155,7 @@ export function AdventureDisplay({
     generateAdventureAction,
     generateSceneImageAction,
     suggestQuestHookAction,
+    onSummarizeHistory,
     adventureSettings,
     characters, // Global list of all characters
     initialMessages,
@@ -410,6 +412,11 @@ export function AdventureDisplay({
     toast({ title: `Matérialisation en cours...`, description: "L'IA crée la fiche du personnage." });
     await onMaterializeCharacter(context);
   };
+  
+    const handleSummarizeHistory = async (context: string) => {
+        toast({ title: `Mémorisation de l'événement...`, description: "L'IA résume les faits marquants." });
+        await onSummarizeHistory(context);
+    };
 
   const handleKeyPress = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -748,16 +755,28 @@ export function AdventureDisplay({
                                                               </Tooltip>
                                                           </TooltipProvider>
                                                             {message.type === 'ai' && (
+                                                                <>
                                                                 <TooltipProvider>
                                                                     <Tooltip>
                                                                         <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100" onClick={() => handleMaterializeCharacter(message.content)}>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleMaterializeCharacter(message.content)}>
                                                                                 <UserPlus className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
                                                                         <TooltipContent side="top">Matérialiser un PNJ</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleSummarizeHistory(message.content)}>
+                                                                                <BrainCircuit className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Mémoriser cet événement</TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                                </>
                                                             )}
                                                           {isLastAiMessage && (
                                                               <TooltipProvider>
@@ -1514,3 +1533,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    

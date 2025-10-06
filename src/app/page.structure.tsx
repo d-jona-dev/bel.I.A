@@ -38,6 +38,7 @@ import { ModelManager } from '@/components/model-manager';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { LanguageSelector } from '@/components/language-selector';
 import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
+import type { SummarizeHistoryInput } from '@/ai/flows/summarize-history';
 import { Avatar, AvatarFallback, AvatarImage as UIAvatarImage } from '@/components/ui/avatar'; 
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
@@ -69,6 +70,7 @@ interface PageStructureProps {
   handleCharacterUpdate: (updatedCharacter: Character) => void;
   handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   onMaterializeCharacter: (context: string) => Promise<void>;
+  onSummarizeHistory: (context: string) => Promise<void>;
   handleCharacterHistoryUpdate: (updates: CharacterUpdateSchema[]) => void;
   handleAffinityUpdates: (updates: AffinityUpdateSchema[]) => void;
   handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
@@ -169,6 +171,7 @@ export function PageStructure({
   handleCharacterUpdate,
   handleNewCharacters,
   onMaterializeCharacter,
+  onSummarizeHistory,
   handleCharacterHistoryUpdate,
   handleAffinityUpdates,
   handleRelationUpdate,
@@ -455,6 +458,7 @@ export function PageStructure({
                     generateAdventureAction={generateAdventureAction}
                     generateSceneImageAction={generateSceneImageAction}
                     suggestQuestHookAction={suggestQuestHookAction as any}
+                    onSummarizeHistory={onSummarizeHistory}
                     adventureSettings={adventureSettings}
                     characters={characters}
                     initialMessages={narrativeMessages}
@@ -1027,3 +1031,5 @@ export function PageStructure({
     </div>
   );
 }
+
+    
