@@ -206,22 +206,6 @@ export function CharacterSidebar({
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
-  // Internal state to manage characters being edited
-  const [characters, setCharacters] = React.useState(initialCharacters);
-
-  // Sync with external changes
-  React.useEffect(() => {
-    setCharacters(initialCharacters);
-  }, [initialCharacters]);
-
-
-  const handleLocalUpdate = (updatedCharacter: Character) => {
-      setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
-      // Propagate the change upwards
-      onCharacterUpdate(updatedCharacter);
-  };
-
-
   React.useEffect(() => {
     setIsClient(true);
     const loadGlobalChars = () => {
@@ -252,9 +236,9 @@ export function CharacterSidebar({
   const availableGlobalChars = React.useMemo(() => {
     if (!isClient) return [];
     return globalCharactersList.filter(
-        gc => !characters.some(sc => sc.id === gc.id)
+        gc => !initialCharacters.some(sc => sc.id === gc.id)
     );
-  }, [globalCharactersList, characters, isClient]);
+  }, [globalCharactersList, initialCharacters, isClient]);
 
   const handleAddGlobalCharToAdventure = (charId: string) => {
     if (!charId) return;
@@ -269,9 +253,9 @@ export function CharacterSidebar({
     if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => {
-        const character = characters.find(c => c.id === characterId);
+        const character = initialCharacters.find(c => c.id === characterId);
         if (character) {
-            handleLocalUpdate({ ...character, portraitUrl: reader.result as string });
+            onCharacterUpdate({ ...character, portraitUrl: reader.result as string });
             toast({ title: "Portrait Téléchargé", description: `Le portrait de ${character.name} a été mis à jour.` });
         }
     };
@@ -281,7 +265,7 @@ export function CharacterSidebar({
 
 
    const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
-        const character = characters.find(c => c.id === charId);
+        const character = initialCharacters.find(c => c.id === charId);
         if (character) {
             if (field === 'locationId' && value === '__traveling__') {
                 value = null; // Convert special value to null
@@ -305,12 +289,12 @@ export function CharacterSidebar({
             } else if ((field === 'currentExp' || field === 'expToNextLevel') && typeof processedValue === 'number') {
                 processedValue = Math.max(0, processedValue);
             }
-            handleLocalUpdate({ ...character, [field]: processedValue });
+            onCharacterUpdate({ ...character, [field]: processedValue });
         }
    };
 
     const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
-        const character = characters.find(c => c.id === charId);
+        const character = initialCharacters.find(c => c.id === charId);
         if (character) {
              const currentFieldData = character[field] || {};
              let finalValue = value;
@@ -322,7 +306,7 @@ export function CharacterSidebar({
     };
 
      const removeNestedField = (charId: string, field: 'relations', key: string) => {
-        const character = characters.find(c => c.id === charId);
+        const character = initialCharacters.find(c => c.id === charId);
         if (character && character[field]) {
              if (field === 'relations') {
                  onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
@@ -331,28 +315,33 @@ export function CharacterSidebar({
     };
 
     const handleArrayFieldChange = (charId: string, field: 'history' | 'spells', index: number, value: string) => {
-        const character = characters.find(c => c.id === charId);
-        if (character && character[field]) {
-            const updatedArray = [...character[field]!];
+        const character = initialCharacters.find(c => c.id === charId);
+        if (character) {
+            const updatedArray = [...(character[field] || [])];
             updatedArray[index] = value;
-            handleLocalUpdate({ ...character, [field]: updatedArray });
+            onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
 
     const addArrayFieldItem = (charId: string, field: 'history' | 'spells') => {
-        const character = characters.find(c => c.id === charId);
+        const character = initialCharacters.find(c => c.id === charId);
         if (character) {
             const currentArray = character[field] || [];
-            handleLocalUpdate({ ...character, [field]: [...currentArray, ""] });
+            // Create a completely new character object to ensure React detects the change.
+            const updatedCharacter = {
+              ...character,
+              [field]: [...currentArray, ""]
+            };
+            onCharacterUpdate(updatedCharacter);
         }
     };
 
     const removeArrayFieldItem = (charId: string, field: 'history' | 'spells', index: number) => {
-        const character = characters.find(c => c.id === charId);
+        const character = initialCharacters.find(c => c.id === charId);
          if (character && character[field]) {
             const updatedArray = [...character[field]!];
             updatedArray.splice(index, 1);
-            handleLocalUpdate({ ...character, [field]: updatedArray });
+            onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
 
@@ -385,7 +374,7 @@ export function CharacterSidebar({
 
         try {
             const result = await describeAppearance({ portraitUrl: char.portraitUrl });
-            handleLocalUpdate({
+            onCharacterUpdate({
                 ...char,
                 appearanceDescription: result.description,
                 lastAppearanceUpdate: Date.now(),
@@ -450,11 +439,11 @@ export function CharacterSidebar({
             </Card>
         )}
 
-        {characters.length === 0 ? (
+        {initialCharacters.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini pour l'aventure en cours." : "No secondary characters defined for the current adventure."}</p>
         ) : (
             <Accordion type="multiple" className="w-full">
-                {characters.map((char, index) => (
+                {initialCharacters.map((char, index) => (
                     <CharacterAccordionItem
                         key={char.id}
                         character={char}
@@ -473,7 +462,7 @@ export function CharacterSidebar({
                         handleArrayFieldChange={handleArrayFieldChange}
                         addArrayFieldItem={addArrayFieldItem}
                         removeArrayFieldItem={removeArrayFieldItem}
-                        onCharacterUpdate={handleLocalUpdate}
+                        onCharacterUpdate={onCharacterUpdate}
                         getAffinityLabel={getAffinityLabel}
                         rpgMode={rpgMode}
                         relationsMode={relationsMode}
@@ -482,7 +471,7 @@ export function CharacterSidebar({
                         playerName={playerName}
                         currentLanguage={currentLanguage}
                         pointsOfInterest={pointsOfInterest}
-                        allCharacters={characters}
+                        allCharacters={initialCharacters}
                     />
                 ))}
             </Accordion>
@@ -1106,7 +1095,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             addLabel="Ajouter Sort"
                             onUpdate={handleArrayFieldChange}
                             onRemove={removeArrayFieldItem}
-                            onAdd={() => setIsAddSpellDialogOpen(true)}
+                            onAdd={addArrayFieldItem}
                             currentLanguage={currentLanguage}
                             disabled={!isAllyAndRpg}
                             addDialog={
@@ -1149,6 +1138,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
-
-
-    
