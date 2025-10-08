@@ -22,8 +22,7 @@ import { summarizeHistory } from "@/ai/flows/summarize-history";
 import type { SummarizeHistoryInput, SummarizeHistoryOutput } from "@/ai/flows/summarize-history";
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
-import ImageEditor, { compressImage } from "@/components/ImageEditor";
-import { createNewPage as createNewComicPage, exportPageAsJpeg } from "@/components/ComicPageEditor";
+import { useComic } from "@/hooks/systems/useComic";
 import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import {
@@ -331,14 +330,30 @@ export default function Home() {
     const [creatureFamiliarItems, setCreatureFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
     const [descriptorFamiliarItems, setDescriptorFamiliarItems] = React.useState<BaseFamiliarComponent[]>([]);
     const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
-
-    // Comic Draft State
-    const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
-    const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
-    const [isSaveComicDialogOpen, setIsSaveComicDialogOpen] = React.useState(false);
-    const [comicTitle, setComicTitle] = React.useState("");
-    const [comicCoverUrl, setComicCoverUrl] = React.useState<string | null>(null);
-    const [isGeneratingCover, setIsGeneratingCover] = React.useState(false);
+    
+    // Comic related state moved to useComic hook
+    const {
+        comicDraft,
+        currentComicPageIndex,
+        isSaveComicDialogOpen,
+        comicTitle,
+        comicCoverUrl,
+        isGeneratingCover,
+        handleDownloadComicDraft,
+        handleAddComicPage,
+        handleAddComicPanel,
+        handleRemoveLastComicPanel,
+        handleUploadToComicPanel,
+        handleComicPageChange,
+        handleAddToComicPage,
+        handleSetIsSaveComicDialogOpen,
+        handleSetComicTitle,
+        handleGenerateCover,
+        handleSaveToLibrary
+    } = useComic({
+        narrativeMessages,
+        generateSceneImageAction: (input) => generateSceneImage(input, aiConfig),
+    });
 
     // Base state for resets
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(() => JSON.parse(JSON.stringify(createInitialState().characters)));
@@ -3218,183 +3233,6 @@ export default function Home() {
         });
     }, []);
 
-    const handleGenerateCover = React.useCallback(async () => {
-        setIsGeneratingCover(true);
-        React.startTransition(() => {
-            toast({ title: "Génération de la couverture..."});
-        });
-
-        const textContent = comicDraft.map(p => p.panels.map(panel => panel.bubbles.map(b => b.text).join(' ')).join(' ')).join('\n');
-        const sceneContent = narrativeMessages.filter(m => m.sceneDescription).map(m => m.sceneDescription).join('. ');
-        const prompt = `Comic book cover for a story titled "${comicTitle || 'Untitled'}". The story involves: ${sceneContent}. Style: epic, detailed, vibrant colors.`;
-
-        try {
-            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt, style: "Fantaisie Epique" });
-            if (result.imageUrl) {
-                setComicCoverUrl(result.imageUrl);
-                React.startTransition(() => {
-                    toast({ title: "Couverture Générée!", description: "La couverture de votre BD est prête." });
-                });
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            React.startTransition(() => {
-                toast({
-                    title: "Erreur de Génération",
-                    description: `Impossible de générer la couverture. ${error instanceof Error ? error.message : String(error)}`,
-                    variant: "destructive"
-                });
-            });
-        } finally {
-            setIsGeneratingCover(false);
-        }
-    }, [comicDraft, comicTitle, narrativeMessages, toast, generateSceneImageActionWrapper]);
-
-    const onSaveToLibrary = React.useCallback(async () => {
-    if (!comicTitle.trim()) {
-        React.startTransition(() => {
-            toast({ title: "Titre requis", description: "Veuillez donner un titre à votre BD.", variant: "destructive" });
-        });
-        return;
-    }
-    
-    try {
-        const compressedDraft: ComicPage[] = await Promise.all(
-            comicDraft.map(async (page) => ({
-                ...page,
-                panels: await Promise.all(page.panels.map(async (panel) => ({
-                    ...panel,
-                    imageUrl: panel.imageUrl ? await compressImage(panel.imageUrl) : null,
-                }))),
-            }))
-        );
-
-        const newComic = {
-            id: uid(),
-            title: comicTitle,
-            coverUrl: comicCoverUrl,
-            comicDraft: compressedDraft,
-            createdAt: new Date().toISOString(),
-        };
-
-        const existingComicsStr = localStorage.getItem('savedComics_v1');
-        const existingComics: any[] = existingComicsStr ? JSON.parse(existingComicsStr) : [];
-        
-        const comicIndex = existingComics.findIndex((c: { id: string }) => c.id === newComic.id);
-        
-        if (comicIndex > -1) {
-            existingComics[comicIndex] = newComic;
-        } else {
-            existingComics.push(newComic);
-        }
-        
-        localStorage.setItem('savedComics_v1', JSON.stringify(existingComics));
-        
-        React.startTransition(() => {
-            toast({ title: "BD Sauvegardée!", description: `"${comicTitle}" a été ajouté à votre bibliothèque.` });
-        });
-        setIsSaveComicDialogOpen(false);
-        setComicTitle("");
-        setComicCoverUrl(null);
-    } catch (e) {
-        console.error("Failed to save comic to library:", e);
-        React.startTransition(() => {
-            toast({
-                title: "Erreur de Sauvegarde",
-                description: `Impossible de sauvegarder dans la bibliothèque. Le stockage est peut-être plein. Erreur: ${e instanceof Error ? e.message : String(e)}`,
-                variant: "destructive"
-            });
-        });
-    }
-    }, [comicDraft, comicTitle, comicCoverUrl, toast, setIsSaveComicDialogOpen]);
-
-  const handleAddComicPage = React.useCallback(() => {
-    setComicDraft(prev => [...prev, createNewComicPage()]);
-    setCurrentComicPageIndex(comicDraft.length);
-  }, [comicDraft.length]);
-
-  const handleAddComicPanel = React.useCallback(() => {
-    if (comicDraft.length === 0) {
-        handleAddComicPage();
-    } else {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
-
-  const handleRemoveLastComicPanel = React.useCallback(() => {
-    if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
-        setComicDraft(prev => prev.map((page, index) => 
-            index === currentComicPageIndex ? { ...page, panels: page.panels.slice(0, -1) } : page
-        ));
-    }
-  }, [comicDraft, currentComicPageIndex]);
-
-  const handleUploadToComicPanel = React.useCallback((pageIndex: number, panelIndex: number, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const url = e.target?.result as string;
-        setComicDraft(prev => prev.map((p, i) =>
-            i === pageIndex
-            ? { ...p, panels: p.panels.map((pa, pi) => pi === panelIndex ? { ...pa, imageUrl: url } : pa) }
-            : p
-        ));
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const handleAddToComicPage = React.useCallback((dataUrl: string) => {
-    setComicDraft(prev => {
-        const draft = prev.length > 0 ? [...prev] : [createNewComicPage()];
-        let pageUpdated = false;
-        let targetPageIndex = currentComicPageIndex;
-
-        for (let i = targetPageIndex; i < draft.length; i++) {
-            const page = draft[i];
-            const firstEmptyPanelIndex = page.panels.findIndex(p => !p.imageUrl);
-            if (firstEmptyPanelIndex !== -1) {
-                const newPanels = [...page.panels];
-                newPanels[firstEmptyPanelIndex].imageUrl = dataUrl;
-                draft[i] = { ...page, panels: newPanels };
-                pageUpdated = true;
-                React.startTransition(() => {
-                    toast({ title: "Image Ajoutée", description: `L'image a été ajoutée à la case ${firstEmptyPanelIndex + 1} de la page ${i + 1}.` });
-                });
-                break;
-            }
-        }
-        
-        if (!pageUpdated) {
-            const newPage = createNewComicPage();
-            newPage.panels[0].imageUrl = dataUrl;
-            draft.push(newPage);
-            setCurrentComicPageIndex(draft.length - 1);
-            React.startTransition(() => {
-                toast({ title: "Nouvelle Page Créée", description: "L'image a été ajoutée à une nouvelle page." });
-            });
-        }
-        
-        return draft;
-    });
-  }, [currentComicPageIndex, toast]);
-
-  const handleDownloadComicDraft = React.useCallback(() => {
-    if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
-        React.startTransition(() => {
-            toast({
-                title: "Rien à télécharger",
-                description: "Il n'y a pas de planche de BD active à télécharger.",
-                variant: "destructive"
-            });
-        });
-        return;
-    }
-    const currentPage = comicDraft[currentComicPageIndex];
-    exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
-  }, [comicDraft, currentComicPageIndex, toast]);
-
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {
         const pois = prev.mapPointsOfInterest || [];
@@ -3834,16 +3672,16 @@ export default function Home() {
       onRemoveLastComicPanel={handleRemoveLastComicPanel}
       onUploadToComicPanel={handleUploadToComicPanel}
       currentComicPageIndex={currentComicPageIndex}
-      onComicPageChange={setCurrentComicPageIndex}
+      onComicPageChange={handleComicPageChange}
       onAddToComicPage={handleAddToComicPage}
       isSaveComicDialogOpen={isSaveComicDialogOpen}
-      setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
+      setIsSaveComicDialogOpen={handleSetIsSaveComicDialogOpen}
       comicTitle={comicTitle}
-      setComicTitle={setComicTitle}
+      setComicTitle={handleSetComicTitle}
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
-      onSaveToLibrary={onSaveToLibrary}
+      onSaveToLibrary={handleSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
       onAddToCart={handleAddToCart}
@@ -3908,3 +3746,4 @@ export default function Home() {
     </>
   );
 }
+
