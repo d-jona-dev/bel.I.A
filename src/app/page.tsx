@@ -23,6 +23,7 @@ import type { SummarizeHistoryInput, SummarizeHistoryOutput } from "@/ai/flows/s
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
 import { useComic } from "@/hooks/systems/useComic";
+import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { BASE_CONSUMABLES, BASE_JEWELRY, BASE_ARMORS, BASE_WEAPONS, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies"; // Import base enemies
 import {
@@ -300,12 +301,6 @@ const createInitialState = (): { settings: AdventureSettings; characters: Charac
   return { settings: initialSettings, characters: [], narrative: initialNarrative, aiConfig: initialAiConfig };
 };
 
-// NEW: Type for the state holding info about the familiar being named
-interface FamiliarNamingState {
-    itemUsedId: string;
-    baseFamiliar: Omit<Familiar, 'id' | 'name' | 'isActive' | '_lastSaved'>;
-}
-
 export default function Home() {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const adventureFormRef = React.useRef<AdventureFormHandle>(null);
@@ -349,7 +344,7 @@ export default function Home() {
         handleSetIsSaveComicDialogOpen,
         handleSetComicTitle,
         handleGenerateCover,
-        handleSaveToLibrary
+        handleSaveToLibrary,
     } = useComic({
         narrativeMessages,
         generateSceneImageAction: (input) => generateSceneImage(input, aiConfig),
@@ -376,10 +371,24 @@ export default function Home() {
     const [itemToUse, setItemToUse] = React.useState<PlayerInventoryItem | null>(null);
     const [isTargeting, setIsTargeting] = React.useState(false);
     
-    // NEW: Familiar Naming State
-    const [namingFamiliarState, setNamingFamiliarState] = React.useState<FamiliarNamingState | null>(null);
-    const [newFamiliarName, setNewFamiliarName] = React.useState("");
-    const [familiarNameError, setFamiliarNameError] = React.useState<string | null>(null);
+    const {
+        namingFamiliarState,
+        newFamiliarName,
+        familiarNameError,
+        setNewFamiliarName,
+        setFamiliarNameError,
+        handleUseFamiliarItem,
+        handleConfirmFamiliarName,
+        handleFamiliarUpdate,
+        handleSaveFamiliar,
+        handleAddStagedFamiliar,
+        generateDynamicFamiliarBonus,
+    } = useFamiliar({
+        adventureSettings,
+        setAdventureSettings,
+        toast,
+        handleSendSpecificAction: (action) => handleSendSpecificAction(action),
+    });
 
 
     // --- Core Action Handlers ---
@@ -1144,89 +1153,7 @@ export default function Home() {
             setIsLoading(false);
         }
     }, [isLoading, handleNarrativeUpdate, callGenerateAdventure, toast]);
-
-    const handleUseFamiliarItem = React.useCallback((item: PlayerInventoryItem) => {
-        if (!item.familiarDetails) {
-            React.startTransition(() => {
-                toast({ title: "Action Impossible", description: "Cet objet ne peut pas être utilisé pour invoquer un familier.", variant: "destructive" });
-            });
-            return;
-        }
-
-        const baseFamiliarData: Omit<Familiar, 'id' | 'name' | 'isActive' | '_lastSaved'> = {
-            ...item.familiarDetails,
-        };
-
-        setNamingFamiliarState({
-            itemUsedId: item.id,
-            baseFamiliar: baseFamiliarData,
-        });
-        setNewFamiliarName(item.familiarDetails.name || ""); // Pre-fill with default name
-        setFamiliarNameError(null);
-
-    }, [toast]);
    
-    const handleConfirmFamiliarName = () => {
-        if (!namingFamiliarState || !newFamiliarName.trim()) {
-            setFamiliarNameError("Le nom ne peut pas être vide.");
-            return;
-        }
-        
-        const isNameTaken = (adventureSettings.familiars || []).some(f => f.name.toLowerCase() === newFamiliarName.trim().toLowerCase());
-        if (isNameTaken) {
-            setFamiliarNameError("Ce nom est déjà utilisé par un autre familier.");
-            return;
-        }
-
-        const newFamiliar: Familiar = {
-            ...namingFamiliarState.baseFamiliar,
-            id: `familiar-${newFamiliarName.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
-            name: newFamiliarName.trim(),
-            isActive: false, 
-        };
-
-        // Update adventure state atomically
-        setAdventureSettings(prev => {
-            const newInventory = [...(prev.playerInventory || [])];
-            const itemIndex = newInventory.findIndex(i => i.id === namingFamiliarState.itemUsedId);
-            if (itemIndex > -1) {
-                newInventory[itemIndex].quantity -= 1;
-            }
-    
-            const updatedFamiliars = [...(prev.familiars || []), newFamiliar];
-            
-            return {
-                ...prev,
-                familiars: updatedFamiliars,
-                playerInventory: newInventory.filter(i => i.quantity > 0),
-            };
-        });
-
-        // Save to global storage
-        try {
-            const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-            let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-            if (!existingFamiliars.some(f => f.id === newFamiliar.id || f.name === newFamiliar.name)) {
-                existingFamiliars.push(newFamiliar);
-                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-            }
-        } catch (error) {
-            console.error("Failed to save familiar to localStorage:", error);
-        }
-    
-        React.startTransition(() => {
-            toast({ title: "Familier Invoqué!", description: `${newFamiliar.name} a été ajouté à votre aventure.` });
-        });
-        
-        setNamingFamiliarState(null);
-        setNewFamiliarName("");
-        setFamiliarNameError(null);
-
-        const narrativeAction = `En utilisant l'objet, j'invoque mon nouveau compagnon et le nomme : ${newFamiliar.name} !`;
-        handleSendSpecificAction(narrativeAction);
-    };
-
-
   const onFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
@@ -2560,47 +2487,6 @@ export default function Home() {
       setAdventureSettings(prev => ({ ...prev, comicModeActive: !prev.comicModeActive }));
   };
 
-  const generateDynamicFamiliarBonus = React.useCallback((rarity: Familiar['rarity']): FamiliarPassiveBonus => {
-    const statTypes: Array<FamiliarPassiveBonus['type']> = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'armor_class', 'attack_bonus'];
-    const statNames: { [key in Exclude<FamiliarPassiveBonus['type'], 'narrative' | 'gold_find' | 'exp_gain'>]: string } = {
-        strength: 'Force',
-        dexterity: 'Dextérité',
-        constitution: 'Constitution',
-        intelligence: 'Intelligence',
-        wisdom: 'Sagesse',
-        charisma: 'Charisme',
-        armor_class: "Classe d'Armure",
-        attack_bonus: "Bonus d'Attaque"
-    };
-
-    const bonusValues: Record<Familiar['rarity'], number> = {
-        'common': 1,
-        'uncommon': 2,
-        'rare': 5,
-        'epic': 10,
-        'legendary': 15,
-    };
-    
-    if (Math.random() < 0.2) {
-        return {
-            type: 'narrative',
-            value: 0,
-            description: "Rend les PNJ plus enclins à discuter.",
-        };
-    }
-    
-    const bonusType = statTypes[Math.floor(Math.random() * statTypes.length)];
-    const bonusValue = bonusValues[rarity] || 1;
-    const bonusName = statNames[bonusType as keyof typeof statNames] || bonusType;
-    let description = `+X en ${bonusName}`;
-
-    return {
-        type: bonusType,
-        value: bonusValue,
-        description: description,
-    };
-}, []);
-
   const handleMapAction = React.useCallback(async (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
@@ -3497,68 +3383,6 @@ export default function Home() {
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage]);
     
   
-  const handleFamiliarUpdate = React.useCallback((updatedFamiliar: Familiar) => {
-        setAdventureSettings(prevSettings => {
-            let newSettings = { ...prevSettings };
-            const familiars = newSettings.familiars || [];
-            
-            const updatedFamiliars = familiars.map(f =>
-                f.id === updatedFamiliar.id ? updatedFamiliar : (updatedFamiliar.isActive ? { ...f, isActive: false } : f)
-            );
-            newSettings.familiars = updatedFamiliars;
-
-            const newEffectiveStats = calculateEffectiveStats(newSettings);
-            const finalSettings = { ...newSettings, ...newEffectiveStats };
-            
-            return finalSettings;
-        });
-    }, []);
-
-    const handleSaveFamiliar = React.useCallback((familiarToSave: Familiar) => {
-        if (typeof window !== 'undefined') {
-            try {
-                const existingFamiliarsStr = localStorage.getItem('globalFamiliars');
-                let existingFamiliars: Familiar[] = existingFamiliarsStr ? JSON.parse(existingFamiliarsStr) : [];
-                const familiarIndex = existingFamiliars.findIndex(f => f.id === familiarToSave.id);
-
-                if (familiarIndex > -1) {
-                    existingFamiliars[familiarIndex] = { ...familiarToSave, _lastSaved: Date.now() };
-                } else {
-                    existingFamiliars.push({ ...familiarToSave, _lastSaved: Date.now() });
-                }
-                localStorage.setItem('globalFamiliars', JSON.stringify(existingFamiliars));
-                React.startTransition(() => {
-                    toast({ title: "Familier Sauvegardé Globalement", description: `${familiarToSave.name} est maintenant disponible pour d'autres aventures.` });
-                });
-                
-                handleFamiliarUpdate({...familiarToSave, _lastSaved: Date.now()});
-                
-            } catch (error) {
-                 console.error("Failed to save familiar to localStorage:", error);
-                 React.startTransition(() => {
-                     toast({ title: "Erreur de Sauvegarde Globale", description: "Impossible de sauvegarder le familier.", variant: "destructive" });
-                 });
-            }
-        }
-    }, [toast, handleFamiliarUpdate]);
-    
-  const handleAddStagedFamiliar = React.useCallback((familiarToAdd: Familiar) => {
-        setAdventureSettings(prev => {
-            if (prev.familiars?.some(f => f.id === familiarToAdd.id)) {
-                React.startTransition(() => {
-                    toast({ title: "Familier déjà présent", description: `${familiarToAdd.name} est déjà dans cette aventure.`, variant: "default" });
-                });
-                return prev;
-            }
-            const updatedFamiliars = [...(prev.familiars || []), familiarToAdd];
-            
-            React.startTransition(() => {
-                toast({ title: "Familier Ajouté", description: `${familiarToAdd.name} a été ajouté à votre aventure.` });
-            });
-            return { ...prev, familiars: updatedFamiliars };
-        });
-    }, [toast]);
-
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
     const handleCloseMerchantPanel = () => {
         setMerchantInventory([]);
@@ -3713,7 +3537,7 @@ export default function Home() {
         </AlertDialog>
       )}
       {namingFamiliarState && (
-        <AlertDialog open={!!namingFamiliarState} onOpenChange={(open) => { if (!open) { setNamingFamiliarState(null); setNewFamiliarName(""); setFamiliarNameError(null); } }}>
+        <AlertDialog open={!!namingFamiliarState} onOpenChange={(open) => { if (!open) { setFamiliarNameError(null); } }}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Donnez un nom à votre nouveau compagnon !</AlertDialogTitle>
@@ -3735,8 +3559,8 @@ export default function Home() {
                     {familiarNameError && <p className="text-sm text-destructive">{familiarNameError}</p>}
                 </div>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => { setNamingFamiliarState(null); setNewFamiliarName(""); setFamiliarNameError(null); }}>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmFamiliarName} disabled={!newFamiliarName.trim()}>
+                    <AlertDialogCancel onClick={() => { handleConfirmFamiliarName(false); }}>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleConfirmFamiliarName(true)} disabled={!newFamiliarName.trim()}>
                         Confirmer et Invoquer
                     </AlertDialogAction>
                 </AlertDialogFooter>
@@ -3746,4 +3570,3 @@ export default function Home() {
     </>
   );
 }
-
