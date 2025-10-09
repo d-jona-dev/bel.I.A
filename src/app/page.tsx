@@ -302,7 +302,7 @@ export default function Home() {
         handleUploadToComicPanel,
         handleComicPageChange,
         handleAddToComicPage,
-        handleSetIsSaveComicDialogOpen,
+        setIsSaveComicDialogOpen,
         setComicTitle,
         handleGenerateCover,
         handleSaveToLibrary,
@@ -769,7 +769,7 @@ export default function Home() {
                     };
                     const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
                     if (existingIndex > -1) {
-                        newInventory[existingIndex].quantity += newItem.quantity;
+                        newInventory[existingIndex].quantity += item.quantity;
                     } else {
                         newInventory.push(newItem);
                     }
@@ -857,14 +857,6 @@ export default function Home() {
                     toast({ title: "Erreur", description: "Impossible de charger l'histoire sauvegardée.", variant: "destructive" });
                 }
             }
-        } else {
-          const effectiveStats = calculateEffectiveStats(adventureSettings);
-          setAdventureSettings(prev => ({
-              ...prev,
-              ...effectiveStats,
-              playerCurrentHp: prev.playerCurrentHp ?? effectiveStats.playerMaxHp,
-              playerCurrentMp: prev.playerCurrentMp ?? effectiveStats.playerMaxMp
-          }));
         }
       }
 
@@ -900,6 +892,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
     const fetchInitialSkill = React.useCallback(async () => {
@@ -2271,6 +2264,9 @@ export default function Home() {
                     setIsLoading(false);
                     return;
             }
+            
+            // Shuffle the source pool to mix weapons and armors
+            sourcePool.sort(() => Math.random() - 0.5);
 
             let generatedInventory: SellingItem[] = [];
             const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
@@ -2909,7 +2905,7 @@ export default function Home() {
       onComicPageChange={handleComicPageChange}
       onAddToComicPage={handleAddToComicPage}
       isSaveComicDialogOpen={isSaveComicDialogOpen}
-      setIsSaveComicDialogOpen={handleSetIsSaveComicDialogOpen}
+      setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
@@ -2989,3 +2985,6 @@ export default function Home() {
 
 
 
+
+
+    
