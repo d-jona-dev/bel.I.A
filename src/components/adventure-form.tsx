@@ -23,7 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit, AiConfig, LocalizedText } from '@/types';
+import type { AdventureSettings, MapPointOfInterest, Character, PlayerAvatar, TimeManagementSettings, BaseItem, BaseFamiliarComponent, EnemyUnit, AiConfig, LocalizedText, PlayerInventoryItem } from '@/types';
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Label } from "@/components/ui/label";
@@ -558,6 +558,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             universe: 'Médiéval-Fantastique',
             rarity: 'Commun',
             effectType: 'narrative',
+            statBonuses: {},
         });
         setIsItemEditorOpen(true);
     };
@@ -1717,7 +1718,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         </DialogTitle>
                     </DialogHeader>
                     {editingItem && (
-                        <div className="space-y-4 py-4">
+                        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                              <div className="space-y-2">
                                 <Label htmlFor="item-name">Nom</Label>
                                 <Input id="item-name" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} />
@@ -1754,19 +1755,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                     </SelectContent>
                                 </Select>
                              </div>
-
-                             {editingItemType === 'consumable' && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="item-effect-type">Type d'effet</Label>
-                                    <Select value={editingItem.effectType} onValueChange={(v: BaseItem['effectType']) => setEditingItem({...editingItem, effectType: v, effectDetails: undefined })}>
-                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="narrative">Narratif</SelectItem>
-                                            <SelectItem value="combat">Combat</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                             )}
+                            
+                            <div className="space-y-2">
+                                <Label>Type d'Effet</Label>
+                                <Select value={editingItem.effectType} onValueChange={(v: BaseItem['effectType']) => setEditingItem({...editingItem, effectType: v, effectDetails: undefined, statBonuses: {} })}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="narrative">Narratif</SelectItem>
+                                        <SelectItem value="stat">Statistiques</SelectItem>
+                                        <SelectItem value="combat">Combat</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                              {editingItem.effectType === 'combat' && (
                                 <Card className="p-4 bg-muted/50">
@@ -1785,6 +1785,39 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         )}
                                     </div>
                                 </Card>
+                             )}
+
+                             {editingItem.effectType === 'stat' && (
+                                 <Card className="p-4 bg-muted/50 space-y-2">
+                                     <Label>Bonus de Statistiques</Label>
+                                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                         {(Object.keys(editingItem.statBonuses || {}) as Array<keyof PlayerInventoryItem['statBonuses']>).map(key => (
+                                             <div key={key} className="space-y-1">
+                                                 <Label className="capitalize">{key}</Label>
+                                                 <Input type="number" value={(editingItem.statBonuses || {})[key] || ''} 
+                                                        onChange={e => {
+                                                            const val = parseInt(e.target.value) || 0;
+                                                            setEditingItem({ ...editingItem, statBonuses: { ...editingItem.statBonuses, [key]: val }});
+                                                        }}
+                                                 />
+                                             </div>
+                                         ))}
+                                          {Object.keys({str:0, dex:0, con:0, int:0, wis:0, cha:0, hp:0, ac:0, attack:0}).filter(k => !(editingItem.statBonuses && k in editingItem.statBonuses)).map(key => (
+                                             <div key={key} className="space-y-1">
+                                                 <Label className="capitalize text-muted-foreground">{key}</Label>
+                                                 <Input type="number" placeholder="0"
+                                                        onChange={e => {
+                                                            const val = parseInt(e.target.value) || 0;
+                                                            if (val !== 0) {
+                                                                setEditingItem({ ...editingItem, statBonuses: { ...editingItem.statBonuses, [key]: val }});
+                                                            }
+                                                        }}
+                                                 />
+                                             </div>
+                                          ))}
+
+                                     </div>
+                                 </Card>
                              )}
 
                             {editingItemType === 'weapon' && (
@@ -2041,6 +2074,8 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 
 
 
+
+    
 
     
 
