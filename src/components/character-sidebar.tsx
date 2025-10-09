@@ -150,7 +150,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
 
     const handleAddItem = () => {
         onAdd(charId, field);
@@ -725,6 +725,11 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             </AccordionItem>
         );
     }
+    
+    const isValidUrl = (url: string | null | undefined): url is string => {
+        if (!url) return false;
+        return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+    };
 
     return (
         <FormProvider {...formMethods}>
@@ -734,7 +739,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <Avatar className="h-8 w-8 flex-shrink-0">
                             {imageLoadingStates[char.id] ? (
                                 <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
-                            ) : char.portraitUrl ? (
+                            ) : isValidUrl(char.portraitUrl) ? (
                                 <AvatarImage src={char.portraitUrl} alt={char.name} />
                             ) : (
                                 <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -772,7 +777,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
                             {imageLoadingStates[char.id] ? (
                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
-                            ) : char.portraitUrl ? (
+                            ) : isValidUrl(char.portraitUrl) ? (
                                 <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
                             ) : (
                                 <User className="h-10 w-10 text-muted-foreground"/>
@@ -916,7 +921,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                         variant="outline"
                                         size="icon"
                                         onClick={() => handleDescribeAppearance(char)}
-                                        disabled={!char.portraitUrl || describingAppearanceStates[char.id] || !visionConsentChecked}
+                                        disabled={!isValidUrl(char.portraitUrl) || describingAppearanceStates[char.id] || !visionConsentChecked}
                                     >
                                         {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
                                     </Button>
@@ -1221,3 +1226,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </FormProvider>
     );
 });
+
+    

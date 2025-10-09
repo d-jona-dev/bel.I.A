@@ -150,6 +150,11 @@ interface ImageToEdit {
     message: Message;
 }
 
+const isValidUrl = (url: string | null | undefined): url is string => {
+    if (!url) return false;
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
+
 export function AdventureDisplay({
     playerId,
     generateAdventureAction,
@@ -683,7 +688,7 @@ export function AdventureDisplay({
                                               <div className="flex">
                                                 {speakers.length > 0 ? speakers.map((speaker, i) => (
                                                     <Avatar key={speaker.id} className={`h-8 w-8 border ${i > 0 ? "-ml-4" : ""}`}>
-                                                        {speaker.portraitUrl ? <AvatarImage src={speaker.portraitUrl} alt={speaker.name} /> : <AvatarFallback>{speaker.name.substring(0, 2)}</AvatarFallback>}
+                                                        {isValidUrl(speaker.portraitUrl) ? <AvatarImage src={speaker.portraitUrl} alt={speaker.name} /> : <AvatarFallback>{speaker.name.substring(0, 2)}</AvatarFallback>}
                                                     </Avatar>
                                                 )) : (
                                                     <Avatar className="h-8 w-8 border">
@@ -821,7 +826,7 @@ export function AdventureDisplay({
                                                                                 <p className="font-semibold">{item.name} (x{item.quantity})</p>
                                                                                 {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
                                                                                 {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
-                                                                                {item.itemType && <p className="text-xs text-muted-foreground">Type : {item.itemType}</p>}
+                                                                                {item.type && <p className="text-xs text-muted-foreground">Type : {item.type}</p>}
                                                                             </Card>
                                                                         ))}
                                                                     </div>
@@ -837,7 +842,7 @@ export function AdventureDisplay({
                                               </div>
                                               {message.type === 'user' && (
                                                 <Avatar className="h-8 w-8 border">
-                                                    {adventureSettings.playerPortraitUrl ? (
+                                                    {isValidUrl(adventureSettings.playerPortraitUrl) ? (
                                                         <AvatarImage src={adventureSettings.playerPortraitUrl} alt={adventureSettings.playerName || 'Player'} />
                                                     ) : (
                                                         <AvatarFallback><UserIcon className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
@@ -1153,7 +1158,7 @@ export function AdventureDisplay({
                 </Dialog>
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-                        {messages.slice().reverse().find(m=>m.imageUrl) ? (
+                        {isValidUrl(messages.slice().reverse().find(m=>m.imageUrl)?.imageUrl) ? (
                             <div className="relative w-full aspect-square group">
                                 <Image
                                     src={messages.slice().reverse().find(m=>m.imageUrl)!.imageUrl!}
@@ -1379,7 +1384,7 @@ export function AdventureDisplay({
                              {comicDraft[currentComicPageIndex] && comicDraft[currentComicPageIndex].panels.length > 0 ? (
                                  comicDraft[currentComicPageIndex].panels.map((panel, panelIndex) => (
                                     <div key={panel.id} className="relative aspect-square bg-muted rounded-md flex items-center justify-center group">
-                                        {panel.imageUrl ? (
+                                        {isValidUrl(panel.imageUrl) ? (
                                             <Image src={panel.imageUrl} alt={`Panel ${panelIndex + 1}`} layout="fill" objectFit="cover" className="rounded-md"/>
                                         ) : (
                                              <ImageIcon className="h-8 w-8 text-muted-foreground"/>
@@ -1454,7 +1459,7 @@ export function AdventureDisplay({
                                 <Label>Couverture</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
                                     {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
-                                     comicCoverUrl ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" layout="fill" objectFit="cover" className="rounded-md"/>
+                                     isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" layout="fill" objectFit="cover" className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
                                 <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
