@@ -817,7 +817,7 @@ export default function Home() {
         
         setShoppingCart([]);
         setMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory]);
+    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory, adventureSettings.playerLocationId]);
    
     const handleActionWithCombatItem = async (narrativeAction: string) => {
         handleNarrativeUpdate(narrativeAction, 'user');
@@ -892,8 +892,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    }, [loadAdventureState, setCurrentLanguage, toast]);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
@@ -957,13 +956,15 @@ export default function Home() {
     }, [adventureSettings.rpgMode, adventureSettings.playerLevel, adventureSettings.playerClass, currentLanguage, toast, setAdventureSettings]);
     
     React.useEffect(() => {
+      // This useEffect will run only once on mount, as its dependency array is empty.
       const callFetchInitialSkill = async () => {
         await fetchInitialSkill();
       };
       if (typeof window !== 'undefined') {
         callFetchInitialSkill();
       }
-    }, [fetchInitialSkill]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleToggleAestheticFont = React.useCallback(() => {
         const newFontState = !useAestheticFont;
@@ -2406,7 +2407,7 @@ export default function Home() {
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, baseCharacters, allConsumables, allWeapons, allArmors, allJewelry, handleUseFamiliarItem, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies, setActiveCombat, setAdventureSettings, setCharacters, setMerchantInventory, setShoppingCart, setIsLoading]);
+  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, allConsumables, allWeapons, allArmors, allJewelry, handleUseFamiliarItem, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies, setActiveCombat, setAdventureSettings, setCharacters, setMerchantInventory, setShoppingCart, setIsLoading]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
     setAdventureSettings(prev => {
@@ -2428,7 +2429,7 @@ export default function Home() {
         position: undefined, 
         ownerId: data.ownerId,
         lastCollectedTurn: undefined,
-        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelNameMap[keyof typeof poiLevelNameMap]]?.resources || [],
+        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
         buildings: data.buildings || [],
         defenderUnitIds: data.defenderUnitIds || [],
     };
@@ -2978,13 +2979,4 @@ export default function Home() {
 }
 
 
-    
 
-    
-
-
-
-
-
-
-    
