@@ -87,11 +87,33 @@ export function calculateBaseDerivedStats(stats: {
 export function calculateEffectiveStats(settings: AdventureSettings) {
     if (!settings.rpgMode) return { playerMaxHp: 0, playerMaxMp: 0, playerArmorClass: 0, playerAttackBonus: 0, playerDamageBonus: "1" };
 
-    const strMod = Math.floor(((settings.playerStrength ?? 8) - 10) / 2);
-    const dexMod = Math.floor(((settings.playerDexterity ?? 8) - 10) / 2);
-    const conMod = Math.floor(((settings.playerConstitution ?? 8) - 10) / 2);
-    const intMod = Math.floor(((settings.playerIntelligence ?? 8) - 10) / 2);
-    
+    // Equipment bonuses
+    const equippedWeapon = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.weapon);
+    const equippedArmor = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.armor);
+    const equippedJewelry = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.jewelry);
+
+    let bonusStr = 0;
+    let bonusDex = 0;
+    let bonusCon = 0;
+    let bonusInt = 0;
+    let bonusWis = 0;
+    let bonusCha = 0;
+
+    [equippedWeapon, equippedArmor, equippedJewelry].forEach(item => {
+        if (!item?.statBonuses) return;
+        bonusStr += item.statBonuses.str || 0;
+        bonusDex += item.statBonuses.dex || 0;
+        bonusCon += item.statBonuses.con || 0;
+        bonusInt += item.statBonuses.int || 0;
+        bonusWis += item.statBonuses.wis || 0;
+        bonusCha += item.statBonuses.cha || 0;
+    });
+
+    const strMod = Math.floor(((settings.playerStrength ?? 8) + bonusStr - 10) / 2);
+    const dexMod = Math.floor(((settings.playerDexterity ?? 8) + bonusDex - 10) / 2);
+    const conMod = Math.floor(((settings.playerConstitution ?? 8) + bonusCon - 10) / 2);
+    const intMod = Math.floor(((settings.playerIntelligence ?? 8) + bonusInt - 10) / 2);
+
     // Base stats
     let playerMaxHp = 10 + (settings.playerLevel || 1) * conMod;
     let playerMaxMp = (settings.playerMaxMp || 0) + (settings.playerLevel || 1) * intMod;
@@ -99,24 +121,18 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     let playerAttackBonus = strMod;
     let playerDamageBonus = `${strMod >= 0 ? '+' : ''}${strMod}`;
 
-    // Equipment bonuses
-    const equippedWeapon = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.weapon);
-    const equippedArmor = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.armor);
-    const equippedJewelry = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.jewelry);
-
     [equippedWeapon, equippedArmor, equippedJewelry].forEach(item => {
         if (!item?.statBonuses) return;
         playerMaxHp += item.statBonuses.hp || 0;
         playerAttackBonus += item.statBonuses.attack || 0;
-        // Other stat bonuses like str, dex etc. are already part of playerStrength so no need to add again
     });
     
     // Armor AC calculation
     if (equippedArmor?.ac) {
-        if (equippedArmor.ac.includes('+')) { // e.g. "12 + Mod.Dex (max +2)"
+        if (equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
-            if (!isNaN(baseArmorAc)) playerArmorClass = baseArmorAc; // Set AC to armor's base
+            if (!isNaN(baseArmorAc)) playerArmorClass = baseArmorAc;
             
             if (parts[1].toLowerCase().includes('dex')) {
                 const maxDexBonusMatch = parts[1].match(/\(max \+(\d+)\)/);
@@ -126,7 +142,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                     playerArmorClass += dexMod;
                 }
             }
-        } else { // e.g. "18"
+        } else { 
             const armorAcValue = parseInt(equippedArmor.ac, 10);
             if (!isNaN(armorAcValue)) playerArmorClass = armorAcValue;
         }
@@ -136,7 +152,6 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     if(equippedWeapon?.statBonuses?.ac) playerArmorClass += equippedWeapon.statBonuses.ac;
     if(equippedJewelry?.statBonuses?.ac) playerArmorClass += equippedJewelry.statBonuses.ac;
 
-
     // Damage Calculation
     if (equippedWeapon?.damage) {
         playerDamageBonus = equippedWeapon.damage;
@@ -145,7 +160,6 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         }
         playerDamageBonus += `${strMod >= 0 ? `+${strMod}` : strMod}`;
     }
-
 
     return {
         playerMaxHp,
@@ -210,5 +224,3 @@ export function useAdventureState() {
         createInitialState,
     };
 }
-
-    
