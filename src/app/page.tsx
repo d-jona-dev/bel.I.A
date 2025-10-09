@@ -900,7 +900,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  }, []);
+  }, [loadAdventureState, toast, setAdventureSettings, adventureSettings, setCurrentLanguage]);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
@@ -1024,6 +1024,13 @@ export default function Home() {
         let changes: Partial<AdventureSettings> = {};
 
         if (action === 'use') {
+            if (itemToUpdate.type === 'consumable' && itemToUpdate.familiarDetails) {
+                 // This specific item summons a familiar
+                handleUseFamiliarItem(itemToUpdate);
+                itemActionSuccessful = false; // The other hook handles state updates and narrative
+                return prevSettings;
+            }
+
             if (itemToUpdate.effectType === 'combat' && activeCombat?.isActive) {
                 setItemToUse(itemToUpdate);
                 setIsTargeting(true);
@@ -1033,14 +1040,7 @@ export default function Home() {
             
             narrativeAction = `J'utilise ${itemToUpdate.name}.`;
             if (itemToUpdate.type === 'consumable') {
-                if (itemToUpdate.familiarDetails) {
-                    // This specific item summons a familiar
-                    handleUseFamiliarItem(itemToUpdate);
-                    itemActionSuccessful = false; // The other function will handle narrative and state updates
-                    narrativeAction = "";
-                    effectAppliedMessage = "";
-                    return prevSettings; // Return early
-                } else if (itemToUpdate.effectDetails && itemToUpdate.effectDetails.type === 'heal') {
+                if (itemToUpdate.effectDetails && itemToUpdate.effectDetails.type === 'heal') {
                     const hpChange = itemToUpdate.effectDetails.amount;
                     const newPlayerHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + hpChange);
                     changes = { playerCurrentHp: newPlayerHp };
@@ -2252,7 +2252,7 @@ export default function Home() {
             }
             setMerchantInventory(generatedFamiliars);
         } else {
-            let sourcePool: Array<BaseItem | SellingItem> = [];
+            let sourcePool: Array<BaseItem> = [];
             
             const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
             
@@ -2274,7 +2274,7 @@ export default function Home() {
             }
 
             let generatedInventory: SellingItem[] = [];
-            const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes((item as BaseItem).universe));
+            const itemsInUniverse = sourcePool.filter(item => activeUniverses.includes(item.universe));
             
             const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
                 1: { size: 3, minRarity: 1, maxRarity: 1 },
@@ -2297,7 +2297,7 @@ export default function Home() {
 
             if (availableItems.length > 0) {
                 while (generatedInventory.length < config.size && safetyBreak < 200) {
-                    const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)] as BaseItem;
+                    const baseItem = availableItems[Math.floor(Math.random() * availableItems.length)];
                     if (!baseItem || usedBaseItemIds.has(baseItem.id)) {
                         safetyBreak++;
                         continue;
@@ -2986,4 +2986,5 @@ export default function Home() {
     
 
     
+
 
