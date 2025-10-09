@@ -900,7 +900,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  }, [loadAdventureState, toast, setCurrentLanguage, setAdventureSettings, adventureSettings]);
+  }, [loadAdventureState, toast, setCurrentLanguage, setAdventureSettings]);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
