@@ -39,6 +39,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BASE_CONSUMABLES, BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
+import { BASE_ENEMY_UNITS } from "@/lib/enemies";
 
 
 const PLAYER_ID = "player";
@@ -1454,7 +1456,7 @@ export default function Home() {
         ? currentTurnSettings.mapPointsOfInterest?.find(poi => poi.id === currentTurnSettings.playerLocationId)
         : undefined;
 
-        const worldText = currentTurnSettings.world[currentLanguage] || currentTurnSettings.world['en'] || Object.values(currentTurnSettings.world)[0] || "";
+        const worldText = getLocalizedText(currentTurnSettings.world, currentLanguage);
         const contextSituationText = contextMessages.map(msg => {
             if (msg.type === 'user') return `${currentTurnSettings.playerName || 'Player'}: ${msg.content}`;
             // For system message, check if it's the initial one from a localized source
@@ -2980,5 +2982,7 @@ export default function Home() {
   );
 }
 
+
+    
 
     
