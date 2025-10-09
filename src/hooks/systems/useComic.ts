@@ -112,10 +112,6 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
         setIsSaveComicDialogOpen(isOpen);
     };
 
-    const handleSetComicTitle = (title: string) => {
-        setComicTitle(title);
-    };
-    
     const handleGenerateCover = React.useCallback(async () => {
         setIsGeneratingCover(true);
         toast({ title: "Génération de la couverture..." });
@@ -202,8 +198,8 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
         handleUploadToComicPanel,
         handleComicPageChange,
         handleAddToComicPage,
-        handleSetIsSaveComicDialogOpen,
-        handleSetComicTitle,
+        setIsSaveComicDialogOpen: handleSetIsSaveComicDialogOpen,
+        setComicTitle,
         handleGenerateCover,
         handleSaveToLibrary,
     };

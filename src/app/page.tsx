@@ -303,7 +303,7 @@ export default function Home() {
         handleComicPageChange,
         handleAddToComicPage,
         handleSetIsSaveComicDialogOpen,
-        handleSetComicTitle,
+        setComicTitle,
         handleGenerateCover,
         handleSaveToLibrary,
     } = useComic({
@@ -900,7 +900,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  }, [loadAdventureState, toast, setAdventureSettings, adventureSettings, setCurrentLanguage]);
+  }, []);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
@@ -1595,8 +1595,7 @@ export default function Home() {
     }, [
          isRegenerating, isLoading, narrativeMessages, currentLanguage, toast,
          handleNewFamiliar,
-         handleAffinityUpdates,
-         handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
+         handleAffinityUpdates, handleRelationUpdatesFromAI, addCurrencyToPlayer, handlePoiOwnershipChange,
          adventureSettings, characters, activeCombat, aiConfig, handleTimeUpdate, setNarrativeMessages
     ]);
 
@@ -2912,7 +2911,7 @@ export default function Home() {
       isSaveComicDialogOpen={isSaveComicDialogOpen}
       setIsSaveComicDialogOpen={handleSetIsSaveComicDialogOpen}
       comicTitle={comicTitle}
-      setComicTitle={handleSetComicTitle}
+      setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
       isGeneratingCover={isGeneratingCover}
       onGenerateCover={handleGenerateCover}
@@ -2986,5 +2985,7 @@ export default function Home() {
     
 
     
+
+
 
 
