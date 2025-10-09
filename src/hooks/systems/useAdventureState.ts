@@ -59,6 +59,31 @@ const createInitialState = (): SaveData => ({
     timestamp: new Date().toISOString(),
 });
 
+export function calculateBaseDerivedStats(stats: {
+    level: number;
+    characterClass: string;
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+}) {
+    const baseMaxHp = 10 + (stats.constitution || 8) * 2;
+    const baseMaxMp = (stats.intelligence || 8);
+    const baseAc = 10 + (stats.dexterity || 8);
+    const strengthMod = Math.floor(((stats.strength || 8) - 10) / 2);
+
+    return {
+        maxHitPoints: baseMaxHp,
+        maxManaPoints: baseMaxMp,
+        armorClass: baseAc,
+        attackBonus: strengthMod,
+        damageBonus: `1d4${strengthMod !== 0 ? (strengthMod > 0 ? `+${strengthMod}`: strengthMod) : ''}`,
+    };
+}
+
+
 export function calculateEffectiveStats(settings: AdventureSettings) {
     if (!settings.rpgMode) return { playerMaxHp: 0, playerMaxMp: 0, playerArmorClass: 0, playerAttackBonus: 0, playerDamageBonus: "1" };
 
@@ -176,6 +201,3 @@ export function useAdventureState() {
         createInitialState,
     };
 }
-
-
-    

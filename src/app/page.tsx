@@ -25,7 +25,7 @@ import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type
 import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { useComic } from "@/hooks/systems/useComic";
 import { useCombat } from "@/hooks/systems/useCombat";
-import { useAdventureState, calculateEffectiveStats } from "@/hooks/systems/useAdventureState";
+import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats } from "@/hooks/systems/useAdventureState";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -254,6 +254,22 @@ export default function Home() {
         });
     }, [toast, characters, adventureSettings.playerName, setAdventureSettings]);
 
+    const handleNewFamiliar = React.useCallback((newFamiliar: Familiar) => {
+        setAdventureSettings(prevSettings => {
+            if (!newFamiliar) return prevSettings;
+
+            const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
+            
+            React.startTransition(() => {
+                toast({
+                    title: "Nouveau Familier!",
+                    description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
+                });
+            });
+
+            return { ...prevSettings, familiars: updatedFamiliars };
+        });
+    }, [toast, setAdventureSettings]);
 
     const handleSendSpecificAction = React.useCallback(async (action: string) => {
         if (!action || isLoading) return;
@@ -316,22 +332,6 @@ export default function Home() {
     
     // --- Core Action Handlers ---
     
-    const handleNewFamiliar = React.useCallback((newFamiliar: Familiar) => {
-        setAdventureSettings(prevSettings => {
-            if (!newFamiliar) return prevSettings;
-
-            const updatedFamiliars = [...(prevSettings.familiars || []), newFamiliar];
-            
-            React.startTransition(() => {
-                toast({
-                    title: "Nouveau Familier!",
-                    description: `${newFamiliar.name} a rejoint votre groupe! Allez le voir dans l'onglet Familiers pour l'activer.`,
-                });
-            });
-
-            return { ...prevSettings, familiars: updatedFamiliars };
-        });
-    }, [toast, setAdventureSettings]);
     
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -900,7 +900,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-  }, [loadAdventureState, toast, setCurrentLanguage, setAdventureSettings]);
+  }, []);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
@@ -2986,3 +2986,4 @@ export default function Home() {
     
 
     
+
