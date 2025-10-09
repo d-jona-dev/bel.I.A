@@ -892,7 +892,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-    }, [loadAdventureState, setCurrentLanguage, toast]);
+    }, []);
 
     const fetchInitialSkill = React.useCallback(async () => {
       if (
@@ -1278,26 +1278,25 @@ export default function Home() {
               React.startTransition(() => { toast({ title: "Information", description: `Aucun objet à déséquiper dans le slot ${slotToUnequip}.`, variant: "default" }); });
               return prevSettings;
           }
+          
+          let updatedSettings = { ...prevSettings };
+          const newEquippedItemIds = { ...updatedSettings.equippedItemIds, [slotToUnequip]: null };
+          updatedSettings.equippedItemIds = newEquippedItemIds;
 
-          const newEquippedItemIds = { ...prevSettings.equippedItemIds, [slotToUnequip]: null };
-          const newInventory = prevSettings.playerInventory.map(invItem => {
+          const newInventory = updatedSettings.playerInventory!.map(invItem => {
               if (invItem.id === itemIdToUnequip) {
                   return { ...invItem, isEquipped: false };
               }
               return invItem;
           });
-
+          updatedSettings.playerInventory = newInventory;
+          
           const itemUnequipped = prevSettings.playerInventory.find(i => i.id === itemIdToUnequip);
-
-          const updatedSettings = {
-              ...prevSettings,
-              equippedItemIds: newEquippedItemIds,
-              playerInventory: newInventory,
-          };
 
           const effectiveStats = calculateEffectiveStats(updatedSettings);
 
           React.startTransition(() => { toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` }); });
+          
           return {
               ...updatedSettings,
               ...effectiveStats,
@@ -2910,8 +2909,7 @@ export default function Home() {
       comicTitle={comicTitle}
       setComicTitle={setComicTitle}
       comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={isGeneratingCover}
-      onGenerateCover={handleGenerateCover}
+      isGeneratingCover={handleGenerateCover}
       onSaveToLibrary={handleSaveToLibrary}
       merchantInventory={merchantInventory}
       shoppingCart={shoppingCart}
@@ -2980,3 +2978,6 @@ export default function Home() {
 
 
 
+
+
+    

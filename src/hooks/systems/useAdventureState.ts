@@ -85,86 +85,150 @@ export function calculateBaseDerivedStats(stats: {
 
 
 export function calculateEffectiveStats(settings: AdventureSettings) {
-    if (!settings.rpgMode) return { playerMaxHp: 0, playerMaxMp: 0, playerArmorClass: 0, playerAttackBonus: 0, playerDamageBonus: "1" };
+    if (!settings.rpgMode) {
+        return {
+            playerMaxHp: 0,
+            playerMaxMp: 0,
+            playerArmorClass: 0,
+            playerAttackBonus: 0,
+            playerDamageBonus: "1",
+            playerStrength: 8,
+            playerDexterity: 8,
+            playerConstitution: 8,
+            playerIntelligence: 8,
+            playerWisdom: 8,
+            playerCharisma: 8,
+        };
+    }
 
-    const equippedWeapon = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.weapon);
-    const equippedArmor = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.armor);
-    const equippedJewelry = settings.playerInventory?.find(item => item.id === settings.equippedItemIds?.jewelry);
+    const getEquippedItems = () => {
+        const inv = settings.playerInventory || [];
+        const ids = settings.equippedItemIds || {};
+        return [
+            inv.find(i => i.id === ids.weapon),
+            inv.find(i => i.id === ids.armor),
+            inv.find(i => i.id === ids.jewelry),
+        ].filter((item): item is PlayerInventoryItem => !!item);
+    };
 
-    let bonusStr = 0, bonusDex = 0, bonusCon = 0, bonusInt = 0, bonusWis = 0, bonusCha = 0, bonusHp = 0, bonusAc = 0, bonusAttack = 0;
+    const equipped = getEquippedItems();
 
-    [equippedWeapon, equippedArmor, equippedJewelry].forEach(item => {
-        if (!item?.statBonuses) return;
-        bonusStr += item.statBonuses.str || 0;
-        bonusDex += item.statBonuses.dex || 0;
-        bonusCon += item.statBonuses.con || 0;
-        bonusInt += item.statBonuses.int || 0;
-        bonusWis += item.statBonuses.wis || 0;
-        bonusCha += item.statBonuses.cha || 0;
-        bonusHp += item.statBonuses.hp || 0;
-        bonusAc += item.statBonuses.ac || 0;
-        bonusAttack += item.statBonuses.attack || 0;
-    });
-
-    const effectiveStr = (settings.playerStrength ?? 8) + bonusStr;
-    const effectiveDex = (settings.playerDexterity ?? 8) + bonusDex;
-    const effectiveCon = (settings.playerConstitution ?? 8) + bonusCon;
-
-    const strMod = Math.floor((effectiveStr - 10) / 2);
-    const dexMod = Math.floor((effectiveDex - 10) / 2);
-    const conMod = Math.floor((effectiveCon - 10) / 2);
-
-    let playerMaxHp = 10 + (settings.playerLevel || 1) * conMod + bonusHp;
-    let playerMaxMp = (settings.playerMaxMp || 0); // MP logic can be more complex if needed
+    // Initial base stats from settings
+    let stats = {
+        strength: settings.playerStrength ?? 8,
+        dexterity: settings.playerDexterity ?? 8,
+        constitution: settings.playerConstitution ?? 8,
+        intelligence: settings.playerIntelligence ?? 8,
+        wisdom: settings.playerWisdom ?? 8,
+        charisma: settings.playerCharisma ?? 8,
+        luck: 0, // Not an official stat yet, but can be used for custom logic
+    };
     
-    let playerArmorClass = 10 + dexMod + bonusAc;
+    // Reset to base before applying bonuses
+    const baseAttributes = {
+        playerStrength: 8,
+        playerDexterity: 8,
+        playerConstitution: 8,
+        playerIntelligence: 8,
+        playerWisdom: 8,
+        playerCharisma: 8,
+    };
+    
+    let effectiveStats = { ...baseAttributes };
+
+    let bonusAc = 0;
+    let bonusHp = 0;
+    let bonusAttack = 0;
+
+    // Application des bonus d’équipement
+    for (const item of equipped) {
+        const b = item?.statBonuses || {};
+        for (const [key, value] of Object.entries(b)) {
+            const val = Number(value) || 0;
+            switch (key.toLowerCase()) {
+                case "str": case "force": case "strength":
+                    effectiveStats.playerStrength += val; break;
+                case "dex": case "dexterite": case "dexterity":
+                    effectiveStats.playerDexterity += val; break;
+                case "con": case "constitution":
+                    effectiveStats.playerConstitution += val; break;
+                case "int": case "intelligence":
+                    effectiveStats.playerIntelligence += val; break;
+                case "wis": case "sagesse": case "wisdom":
+                    effectiveStats.playerWisdom += val; break;
+                case "cha": case "charisme": case "charisma": case "chance": // Map chance to charisma
+                    effectiveStats.playerCharisma += val; break;
+                case "hp": bonusHp += val; break;
+                case "ac": bonusAc += val; break;
+                case "attack": bonusAttack += val; break;
+            }
+        }
+    }
+
+    // Calculs dérivés basés sur les stats finales
+    const baseDerived = calculateBaseDerivedStats({
+        level: settings.playerLevel ?? 1,
+        characterClass: settings.playerClass ?? '',
+        strength: effectiveStats.playerStrength,
+        dexterity: effectiveStats.playerDexterity,
+        constitution: effectiveStats.playerConstitution,
+        intelligence: effectiveStats.playerIntelligence,
+        wisdom: effectiveStats.playerWisdom,
+        charisma: effectiveStats.playerCharisma,
+    });
+    
+    // Handle complex AC from armor
+    const equippedArmor = equipped.find(i => i.type === 'armor');
+    let finalArmorClass = baseDerived.armorClass; // Start with AC from dexterity
     if (equippedArmor?.ac) {
-        if (equippedArmor.ac.includes('+')) {
+         if (equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
-            if (!isNaN(baseArmorAc)) playerArmorClass = baseArmorAc;
+            if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc; // Armor sets a new base
             
             if (parts[1].toLowerCase().includes('dex')) {
+                const dexMod = Math.floor((effectiveStats.playerDexterity - 10) / 2);
                 const maxDexBonusMatch = parts[1].match(/\(max \+(\d+)\)/);
                 if (maxDexBonusMatch) {
-                    playerArmorClass += Math.min(dexMod, parseInt(maxDexBonusMatch[1], 10));
+                    finalArmorClass += Math.min(dexMod, parseInt(maxDexBonusMatch[1], 10));
                 } else {
-                    playerArmorClass += dexMod;
+                    finalArmorClass += dexMod;
                 }
             }
         } else {
             const armorAcValue = parseInt(equippedArmor.ac, 10);
-            if (!isNaN(armorAcValue)) playerArmorClass = armorAcValue;
+            if (!isNaN(armorAcValue)) finalArmorClass = armorAcValue;
         }
     }
+    finalArmorClass += bonusAc; // Add bonuses from other items like jewelry
 
-    let playerAttackBonus = strMod + bonusAttack;
-    let playerDamageBonus = `${strMod >= 0 ? `+${strMod}` : strMod}`;
-
+    // Handle complex damage from weapon
+    const equippedWeapon = equipped.find(i => i.type === 'weapon');
+    let finalDamageBonus = baseDerived.damageBonus;
     if (equippedWeapon?.damage) {
-        playerDamageBonus = equippedWeapon.damage;
+        const strMod = Math.floor((effectiveStats.playerStrength - 10) / 2);
+        finalDamageBonus = equippedWeapon.damage;
         if(strMod !== 0) {
-            playerDamageBonus += `${strMod > 0 ? '+' : ''}${strMod}`;
+            finalDamageBonus += `${strMod > 0 ? '+' : ''}${strMod}`;
         }
         if (equippedWeapon.statBonuses?.damage) {
-            playerDamageBonus += equippedWeapon.statBonuses.damage;
+             finalDamageBonus += equippedWeapon.statBonuses.damage;
         }
-    } else {
-        playerDamageBonus = `1${strMod !== 0 ? (strMod > 0 ? `+${strMod}`: strMod) : ''}`;
     }
 
+
     return {
-        playerMaxHp,
-        playerMaxMp,
-        playerArmorClass,
-        playerAttackBonus,
-        playerDamageBonus,
-        playerStrength: effectiveStr,
-        playerDexterity: effectiveDex,
-        playerConstitution: effectiveCon,
-        playerIntelligence: (settings.playerIntelligence ?? 8) + bonusInt,
-        playerWisdom: (settings.playerWisdom ?? 8) + bonusWis,
-        playerCharisma: (settings.playerCharisma ?? 8) + bonusCha,
+        playerStrength: effectiveStats.playerStrength,
+        playerDexterity: effectiveStats.playerDexterity,
+        playerConstitution: effectiveStats.playerConstitution,
+        playerIntelligence: effectiveStats.playerIntelligence,
+        playerWisdom: effectiveStats.playerWisdom,
+        playerCharisma: effectiveStats.playerCharisma,
+        playerMaxHp: baseDerived.maxHitPoints + bonusHp,
+        playerMaxMp: baseDerived.maxManaPoints,
+        playerArmorClass: finalArmorClass,
+        playerAttackBonus: baseDerived.attackBonus + bonusAttack,
+        playerDamageBonus: finalDamageBonus,
     };
 }
 
@@ -222,3 +286,5 @@ export function useAdventureState() {
         createInitialState,
     };
 }
+
+    
