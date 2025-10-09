@@ -526,6 +526,35 @@ export function AdventureDisplay({
                     </div>
                     <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
                 </div>
+
+                 <Separator />
+                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-center">
+                    <div>
+                        <Label className="text-xs text-muted-foreground">FOR</Label>
+                        <p className="font-bold">{adventureSettings.playerStrength ?? 8}</p>
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">DEX</Label>
+                        <p className="font-bold">{adventureSettings.playerDexterity ?? 8}</p>
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">CON</Label>
+                        <p className="font-bold">{adventureSettings.playerConstitution ?? 8}</p>
+                    </div>
+                     <div>
+                        <Label className="text-xs text-muted-foreground">INT</Label>
+                        <p className="font-bold">{adventureSettings.playerIntelligence ?? 8}</p>
+                    </div>
+                     <div>
+                        <Label className="text-xs text-muted-foreground">SAG</Label>
+                        <p className="font-bold">{adventureSettings.playerWisdom ?? 8}</p>
+                    </div>
+                     <div>
+                        <Label className="text-xs text-muted-foreground">CHA</Label>
+                        <p className="font-bold">{adventureSettings.playerCharisma ?? 8}</p>
+                    </div>
+                </div>
+
                 {playerCombatData?.statusEffects && playerCombatData.statusEffects.length > 0 && (
                     <div className="mt-2">
                         <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts Actifs</Label>
@@ -1538,5 +1567,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    
