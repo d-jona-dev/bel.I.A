@@ -113,78 +113,52 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
     const equipped = getEquippedItems();
 
-    // Initial base stats from settings
-    let stats = {
-        strength: settings.playerStrength ?? 8,
-        dexterity: settings.playerDexterity ?? 8,
-        constitution: settings.playerConstitution ?? 8,
-        intelligence: settings.playerIntelligence ?? 8,
-        wisdom: settings.playerWisdom ?? 8,
-        charisma: settings.playerCharisma ?? 8,
-        luck: 0, // Not an official stat yet, but can be used for custom logic
+    let effectiveStats = {
+        playerStrength: settings.playerStrength ?? 8,
+        playerDexterity: settings.playerDexterity ?? 8,
+        playerConstitution: settings.playerConstitution ?? 8,
+        playerIntelligence: settings.playerIntelligence ?? 8,
+        playerWisdom: settings.playerWisdom ?? 8,
+        playerCharisma: settings.playerCharisma ?? 8,
     };
     
-    // Reset to base before applying bonuses
-    const baseAttributes = {
-        playerStrength: 8,
-        playerDexterity: 8,
-        playerConstitution: 8,
-        playerIntelligence: 8,
-        playerWisdom: 8,
-        playerCharisma: 8,
-    };
-    
-    let effectiveStats = { ...baseAttributes };
-
     let bonusAc = 0;
     let bonusHp = 0;
     let bonusAttack = 0;
+    let bonusDamageValue = 0; // numeric bonus
 
-    // Application des bonus d’équipement
     for (const item of equipped) {
         const b = item?.statBonuses || {};
         for (const [key, value] of Object.entries(b)) {
             const val = Number(value) || 0;
             switch (key.toLowerCase()) {
-                case "str": case "force": case "strength":
-                    effectiveStats.playerStrength += val; break;
-                case "dex": case "dexterite": case "dexterity":
-                    effectiveStats.playerDexterity += val; break;
-                case "con": case "constitution":
-                    effectiveStats.playerConstitution += val; break;
-                case "int": case "intelligence":
-                    effectiveStats.playerIntelligence += val; break;
-                case "wis": case "sagesse": case "wisdom":
-                    effectiveStats.playerWisdom += val; break;
-                case "cha": case "charisme": case "charisma": case "chance": // Map chance to charisma
-                    effectiveStats.playerCharisma += val; break;
+                case "str": effectiveStats.playerStrength += val; break;
+                case "dex": effectiveStats.playerDexterity += val; break;
+                case "con": effectiveStats.playerConstitution += val; break;
+                case "int": effectiveStats.playerIntelligence += val; break;
+                case "wis": effectiveStats.playerWisdom += val; break;
+                case "cha": effectiveStats.playerCharisma += val; break;
                 case "hp": bonusHp += val; break;
                 case "ac": bonusAc += val; break;
                 case "attack": bonusAttack += val; break;
+                case "damage": if (!isNaN(val)) bonusDamageValue += val; break;
             }
         }
     }
 
-    // Calculs dérivés basés sur les stats finales
     const baseDerived = calculateBaseDerivedStats({
         level: settings.playerLevel ?? 1,
         characterClass: settings.playerClass ?? '',
-        strength: effectiveStats.playerStrength,
-        dexterity: effectiveStats.playerDexterity,
-        constitution: effectiveStats.playerConstitution,
-        intelligence: effectiveStats.playerIntelligence,
-        wisdom: effectiveStats.playerWisdom,
-        charisma: effectiveStats.playerCharisma,
+        ...effectiveStats,
     });
     
-    // Handle complex AC from armor
     const equippedArmor = equipped.find(i => i.type === 'armor');
-    let finalArmorClass = baseDerived.armorClass; // Start with AC from dexterity
+    let finalArmorClass = baseDerived.armorClass; 
     if (equippedArmor?.ac) {
          if (equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
-            if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc; // Armor sets a new base
+            if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc;
             
             if (parts[1].toLowerCase().includes('dex')) {
                 const dexMod = Math.floor((effectiveStats.playerDexterity - 10) / 2);
@@ -200,30 +174,28 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             if (!isNaN(armorAcValue)) finalArmorClass = armorAcValue;
         }
     }
-    finalArmorClass += bonusAc; // Add bonuses from other items like jewelry
+    finalArmorClass += bonusAc; 
 
-    // Handle complex damage from weapon
     const equippedWeapon = equipped.find(i => i.type === 'weapon');
     let finalDamageBonus = baseDerived.damageBonus;
     if (equippedWeapon?.damage) {
         const strMod = Math.floor((effectiveStats.playerStrength - 10) / 2);
-        finalDamageBonus = equippedWeapon.damage;
-        if(strMod !== 0) {
-            finalDamageBonus += `${strMod > 0 ? '+' : ''}${strMod}`;
+        let baseDamage = equippedWeapon.damage;
+        let totalBonus = strMod + bonusDamageValue;
+        
+        // Check if baseDamage already has a bonus
+        const existingBonusMatch = baseDamage.match(/([+-]\d+)/);
+        if (existingBonusMatch) {
+            totalBonus += parseInt(existingBonusMatch[0], 10);
+            baseDamage = baseDamage.replace(existingBonusMatch[0], '').trim();
         }
-        if (equippedWeapon.statBonuses?.damage) {
-             finalDamageBonus += equippedWeapon.statBonuses.damage;
-        }
+
+        finalDamageBonus = totalBonus !== 0 ? `${baseDamage}${totalBonus > 0 ? '+' : ''}${totalBonus}` : baseDamage;
     }
 
 
     return {
-        playerStrength: effectiveStats.playerStrength,
-        playerDexterity: effectiveStats.playerDexterity,
-        playerConstitution: effectiveStats.playerConstitution,
-        playerIntelligence: effectiveStats.playerIntelligence,
-        playerWisdom: effectiveStats.playerWisdom,
-        playerCharisma: effectiveStats.playerCharisma,
+        ...effectiveStats,
         playerMaxHp: baseDerived.maxHitPoints + bonusHp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: finalArmorClass,
@@ -243,9 +215,13 @@ export function useAdventureState() {
     const [currentLanguage, setCurrentLanguage] = React.useState<string>(initialState.currentLanguage);
     const [aiConfig, setAiConfig] = React.useState<AiConfig>(initialState.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
     
-    // Store the base state for resets
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(JSON.parse(JSON.stringify(initialState.adventureSettings)));
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(JSON.parse(JSON.stringify(initialState.characters)));
+
+    // State for item selling modal
+    const [itemToSellDetails, setItemToSellDetails] = React.useState<{ item: PlayerInventoryItem; sellPricePerUnit: number } | null>(null);
+    const [sellQuantity, setSellQuantity] = React.useState(1);
+
 
     const loadAdventureState = React.useCallback((data: SaveData) => {
         const settingsWithDefaults = { ...createInitialState().adventureSettings, ...data.adventureSettings };
@@ -262,7 +238,6 @@ export function useAdventureState() {
         setCurrentLanguage(data.currentLanguage || 'fr');
         setAiConfig(data.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
         
-        // Update base states for resets
         setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
         setBaseCharacters(JSON.parse(JSON.stringify(data.characters || [])));
 
@@ -297,7 +272,7 @@ export function useAdventureState() {
             });
             return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
         });
-        if (messageId) { // Check if messageId is provided before updating narrative
+        if (messageId) {
             setNarrativeMessages(prevMessages =>
                 prevMessages.map(msg =>
                     msg.id === messageId ? { ...msg, lootTaken: true } : msg
@@ -318,7 +293,151 @@ export function useAdventureState() {
             return { ...prevSettings, playerGold: newGold };
         });
     }, [setAdventureSettings]);
+
+    const handlePlayerItemAction = React.useCallback((itemId: string, action: 'use' | 'discard') => {
+        let itemUsedOrDiscarded: PlayerInventoryItem | undefined;
+        let narrativeAction = "";
     
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode || !prevSettings.playerInventory) {
+                toast({ title: "Action Impossible", description: "Le mode RPG doit être actif." });
+                return prevSettings;
+            }
+    
+            const newInventory = [...prevSettings.playerInventory];
+            const itemIndex = newInventory.findIndex(i => i.id === itemId);
+    
+            if (itemIndex === -1) {
+                toast({ title: "Objet introuvable." });
+                return prevSettings;
+            }
+    
+            const item = newInventory[itemIndex];
+            itemUsedOrDiscarded = item;
+            let changes: Partial<AdventureSettings> = {};
+    
+            if (action === 'use') {
+                if (item.type === 'consumable') {
+                    narrativeAction = `J'utilise ${item.name}.`;
+                    newInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+    
+                    if (item.effectDetails?.type === 'heal') {
+                        const newHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + item.effectDetails.amount);
+                        changes.playerCurrentHp = newHp;
+                        toast({ title: "Soin!", description: `Vous récupérez ${item.effectDetails.amount} PV.` });
+                    }
+    
+                } else {
+                    toast({ title: "Non utilisable", description: `Vous ne pouvez pas "utiliser" un ${item.type}. Essayez de l'équiper.` });
+                    return prevSettings; // Prevent state change
+                }
+            } else if (action === 'discard') {
+                narrativeAction = `Je jette ${item.name}.`;
+                newInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+                toast({ title: "Objet jeté" });
+            }
+            
+            changes.playerInventory = newInventory.filter(i => i.quantity > 0);
+            return { ...prevSettings, ...changes };
+        });
+    
+        return { narrativeAction, itemUsed: itemUsedOrDiscarded };
+    }, [toast, setAdventureSettings]);
+
+    const handleEquipItem = React.useCallback((itemIdToEquip: string) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode || !prevSettings.playerInventory) return prevSettings;
+            const item = prevSettings.playerInventory.find(i => i.id === itemIdToEquip);
+            if (!item || item.quantity <= 0) return prevSettings;
+
+            let slotToEquip: keyof NonNullable<AdventureSettings['equippedItemIds']> | null = null;
+            if (item.type === 'weapon') slotToEquip = 'weapon';
+            else if (item.type === 'armor') slotToEquip = 'armor';
+            else if (item.type === 'jewelry') slotToEquip = 'jewelry';
+
+            if (!slotToEquip) return prevSettings;
+
+            const newEquippedItemIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
+            const newInventory = prevSettings.playerInventory.map(invItem => ({ ...invItem, isEquipped: invItem.isEquipped && invItem.type !== slotToEquip }));
+            
+            const currentlyEquippedItemId = newEquippedItemIds[slotToEquip];
+            if (currentlyEquippedItemId) {
+                const idx = newInventory.findIndex(i => i.id === currentlyEquippedItemId);
+                if (idx > -1) newInventory[idx].isEquipped = false;
+            }
+
+            newEquippedItemIds[slotToEquip] = item.id;
+            const newItemIndex = newInventory.findIndex(i => i.id === item.id);
+            if (newItemIndex > -1) newInventory[newItemIndex].isEquipped = true;
+            
+            const updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            const effectiveStats = calculateEffectiveStats(updatedSettings);
+
+            toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` });
+            return { ...updatedSettings, ...effectiveStats };
+        });
+    }, [toast, setAdventureSettings]);
+
+    const handleUnequipItem = React.useCallback((slotToUnequip: keyof NonNullable<AdventureSettings['equippedItemIds']>) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode || !prevSettings.equippedItemIds || !prevSettings.playerInventory) return prevSettings;
+            const itemIdToUnequip = prevSettings.equippedItemIds[slotToUnequip];
+            if (!itemIdToUnequip) return prevSettings;
+            
+            let updatedSettings = { ...prevSettings };
+            const newEquippedItemIds = { ...updatedSettings.equippedItemIds, [slotToUnequip]: null };
+            updatedSettings.equippedItemIds = newEquippedItemIds;
+
+            const newInventory = updatedSettings.playerInventory.map(invItem => invItem.id === itemIdToUnequip ? { ...invItem, isEquipped: false } : invItem);
+            updatedSettings.playerInventory = newInventory;
+            
+            const itemUnequipped = prevSettings.playerInventory.find(i => i.id === itemIdToUnequip);
+            const effectiveStats = calculateEffectiveStats(updatedSettings);
+            
+            toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` });
+            return { ...updatedSettings, ...effectiveStats };
+        });
+    }, [toast, setAdventureSettings]);
+
+    const handleSellItem = React.useCallback((itemId: string) => {
+        const itemToSell = adventureSettings.playerInventory?.find(invItem => invItem.id === itemId);
+        if (!adventureSettings.rpgMode || !itemToSell) return;
+
+        let sellPricePerUnit = Math.floor((itemToSell.goldValue || 0) / 2) || 0;
+        if (itemToSell.goldValue === 1) sellPricePerUnit = 1;
+        if (sellPricePerUnit <= 0) {
+            toast({ title: "Invendable", variant: "default" });
+            return;
+        }
+
+        if (itemToSell.quantity > 1) {
+            setItemToSellDetails({ item: itemToSell, sellPricePerUnit });
+            setSellQuantity(1);
+        } else {
+            confirmSellMultipleItems(1, itemToSell, sellPricePerUnit);
+        }
+    }, [adventureSettings, toast, setItemToSellDetails, setSellQuantity]);
+
+    const confirmSellMultipleItems = React.useCallback((quantityToSell: number, itemBeingSold?: PlayerInventoryItem, pricePerUnit?: number) => {
+        const itemToProcess = itemBeingSold || itemToSellDetails?.item;
+        const finalPricePerUnit = pricePerUnit || itemToSellDetails?.sellPricePerUnit;
+        if (!itemToProcess || !finalPricePerUnit) return;
+
+        const totalSellPrice = finalPricePerUnit * quantityToSell;
+
+        setAdventureSettings(prev => {
+            const inventory = [...(prev.playerInventory || [])];
+            const itemIndex = inventory.findIndex(i => i.id === itemToProcess.id);
+            if (itemIndex === -1 || inventory[itemIndex].quantity < quantityToSell) return prev;
+
+            inventory[itemIndex].quantity -= quantityToSell;
+            return { ...prev, playerInventory: inventory.filter(i => i.quantity > 0), playerGold: (prev.playerGold || 0) + totalSellPrice };
+        });
+
+        toast({ title: "Vente réussie!", description: `Vous avez vendu ${quantityToSell}x ${itemToProcess.name} pour ${totalSellPrice} PO.` });
+        setItemToSellDetails(null);
+    }, [itemToSellDetails, setAdventureSettings, toast]);
+
     return {
         adventureSettings,
         setAdventureSettings,
@@ -338,5 +457,14 @@ export function useAdventureState() {
         createInitialState,
         handleTakeLoot,
         addCurrencyToPlayer,
+        handlePlayerItemAction,
+        handleEquipItem,
+        handleUnequipItem,
+        handleSellItem,
+        confirmSellMultipleItems,
+        itemToSellDetails,
+        setItemToSellDetails,
+        sellQuantity,
+        setSellQuantity
     };
 }
