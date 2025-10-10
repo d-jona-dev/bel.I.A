@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem } from "@/types";
+import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem } from "@/types";
 
 const createInitialState = (): SaveData => ({
     adventureSettings: {
@@ -268,6 +268,56 @@ export function useAdventureState() {
 
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
     }, [toast]);
+
+    const handleTakeLoot = React.useCallback((messageId: string, itemsToTake: PlayerInventoryItem[], silent: boolean = false) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            const newInventory = [...(prevSettings.playerInventory || [])];
+            
+            const lootMessage = narrativeMessages.find(m => m.id === messageId);
+            let currencyGained = 0;
+             if (lootMessage?.loot) {
+                const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
+                if (currencyItem) {
+                    currencyGained = currencyItem.quantity;
+                }
+             }
+
+            itemsToTake.forEach(item => {
+                if (!item.id || !item.name || typeof item.quantity !== 'number' || !item.type) {
+                    console.warn("Skipping invalid loot item (missing id, name, quantity, or type):", item);
+                    return;
+                }
+                const existingItemIndex = newInventory.findIndex(invItem => invItem.name === item.name);
+                if (existingItemIndex > -1) {
+                    newInventory[existingItemIndex].quantity += item.quantity;
+                } else {
+                    newInventory.push({ ...item, isEquipped: false });
+                }
+            });
+            return { ...prevSettings, playerInventory: newInventory, playerGold: (prevSettings.playerGold || 0) + currencyGained };
+        });
+        if (messageId) { // Check if messageId is provided before updating narrative
+            setNarrativeMessages(prevMessages =>
+                prevMessages.map(msg =>
+                    msg.id === messageId ? { ...msg, lootTaken: true } : msg
+                )
+            );
+        }
+        if (!silent) {
+            toast({ title: "Objets Ramassés", description: "Les objets ont été ajoutés à votre inventaire." });
+        }
+      }, [toast, narrativeMessages, setAdventureSettings, setNarrativeMessages]);
+      
+    const addCurrencyToPlayer = React.useCallback((amount: number) => {
+        setAdventureSettings(prevSettings => {
+            if (!prevSettings.rpgMode) return prevSettings;
+            let currentGold = prevSettings.playerGold ?? 0;
+            let newGold = currentGold + amount;
+            if (newGold < 0) newGold = 0;
+            return { ...prevSettings, playerGold: newGold };
+        });
+    }, [setAdventureSettings]);
     
     return {
         adventureSettings,
@@ -286,7 +336,7 @@ export function useAdventureState() {
         setBaseCharacters,
         loadAdventureState,
         createInitialState,
+        handleTakeLoot,
+        addCurrencyToPlayer,
     };
 }
-
-    
