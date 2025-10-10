@@ -110,6 +110,8 @@ export default function Home() {
     const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
     const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
 
+    const playerName = adventureSettings.playerName || "Player";
+    
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => {
         const newItemsWithIds: PlayerInventoryItem[] | undefined = lootItems?.map(item => ({
             id: (item.itemName?.toLowerCase() || 'unknown-item').replace(/\s+/g, '-') + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -2606,8 +2608,6 @@ export default function Home() {
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
   };
     
-    const playerName = adventureSettings.playerName || "Player";
-
   const worldForQuestHook = getLocalizedText(adventureSettings.world, currentLanguage);
   const characterNamesForQuestHook = React.useMemo(() => characters.map(c => c.name).join(", "), [characters]);
 
