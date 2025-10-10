@@ -740,7 +740,7 @@ export default function Home() {
         }, [toast, aiConfig]);
 
    
-  const handleAddToCart = React.useCallback((item: SellingItem) => {
+    const handleAddToCart = React.useCallback((item: SellingItem) => {
         setShoppingCart(prevCart => {
             const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
             if (existingItem) {
@@ -2398,9 +2398,9 @@ export default function Home() {
     
     setIsLoading(false);
   }, [
-      adventureSettings, characters, playerName, toast, callGenerateAdventure, 
+      adventureSettings, characters, toast, callGenerateAdventure, 
       allConsumables, allWeapons, allArmors, allJewelry, allEnemies,
-      setMerchantInventory, setCharacters, setActiveCombat, handlePoiOwnershipChange, 
+      setMerchantInventory, setCharacters, setActiveCombat,
       physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, 
       generateDynamicFamiliarBonus, setIsLoading, setShoppingCart, handleNarrativeUpdate, setAdventureSettings,
   ]);
@@ -2606,7 +2606,7 @@ export default function Home() {
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
   };
     
-  const playerName = adventureSettings.playerName || "Player";
+    const playerName = adventureSettings.playerName || "Player";
 
   const worldForQuestHook = getLocalizedText(adventureSettings.world, currentLanguage);
   const characterNamesForQuestHook = React.useMemo(() => characters.map(c => c.name).join(", "), [characters]);
@@ -2759,90 +2759,6 @@ export default function Home() {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage, setAdventureSettings]);
     
-    const handleApplyStagedChanges = React.useCallback(async () => {
-        if (!adventureFormRef.current) return;
-        
-        const formData = await adventureFormRef.current.getFormData();
-        if (!formData) {
-            return;
-        }
-
-        React.startTransition(() => {
-            const mergeAndUpdateState = () => {
-                setAdventureSettings(prevSettings => {
-                    const newLiveSettings: AdventureSettings = {
-                        ...prevSettings,
-                        ...formData,
-                        playerCurrentHp: prevSettings.playerCurrentHp,
-                        playerCurrentMp: prevSettings.playerCurrentMp,
-                        playerCurrentExp: prevSettings.playerCurrentExp,
-                        playerInventory: prevSettings.playerInventory,
-                        equippedItemIds: prevSettings.equippedItemIds,
-                        playerSkills: prevSettings.playerSkills,
-                        familiars: prevSettings.familiars,
-                    };
-        
-                    const livePoisMap = new Map((prevSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
-                    const stagedPois = newLiveSettings.mapPointsOfInterest || [];
-                    const mergedPois = stagedPois.map(stagedPoi => {
-                        const livePoi = livePoisMap.get(stagedPoi.id);
-                        return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
-                    });
-                    newLiveSettings.mapPointsOfInterest = mergedPois;
-        
-                    if (newLiveSettings.rpgMode) {
-                        const effectiveStats = calculateEffectiveStats(newLiveSettings);
-                        Object.assign(newLiveSettings, effectiveStats);
-                        const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
-                        const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
-        
-                        if (newInitialSituation !== oldInitialSituation) {
-                            newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
-                            newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
-                            newLiveSettings.playerCurrentExp = 0;
-                        } else {
-                            newLiveSettings.playerCurrentHp = Math.min(prevSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
-                            newLiveSettings.playerCurrentMp = Math.min(prevSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
-                        }
-                    }
-
-                    setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
-                    return newLiveSettings;
-                });
-
-                setCharacters(prevCharacters => {
-                    const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
-                    let updatedCharacters = [...prevCharacters];
-                    
-                    updatedCharacters = updatedCharacters.map(char => {
-                        const formCharData = formCharactersMap.get(char.id);
-                        if (formCharData) {
-                            formCharactersMap.delete(char.id!);
-                            return { ...char, ...formCharData };
-                        }
-                        return char;
-                    });
-        
-                    formCharactersMap.forEach(newChar => {
-                        updatedCharacters.push(newChar as Character);
-                    });
-                    setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
-                    return updatedCharacters;
-                });
-        
-                const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
-                const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
-                if (newInitialSituation !== oldInitialSituation) {
-                    setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
-                    if (activeCombat) setActiveCombat(undefined);
-                }
-            };
-
-            mergeAndUpdateState();
-            
-            toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
-        });
-    }, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
     const handleCloseMerchantPanel = () => {
         setMerchantInventory([]);
