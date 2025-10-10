@@ -310,10 +310,14 @@ export function useAIActions({
         try {
             const input: MaterializeCharacterInput = { narrativeContext, existingCharacters: characters.map(c => c.name), rpgMode: adventureSettings.rpgMode, currentLanguage };
             const newCharData = await materializeCharacter(input);
-            setCharacters(prev => [...prev, { ...newCharData, id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${Math.random()}` }]);
-            toast({ title: "Personnage Ajouté!", description: `${newCharData.name} a été ajouté.` });
+            if (newCharData?.name) {
+                setCharacters(prev => [...prev, { ...newCharData, id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${Math.random()}` }]);
+                toast({ title: "Personnage Ajouté!", description: `${newCharData.name} a été ajouté.` });
+            } else {
+                 toast({ title: "Erreur de Création", description: "L'IA n'a pas pu créer de personnage à partir du texte.", variant: "destructive" });
+            }
         } catch (error) {
-            toast({ title: "Erreur de Création", variant: "destructive" });
+            toast({ title: "Erreur de Création", description: error instanceof Error ? error.message : "Une erreur est survenue.", variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
@@ -387,5 +391,3 @@ export function useAIActions({
         isGeneratingMap,
     };
 }
-
-    
