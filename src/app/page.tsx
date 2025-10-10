@@ -736,7 +736,7 @@ export default function Home() {
         }, [toast, aiConfig]);
 
    
-  const handleAddToCart = (item: SellingItem) => {
+  const handleAddToCart = React.useCallback((item: SellingItem) => {
         setShoppingCart(prevCart => {
             const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
             if (existingItem) {
@@ -748,7 +748,7 @@ export default function Home() {
             }
             return [...prevCart, { ...item, quantity: 1 }];
         });
-    };
+    }, []);
     
     const handleRemoveFromCart = React.useCallback((itemName: string) => {
         setShoppingCart(prevCart => {
@@ -1890,6 +1890,7 @@ export default function Home() {
   
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
+    const playerName = adventureSettings.playerName || "Player";
     
     if (action === 'attack') {
         let enemiesToFight: Character[] = [];
@@ -2766,178 +2767,178 @@ export default function Home() {
         setShoppingCart([]);
     };
 
-  return (
-    <>
-    <PageStructure
-      adventureSettings={adventureSettings}
-      characters={characters}
-      stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
-      formPropKey={formPropKey}
-      handleApplyStagedChanges={handleApplyStagedChanges}
-      narrativeMessages={narrativeMessages}
-      currentLanguage={currentLanguage}
-      fileInputRef={fileInputRef}
-      adventureFormRef={adventureFormRef}
-      handleToggleRpgMode={handleToggleRpgMode}
-      handleToggleRelationsMode={handleToggleRelationsMode}
-      handleToggleStrategyMode={handleToggleStrategyMode}
-      onNarrativeChange={handleNarrativeUpdate}
-      handleCharacterUpdate={handleCharacterUpdate}
-      handleNewCharacters={handleNewCharacters}
-      onMaterializeCharacter={handleMaterializeCharacter}
-      onSummarizeHistory={handleSummarizeHistory}
-      handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
-      handleAffinityUpdates={handleAffinityUpdates}
-      handleRelationUpdate={(charId, targetId, newRelation) => {
-           const currentRelationsMode = adventureSettings.relationsMode ?? true;
-           if (!currentRelationsMode) return;
-           setCharacters(prevChars =>
-             prevChars.map(char => {
-               if (char.id === charId) {
-                 const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
-                 return { ...char, relations: updatedRelations };
-               }
-               if (targetId !== PLAYER_ID && char.id === targetId ) {
-                    const sourceChar = prevChars.find(c => c.id === charId);
-                    if (sourceChar) {
-                        const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
-                        return { ...char, relations: updatedRelations };
-                    }
-               }
-               return char;
-            })
-           );
-      }}
-      handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
-      handleSaveNewCharacter={handleSaveNewCharacter}
-      handleAddStagedCharacter={handleAddStagedCharacter}
-      handleSave={handleSave}
-      handleLoad={handleLoad}
-      setCurrentLanguage={handleSetCurrentLanguage}
-      translateTextAction={translateText}
-      generateAdventureAction={callGenerateAdventure}
-      generateSceneImageAction={generateSceneImageActionWrapper}
-      handleEditMessage={handleEditMessage}
-      handleRegenerateLastResponse={handleRegenerateLastResponse}
-      handleUndoLastMessage={handleUndoLastMessage}
-      playerId={PLAYER_ID}
-      playerName={playerName}
-      onRestartAdventure={confirmRestartAdventure}
-      activeCombat={activeCombat}
-      onCombatUpdates={handleCombatUpdates}
-      suggestQuestHookAction={callSuggestQuestHook}
-      isSuggestingQuest={isSuggestingQuest}
-      showRestartConfirm={showRestartConfirm}
-      setShowRestartConfirm={setShowRestartConfirm}
-      handleTakeLoot={handleTakeLoot}
-      handleDiscardLoot={handleDiscardLoot}
-      handlePlayerItemAction={handlePlayerItemAction}
-      handleSellItem={handleSellItem}
-      handleGenerateItemImage={handleGenerateItemImage}
-      isGeneratingItemImage={isGeneratingItemImage}
-      handleEquipItem={handleEquipItem}
-      handleUnequipItem={handleUnequipItem}
-      itemToSellDetails={itemToSellDetails}
-      sellQuantity={sellQuantity}
-      setSellQuantity={setSellQuantity}
-      confirmSellMultipleItems={confirmSellMultipleItems}
-      onCloseSellDialog={() => setItemToSellDetails(null)}
-      handleMapAction={handleMapAction}
-      useAestheticFont={useAestheticFont}
-      onToggleAestheticFont={handleToggleAestheticFont}
-      onGenerateMap={handleGenerateMapImage}
-      isGeneratingMap={isGeneratingMap}
-      onPoiPositionChange={handlePoiPositionChange}
-      onCreatePoi={handleCreatePoi}
-      onBuildInPoi={handleBuildInPoi}
-      currentTurn={narrativeMessages.length}
-      handleNewFamiliar={handleNewFamiliar}
-      handleFamiliarUpdate={handleFamiliarUpdate}
-      handleSaveFamiliar={handleSaveFamiliar}
-      handleAddStagedFamiliar={handleAddStagedFamiliar}
-      onMapImageUpload={handleMapImageUpload}
-      onMapImageUrlChange={handleMapImageUrlChange}
-      onAddPoiToMap={handleAddPoiToMap}
-      isLoading={isUiLocked}
-      onAiConfigChange={handleAiConfigChange}
-      aiConfig={aiConfig}
-      comicDraft={comicDraft}
-      onDownloadComicDraft={handleDownloadComicDraft}
-      onAddComicPage={handleAddComicPage}
-      onAddComicPanel={handleAddComicPanel}
-      onRemoveLastComicPanel={handleRemoveLastComicPanel}
-      onUploadToComicPanel={handleUploadToComicPanel}
-      currentComicPageIndex={currentComicPageIndex}
-      onComicPageChange={handleComicPageChange}
-      onAddToComicPage={handleAddToComicPage}
-      isSaveComicDialogOpen={isSaveComicDialogOpen}
-      setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
-      comicTitle={comicTitle}
-      setComicTitle={setComicTitle}
-      comicCoverUrl={comicCoverUrl}
-      isGeneratingCover={handleGenerateCover}
-      onSaveToLibrary={handleSaveToLibrary}
-      merchantInventory={merchantInventory}
-      shoppingCart={shoppingCart}
-      onAddToCart={handleAddToCart}
-      onRemoveFromCart={handleRemoveFromCart}
-      onFinalizePurchase={onFinalizePurchase}
-      onCloseMerchantPanel={handleCloseMerchantPanel}
-      handleClaimHuntReward={handleClaimHuntReward}
-    />
-     {isTargeting && itemToUse && (
-        <AlertDialog open={isTargeting} onOpenChange={setIsTargeting}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Choisir une cible pour {itemToUse.name}</AlertDialogTitle>
-              <AlertDialogDescription>
-                Quel ennemi souhaitez-vous viser ?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="py-4 space-y-2">
-              {(activeCombat?.combatants || []).filter(c => c.team === 'enemy' && !c.isDefeated).map(enemy => (
-                <Button key={enemy.characterId} variant = "outline" className="w-full justify-start" onClick={() => applyCombatItemEffect(enemy.characterId)}>
-                    {enemy.name} (PV: {enemy.currentHp}/{enemy.maxHp})
-                </Button>
-              ))}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => { setIsTargeting(false); setItemToUse(null); }}>Annuler</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-      {namingFamiliarState && (
-        <AlertDialog open={!!namingFamiliarState} onOpenChange={(open) => { if (!open) { setFamiliarNameError(null); } }}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Donnez un nom à votre nouveau compagnon !</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Vous avez invoqué un(e) {namingFamiliarState.baseFamiliar.name}. Quel nom unique souhaitez-vous lui donner ?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4 space-y-2">
-                    <Label htmlFor="familiar-name-input">Nom du familier</Label>
-                    <Input
-                        id="familiar-name-input"
-                        value={newFamiliarName}
-                        onChange={(e) => {
-                            setNewFamiliarName(e.target.value);
-                            if (familiarNameError) setFamiliarNameError(null);
-                        }}
-                        placeholder="Entrez un nom..."
-                    />
-                    {familiarNameError && <p className="text-sm text-destructive">{familiarNameError}</p>}
-                </div>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => { handleConfirmFamiliarName(false); }}>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleConfirmFamiliarName(true)} disabled={!newFamiliarName.trim()}>
-                        Confirmer et Invoquer
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </>
-  );
+    return (
+        <>
+            <PageStructure
+                adventureSettings={adventureSettings}
+                characters={characters}
+                stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
+                formPropKey={formPropKey}
+                handleApplyStagedChanges={handleApplyStagedChanges}
+                narrativeMessages={narrativeMessages}
+                currentLanguage={currentLanguage}
+                fileInputRef={fileInputRef}
+                adventureFormRef={adventureFormRef}
+                handleToggleRpgMode={handleToggleRpgMode}
+                handleToggleRelationsMode={handleToggleRelationsMode}
+                handleToggleStrategyMode={handleToggleStrategyMode}
+                onNarrativeChange={handleNarrativeUpdate}
+                handleCharacterUpdate={handleCharacterUpdate}
+                handleNewCharacters={handleNewCharacters}
+                onMaterializeCharacter={handleMaterializeCharacter}
+                onSummarizeHistory={handleSummarizeHistory}
+                handleCharacterHistoryUpdate={handleCharacterHistoryUpdate}
+                handleAffinityUpdates={handleAffinityUpdates}
+                handleRelationUpdate={(charId, targetId, newRelation) => {
+                    const currentRelationsMode = adventureSettings.relationsMode ?? true;
+                    if (!currentRelationsMode) return;
+                    setCharacters(prevChars =>
+                        prevChars.map(char => {
+                            if (char.id === charId) {
+                                const updatedRelations = { ...(char.relations || {}), [targetId]: newRelation };
+                                return { ...char, relations: updatedRelations };
+                            }
+                            if (targetId !== PLAYER_ID && char.id === targetId) {
+                                const sourceChar = prevChars.find(c => c.id === charId);
+                                if (sourceChar) {
+                                    const updatedRelations = { ...(char.relations || {}), [charId]: newRelation };
+                                    return { ...char, relations: updatedRelations };
+                                }
+                            }
+                            return char;
+                        })
+                    );
+                }}
+                handleRelationUpdatesFromAI={handleRelationUpdatesFromAI}
+                handleSaveNewCharacter={handleSaveNewCharacter}
+                handleAddStagedCharacter={handleAddStagedCharacter}
+                handleSave={handleSave}
+                handleLoad={handleLoad}
+                setCurrentLanguage={handleSetCurrentLanguage}
+                translateTextAction={translateText}
+                generateAdventureAction={callGenerateAdventure}
+                generateSceneImageAction={generateSceneImageActionWrapper}
+                handleEditMessage={handleEditMessage}
+                handleRegenerateLastResponse={handleRegenerateLastResponse}
+                handleUndoLastMessage={handleUndoLastMessage}
+                playerId={PLAYER_ID}
+                playerName={playerName}
+                onRestartAdventure={confirmRestartAdventure}
+                activeCombat={activeCombat}
+                onCombatUpdates={handleCombatUpdates}
+                suggestQuestHookAction={callSuggestQuestHook}
+                isSuggestingQuest={isSuggestingQuest}
+                showRestartConfirm={showRestartConfirm}
+                setShowRestartConfirm={setShowRestartConfirm}
+                handleTakeLoot={handleTakeLoot}
+                handleDiscardLoot={handleDiscardLoot}
+                handlePlayerItemAction={handlePlayerItemAction}
+                handleSellItem={handleSellItem}
+                handleGenerateItemImage={handleGenerateItemImage}
+                isGeneratingItemImage={isGeneratingItemImage}
+                handleEquipItem={handleEquipItem}
+                handleUnequipItem={handleUnequipItem}
+                itemToSellDetails={itemToSellDetails}
+                sellQuantity={sellQuantity}
+                setSellQuantity={setSellQuantity}
+                confirmSellMultipleItems={confirmSellMultipleItems}
+                onCloseSellDialog={() => setItemToSellDetails(null)}
+                handleMapAction={handleMapAction}
+                useAestheticFont={useAestheticFont}
+                onToggleAestheticFont={handleToggleAestheticFont}
+                onGenerateMap={handleGenerateMapImage}
+                isGeneratingMap={isGeneratingMap}
+                onPoiPositionChange={handlePoiPositionChange}
+                onCreatePoi={handleCreatePoi}
+                onBuildInPoi={handleBuildInPoi}
+                currentTurn={narrativeMessages.length}
+                handleNewFamiliar={handleNewFamiliar}
+                handleFamiliarUpdate={handleFamiliarUpdate}
+                handleSaveFamiliar={handleSaveFamiliar}
+                handleAddStagedFamiliar={handleAddStagedFamiliar}
+                onMapImageUpload={handleMapImageUpload}
+                onMapImageUrlChange={handleMapImageUrlChange}
+                onAddPoiToMap={handleAddPoiToMap}
+                isLoading={isUiLocked}
+                onAiConfigChange={handleAiConfigChange}
+                aiConfig={aiConfig}
+                comicDraft={comicDraft}
+                onDownloadComicDraft={handleDownloadComicDraft}
+                onAddComicPage={handleAddComicPage}
+                onAddComicPanel={handleAddComicPanel}
+                onRemoveLastComicPanel={handleRemoveLastComicPanel}
+                onUploadToComicPanel={handleUploadToComicPanel}
+                currentComicPageIndex={currentComicPageIndex}
+                onComicPageChange={handleComicPageChange}
+                onAddToComicPage={handleAddToComicPage}
+                isSaveComicDialogOpen={isSaveComicDialogOpen}
+                setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
+                comicTitle={comicTitle}
+                setComicTitle={setComicTitle}
+                comicCoverUrl={comicCoverUrl}
+                isGeneratingCover={handleGenerateCover}
+                onSaveToLibrary={handleSaveToLibrary}
+                merchantInventory={merchantInventory}
+                shoppingCart={shoppingCart}
+                onAddToCart={handleAddToCart}
+                onRemoveFromCart={handleRemoveFromCart}
+                onFinalizePurchase={onFinalizePurchase}
+                onCloseMerchantPanel={handleCloseMerchantPanel}
+                handleClaimHuntReward={handleClaimHuntReward}
+            />
+            {isTargeting && itemToUse && (
+                <AlertDialog open={isTargeting} onOpenChange={setIsTargeting}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Choisir une cible pour {itemToUse.name}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Quel ennemi souhaitez-vous viser ?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="py-4 space-y-2">
+                            {(activeCombat?.combatants || []).filter(c => c.team === 'enemy' && !c.isDefeated).map(enemy => (
+                                <Button key={enemy.characterId} variant="outline" className="w-full justify-start" onClick={() => applyCombatItemEffect(enemy.characterId)}>
+                                    {enemy.name} (PV: {enemy.currentHp}/{enemy.maxHp})
+                                </Button>
+                            ))}
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => { setIsTargeting(false); setItemToUse(null); }}>Annuler</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            {namingFamiliarState && (
+                <AlertDialog open={!!namingFamiliarState} onOpenChange={(open) => { if (!open) { setFamiliarNameError(null); } }}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Donnez un nom à votre nouveau compagnon !</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Vous avez invoqué un(e) {namingFamiliarState.baseFamiliar.name}. Quel nom unique souhaitez-vous lui donner ?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="py-4 space-y-2">
+                            <Label htmlFor="familiar-name-input">Nom du familier</Label>
+                            <Input
+                                id="familiar-name-input"
+                                value={newFamiliarName}
+                                onChange={(e) => {
+                                    setNewFamiliarName(e.target.value);
+                                    if (familiarNameError) setFamiliarNameError(null);
+                                }}
+                                placeholder="Entrez un nom..."
+                            />
+                            {familiarNameError && <p className="text-sm text-destructive">{familiarNameError}</p>}
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => { handleConfirmFamiliarName(false); }}>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleConfirmFamiliarName(true)} disabled={!newFamiliarName.trim()}>
+                                Confirmer et Invoquer
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+        </>
+    );
 }

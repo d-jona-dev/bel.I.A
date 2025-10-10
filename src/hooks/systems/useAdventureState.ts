@@ -281,7 +281,9 @@ export function useAdventureState() {
         aiConfig,
         setAiConfig,
         baseAdventureSettings,
+        setBaseAdventureSettings,
         baseCharacters,
+        setBaseCharacters,
         loadAdventureState,
         createInitialState,
     };
