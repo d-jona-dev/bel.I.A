@@ -1891,7 +1891,6 @@ export default function Home() {
   
     let userActionText = '';
     let locationIdOverride: string | undefined = undefined;
-    const playerName = adventureSettings.playerName || "Player";
     
     if (action === 'attack') {
         let enemiesToFight: Character[] = [];
@@ -2940,3 +2939,5 @@ export default function Home() {
         </>
     );
 }
+
+    
