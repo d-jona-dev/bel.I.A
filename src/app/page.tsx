@@ -335,6 +335,10 @@ export default function Home() {
     
     // --- Core Action Handlers ---
     
+    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
+      // This function is no longer called by the AI, but we keep it for potential future use or manual triggering.
+      console.log("handleNewCharacters called with:", newChars);
+    }, []);
     
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -764,11 +768,6 @@ export default function Home() {
         });
     }, []);
 
-    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
-      // This function is no longer called by the AI, but we keep it for potential future use or manual triggering.
-      console.log("handleNewCharacters called with:", newChars);
-    }, []);
-
     const onFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
@@ -805,7 +804,7 @@ export default function Home() {
                     };
                     const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
                     if (existingIndex > -1) {
-                        newInventory[existingIndex].quantity += item.quantity;
+                        newInventory[existingIndex].quantity += newItem.quantity;
                     } else {
                         newInventory.push(newItem);
                     }
@@ -2399,11 +2398,11 @@ export default function Home() {
     
     setIsLoading(false);
   }, [
-      callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, allEnemies,
-      allConsumables, allWeapons, allArmors, allJewelry, 
+      adventureSettings, characters, playerName, toast, callGenerateAdventure, 
+      allConsumables, allWeapons, allArmors, allJewelry, allEnemies,
+      setMerchantInventory, setCharacters, setActiveCombat, handlePoiOwnershipChange, 
       physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, 
-      generateDynamicFamiliarBonus,
-      setActiveCombat, setCharacters, setMerchantInventory, setShoppingCart, setIsLoading, setAdventureSettings
+      generateDynamicFamiliarBonus, setIsLoading, setShoppingCart, handleNarrativeUpdate, setAdventureSettings,
   ]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
@@ -2760,7 +2759,90 @@ export default function Home() {
     }
   }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage, setAdventureSettings]);
     
-  
+    const handleApplyStagedChanges = React.useCallback(async () => {
+        if (!adventureFormRef.current) return;
+        
+        const formData = await adventureFormRef.current.getFormData();
+        if (!formData) {
+            return;
+        }
+
+        React.startTransition(() => {
+            const mergeAndUpdateState = () => {
+                setAdventureSettings(prevSettings => {
+                    const newLiveSettings: AdventureSettings = {
+                        ...prevSettings,
+                        ...formData,
+                        playerCurrentHp: prevSettings.playerCurrentHp,
+                        playerCurrentMp: prevSettings.playerCurrentMp,
+                        playerCurrentExp: prevSettings.playerCurrentExp,
+                        playerInventory: prevSettings.playerInventory,
+                        equippedItemIds: prevSettings.equippedItemIds,
+                        playerSkills: prevSettings.playerSkills,
+                        familiars: prevSettings.familiars,
+                    };
+        
+                    const livePoisMap = new Map((prevSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
+                    const stagedPois = newLiveSettings.mapPointsOfInterest || [];
+                    const mergedPois = stagedPois.map(stagedPoi => {
+                        const livePoi = livePoisMap.get(stagedPoi.id);
+                        return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
+                    });
+                    newLiveSettings.mapPointsOfInterest = mergedPois;
+        
+                    if (newLiveSettings.rpgMode) {
+                        const effectiveStats = calculateEffectiveStats(newLiveSettings);
+                        Object.assign(newLiveSettings, effectiveStats);
+                        const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
+                        const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+        
+                        if (newInitialSituation !== oldInitialSituation) {
+                            newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
+                            newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
+                            newLiveSettings.playerCurrentExp = 0;
+                        } else {
+                            newLiveSettings.playerCurrentHp = Math.min(prevSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
+                            newLiveSettings.playerCurrentMp = Math.min(prevSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
+                        }
+                    }
+
+                    setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
+                    return newLiveSettings;
+                });
+
+                setCharacters(prevCharacters => {
+                    const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
+                    let updatedCharacters = [...prevCharacters];
+                    
+                    updatedCharacters = updatedCharacters.map(char => {
+                        const formCharData = formCharactersMap.get(char.id);
+                        if (formCharData) {
+                            formCharactersMap.delete(char.id!);
+                            return { ...char, ...formCharData };
+                        }
+                        return char;
+                    });
+        
+                    formCharactersMap.forEach(newChar => {
+                        updatedCharacters.push(newChar as Character);
+                    });
+                    setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
+                    return updatedCharacters;
+                });
+        
+                const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+                const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+                if (newInitialSituation !== oldInitialSituation) {
+                    setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
+                    if (activeCombat) setActiveCombat(undefined);
+                }
+            };
+
+            mergeAndUpdateState();
+            
+            toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
+        });
+    }, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
     const handleCloseMerchantPanel = () => {
         setMerchantInventory([]);
