@@ -26,6 +26,7 @@ import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { useComic } from "@/hooks/systems/useComic";
 import { useCombat } from "@/hooks/systems/useCombat";
 import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats } from "@/hooks/systems/useAdventureState";
+import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; // Import the new hook
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +77,9 @@ export default function Home() {
         aiConfig,
         setAiConfig,
         baseAdventureSettings,
+        setBaseAdventureSettings,
         baseCharacters,
+        setBaseCharacters,
         loadAdventureState,
         createInitialState,
     } = useAdventureState();
@@ -733,7 +736,40 @@ export default function Home() {
         }, [toast, aiConfig]);
 
    
-  const onFinalizePurchase = React.useCallback(() => {
+  const handleAddToCart = (item: SellingItem) => {
+        setShoppingCart(prevCart => {
+            const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
+            if (existingItem) {
+                return prevCart.map(cartItem => 
+                    cartItem.baseItemId === item.baseItemId && cartItem.name === item.name 
+                    ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
+                    : cartItem
+                );
+            }
+            return [...prevCart, { ...item, quantity: 1 }];
+        });
+    };
+    
+    const handleRemoveFromCart = React.useCallback((itemName: string) => {
+        setShoppingCart(prevCart => {
+            const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
+            if (existingItem && existingItem.quantity! > 1) {
+                 return prevCart.map(cartItem => 
+                    cartItem.name === itemName
+                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
+                    : cartItem
+                );
+            }
+            return prevCart.filter(cartItem => cartItem.name !== itemName);
+        });
+    }, []);
+
+    const handleNewCharacters = React.useCallback((newChars: NewCharacterSchema[]) => {
+      // This function is no longer called by the AI, but we keep it for potential future use or manual triggering.
+      console.log("handleNewCharacters called with:", newChars);
+    }, []);
+
+    const onFinalizePurchase = React.useCallback(() => {
         const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
 
         if ((adventureSettings.playerGold || 0) < totalCost) {
@@ -802,7 +838,7 @@ export default function Home() {
                     locationId: adventureSettings.playerLocationId,
                 };
             });
-            //handleNewCharacters(newCharactersToAdd);
+            handleNewCharacters(newCharactersToAdd as any);
         }
 
         // Update player gold
@@ -817,7 +853,7 @@ export default function Home() {
         
         setShoppingCart([]);
         setMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory, adventureSettings.playerLocationId]);
+    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory, adventureSettings.playerLocationId, handleNewCharacters]);
    
     const handleActionWithCombatItem = async (narrativeAction: string) => {
         handleNarrativeUpdate(narrativeAction, 'user');
@@ -1694,58 +1730,15 @@ export default function Home() {
     });
   };
 
-
-  const handleSave = React.useCallback(() => {
-        const saveData: SaveData = {
-            adventureSettings: adventureSettings,
-            characters: characters,
-            narrative: narrativeMessages,
-            currentLanguage,
-            activeCombat: activeCombat,
-            saveFormatVersion: 2.6,
-            timestamp: new Date().toISOString(),
-            aiConfig: aiConfig,
-        };
-        const jsonString = JSON.stringify(saveData, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `aventurier_textuel_${adventureSettings.playerName || 'aventure'}_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.createObjectURL(url);
-        React.startTransition(() => {
-            toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
-        });
-    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig]);
-
-    const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const jsonString = e.target?.result as string;
-                const loadedData: Partial<SaveData> = JSON.parse(jsonString);
-
-                if (!loadedData.adventureSettings || !loadedData.characters || !loadedData.narrative || !Array.isArray(loadedData.narrative)) {
-                    throw new Error("Structure de fichier de sauvegarde invalide ou manquante.");
-                }
-                await loadAdventureState(loadedData as SaveData);
-
-            } catch (error: any) {
-                console.error("Error loading adventure:", error);
-                React.startTransition(() => {
-                    toast({ title: "Erreur de Chargement", description: `Impossible de lire le fichier JSON: ${error.message}`, variant: "destructive" });
-                });
-            }
-        };
-        reader.readAsText(file);
-        if(event.target) event.target.value = '';
-    }, [toast, loadAdventureState]);
+    const { handleSave, handleLoad } = useSaveLoad({
+        adventureSettings,
+        characters,
+        narrativeMessages,
+        currentLanguage,
+        activeCombat,
+        aiConfig,
+        loadAdventureState,
+    });
 
 
   const confirmRestartAdventure = React.useCallback(() => {
@@ -1789,7 +1782,7 @@ export default function Home() {
     setShowRestartConfirm(true);
   }, []);
 
-  const handleApplyStagedChanges = async () => {
+  const handleApplyStagedChanges = React.useCallback(async () => {
     if (!adventureFormRef.current) return;
     
     const formData = await adventureFormRef.current.getFormData();
@@ -1798,71 +1791,69 @@ export default function Home() {
     }
 
     React.startTransition(() => {
-        // This function will merge the form data with the existing adventure state
-        const mergeAndUpdateState = (prevSettings: AdventureSettings, prevCharacters: Character[]) => {
-            const newLiveSettings: AdventureSettings = {
-                ...prevSettings,
-                ...formData,
-                playerCurrentHp: prevSettings.playerCurrentHp,
-                playerCurrentMp: prevSettings.playerCurrentMp,
-                playerCurrentExp: prevSettings.playerCurrentExp,
-                playerInventory: prevSettings.playerInventory,
-                equippedItemIds: prevSettings.equippedItemIds,
-                playerSkills: prevSettings.playerSkills,
-                familiars: prevSettings.familiars,
-            };
-
-            const livePoisMap = new Map((prevSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
-            const stagedPois = newLiveSettings.mapPointsOfInterest || [];
-            const mergedPois = stagedPois.map(stagedPoi => {
-                const livePoi = livePoisMap.get(stagedPoi.id);
-                return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
-            });
-            newLiveSettings.mapPointsOfInterest = mergedPois;
-
-            if (newLiveSettings.rpgMode) {
-                const effectiveStats = calculateEffectiveStats(newLiveSettings);
-                Object.assign(newLiveSettings, effectiveStats);
-                const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
-                const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
-
-                if (newInitialSituation !== oldInitialSituation) {
-                    newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
-                    newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
-                    newLiveSettings.playerCurrentExp = 0;
-                } else {
-                    newLiveSettings.playerCurrentHp = Math.min(prevSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
-                    newLiveSettings.playerCurrentMp = Math.min(prevSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
+        const mergeAndUpdateState = () => {
+            setAdventureSettings(prevSettings => {
+                const newLiveSettings: AdventureSettings = {
+                    ...prevSettings,
+                    ...formData,
+                    playerCurrentHp: prevSettings.playerCurrentHp,
+                    playerCurrentMp: prevSettings.playerCurrentMp,
+                    playerCurrentExp: prevSettings.playerCurrentExp,
+                    playerInventory: prevSettings.playerInventory,
+                    equippedItemIds: prevSettings.equippedItemIds,
+                    playerSkills: prevSettings.playerSkills,
+                    familiars: prevSettings.familiars,
+                };
+    
+                const livePoisMap = new Map((prevSettings.mapPointsOfInterest || []).map(p => [p.id, p]));
+                const stagedPois = newLiveSettings.mapPointsOfInterest || [];
+                const mergedPois = stagedPois.map(stagedPoi => {
+                    const livePoi = livePoisMap.get(stagedPoi.id);
+                    return livePoi ? { ...livePoi, ...stagedPoi, position: livePoi.position } : stagedPoi;
+                });
+                newLiveSettings.mapPointsOfInterest = mergedPois;
+    
+                if (newLiveSettings.rpgMode) {
+                    const effectiveStats = calculateEffectiveStats(newLiveSettings);
+                    Object.assign(newLiveSettings, effectiveStats);
+                    const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
+                    const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
+    
+                    if (newInitialSituation !== oldInitialSituation) {
+                        newLiveSettings.playerCurrentHp = newLiveSettings.playerMaxHp;
+                        newLiveSettings.playerCurrentMp = newLiveSettings.playerMaxMp;
+                        newLiveSettings.playerCurrentExp = 0;
+                    } else {
+                        newLiveSettings.playerCurrentHp = Math.min(prevSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp);
+                        newLiveSettings.playerCurrentMp = Math.min(prevSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp);
+                    }
                 }
-            }
 
-            const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
-            let updatedCharacters = [...prevCharacters];
-            
-            // Update existing characters
-            updatedCharacters = updatedCharacters.map(char => {
-                const formCharData = formCharactersMap.get(char.id);
-                if (formCharData) {
-                    formCharactersMap.delete(char.id!); // Remove from map to track new ones
-                    return { ...char, ...formCharData };
-                }
-                return char;
+                setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
+                return newLiveSettings;
             });
 
-            // Add new characters from the form
-            formCharactersMap.forEach(newChar => {
-                updatedCharacters.push(newChar as Character);
+            setCharacters(prevCharacters => {
+                const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
+                let updatedCharacters = [...prevCharacters];
+                
+                updatedCharacters = updatedCharacters.map(char => {
+                    const formCharData = formCharactersMap.get(char.id);
+                    if (formCharData) {
+                        formCharactersMap.delete(char.id!);
+                        return { ...char, ...formCharData };
+                    }
+                    return char;
+                });
+    
+                formCharactersMap.forEach(newChar => {
+                    updatedCharacters.push(newChar as Character);
+                });
+                setBaseCharacters(JSON.parse(JSON.stringify(updatedCharacters)));
+                return updatedCharacters;
             });
-            
-            setAdventureSettings(newLiveSettings);
-            setCharacters(updatedCharacters);
-            loadAdventureState({
-                ...createInitialState(),
-                adventureSettings: newLiveSettings,
-                characters: updatedCharacters
-            })
-
-            const oldInitialSituation = getLocalizedText(prevSettings.initialSituation, currentLanguage);
+    
+            const oldInitialSituation = getLocalizedText(adventureSettings.initialSituation, currentLanguage);
             const newInitialSituation = getLocalizedText(formData.initialSituation, currentLanguage);
             if (newInitialSituation !== oldInitialSituation) {
                 setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: newInitialSituation, timestamp: Date.now() }]);
@@ -1870,11 +1861,11 @@ export default function Home() {
             }
         };
 
-        mergeAndUpdateState(adventureSettings, characters);
+        mergeAndUpdateState();
         
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-};
+}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
 
 
   const handleToggleStrategyMode = () => {
@@ -2406,7 +2397,13 @@ export default function Home() {
     }
     
     setIsLoading(false);
-  }, [callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, allConsumables, allWeapons, allArmors, allJewelry, handleUseFamiliarItem, generateDynamicFamiliarBonus, physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, allEnemies, setActiveCombat, setAdventureSettings, setCharacters, setMerchantInventory, setShoppingCart, setIsLoading]);
+  }, [
+      callGenerateAdventure, handleNarrativeUpdate, toast, adventureSettings, characters, allEnemies,
+      allConsumables, allWeapons, allArmors, allJewelry, 
+      physicalFamiliarItems, creatureFamiliarItems, descriptorFamiliarItems, 
+      generateDynamicFamiliarBonus,
+      setActiveCombat, setCharacters, setMerchantInventory, setShoppingCart, setIsLoading, setAdventureSettings
+  ]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
     setAdventureSettings(prev => {
@@ -2497,34 +2494,6 @@ export default function Home() {
     });
   }, [toast, setAiConfig]);
   
-    const handleAddToCart = React.useCallback((item: SellingItem) => {
-        setShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
-            if (existingItem) {
-                return prevCart.map(cartItem => 
-                    cartItem.baseItemId === item.baseItemId && cartItem.name === item.name 
-                    ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
-                    : cartItem
-                );
-            }
-            return [...prevCart, { ...item, quantity: 1 }];
-        });
-    }, []);
-
-    const handleRemoveFromCart = React.useCallback((itemName: string) => {
-        setShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
-            if (existingItem && existingItem.quantity! > 1) {
-                 return prevCart.map(cartItem => 
-                    cartItem.name === itemName
-                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
-                    : cartItem
-                );
-            }
-            return prevCart.filter(cartItem => cartItem.name !== itemName);
-        });
-    }, []);
-
   const handleAddPoiToMap = React.useCallback((poiId: string) => {
     setAdventureSettings(prev => {
         const pois = prev.mapPointsOfInterest || [];
@@ -2554,7 +2523,7 @@ export default function Home() {
         setCurrentLanguage(lang);
         localStorage.setItem('adventure_language', lang);
     }
-  
+    
   const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi || poi.ownerId !== PLAYER_ID) {
@@ -2636,6 +2605,8 @@ export default function Home() {
   const getLocalizedText = (field: LocalizedText, lang: string) => {
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
   };
+    
+  const playerName = adventureSettings.playerName || "Player";
 
   const worldForQuestHook = getLocalizedText(adventureSettings.world, currentLanguage);
   const characterNamesForQuestHook = React.useMemo(() => characters.map(c => c.name).join(", "), [characters]);
@@ -2795,11 +2766,6 @@ export default function Home() {
         setShoppingCart([]);
     };
 
-    const handleNewCharacters = (newChars: NewCharacterSchema[]) => {
-      // This function is no longer called by the AI, but we keep it for potential future use or manual triggering.
-      console.log("handleNewCharacters called with:", newChars);
-    };
-
   return (
     <>
     <PageStructure
@@ -2855,7 +2821,7 @@ export default function Home() {
       handleRegenerateLastResponse={handleRegenerateLastResponse}
       handleUndoLastMessage={handleUndoLastMessage}
       playerId={PLAYER_ID}
-      playerName={adventureSettings.playerName || "Player"}
+      playerName={playerName}
       onRestartAdventure={confirmRestartAdventure}
       activeCombat={activeCombat}
       onCombatUpdates={handleCombatUpdates}
@@ -2975,9 +2941,3 @@ export default function Home() {
     </>
   );
 }
-
-
-
-
-
-    

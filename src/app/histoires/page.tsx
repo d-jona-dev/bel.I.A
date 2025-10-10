@@ -34,6 +34,7 @@ import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } fro
 import { ModelManager } from '@/components/model-manager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useSaveLoad } from '@/hooks/systems/useSaveLoad';
 
 
 // Helper to generate a unique ID
@@ -160,6 +161,23 @@ export default function HistoiresPage() {
     setIsLoading(false);
   },[toast]);
 
+  // Use the new hook
+  const { handleDownloadStory, handleImportStory: handleImportStoryGeneric } = useSaveLoad({
+    // Pass dummy state as this page doesn't have an active adventure
+    adventureSettings: createNewAdventureState().adventureSettings,
+    characters: [],
+    narrativeMessages: [],
+    currentLanguage: 'fr',
+    activeCombat: undefined,
+    aiConfig: aiConfig,
+    loadAdventureState: () => {}, // Not used here
+  });
+
+  const handleImportStory = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleImportStoryGeneric(event, savedStories, (newStories) => saveStories(newStories));
+  };
+
+
   React.useEffect(() => {
     loadData();
   }, [loadData]);
@@ -281,19 +299,6 @@ export default function HistoiresPage() {
     }
   };
 
-  const handleDownloadStory = (story: SavedStory) => {
-    const jsonString = JSON.stringify(story.adventureState, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${story.title.toLowerCase().replace(/\s/g, '_')}_story.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
   const handleSaveChanges = async () => {
       if (editingStory && editFormRef.current) {
           const formValues = await editFormRef.current.getFormData();
@@ -390,51 +395,6 @@ export default function HistoiresPage() {
   }
 
   
-  const handleImportStory = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const jsonString = e.target?.result as string;
-            const importedState = JSON.parse(jsonString) as SaveData;
-            
-            if (!importedState.adventureSettings || !importedState.characters || !importedState.narrative) {
-                throw new Error("Fichier de sauvegarde invalide.");
-            }
-
-            const newId = uid();
-            const worldText = typeof importedState.adventureSettings.world === 'string' ? { fr: importedState.adventureSettings.world } : importedState.adventureSettings.world;
-            const situationText = typeof importedState.adventureSettings.initialSituation === 'string' ? { fr: importedState.adventureSettings.initialSituation } : importedState.adventureSettings.initialSituation;
-
-            const newStory: SavedStory = {
-                id: newId,
-                title: (worldText.fr || worldText.en || "Histoire Importée").substring(0, 40),
-                description: (situationText.fr || situationText.en || "...").substring(0, 100),
-                date: new Date().toISOString().split('T')[0],
-                adventureState: {
-                    ...importedState,
-                    adventureSettings: {
-                        ...importedState.adventureSettings,
-                        world: worldText,
-                        initialSituation: situationText
-                    }
-                },
-            };
-
-            saveStories([...savedStories, newStory]);
-            toast({ title: "Histoire Importée", description: "L'aventure a été ajoutée à votre liste." });
-
-        } catch (error) {
-            console.error("Error importing story:", error);
-            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
-        }
-    };
-    reader.readAsText(file);
-    if(event.target) event.target.value = ''; // Reset for next upload
-  }
-
   const getAdventureFormValues = (story: SavedStory | null): AdventureFormValues => {
       const defaultState = createNewAdventureState();
       if (!story) {
@@ -767,12 +727,3 @@ export default function HistoiresPage() {
     </div>
   );
 }
-
-
-
-
-
-
-    
-
-    
