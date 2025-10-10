@@ -1274,7 +1274,7 @@ export function AdventureDisplay({
                                             } else {
                                                 toast({title: "Description Manquante", description: "Impossible de trouver une description de scène à générer.", variant: "destructive"});
                                             }
-                                        }} disabled={isImageLoading || isLoading || ![...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription)}>
+                                        }} disabled={isImageLoading || isLoading || !([...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription))}>
                                             <Wand2 className="mr-2 h-4 w-4" />
                                             <span>Générer Image</span>
                                         </Button>
