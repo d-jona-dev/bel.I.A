@@ -378,10 +378,20 @@ export default function Home() {
         toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
     }, [characters, setCharacters, toast]);
    
-    const handleActionWithCombatItem = async (narrativeAction: string) => {
-        handleNarrativeUpdate(narrativeAction, 'user');
-        await generateAdventureAction(narrativeAction);
-    }
+    const handleActionWithCombatItem = React.useCallback(async (narrativeAction: string) => {
+        if (isLoading) return;
+        setIsLoading(true);
+        try {
+            await generateAdventureAction(narrativeAction);
+        } catch (error) {
+            console.error("Error in handleActionWithCombatItem trying to generate adventure:", error);
+            React.startTransition(() => {
+                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isLoading, generateAdventureAction, toast, setIsLoading]);
     
     React.useEffect(() => {
       const savedLang = localStorage.getItem('adventure_language') || 'fr';
@@ -480,10 +490,11 @@ export default function Home() {
             setItemToUse(itemUsed);
             setIsTargeting(true);
         } else {
-             await handleSendSpecificAction(narrativeAction);
+             // This function now just calls the AI and doesn't update the narrative itself
+             await handleActionWithCombatItem(narrativeAction);
         }
     }
-  }, [handlePlayerItemAction, handleUseFamiliarItem, setItemToUse, setIsTargeting, activeCombat, handleSendSpecificAction]);
+  }, [handlePlayerItemAction, handleUseFamiliarItem, setItemToUse, setIsTargeting, activeCombat, handleActionWithCombatItem]);
 
     const { handleSave, handleLoad } = useSaveLoad({
         adventureSettings,
@@ -749,7 +760,10 @@ export default function Home() {
         })),
     }), [adventureSettings, characters, computedStats]);
   
-  const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
+    const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
+    
+    const onGenerateCover = handleGenerateCover;
+
 
     return (
         <>
@@ -841,7 +855,7 @@ export default function Home() {
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
                 isGeneratingCover={isGeneratingCover}
-                onGenerateCover={handleGenerateCover}
+                onGenerateCover={onGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
