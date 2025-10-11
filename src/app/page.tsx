@@ -263,6 +263,28 @@ export default function Home() {
         handleCombatUpdates,
         initializeMerchantInventory,
     });
+
+    React.useEffect(() => {
+      console.log("=== DIAGNOSTIC EQUIPEMENT ===");
+      console.log("1. Equipped IDs:", adventureSettings.equippedItemIds);
+      console.log("2. Inventory:", adventureSettings.playerInventory);
+      console.log("3. Computed Stats:", computedStats);
+      console.log("4. Base Stats:", {
+        str: adventureSettings.playerStrength,
+        dex: adventureSettings.playerDexterity,
+        con: adventureSettings.playerConstitution
+      });
+      
+      // Vérifier si un bijou est équipé
+      const jewelryId = adventureSettings.equippedItemIds?.jewelry;
+      if (jewelryId) {
+        const jewelry = adventureSettings.playerInventory?.find(i => i.id === jewelryId);
+        console.log("5. Bijou équipé:", jewelry);
+        if (jewelry) {
+          console.log("6. Type de statBonuses:", typeof jewelry.statBonuses, jewelry.statBonuses);
+        }
+      }
+    }, [adventureSettings.equippedItemIds, adventureSettings.playerInventory, computedStats, adventureSettings.playerStrength, adventureSettings.playerDexterity, adventureSettings.playerConstitution]);
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
         if (isLoading) return;
@@ -907,3 +929,4 @@ export default function Home() {
         </>
     );
 }
+
