@@ -52,9 +52,9 @@ const bonusTypes: Array<{ value: FamiliarPassiveBonus['type']; label: string }> 
 const bonusRarityValues: Record<Familiar['rarity'], number> = {
     'common': 1,
     'uncommon': 2,
-    'rare': 5,
-    'epic': 10,
-    'legendary': 15,
+    'rare': 3,
+    'epic': 5,
+    'legendary': 8,
 };
 
 
@@ -76,8 +76,9 @@ export function ItemConfig() {
     const [selectedCreature, setSelectedCreature] = React.useState<string | undefined>(undefined);
     const [selectedPhysical, setSelectedPhysical] = React.useState<string | undefined>(undefined);
     const [selectedDescriptor, setSelectedDescriptor] = React.useState<string | undefined>(undefined);
+    const [selectedUniverse, setSelectedUniverse] = React.useState<string>('Médiéval-Fantastique');
     const [selectedRarity, setSelectedRarity] = React.useState<Familiar['rarity']>('common');
-    const [selectedBonus, setSelectedBonus] = React.useState<FamiliarPassiveBonus | null>(null);
+    const [selectedBonus, setSelectedBonus] = React.useState<FamiliarPassiveBonus>({ type: 'strength', value: 1, description: '+X en Force' });
 
     React.useEffect(() => {
         try {
@@ -142,7 +143,7 @@ export function ItemConfig() {
         saveCustomItems(customItems.filter(item => item.id !== itemId));
     }
     
-    const handleBonusTypeChange = (type: FamiliarPassiveBonus['type']) => {
+     const handleBonusTypeChange = (type: FamiliarPassiveBonus['type']) => {
         const bonusValue = bonusRarityValues[selectedRarity] || 1;
         const bonusLabel = bonusTypes.find(b => b.value === type)?.label || type;
         const description = type === 'narrative' ? "Rend les PNJ plus enclins à discuter." : `+X en ${bonusLabel}`;
@@ -164,7 +165,7 @@ export function ItemConfig() {
     React.useEffect(() => {
         if (selectedBonus) {
             const newBonusValue = bonusRarityValues[selectedRarity] || 1;
-            setSelectedBonus(prev => prev ? { ...prev, value: newBonusValue } : null);
+            setSelectedBonus(prev => prev ? { ...prev, value: newBonusValue, description: prev.description.replace(String(prev.value), String(newBonusValue)) } : null);
         }
     }, [selectedRarity]);
 
@@ -187,7 +188,7 @@ export function ItemConfig() {
             description: `Un objet mystique qui permet d'invoquer et de se lier à un ${familiarName}.`,
             type: 'consumable',
             baseGoldValue: 50,
-            universe: creature.universe,
+            universe: selectedUniverse,
             rarity: selectedRarity.charAt(0).toUpperCase() + selectedRarity.slice(1) as any,
             effectType: 'narrative',
             familiarDetails: {
@@ -218,6 +219,13 @@ export function ItemConfig() {
         customUniverses.forEach(u => universes.add(u));
         return Array.from(universes).sort();
     }, [customItems, customUniverses]);
+    
+    React.useEffect(() => {
+        const creature = BASE_FAMILIAR_CREATURES.find(c => c.id === selectedCreature);
+        if (creature) {
+            setSelectedUniverse(creature.universe);
+        }
+    }, [selectedCreature]);
 
     const itemLists: Record<BaseItem['type'], BaseItem[]> = {
         weapon: [...BASE_WEAPONS, ...customItems.filter(i => i.type === 'weapon')],
@@ -252,6 +260,8 @@ export function ItemConfig() {
             </ScrollArea>
         </div>
     );
+    
+    const familiarInvocationItems = customItems.filter(item => item.familiarDetails);
 
     return (
         <Accordion type="single" collapsible className="w-full">
@@ -321,7 +331,7 @@ export function ItemConfig() {
                                  <CardContent className="p-0 space-y-4">
                                      <div className="p-3 border rounded-md bg-background">
                                          <h4 className="text-sm font-semibold mb-2">1. Assembler le Familier</h4>
-                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                         <div className="grid grid-cols-2 gap-4">
                                              <div className="space-y-2">
                                                  <Label>Composant Physique</Label>
                                                  <Select value={selectedPhysical} onValueChange={setSelectedPhysical}>
@@ -341,14 +351,23 @@ export function ItemConfig() {
                                                  </Select>
                                              </div>
                                              <div className="space-y-2">
-                                                 <Label>Descripteur (Optionnel)</Label>
+                                                 <Label>Descripteur</Label>
                                                  <Select value={selectedDescriptor} onValueChange={(val) => setSelectedDescriptor(val === 'none' ? undefined : val)}>
-                                                     <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                     <SelectTrigger><SelectValue placeholder="(Optionnel)"/></SelectTrigger>
                                                      <SelectContent>
                                                          <SelectItem value="none">Aucun</SelectItem>
                                                          {BASE_FAMILIAR_DESCRIPTORS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
                                                      </SelectContent>
                                                  </Select>
+                                             </div>
+                                              <div className="space-y-2">
+                                                <Label>Univers</Label>
+                                                <Select value={selectedUniverse} onValueChange={setSelectedUniverse}>
+                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                    <SelectContent>
+                                                        {allAvailableUniverses.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
                                              </div>
                                          </div>
                                      </div>
@@ -385,7 +404,7 @@ export function ItemConfig() {
                                                         type="number" 
                                                         value={selectedBonus?.value ?? ''} 
                                                         onChange={(e) => handleBonusValueChange(Number(e.target.value))}
-                                                        disabled={!selectedBonus || selectedBonus.type === 'narrative'}
+                                                        disabled={selectedBonus?.type === 'narrative'}
                                                     />
                                                 </div>
                                             </div>
@@ -412,6 +431,23 @@ export function ItemConfig() {
                                      <Button onClick={handleSaveFamiliarItem} disabled={!selectedBonus || !selectedCreature || !selectedPhysical} className="w-full">
                                          <PlusCircle className="mr-2 h-4 w-4" /> Créer et Sauvegarder l'Objet
                                      </Button>
+                                     
+                                     {familiarInvocationItems.length > 0 && (
+                                         <div className="mt-4">
+                                            <Separator />
+                                            <h4 className="text-sm font-semibold mt-4 mb-2">Objets d'Invocation Existants</h4>
+                                            <ScrollArea className="h-24 border rounded-md">
+                                                <div className="p-2 space-y-1">
+                                                    {familiarInvocationItems.map(item => (
+                                                        <div key={item.id} className="text-xs p-1 bg-background rounded-md">
+                                                            <p className="font-medium truncate">{item.name}</p>
+                                                            <p className="text-muted-foreground">{item.universe} - {item.rarity}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                         </div>
+                                     )}
                                  </CardContent>
                              </Card>
                          </TabsContent>

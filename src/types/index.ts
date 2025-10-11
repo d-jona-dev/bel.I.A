@@ -89,7 +89,7 @@ export const LootedItemSchema = z.object({
     wis: z.number().optional().describe("Wisdom bonus."),
     cha: z.number().optional().describe("Charisma bonus."),
     hp: z.number().optional().describe("Hit Points bonus."),
-  }).optional().describe("Stat bonuses provided by the item if equipped."),
+  }).passthrough().optional().describe("Stat bonuses provided by the item if equipped."),
 });
 export type LootedItem = z.infer<typeof LootedItemSchema>;
 
@@ -236,6 +236,7 @@ export interface PlayerInventoryItem {
   generatedImageUrl?: string | null;
   isEquipped?: boolean;
   statBonuses?: {
+    [key: string]: number | string | undefined;
     ac?: number;
     attack?: number;
     damage?: string;
@@ -738,4 +739,5 @@ export interface GenerateSceneImageFlowOutput {
     
 
     
+
 
