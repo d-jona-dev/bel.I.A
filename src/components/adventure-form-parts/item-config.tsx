@@ -21,12 +21,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { Package, PlusCircle, Trash2, Edit2, Download, Upload } from "lucide-react";
+import { Package, PlusCircle, Trash2, Edit2, Download, Upload, PawPrint } from "lucide-react";
 import type { AdventureFormValues } from "../adventure-form";
-import type { BaseItem } from "@/types";
-import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
+import type { BaseItem, Familiar, FamiliarPassiveBonus } from "@/types";
+import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useFamiliar } from "@/hooks/systems/useFamiliar";
+import { useAdventureState } from "@/hooks/systems/useAdventureState";
 
 
 const defaultUniverses = ['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'];
@@ -46,7 +48,21 @@ export function ItemConfig() {
 
     const [isItemDialogOpen, setIsItemDialogOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
-    const [currentItemType, setCurrentItemType] = React.useState<BaseItem['type']>('consumable');
+
+    // Familiar creation state
+    const [selectedCreature, setSelectedCreature] = React.useState<string | undefined>(undefined);
+    const [selectedPhysical, setSelectedPhysical] = React.useState<string | undefined>(undefined);
+    const [selectedDescriptor, setSelectedDescriptor] = React.useState<string | undefined>(undefined);
+    const [selectedRarity, setSelectedRarity] = React.useState<Familiar['rarity']>('common');
+    const [generatedBonus, setGeneratedBonus] = React.useState<FamiliarPassiveBonus | null>(null);
+    
+    const { createInitialState } = useAdventureState();
+    const { generateDynamicFamiliarBonus } = useFamiliar({
+        adventureSettings: createInitialState().adventureSettings,
+        setAdventureSettings: () => {},
+        toast,
+        handleSendSpecificAction: () => {},
+    });
 
     React.useEffect(() => {
         try {
@@ -111,6 +127,53 @@ export function ItemConfig() {
         saveCustomItems(customItems.filter(item => item.id !== itemId));
     }
     
+    const handleGenerateBonus = () => {
+        setGeneratedBonus(generateDynamicFamiliarBonus(selectedRarity));
+    };
+
+    const handleSaveFamiliarItem = () => {
+        if (!selectedCreature || !selectedPhysical || !generatedBonus) {
+            toast({ title: "Champs Requis", description: "Veuillez sélectionner une créature, un composant physique et générer un bonus.", variant: "destructive" });
+            return;
+        }
+        
+        const creature = BASE_FAMILIAR_CREATURES.find(c => c.id === selectedCreature)!;
+        const physical = BASE_FAMILIAR_PHYSICAL_ITEMS.find(c => c.id === selectedPhysical)!;
+        const descriptor = BASE_FAMILIAR_DESCRIPTORS.find(c => c.id === selectedDescriptor);
+
+        const familiarName = `${creature.name}${descriptor ? ` ${descriptor.name}` : ''}`;
+        const itemName = `${physical.name} de ${familiarName}`;
+        
+        const newFamiliarItem: BaseItem = {
+            id: `cons-familiar-${creature.id}-${physical.id}${descriptor ? `-${descriptor.id}` : ''}`,
+            name: itemName,
+            description: `Un objet mystique qui permet d'invoquer et de se lier à un ${familiarName}.`,
+            type: 'consumable',
+            baseGoldValue: 50,
+            universe: creature.universe,
+            rarity: selectedRarity.charAt(0).toUpperCase() + selectedRarity.slice(1) as any,
+            effectType: 'narrative',
+            familiarDetails: {
+                name: familiarName,
+                description: `Un ${familiarName} loyal invoqué via un(e) ${physical.name}.`,
+                rarity: selectedRarity,
+                level: 1,
+                currentExp: 0,
+                expToNextLevel: 100,
+                passiveBonus: generatedBonus,
+            },
+        };
+        
+        const isDuplicate = customItems.some(item => item.id === newFamiliarItem.id);
+        if (isDuplicate) {
+             toast({ title: "Objet Existant", description: "Un objet d'invocation pour ce familier existe déjà.", variant: "default" });
+             return;
+        }
+
+        saveCustomItems([...customItems, newFamiliarItem]);
+        toast({ title: "Objet d'Invocation Créé", description: `L'objet "${itemName}" a été ajouté à votre liste d'objets personnalisés.` });
+    };
+
     const allAvailableUniverses = React.useMemo(() => {
         const allItems = [...BASE_WEAPONS, ...BASE_ARMORS, ...BASE_JEWELRY, ...BASE_CONSUMABLES, ...customItems];
         const universes = new Set(allItems.map(item => item.universe));
@@ -206,11 +269,70 @@ export function ItemConfig() {
                             <TabsTrigger value="armor">Armures</TabsTrigger>
                             <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
                             <TabsTrigger value="consumable">Consommables</TabsTrigger>
+                            <TabsTrigger value="familiar"><PawPrint className="h-4 w-4 mr-1"/>Familiers</TabsTrigger>
                         </TabsList>
                         <TabsContent value="weapon">{renderItemList('weapon')}</TabsContent>
                         <TabsContent value="armor">{renderItemList('armor')}</TabsContent>
                         <TabsContent value="jewelry">{renderItemList('jewelry')}</TabsContent>
                         <TabsContent value="consumable">{renderItemList('consumable')}</TabsContent>
+                         <TabsContent value="familiar">
+                            <Card className="p-4">
+                                <CardContent className="space-y-4">
+                                    <h3 className="font-semibold">Créateur d'Objets d'Invocation</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Composant Physique</Label>
+                                            <Select value={selectedPhysical} onValueChange={setSelectedPhysical}>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                <SelectContent>
+                                                    {BASE_FAMILIAR_PHYSICAL_ITEMS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label>Créature de Base</Label>
+                                            <Select value={selectedCreature} onValueChange={setSelectedCreature}>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                <SelectContent>
+                                                    {BASE_FAMILIAR_CREATURES.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-2">
+                                            <Label>Descripteur (Optionnel)</Label>
+                                            <Select value={selectedDescriptor} onValueChange={setSelectedDescriptor}>
+                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">Aucun</SelectItem>
+                                                    {BASE_FAMILIAR_DESCRIPTORS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Rareté du familier</Label>
+                                        <Select value={selectedRarity} onValueChange={(v) => setSelectedRarity(v as Familiar['rarity'])}>
+                                            <SelectTrigger><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="common">Commun</SelectItem>
+                                                <SelectItem value="uncommon">Peu Commun</SelectItem>
+                                                <SelectItem value="rare">Rare</SelectItem>
+                                                <SelectItem value="epic">Épique</SelectItem>
+                                                <SelectItem value="legendary">Légendaire</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button onClick={handleGenerateBonus} variant="secondary">Générer un Bonus Passif</Button>
+                                    {generatedBonus && (
+                                        <div className="p-2 border rounded-md bg-background">
+                                            <p className="font-semibold text-sm">Bonus généré :</p>
+                                            <p className="text-sm">{generatedBonus.description.replace('X', String(generatedBonus.value * 1))}</p>
+                                        </div>
+                                    )}
+                                    <Button onClick={handleSaveFamiliarItem} disabled={!generatedBonus}>Sauvegarder l'Objet d'Invocation</Button>
+                                </CardContent>
+                            </Card>
+                         </TabsContent>
                     </Tabs>
 
                     <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
