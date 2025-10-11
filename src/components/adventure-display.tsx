@@ -365,7 +365,13 @@ export function AdventureDisplay({
             sceneDescription: descriptionForImage,
             style: imageStyle,
         });
-        if (result.error) { 
+
+        if (result.error) {
+            toast({
+                title: "Erreur de Génération d'Image",
+                description: result.error,
+                variant: "destructive",
+            });
             return;
         }
 
@@ -1567,3 +1573,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    
