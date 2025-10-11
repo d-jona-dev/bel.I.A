@@ -114,7 +114,8 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
     const equipped = getEquippedItems();
 
-    let effectiveStats = {
+    // Start with base stats from settings
+    const baseStats = {
         playerStrength: settings.playerStrength ?? 8,
         playerDexterity: settings.playerDexterity ?? 8,
         playerConstitution: settings.playerConstitution ?? 8,
@@ -123,22 +124,24 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         playerCharisma: settings.playerCharisma ?? 8,
     };
     
-    let bonusAc = 0;
+    // Accumulate bonuses from equipment
     let bonusHp = 0;
+    let bonusAc = 0;
     let bonusAttack = 0;
-    let bonusDamageValue = 0; // numeric bonus
+    let bonusDamageValue = 0;
+    const bonusStats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
 
     for (const item of equipped) {
         const b = item?.statBonuses || {};
         for (const [key, value] of Object.entries(b)) {
             const val = Number(value) || 0;
             switch (key.toLowerCase()) {
-                case "str": effectiveStats.playerStrength += val; break;
-                case "dex": effectiveStats.playerDexterity += val; break;
-                case "con": effectiveStats.playerConstitution += val; break;
-                case "int": effectiveStats.playerIntelligence += val; break;
-                case "wis": effectiveStats.playerWisdom += val; break;
-                case "cha": effectiveStats.playerCharisma += val; break;
+                case "str": bonusStats.str += val; break;
+                case "dex": bonusStats.dex += val; break;
+                case "con": bonusStats.con += val; break;
+                case "int": bonusStats.int += val; break;
+                case "wis": bonusStats.wis += val; break;
+                case "cha": bonusStats.cha += val; break;
                 case "hp": bonusHp += val; break;
                 case "ac": bonusAc += val; break;
                 case "attack": bonusAttack += val; break;
@@ -146,23 +149,34 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             }
         }
     }
+    
+    // Calculate effective primary stats by adding bonuses to base stats
+    const effectivePrimaryStats = {
+        strength: baseStats.playerStrength + bonusStats.str,
+        dexterity: baseStats.playerDexterity + bonusStats.dex,
+        constitution: baseStats.playerConstitution + bonusStats.con,
+        intelligence: baseStats.playerIntelligence + bonusStats.int,
+        wisdom: baseStats.playerWisdom + bonusStats.wis,
+        charisma: baseStats.playerCharisma + bonusStats.cha,
+    };
+
 
     const baseDerived = calculateBaseDerivedStats({
         level: settings.playerLevel ?? 1,
         characterClass: settings.playerClass ?? '',
-        ...effectiveStats,
+        ...effectivePrimaryStats,
     });
     
     const equippedArmor = equipped.find(i => i.type === 'armor');
     let finalArmorClass = baseDerived.armorClass; 
-    if (equippedArmor?.ac) {
-        if (typeof equippedArmor.ac === "string" && equippedArmor.ac.includes('+')) {
+    if (equippedArmor?.ac && typeof equippedArmor.ac === "string") {
+        if (equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
             if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc;
             
             if (parts[1].toLowerCase().includes('dex')) {
-                const dexMod = Math.floor((effectiveStats.playerDexterity - 10) / 2);
+                const dexMod = Math.floor((effectivePrimaryStats.dexterity - 10) / 2);
                 const maxDexBonusMatch = parts[1].match(/\(max \+(\d+)\)/);
                 if (maxDexBonusMatch) {
                     finalArmorClass += Math.min(dexMod, parseInt(maxDexBonusMatch[1], 10));
@@ -180,7 +194,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     const equippedWeapon = equipped.find(i => i.type === 'weapon');
     let finalDamageBonus = baseDerived.damageBonus;
     if (equippedWeapon?.damage && typeof equippedWeapon.damage === 'string') {
-        const strMod = Math.floor((effectiveStats.playerStrength - 10) / 2);
+        const strMod = Math.floor((effectivePrimaryStats.strength - 10) / 2);
         let baseDamage = equippedWeapon.damage;
         let totalBonus = strMod + bonusDamageValue;
         
@@ -194,12 +208,12 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     }
 
     return {
-        playerStrength: effectiveStats.playerStrength,
-        playerDexterity: effectiveStats.playerDexterity,
-        playerConstitution: effectiveStats.playerConstitution,
-        playerIntelligence: effectiveStats.playerIntelligence,
-        playerWisdom: effectiveStats.playerWisdom,
-        playerCharisma: effectiveStats.playerCharisma,
+        playerStrength: effectivePrimaryStats.strength,
+        playerDexterity: effectivePrimaryStats.dexterity,
+        playerConstitution: effectivePrimaryStats.constitution,
+        playerIntelligence: effectivePrimaryStats.intelligence,
+        playerWisdom: effectivePrimaryStats.wisdom,
+        playerCharisma: effectivePrimaryStats.charisma,
         playerMaxHp: baseDerived.maxHitPoints + bonusHp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: finalArmorClass,
@@ -484,3 +498,5 @@ export function useAdventureState() {
         getLocalizedText,
     };
 }
+
+    
