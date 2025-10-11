@@ -109,6 +109,63 @@ export const BASE_ARMORS: BaseItem[] = [
     { id: 'arm-013', name: 'Armure des Titans', description: 'Une armure forgée dans un métal céleste, offrant une protection quasi divine.', type: 'armor', ac: '20', baseGoldValue: 5000, universe: 'Médiéval-Fantastique', rarity: 'Divin' },
 ];
 
+// Stat Jewelry - VERSION EXPLICITE ET GARANTIE
+const STAT_JEWELRY: BaseItem[] = [];
+
+// Force
+STAT_JEWELRY.push(
+    { id: 'jew-stat-str-c', name: 'Amulette de Force', description: 'Cette amulette augmente votre Force.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { str: 1 } },
+    { id: 'jew-stat-str-r', name: 'Anneau de Force', description: 'Cet anneau augmente votre Force.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { str: 2 } },
+    { id: 'jew-stat-str-e', name: 'Amulette de Force', description: 'Cette amulette augmente considérablement votre Force.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { str: 3 } },
+    { id: 'jew-stat-str-l', name: 'Anneau de Force', description: 'Cet anneau augmente votre Force à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { str: 4 } },
+    { id: 'jew-stat-str-d', name: 'Amulette de Force', description: 'Cette amulette imprègne son porteur d\'une Force quasi divine.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { str: 5 } }
+);
+
+// Dextérité
+STAT_JEWELRY.push(
+    { id: 'jew-stat-dex-c', name: 'Amulette de Dextérité', description: 'Cette amulette augmente votre Dextérité.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { dex: 1 } },
+    { id: 'jew-stat-dex-r', name: 'Anneau de Dextérité', description: 'Cet anneau augmente votre Dextérité.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { dex: 2 } },
+    { id: 'jew-stat-dex-e', name: 'Amulette de Dextérité', description: 'Cette amulette augmente considérablement votre Dextérité.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { dex: 3 } },
+    { id: 'jew-stat-dex-l', name: 'Anneau de Dextérité', description: 'Cet anneau augmente votre Dextérité à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { dex: 4 } },
+    { id: 'jew-stat-dex-d', name: 'Amulette de Dextérité', description: 'Cette amulette imprègne son porteur d\'une Dextérité quasi divine.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { dex: 5 } }
+);
+
+// Constitution
+STAT_JEWELRY.push(
+    { id: 'jew-stat-con-c', name: 'Amulette de Constitution', description: 'Cette amulette augmente votre Constitution.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { con: 1 } },
+    { id: 'jew-stat-con-r', name: 'Anneau de Constitution', description: 'Cet anneau augmente votre Constitution.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { con: 2 } },
+    { id: 'jew-stat-con-e', name: 'Amulette de Constitution', description: 'Cette amulette augmente considérablement votre Constitution.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { con: 3 } },
+    { id: 'jew-stat-con-l', name: 'Anneau de Constitution', description: 'Cet anneau augmente votre Constitution à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { con: 4 } },
+    { id: 'jew-stat-con-d', name: 'Amulette de Constitution', description: 'Cette amulette imprègne son porteur d\'une Constitution quasi divine.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { con: 5 } }
+);
+
+// Intelligence
+STAT_JEWELRY.push(
+    { id: 'jew-stat-int-c', name: 'Amulette d\'Intelligence', description: 'Cette amulette augmente votre Intelligence.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { int: 1 } },
+    { id: 'jew-stat-int-r', name: 'Anneau d\'Intelligence', description: 'Cet anneau augmente votre Intelligence.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { int: 2 } },
+    { id: 'jew-stat-int-e', name: 'Amulette d\'Intelligence', description: 'Cette amulette augmente considérablement votre Intelligence.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { int: 3 } },
+    { id: 'jew-stat-int-l', name: 'Anneau d\'Intelligence', description: 'Cet anneau augmente votre Intelligence à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { int: 4 } },
+    { id: 'jew-stat-int-d', name: 'Amulette d\'Intelligence', description: 'Cette amulette imprègne son porteur d\'une Intelligence quasi divine.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { int: 5 } }
+);
+
+// Sagesse
+STAT_JEWELRY.push(
+    { id: 'jew-stat-wis-c', name: 'Amulette de Sagesse', description: 'Cette amulette augmente votre Sagesse.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { wis: 1 } },
+    { id: 'jew-stat-wis-r', name: 'Anneau de Sagesse', description: 'Cet anneau augmente votre Sagesse.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { wis: 2 } },
+    { id: 'jew-stat-wis-e', name: 'Amulette de Sagesse', description: 'Cette amulette augmente considérablement votre Sagesse.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { wis: 3 } },
+    { id: 'jew-stat-wis-l', name: 'Anneau de Sagesse', description: 'Cet anneau augmente votre Sagesse à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { wis: 4 } },
+    { id: 'jew-stat-wis-d', name: 'Amulette de Sagesse', description: 'Cette amulette imprègne son porteur d\'une Sagesse quasi divine.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { wis: 5 } }
+);
+
+// Charisme
+STAT_JEWELRY.push(
+    { id: 'jew-stat-cha-c', name: 'Amulette de Charisme', description: 'Cette amulette augmente votre Charisme.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { cha: 1 } },
+    { id: 'jew-stat-cha-r', name: 'Anneau de Charisme', description: 'Cet anneau augmente votre Charisme.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { cha: 2 } },
+    { id: 'jew-stat-cha-e', name: 'Amulette de Charisme', description: 'Cette amulette augmente considérablement votre Charisme.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { cha: 3 } },
+    { id: 'jew-stat-cha-l', name: 'Anneau de Charisme', description: 'Cet anneau augmente votre Charisme à un niveau remarquable.', type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { cha: 4 } },
+    { id: 'jew-stat-cha-d', name: 'Amulette de Charisme', description: 'Cette amulette imprègne son porteur d\'un Charisme quasi divin.', type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { cha: 5 } }
+);
+
 export const BASE_JEWELRY: BaseItem[] = [
     // Narrative Jewelry
     { id: 'jew-narr-001', name: 'Anneau de barrière mentale', description: "Vous êtes immunisé aux magies qui permettent à d'autres créatures de lire dans vos pensées.", type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
@@ -121,16 +178,9 @@ export const BASE_JEWELRY: BaseItem[] = [
     { id: 'jew-narr-008', name: 'Anneau de séduction', description: "Facilité de séduction lors des échanges avec le genre opposer.", type: 'jewelry', rarity: 'Epique', baseGoldValue: 200, universe: 'Médiéval-Fantastique', effectType: 'narrative' },
 
     // Stat Jewelry
-    ...(['Force', 'Dextérité', 'Constitution', 'Intelligence', 'Sagesse', 'Charisme'] as const).flatMap((stat, i) => {
-        const key = stat.slice(0, 3).toLowerCase() as 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
-        return [
-            { id: `jew-stat-${key}-c`, name: `Amulette de ${stat}`, description: `Cette amulette augmente votre ${stat}.`, type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 1 } },
-            { id: `jew-stat-${key}-r`, name: `Anneau de ${stat}`, description: `Cet anneau augmente votre ${stat}.`, type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 2 } },
-            { id: `jew-stat-${key}-e`, name: `Amulette de ${stat}`, description: `Cette amulette augmente considérablement votre ${stat}.`, type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 3 } },
-            { id: `jew-stat-${key}-l`, name: `Anneau de ${stat}`, description: `Cet anneau augmente votre ${stat} à un niveau remarquable.`, type: 'jewelry', rarity: 'Légendaire', baseGoldValue: 500, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 4 } },
-            { id: `jew-stat-${key}-d`, name: `Amulette de ${stat}`, description: `Cette amulette imprègne son porteur d'une ${stat} quasi divine.`, type: 'jewelry', rarity: 'Divin', baseGoldValue: 1000, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { [key]: 5 } },
-        ] as BaseItem[]
-    }),
+    ...STAT_JEWELRY,
+
+    // HP Jewelry
     { id: 'jew-stat-hp-c', name: 'Amulette de vitalité', description: 'Augmente légèrement vos points de vie maximum.', type: 'jewelry', rarity: 'Commun', baseGoldValue: 5, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 5 } },
     { id: 'jew-stat-hp-r', name: 'Anneau de vitalité', description: 'Augmente vos points de vie maximum.', type: 'jewelry', rarity: 'Rare', baseGoldValue: 25, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 10 } },
     { id: 'jew-stat-hp-e', name: 'Amulette de vitalité', description: 'Augmente considérablement vos points de vie maximum.', type: 'jewelry', rarity: 'Epique', baseGoldValue: 100, universe: 'Médiéval-Fantastique', effectType: 'stat', statBonuses: { hp: 20 } },
