@@ -220,6 +220,8 @@ export function AdventureDisplay({
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
   const [imageStyle, setImageStyle] = React.useState<string>("");
+  
+  const [imageForDisplay, setImageForDisplay] = React.useState<string | null>(null);
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
@@ -298,6 +300,10 @@ export function AdventureDisplay({
 
     React.useEffect(() => {
         messagesRef.current = messages;
+        const lastImageUrl = messages.slice().reverse().find(m => m.imageUrl)?.imageUrl;
+        if (lastImageUrl) {
+            setImageForDisplay(lastImageUrl);
+        }
          if (scrollAreaRef.current) {
             const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
             if(scrollElement) {
@@ -357,8 +363,8 @@ export function AdventureDisplay({
      };
      setIsImageLoading(true);
 
-    // Clear previous image on the message before generating a new one
     onEditMessage(message.id, message.content, undefined, null);
+    setImageForDisplay(null);
 
     try {
         const result = await generateSceneImageAction({ 
@@ -376,6 +382,7 @@ export function AdventureDisplay({
         }
 
         onEditMessage(message.id, message.content, undefined, result.imageUrl);
+        setImageForDisplay(result.imageUrl);
         
         React.startTransition(() => {
             toast({
@@ -1193,10 +1200,10 @@ export function AdventureDisplay({
                 </Dialog>
                 <Card>
                     <CardContent className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-                        {isValidUrl(messages.slice().reverse().find(m=>m.imageUrl)?.imageUrl) ? (
+                        {isValidUrl(imageForDisplay) ? (
                             <div className="relative w-full aspect-square group">
                                 <Image
-                                    src={messages.slice().reverse().find(m=>m.imageUrl)!.imageUrl!}
+                                    src={imageForDisplay}
                                     alt="Generated Scene"
                                     fill
                                     style={{ objectFit: 'contain' }}
@@ -1217,7 +1224,7 @@ export function AdventureDisplay({
                                             </DialogHeader>
                                             <div className="relative w-full h-full">
                                                 <Image
-                                                    src={messages.slice().reverse().find(m=>m.imageUrl)!.imageUrl!}
+                                                    src={imageForDisplay}
                                                     alt="Generated Scene in Fullscreen"
                                                     layout="fill"
                                                     objectFit="contain"
