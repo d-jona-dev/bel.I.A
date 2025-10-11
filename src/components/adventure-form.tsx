@@ -182,7 +182,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     const handleLoadPrompt = () => {
         const loadedData: AdventureFormValues = {
             world: {
-                fr: "Grande université populaire nommée \"hight scoole of futur\".",
+                fr: "Grande université populaire nommée 'hight scoole of futur'.",
                 en: "Large popular university named 'hight scoole of futur'."
             },
             initialSituation: {
