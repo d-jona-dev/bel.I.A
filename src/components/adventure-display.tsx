@@ -1573,5 +1573,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    
