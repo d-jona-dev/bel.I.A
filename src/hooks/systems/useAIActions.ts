@@ -40,6 +40,7 @@ interface UseAIActionsProps {
     handleNewFamiliar: (familiar: Familiar) => void;
     handleCombatUpdates: (updates: CombatUpdatesSchema) => void;
     setMerchantInventory: React.Dispatch<React.SetStateAction<any[]>>;
+    getLocalizedText: (field: LocalizedText, lang: string) => string;
 }
 
 export function useAIActions({
@@ -61,16 +62,13 @@ export function useAIActions({
     handleNewFamiliar,
     handleCombatUpdates,
     setMerchantInventory,
+    getLocalizedText,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
     const [isRegenerating, setIsRegenerating] = React.useState(false);
     const [isGeneratingItemImage, setIsGeneratingItemImage] = React.useState(false);
     const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
-
-    const getLocalizedText = (field: LocalizedText, lang: string) => {
-        return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
-    };
     
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -245,7 +243,7 @@ export function useAIActions({
         }
     }, [
         adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, aiConfig,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, setMerchantInventory
+        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, setMerchantInventory, getLocalizedText
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
@@ -315,7 +313,7 @@ export function useAIActions({
          } finally {
             setIsRegenerating(false);
          }
-    }, [ isRegenerating, isLoading, narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig, setNarrativeMessages ]);
+    }, [ isRegenerating, isLoading, narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig, setNarrativeMessages, getLocalizedText ]);
 
     const suggestQuestHookAction = React.useCallback(async () => {
         setIsSuggestingQuest(true);
@@ -334,7 +332,7 @@ export function useAIActions({
         } finally {
           setIsSuggestingQuest(false);
         }
-      }, [adventureSettings.world, narrativeMessages, characters, currentLanguage, toast]);
+      }, [adventureSettings.world, narrativeMessages, characters, currentLanguage, toast, getLocalizedText]);
     
     const materializeCharacterAction = React.useCallback(async (narrativeContext: string) => {
         const input: MaterializeCharacterInput = { narrativeContext, existingCharacters: characters.map(c => c.name), rpgMode: adventureSettings.rpgMode, currentLanguage };
@@ -398,7 +396,7 @@ export function useAIActions({
         } finally {
             setIsGeneratingMap(false);
         }
-    }, [generateSceneImageActionWrapper, toast, adventureSettings, setAdventureSettings]);
+    }, [generateSceneImageActionWrapper, toast, adventureSettings, setAdventureSettings, getLocalizedText]);
 
     return {
         generateAdventureAction,

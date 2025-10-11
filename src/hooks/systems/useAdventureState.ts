@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem } from "@/types";
+import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem, LocalizedText } from "@/types";
 
 const createInitialState = (): SaveData => ({
     adventureSettings: {
@@ -204,6 +204,9 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     };
 }
 
+export const getLocalizedText = (field: LocalizedText, lang: string) => {
+    return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
+};
 
 export function useAdventureState() {
     const { toast } = useToast();
@@ -465,6 +468,7 @@ export function useAdventureState() {
         itemToSellDetails,
         setItemToSellDetails,
         sellQuantity,
-        setSellQuantity
+        setSellQuantity,
+        getLocalizedText,
     };
 }
