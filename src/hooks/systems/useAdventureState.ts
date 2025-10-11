@@ -353,8 +353,8 @@ export function useAdventureState() {
 
             if (!slotToEquip) return prevSettings;
 
-            const newEquippedItemIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
-            const newInventory = prevSettings.playerInventory.map(invItem => ({ ...invItem, isEquipped: invItem.isEquipped && invItem.type !== slotToEquip }));
+            let newEquippedItemIds = { ...(prevSettings.equippedItemIds || { weapon: null, armor: null, jewelry: null }) };
+            let newInventory = prevSettings.playerInventory.map(invItem => ({ ...invItem, isEquipped: invItem.isEquipped && invItem.type !== slotToEquip }));
             
             const currentlyEquippedItemId = newEquippedItemIds[slotToEquip];
             if (currentlyEquippedItemId) {
@@ -366,13 +366,13 @@ export function useAdventureState() {
             const newItemIndex = newInventory.findIndex(i => i.id === item.id);
             if (newItemIndex > -1) newInventory[newItemIndex].isEquipped = true;
             
-            const updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            let updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
             const effectiveStats = calculateEffectiveStats(updatedSettings);
 
             toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` });
             return { ...updatedSettings, ...effectiveStats };
         });
-    }, [toast, setAdventureSettings]);
+    }, [toast]);
 
     const handleUnequipItem = React.useCallback((slotToUnequip: keyof NonNullable<AdventureSettings['equippedItemIds']>) => {
         setAdventureSettings(prevSettings => {
@@ -393,7 +393,7 @@ export function useAdventureState() {
             toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` });
             return { ...updatedSettings, ...effectiveStats };
         });
-    }, [toast, setAdventureSettings]);
+    }, [toast]);
 
     const handleSellItem = React.useCallback((itemId: string) => {
         const itemToSell = adventureSettings.playerInventory?.find(invItem => invItem.id === itemId);
@@ -465,3 +465,5 @@ export function useAdventureState() {
         getLocalizedText,
     };
 }
+
+    
