@@ -9,7 +9,7 @@ import { PageStructure } from "./page.structure";
 import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { useComic } from "@/hooks/systems/useComic";
 import { useCombat } from "@/hooks/systems/useCombat";
-import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats } from "@/hooks/systems/useAdventureState";
+import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
 
@@ -79,7 +79,8 @@ export default function Home() {
         setItemToSellDetails,
         sellQuantity,
         setSellQuantity,
-        getLocalizedText,
+        setShoppingCart, // Added
+        setMerchantInventory, // Added
     } = useAdventureState();
     
     const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
@@ -89,8 +90,8 @@ export default function Home() {
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
-    const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
-    const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
+    const [merchantInventory, setLocalMerchantInventory] = React.useState<SellingItem[]>([]);
+    const [shoppingCart, setLocalShoppingCart] = React.useState<SellingItem[]>([]);
 
     const playerName = adventureSettings.playerName || "Player";
     
@@ -182,7 +183,7 @@ export default function Home() {
             return { ...prevSettings, familiars: updatedFamiliars };
         });
     }, [toast, setAdventureSettings]);
-    
+
     const {
         activeCombat,
         setActiveCombat,
@@ -236,8 +237,7 @@ export default function Home() {
         addCurrencyToPlayer,
         handleNewFamiliar,
         handleCombatUpdates,
-        setMerchantInventory,
-        getLocalizedText,
+        setMerchantInventory: setLocalMerchantInventory,
     });
 
     const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -333,7 +333,7 @@ export default function Home() {
     
    
     const handleAddToCart = React.useCallback((item: SellingItem) => {
-        setShoppingCart(prevCart => {
+        setLocalShoppingCart(prevCart => {
             const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
             if (existingItem) {
                 return prevCart.map(cartItem => 
@@ -347,7 +347,7 @@ export default function Home() {
     }, []);
     
     const handleRemoveFromCart = React.useCallback((itemName: string) => {
-        setShoppingCart(prevCart => {
+        setLocalShoppingCart(prevCart => {
             const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
             if (existingItem && existingItem.quantity! > 1) {
                  return prevCart.map(cartItem => 
@@ -441,9 +441,9 @@ export default function Home() {
 
         handleSendSpecificAction(`J'achète les articles suivants : ${summaryText}.`);
         
-        setShoppingCart([]);
-        setMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setShoppingCart, setMerchantInventory, adventureSettings.playerLocationId, handleNewCharacters]);
+        setLocalShoppingCart([]);
+        setLocalMerchantInventory([]); // Close merchant panel after purchase
+    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setLocalShoppingCart, setLocalMerchantInventory, adventureSettings.playerLocationId, handleNewCharacters]);
    
     const handleActionWithCombatItem = async (narrativeAction: string) => {
         handleNarrativeUpdate(narrativeAction, 'user');
@@ -595,7 +595,7 @@ export default function Home() {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
         setShowRestartConfirm(false);
     });
-  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, getLocalizedText]);
+  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -684,7 +684,7 @@ export default function Home() {
         
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat, getLocalizedText]);
+}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
 
 
   const handleToggleStrategyMode = () => {
@@ -702,10 +702,10 @@ export default function Home() {
     if (!poi) return;
   
     setIsLoading(true);
-    setShoppingCart([]);
-    setMerchantInventory([]);
+    setLocalShoppingCart([]);
+    setLocalMerchantInventory([]);
   
-    let userActionText = '';
+    let userActionText: string | null = null;
     let locationIdOverride: string | undefined = undefined;
     
     if (action === 'attack') {
@@ -899,8 +899,8 @@ export default function Home() {
     setIsLoading(false);
   }, [
       adventureSettings, characters, toast, generateAdventureAction, 
-      allEnemies, setCharacters, setActiveCombat, setIsLoading, setShoppingCart,
-      handleNarrativeUpdate, setAdventureSettings, setMerchantInventory,
+      allEnemies, setCharacters, setActiveCombat, setIsLoading, setLocalShoppingCart,
+      handleNarrativeUpdate, setAdventureSettings, setLocalMerchantInventory,
   ]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
@@ -1100,8 +1100,13 @@ export default function Home() {
   
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
     const handleCloseMerchantPanel = () => {
-        setMerchantInventory([]);
-        setShoppingCart([]);
+        setLocalMerchantInventory([]);
+        setLocalShoppingCart([]);
+    };
+    
+    const handleAddStagedCharacter = (character: Character) => {
+        setCharacters(prev => [...prev, character]);
+        toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
     };
 
     return (
@@ -1128,7 +1133,7 @@ export default function Home() {
                 handleRelationUpdate={() => {}}
                 handleRelationUpdatesFromAI={() => {}}
                 handleSaveNewCharacter={() => {}}
-                handleAddStagedCharacter={() => {}}
+                onAddStagedCharacter={handleAddStagedCharacter}
                 handleSave={handleSave}
                 handleLoad={handleLoad}
                 setCurrentLanguage={handleSetCurrentLanguage}
@@ -1193,8 +1198,7 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={isGeneratingCover}
-                onGenerateCover={handleGenerateCover}
+                isGeneratingCover={handleGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
