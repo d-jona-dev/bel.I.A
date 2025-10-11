@@ -81,6 +81,7 @@ export default function Home() {
         setItemToSellDetails,
         sellQuantity,
         setSellQuantity,
+        computedStats,
     } = useAdventureState();
     
     const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
@@ -90,11 +91,6 @@ export default function Home() {
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
-    const [computedStats, setComputedStats] = React.useState(() => calculateEffectiveStats(adventureSettings));
-
-    React.useEffect(() => {
-        setComputedStats(calculateEffectiveStats(adventureSettings));
-    }, [adventureSettings]);
 
     const playerName = adventureSettings.playerName || "Player";
     

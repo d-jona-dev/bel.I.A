@@ -101,6 +101,14 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             playerDamageBonus: "1",
         };
     }
+    const baseStats = {
+        playerStrength: settings.playerStrength ?? 8,
+        playerDexterity: settings.playerDexterity ?? 8,
+        playerConstitution: settings.playerConstitution ?? 8,
+        playerIntelligence: settings.playerIntelligence ?? 8,
+        playerWisdom: settings.playerWisdom ?? 8,
+        playerCharisma: settings.playerCharisma ?? 8,
+    };
 
     const getEquippedItems = () => {
         const inv = settings.playerInventory || [];
@@ -136,12 +144,12 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     }
     
     const effectivePrimaryStats = {
-        strength: (settings.playerStrength ?? 8) + bonus.str,
-        dexterity: (settings.playerDexterity ?? 8) + bonus.dex,
-        constitution: (settings.playerConstitution ?? 8) + bonus.con,
-        intelligence: (settings.playerIntelligence ?? 8) + bonus.int,
-        wisdom: (settings.playerWisdom ?? 8) + bonus.wis,
-        charisma: (settings.playerCharisma ?? 8) + bonus.cha,
+        strength: baseStats.playerStrength + bonus.str,
+        dexterity: baseStats.playerDexterity + bonus.dex,
+        constitution: baseStats.playerConstitution + bonus.con,
+        intelligence: baseStats.playerIntelligence + bonus.int,
+        wisdom: baseStats.playerWisdom + bonus.wis,
+        charisma: baseStats.playerCharisma + bonus.cha,
     };
 
     const baseDerived = calculateBaseDerivedStats({
@@ -223,9 +231,13 @@ export function useAdventureState() {
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(JSON.parse(JSON.stringify(initialState.adventureSettings)));
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(JSON.parse(JSON.stringify(initialState.characters)));
 
-    // State for item selling modal
+    const [computedStats, setComputedStats] = React.useState(() => calculateEffectiveStats(initialState.adventureSettings));
     const [itemToSellDetails, setItemToSellDetails] = React.useState<{ item: PlayerInventoryItem; sellPricePerUnit: number } | null>(null);
     const [sellQuantity, setSellQuantity] = React.useState(1);
+    
+    React.useEffect(() => {
+        setComputedStats(calculateEffectiveStats(adventureSettings));
+    }, [adventureSettings.equippedItemIds, adventureSettings.playerInventory, adventureSettings.playerStrength, adventureSettings.playerDexterity, adventureSettings.playerConstitution, adventureSettings.playerIntelligence, adventureSettings.playerWisdom, adventureSettings.playerCharisma]);
 
 
     const loadAdventureState = React.useCallback((data: SaveData) => {
@@ -467,5 +479,6 @@ export function useAdventureState() {
         sellQuantity,
         setSellQuantity,
         getLocalizedText,
+        computedStats,
     };
 }
