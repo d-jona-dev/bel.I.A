@@ -19,7 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, PlusCircle, Trash2, Download, Upload } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Package, PlusCircle, Trash2, Edit2, Download, Upload } from "lucide-react";
 import type { AdventureFormValues } from "../adventure-form";
 import type { BaseItem } from "@/types";
 import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
@@ -38,8 +40,13 @@ export function ItemConfig() {
 
     const [customUniverses, setCustomUniverses] = React.useState<string[]>([]);
     const [customItems, setCustomItems] = React.useState<BaseItem[]>([]);
+    
     const [isUniverseDialogOpen, setIsUniverseDialogOpen] = React.useState(false);
     const [newUniverseName, setNewUniverseName] = React.useState("");
+
+    const [isItemDialogOpen, setIsItemDialogOpen] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState<BaseItem | null>(null);
+    const [currentItemType, setCurrentItemType] = React.useState<BaseItem['type']>('consumable');
 
     React.useEffect(() => {
         try {
@@ -57,29 +64,94 @@ export function ItemConfig() {
         localStorage.setItem('custom_item_universes', JSON.stringify(universes));
     };
 
+    const saveCustomItems = (items: BaseItem[]) => {
+        setCustomItems(items);
+        localStorage.setItem('custom_items', JSON.stringify(items));
+    }
+
     const handleAddUniverse = () => {
         if (newUniverseName.trim() && ![...defaultUniverses, ...customUniverses].includes(newUniverseName.trim())) {
             saveCustomUniverses([...customUniverses, newUniverseName.trim()]);
             setNewUniverseName("");
-            setIsUniverseDialogOpen(false);
         } else {
             toast({ title: "Erreur", description: "Ce nom d'univers est invalide ou existe déjà.", variant: "destructive" });
         }
     };
-    
-    const handleDeleteUniverse = (universeToDelete: string) => {
-        saveCustomUniverses(customUniverses.filter(u => u !== universeToDelete));
-        // Also uncheck it if it was active
-        const currentActive = getValues("activeItemUniverses") || [];
-        setValue("activeItemUniverses", currentActive.filter(u => u !== universeToDelete));
+
+    const handleItemAction = (action: 'add' | 'edit', item?: BaseItem, type?: BaseItem['type']) => {
+        if (action === 'add' && type) {
+            setEditingItem({
+                id: `custom-${type}-${uid()}`,
+                name: "",
+                description: "",
+                type: type,
+                baseGoldValue: 1,
+                universe: 'Médiéval-Fantastique',
+                rarity: 'Commun',
+            });
+        } else if (action === 'edit' && item) {
+            setEditingItem(JSON.parse(JSON.stringify(item)));
+        }
+        setIsItemDialogOpen(true);
     };
 
+    const handleSaveItem = () => {
+        if (!editingItem || !editingItem.name) {
+            toast({ title: "Erreur", description: "Le nom de l'objet est requis.", variant: "destructive" });
+            return;
+        }
+        const isNew = !customItems.some(item => item.id === editingItem.id);
+        const updatedItems = isNew ? [...customItems, editingItem] : customItems.map(item => item.id === editingItem.id ? editingItem : item);
+        saveCustomItems(updatedItems);
+        setIsItemDialogOpen(false);
+        setEditingItem(null);
+    };
+
+    const handleDeleteItem = (itemId: string) => {
+        saveCustomItems(customItems.filter(item => item.id !== itemId));
+    }
+    
     const allAvailableUniverses = React.useMemo(() => {
         const allItems = [...BASE_WEAPONS, ...BASE_ARMORS, ...BASE_JEWELRY, ...BASE_CONSUMABLES, ...customItems];
         const universes = new Set(allItems.map(item => item.universe));
+        defaultUniverses.forEach(u => universes.add(u));
         customUniverses.forEach(u => universes.add(u));
-        return Array.from(universes);
+        return Array.from(universes).sort();
     }, [customItems, customUniverses]);
+
+    const itemLists: Record<BaseItem['type'], BaseItem[]> = {
+        weapon: [...BASE_WEAPONS, ...customItems.filter(i => i.type === 'weapon')],
+        armor: [...BASE_ARMORS, ...customItems.filter(i => i.type === 'armor')],
+        jewelry: [...BASE_JEWELRY, ...customItems.filter(i => i.type === 'jewelry')],
+        consumable: [...BASE_CONSUMABLES, ...customItems.filter(i => i.type === 'consumable')],
+        quest: customItems.filter(i => i.type === 'quest'),
+        misc: customItems.filter(i => i.type === 'misc'),
+        npc: customItems.filter(i => i.type === 'npc'),
+    }
+
+    const renderItemList = (type: BaseItem['type']) => (
+        <div className="space-y-2">
+            <Button size="sm" onClick={() => handleItemAction('add', undefined, type)}><PlusCircle className="h-4 w-4 mr-2"/>Ajouter</Button>
+            <ScrollArea className="h-48 mt-2 border rounded-md">
+                <div className="p-2 space-y-1">
+                {itemLists[type].map(item => (
+                    <Card key={item.id} className="p-2 bg-background shadow-sm">
+                         <div className="flex justify-between items-start">
+                             <div>
+                                 <p className="font-semibold text-sm">{item.name}</p>
+                                 <p className="text-xs text-muted-foreground">{item.rarity} - {item.universe}</p>
+                             </div>
+                             <div className="flex gap-1">
+                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleItemAction('edit', item)}><Edit2 className="h-4 w-4"/></Button>
+                                 {item.id.startsWith('custom-') && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteItem(item.id)}><Trash2 className="h-4 w-4"/></Button>}
+                             </div>
+                         </div>
+                    </Card>
+                ))}
+                </div>
+            </ScrollArea>
+        </div>
+    );
 
     return (
         <Accordion type="single" collapsible className="w-full">
@@ -89,42 +161,9 @@ export function ItemConfig() {
                     <div className="space-y-2 rounded-lg border p-3 shadow-sm">
                         <div className="flex justify-between items-center">
                             <FormLabel className="flex items-center gap-2"><Package className="h-4 w-4"/> Univers d'Objets Actifs</FormLabel>
-                            <Dialog open={isUniverseDialogOpen} onOpenChange={setIsUniverseDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="ghost" size="sm"><PlusCircle className="h-4 w-4 mr-1"/> Gérer</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Gérer les Univers Personnalisés</DialogTitle>
-                                        <DialogDescription>Ajoutez ou supprimez des univers thématiques pour vos objets.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="py-4 space-y-4">
-                                        <div className="flex gap-2">
-                                            <Input value={newUniverseName} onChange={e => setNewUniverseName(e.target.value)} placeholder="Nom du nouvel univers..."/>
-                                            <Button onClick={handleAddUniverse}>Ajouter</Button>
-                                        </div>
-                                        <p className="text-sm font-medium">Univers personnalisés :</p>
-                                        <ScrollArea className="h-40 border rounded-md">
-                                            <div className="p-2 space-y-1">
-                                            {customUniverses.length > 0 ? customUniverses.map(uni => (
-                                                <div key={uni} className="flex justify-between items-center p-1 hover:bg-muted/50 rounded">
-                                                    <span className="text-sm">{uni}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteUniverse(uni)}>
-                                                        <Trash2 className="h-4 w-4"/>
-                                                    </Button>
-                                                </div>
-                                            )) : <p className="text-xs text-muted-foreground p-2">Aucun univers personnalisé.</p>}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsUniverseDialogOpen(false)}>Fermer</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
                         </div>
                         <FormDescription>
-                            Sélectionnez les univers dont les objets peuvent apparaître (marchands, butin).
+                            Sélectionnez les univers dont les objets peuvent apparaître.
                         </FormDescription>
                         <ScrollArea className="h-32 border rounded-md p-2">
                             <div className="space-y-2 pt-2">
@@ -147,12 +186,7 @@ export function ItemConfig() {
                                                             }
                                                         }}
                                                     />
-                                                    <label
-                                                        htmlFor={`universe-${universe}`}
-                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                    >
-                                                        {universe}
-                                                    </label>
+                                                    <label htmlFor={`universe-${universe}`} className="text-sm font-medium leading-none">{universe}</label>
                                                 </div>
                                             ))}
                                         </>
@@ -160,10 +194,84 @@ export function ItemConfig() {
                                 />
                             </div>
                         </ScrollArea>
+                        <div className="flex gap-2 pt-2">
+                            <Input value={newUniverseName} onChange={e => setNewUniverseName(e.target.value)} placeholder="Nom du nouvel univers..." className="h-8"/>
+                            <Button size="sm" onClick={handleAddUniverse}>Ajouter</Button>
+                        </div>
                     </div>
+                    
+                    <Tabs defaultValue="weapon">
+                        <TabsList>
+                            <TabsTrigger value="weapon">Armes</TabsTrigger>
+                            <TabsTrigger value="armor">Armures</TabsTrigger>
+                            <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
+                            <TabsTrigger value="consumable">Consommables</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="weapon">{renderItemList('weapon')}</TabsContent>
+                        <TabsContent value="armor">{renderItemList('armor')}</TabsContent>
+                        <TabsContent value="jewelry">{renderItemList('jewelry')}</TabsContent>
+                        <TabsContent value="consumable">{renderItemList('consumable')}</TabsContent>
+                    </Tabs>
+
+                    <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingItem?.id.startsWith('custom-') ? "Modifier l'objet" : "Détails de l'objet"}</DialogTitle>
+                            </DialogHeader>
+                            {editingItem && (
+                                <div className="space-y-3 py-4 max-h-[70vh] overflow-y-auto">
+                                    <div className="space-y-1">
+                                        <Label>Nom</Label>
+                                        <Input value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} disabled={!editingItem.id.startsWith('custom-')}/>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Description</Label>
+                                        <Textarea value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} disabled={!editingItem.id.startsWith('custom-')}/>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <Label>Type</Label>
+                                            <Select value={editingItem.type} onValueChange={(v) => setEditingItem({...editingItem, type: v as BaseItem['type']})} disabled={!editingItem.id.startsWith('custom-')}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="weapon">Arme</SelectItem>
+                                                    <SelectItem value="armor">Armure</SelectItem>
+                                                    <SelectItem value="jewelry">Bijou</SelectItem>
+                                                    <SelectItem value="consumable">Consommable</SelectItem>
+                                                    <SelectItem value="quest">Quête</SelectItem>
+                                                    <SelectItem value="misc">Divers</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="space-y-1">
+                                            <Label>Rareté</Label>
+                                            <Select value={editingItem.rarity} onValueChange={(v) => setEditingItem({...editingItem, rarity: v as BaseItem['rarity']})} disabled={!editingItem.id.startsWith('custom-')}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Commun">Commun</SelectItem>
+                                                    <SelectItem value="Rare">Rare</SelectItem>
+                                                    <SelectItem value="Epique">Épique</SelectItem>
+                                                    <SelectItem value="Légendaire">Légendaire</SelectItem>
+                                                    <SelectItem value="Divin">Divin</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Valeur de base (PO)</Label>
+                                        <Input type="number" value={editingItem.baseGoldValue} onChange={e => setEditingItem({...editingItem, baseGoldValue: Number(e.target.value)})} disabled={!editingItem.id.startsWith('custom-')}/>
+                                    </div>
+                                </div>
+                            )}
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Fermer</Button>
+                                {editingItem?.id.startsWith('custom-') && <Button onClick={handleSaveItem}>Sauvegarder</Button>}
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
     );
 }
-
