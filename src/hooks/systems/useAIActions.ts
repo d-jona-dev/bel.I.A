@@ -16,6 +16,8 @@ import type { MaterializeCharacterInput } from "@/ai/flows/materialize-character
 import { summarizeHistory } from "@/ai/flows/summarize-history";
 import type { SummarizeHistoryInput } from "@/ai/flows/summarize-history";
 import { calculateEffectiveStats } from "@/hooks/systems/useAdventureState";
+import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
+import { poiLevelConfig } from "@/lib/buildings";
 
 const PLAYER_ID = "player";
 
@@ -27,7 +29,6 @@ interface UseAIActionsProps {
     currentLanguage: string;
     activeCombat: ActiveCombat | undefined;
     aiConfig: AiConfig;
-    merchantInventory: any[]; // Simplified for this hook
     isLoading: boolean;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -38,6 +39,7 @@ interface UseAIActionsProps {
     addCurrencyToPlayer: (amount: number) => void;
     handleNewFamiliar: (familiar: Familiar) => void;
     handleCombatUpdates: (updates: CombatUpdatesSchema) => void;
+    setMerchantInventory: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function useAIActions({
@@ -48,7 +50,6 @@ export function useAIActions({
     currentLanguage,
     activeCombat,
     aiConfig,
-    merchantInventory,
     isLoading,
     setIsLoading,
     setNarrativeMessages,
@@ -59,6 +60,7 @@ export function useAIActions({
     addCurrencyToPlayer,
     handleNewFamiliar,
     handleCombatUpdates,
+    setMerchantInventory,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -158,8 +160,37 @@ export function useAIActions({
 
     const generateAdventureAction = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
         setIsLoading(true);
+        
         const effectivePlayerStats = calculateEffectiveStats(adventureSettings);
         const contextSituation = narrativeMessages.length > 1 ? [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+
+        const currentPoi = adventureSettings.mapPointsOfInterest?.find(p => p.id === (locationIdOverride || adventureSettings.playerLocationId));
+        let localMerchantInventory: any[] = [];
+        if (currentPoi && currentPoi.buildings?.some(b => ['forgeron', 'bijoutier', 'magicien'].includes(b))) {
+            const allItems = [...BASE_WEAPONS, ...BASE_ARMORS, ...BASE_JEWELRY, ...BASE_CONSUMABLES];
+            const activeUniverses = adventureSettings.activeItemUniverses || [];
+            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
+            const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
+                1: { size: 3, minRarity: 1, maxRarity: 1 }, 2: { size: 4, minRarity: 1, maxRarity: 2 },
+                3: { size: 5, minRarity: 1, maxRarity: 3 }, 4: { size: 6, minRarity: 2, maxRarity: 4 },
+                5: { size: 7, minRarity: 3, maxRarity: 5 }, 6: { size: 10, minRarity: 4, maxRarity: 5 },
+            };
+            const poiLevel = currentPoi.level || 1;
+            const config = inventoryConfig[poiLevel] || inventoryConfig[1];
+
+            const itemsInUniverse = allItems.filter(item => activeUniverses.includes(item.universe));
+            const availableItems = itemsInUniverse.filter(item => {
+                const itemRarityValue = rarityOrder[item.rarity] || 1;
+                return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
+            });
+            
+            localMerchantInventory = availableItems.slice(0, config.size).map(item => ({
+                ...item,
+                baseItemId: item.id,
+                finalGoldValue: item.baseGoldValue * (poiLevelConfig[currentPoi.icon]?.[poiLevel]?.resources.find(r => r.type === 'currency')?.quantity || 10) / 10
+            }));
+            setMerchantInventory(localMerchantInventory);
+        }
 
         const input: GenerateAdventureInput = {
             world: getLocalizedText(adventureSettings.world, currentLanguage),
@@ -189,7 +220,7 @@ export function useAIActions({
             mapPointsOfInterest: adventureSettings.mapPointsOfInterest,
             aiConfig,
             timeManagement: adventureSettings.timeManagement,
-            merchantInventory,
+            merchantInventory: localMerchantInventory,
         };
 
         try {
@@ -213,8 +244,8 @@ export function useAIActions({
             setIsLoading(false);
         }
     }, [
-        adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, aiConfig, merchantInventory,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast
+        adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, aiConfig,
+        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, setMerchantInventory
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
@@ -305,23 +336,16 @@ export function useAIActions({
         }
       }, [adventureSettings.world, narrativeMessages, characters, currentLanguage, toast]);
     
-    const materializeCharacter = React.useCallback(async (narrativeContext: string) => {
-        setIsLoading(true);
-        try {
-            const input: MaterializeCharacterInput = { narrativeContext, existingCharacters: characters.map(c => c.name), rpgMode: adventureSettings.rpgMode, currentLanguage };
-            const newCharData = await materializeCharacter(input);
-            if (newCharData?.name) {
-                setCharacters(prev => [...prev, { ...newCharData, id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${Math.random()}` }]);
-                toast({ title: "Personnage Ajouté!", description: `${newCharData.name} a été ajouté.` });
-            } else {
-                 toast({ title: "Erreur de Création", description: "L'IA n'a pas pu créer de personnage à partir du texte.", variant: "destructive" });
-            }
-        } catch (error) {
-            toast({ title: "Erreur de Création", description: error instanceof Error ? error.message : "Une erreur est survenue.", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
+    const materializeCharacterAction = React.useCallback(async (narrativeContext: string) => {
+        const input: MaterializeCharacterInput = { narrativeContext, existingCharacters: characters.map(c => c.name), rpgMode: adventureSettings.rpgMode, currentLanguage };
+        const newCharData = await materializeCharacter(input, aiConfig);
+        if (newCharData?.name) {
+            setCharacters(prev => [...prev, { ...newCharData, id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${Math.random()}` }]);
+            toast({ title: "Personnage Ajouté!", description: `${newCharData.name} a été ajouté.` });
+        } else {
+             toast({ title: "Erreur de Création", description: "L'IA n'a pas pu créer de personnage à partir du texte.", variant: "destructive" });
         }
-    }, [characters, adventureSettings.rpgMode, currentLanguage, setCharacters, toast, setIsLoading]);
+    }, [characters, adventureSettings.rpgMode, currentLanguage, aiConfig, setCharacters, toast]);
     
     const summarizeHistory = React.useCallback(async (narrativeContext: string) => {
         setIsLoading(true);
@@ -380,7 +404,7 @@ export function useAIActions({
         generateAdventureAction,
         regenerateLastResponse,
         suggestQuestHookAction,
-        materializeCharacter,
+        materializeCharacterAction,
         summarizeHistory,
         isSuggestingQuest,
         isRegenerating,

@@ -29,7 +29,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BASE_CONSUMABLES, BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_FAMILIAR_PHYSICAL_ITEMS, BASE_FAMILIAR_CREATURES, BASE_FAMILIAR_DESCRIPTORS } from "@/lib/items";
 import { BASE_ENEMY_UNITS } from "@/lib/enemies";
 
 
@@ -238,6 +237,7 @@ export default function Home() {
         addCurrencyToPlayer,
         handleNewFamiliar,
         handleCombatUpdates,
+        setMerchantInventory,
     });
 
     const handleSendSpecificAction = React.useCallback(async (action: string) => {
@@ -273,7 +273,7 @@ export default function Home() {
         } finally {
           setIsLoading(false);
         }
-    }, [isLoading, materializeCharacterAction, toast]);
+    }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
 
 
     const {
@@ -513,7 +513,7 @@ export default function Home() {
       return () => {
           window.removeEventListener('storage', loadAllItemTypes);
       };
-    }, []);
+    }, [loadAdventureState, toast, setCurrentLanguage]);
 
     const handleToggleAestheticFont = React.useCallback(() => {
         const newFontState = !useAestheticFont;
@@ -898,8 +898,8 @@ export default function Home() {
     setIsLoading(false);
   }, [
       adventureSettings, characters, toast, generateAdventureAction, 
-      allEnemies, setCharacters, setActiveCombat,
-      setIsLoading, setShoppingCart, setMerchantInventory, handleNarrativeUpdate, setAdventureSettings,
+      allEnemies, setCharacters, setActiveCombat, setIsLoading, setShoppingCart,
+      handleNarrativeUpdate, setAdventureSettings, setMerchantInventory,
   ]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
@@ -1131,6 +1131,7 @@ export default function Home() {
                 handleSave={handleSave}
                 handleLoad={handleLoad}
                 setCurrentLanguage={handleSetCurrentLanguage}
+                translateTextAction={async () => ({ translatedText: '' })}
                 generateAdventureAction={generateAdventureAction}
                 generateSceneImageAction={generateSceneImageActionWrapper}
                 handleEditMessage={() => {}}
@@ -1258,5 +1259,3 @@ export default function Home() {
         </>
     );
 }
-
-    
