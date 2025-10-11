@@ -57,6 +57,7 @@ const createInitialState = (): SaveData => ({
     currentLanguage: "fr",
     saveFormatVersion: 2.6,
     timestamp: new Date().toISOString(),
+    aiConfig: { llm: { source: 'gemini' }, image: { source: 'gemini' } },
 });
 
 export function calculateBaseDerivedStats(stats: {
@@ -149,7 +150,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     const equippedArmor = equipped.find(i => i.type === 'armor');
     let finalArmorClass = baseDerived.armorClass; 
     if (equippedArmor?.ac) {
-         if (equippedArmor.ac.includes('+')) {
+         if (typeof equippedArmor.ac === "string" && equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
             if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc;
@@ -172,7 +173,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
     const equippedWeapon = equipped.find(i => i.type === 'weapon');
     let finalDamageBonus = baseDerived.damageBonus;
-    if (equippedWeapon?.damage) {
+    if (equippedWeapon?.damage && typeof equippedWeapon.damage === 'string') {
         const strMod = Math.floor((effectiveStats.playerStrength - 10) / 2);
         let baseDamage = equippedWeapon.damage;
         let totalBonus = strMod + bonusDamageValue;
@@ -198,12 +199,13 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 }
 
 export const getLocalizedText = (field: LocalizedText, lang: string) => {
+    if (!field || typeof field !== 'object') return "";
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
 };
 
 export function useAdventureState() {
     const { toast } = useToast();
-    const initialState = createInitialState();
+    const initialState = React.useMemo(() => createInitialState(), []);
 
     const [adventureSettings, setAdventureSettings] = React.useState<AdventureSettings>(initialState.adventureSettings);
     const [characters, setCharacters] = React.useState<Character[]>(initialState.characters);
@@ -220,6 +222,11 @@ export function useAdventureState() {
 
 
     const loadAdventureState = React.useCallback((data: SaveData) => {
+        if (data.saveFormatVersion !== createInitialState().saveFormatVersion) {
+            console.warn("⚠️ Version de sauvegarde différente, la compatibilité n'est pas garantie.");
+            toast({ title: "Version de sauvegarde obsolète", description: "Certaines fonctionnalités pourraient ne pas fonctionner comme prévu.", variant: "destructive" });
+        }
+
         const settingsWithDefaults = { ...createInitialState().adventureSettings, ...data.adventureSettings };
         const effectiveStats = calculateEffectiveStats(settingsWithDefaults);
         const finalSettings = {
@@ -248,7 +255,7 @@ export function useAdventureState() {
             const lootMessage = narrativeMessages.find(m => m.id === messageId);
             let currencyGained = 0;
              if (lootMessage?.loot) {
-                const currencyItem = lootMessage.loot.find(item => item.name?.toLowerCase().includes("pièces d'or") || item.name?.toLowerCase().includes("gold"));
+                const currencyItem = lootMessage.loot.find(item => item.name && (item.name.toLowerCase().includes("pièces d'or") || item.name.toLowerCase().includes("gold")));
                 if (currencyItem) {
                     currencyGained = currencyItem.quantity;
                 }
@@ -315,7 +322,8 @@ export function useAdventureState() {
             if (action === 'use') {
                 if (item.type === 'consumable') {
                     narrativeAction = `J'utilise ${item.name}.`;
-                    newInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+                    const newQty = Math.max(0, item.quantity - 1);
+                    newInventory[itemIndex] = { ...item, quantity: newQty };
     
                     if (item.effectDetails?.type === 'heal') {
                         const newHp = Math.min(prevSettings.playerMaxHp || 0, (prevSettings.playerCurrentHp || 0) + item.effectDetails.amount);
@@ -329,7 +337,8 @@ export function useAdventureState() {
                 }
             } else if (action === 'discard') {
                 narrativeAction = `Je jette ${item.name}.`;
-                newInventory[itemIndex] = { ...item, quantity: item.quantity - 1 };
+                const newQty = Math.max(0, item.quantity - 1);
+                newInventory[itemIndex] = { ...item, quantity: newQty };
                 toast({ title: "Objet jeté" });
             }
             

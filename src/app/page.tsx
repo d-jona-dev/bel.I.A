@@ -751,6 +751,7 @@ export default function Home() {
     return (
         <>
             <PageStructure
+                adventureFormRef={adventureFormRef}
                 adventureSettings={adventureSettings}
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
@@ -758,7 +759,6 @@ export default function Home() {
                 narrativeMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 fileInputRef={fileInputRef}
-                adventureFormRef={adventureFormRef}
                 handleToggleRpgMode={handleToggleRpgMode}
                 handleToggleRelationsMode={handleToggleRelationsMode}
                 handleToggleStrategyMode={handleToggleStrategyMode}
@@ -904,3 +904,5 @@ export default function Home() {
         </>
     );
 }
+
+    
