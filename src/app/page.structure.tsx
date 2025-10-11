@@ -76,7 +76,7 @@ interface PageStructureProps {
   handleRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
   handleRelationUpdatesFromAI: (updates: RelationUpdateSchema[]) => void;
   handleSaveNewCharacter: (character: Character) => void;
-  handleAddStagedCharacter: (character: Character) => void;
+  onAddStagedCharacter: (character: Character) => void;
   handleSave: () => void;
   handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
   setCurrentLanguage: (lang: string) => void;
@@ -123,7 +123,7 @@ interface PageStructureProps {
   handleAddStagedFamiliar: (familiar: Familiar) => void;
   onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onMapImageUrlChange: (url: string) => void; // Nouvelle prop
-  onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[]) => void;
+  onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
   onAddPoiToMap: (poiId: string) => void;
@@ -176,7 +176,7 @@ export function PageStructure({
   handleRelationUpdate,
   handleRelationUpdatesFromAI,
   handleSaveNewCharacter,
-  handleAddStagedCharacter,
+  onAddStagedCharacter,
   handleSave,
   handleLoad,
   setCurrentLanguage,
@@ -883,7 +883,7 @@ export function PageStructure({
                                       characters={stagedCharacters}
                                       onCharacterUpdate={handleCharacterUpdate}
                                       onSaveNewCharacter={handleSaveNewCharacter}
-                                      onAddStagedCharacter={handleAddStagedCharacter}
+                                      onAddStagedCharacter={onAddStagedCharacter}
                                       onRelationUpdate={handleRelationUpdate}
                                       generateImageAction={generateSceneImageAction}
                                       rpgMode={adventureSettings.rpgMode}
@@ -1034,3 +1034,4 @@ export function PageStructure({
 
 
     
+

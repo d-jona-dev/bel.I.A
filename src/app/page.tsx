@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -79,8 +80,6 @@ export default function Home() {
         setItemToSellDetails,
         sellQuantity,
         setSellQuantity,
-        setShoppingCart, // Added
-        setMerchantInventory, // Added
     } = useAdventureState();
     
     const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
@@ -238,24 +237,8 @@ export default function Home() {
         handleNewFamiliar,
         handleCombatUpdates,
         setMerchantInventory: setLocalMerchantInventory,
+        getLocalizedText
     });
-
-    const handleSendSpecificAction = React.useCallback(async (action: string) => {
-        if (!action || isLoading) return;
-
-        handleNarrativeUpdate(action, 'user');
-        setIsLoading(true);
-
-        try {
-            await generateAdventureAction(action);
-        } catch (error) { 
-            console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
-            React.startTransition(() => {
-                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
-            });
-            setIsLoading(false);
-        }
-    }, [isLoading, handleNarrativeUpdate, toast, generateAdventureAction]);
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
         if (isLoading) return;
@@ -274,6 +257,23 @@ export default function Home() {
           setIsLoading(false);
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
+
+    const handleSendSpecificAction = React.useCallback(async (action: string) => {
+        if (!action || isLoading) return;
+
+        handleNarrativeUpdate(action, 'user');
+        setIsLoading(true);
+
+        try {
+            await generateAdventureAction(action);
+        } catch (error) { 
+            console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
+            React.startTransition(() => {
+                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
+            });
+            setIsLoading(false);
+        }
+    }, [isLoading, handleNarrativeUpdate, toast, generateAdventureAction]);
 
 
     const {
@@ -331,6 +331,10 @@ export default function Home() {
       ]);
     }, [adventureSettings.playerLocationId, setCharacters]);
     
+    const handleAddStagedCharacter = React.useCallback((character: Character) => {
+        setCharacters(prev => [...prev, character]);
+        toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
+    }, [setCharacters, toast]);
    
     const handleAddToCart = React.useCallback((item: SellingItem) => {
         setLocalShoppingCart(prevCart => {
@@ -1103,11 +1107,6 @@ export default function Home() {
         setLocalMerchantInventory([]);
         setLocalShoppingCart([]);
     };
-    
-    const handleAddStagedCharacter = (character: Character) => {
-        setCharacters(prev => [...prev, character]);
-        toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
-    };
 
     return (
         <>
@@ -1198,7 +1197,8 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={handleGenerateCover}
+                isGeneratingCover={isGeneratingCover}
+                onGenerateCover={handleGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
@@ -1264,3 +1264,4 @@ export default function Home() {
         </>
     );
 }
+
