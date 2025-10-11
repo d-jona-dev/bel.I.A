@@ -13,6 +13,7 @@ import { useCombat } from "@/hooks/systems/useCombat";
 import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
+import { useMerchant } from "@/hooks/systems/useMerchant";
 
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
@@ -89,9 +90,6 @@ export default function Home() {
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
-    const [merchantInventory, setLocalMerchantInventory] = React.useState<SellingItem[]>([]);
-    const [shoppingCart, setLocalShoppingCart] = React.useState<SellingItem[]>([]);
-
     const playerName = adventureSettings.playerName || "Player";
     
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => {
@@ -182,6 +180,33 @@ export default function Home() {
             return { ...prevSettings, familiars: updatedFamiliars };
         });
     }, [toast, setAdventureSettings]);
+    
+    const handleNewCharacters = React.useCallback((newChars: Omit<Character, 'id'>[]) => {
+      setCharacters(prev => [
+          ...prev, 
+          ...newChars.map(char => ({ 
+              ...char, 
+              id: `char-${char.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
+              locationId: adventureSettings.playerLocationId,
+          }))
+      ]);
+    }, [adventureSettings.playerLocationId, setCharacters]);
+
+    const {
+        merchantInventory,
+        shoppingCart,
+        handleAddToCart,
+        handleRemoveFromCart,
+        handleFinalizePurchase,
+        initializeMerchantInventory,
+        closeMerchantPanel,
+    } = useMerchant({
+        adventureSettings,
+        setAdventureSettings,
+        addCurrencyToPlayer,
+        handleNewCharacters,
+        toast,
+    });
 
     const {
         activeCombat,
@@ -236,7 +261,7 @@ export default function Home() {
         addCurrencyToPlayer,
         handleNewFamiliar,
         handleCombatUpdates,
-        setMerchantInventory: setLocalMerchantInventory,
+        initializeMerchantInventory,
         getLocalizedText
     });
     
@@ -275,6 +300,12 @@ export default function Home() {
         }
     }, [isLoading, handleNarrativeUpdate, toast, generateAdventureAction]);
 
+    const handleFinalizePurchaseWithAction = React.useCallback(() => {
+        const summary = handleFinalizePurchase();
+        if (summary) {
+            handleSendSpecificAction(`J'achète les articles suivants : ${summary}.`);
+        }
+    }, [handleFinalizePurchase, handleSendSpecificAction]);
 
     const {
         comicDraft,
@@ -320,134 +351,14 @@ export default function Home() {
     
     // --- Core Action Handlers ---
     
-    const handleNewCharacters = React.useCallback((newChars: Omit<Character, 'id'>[]) => {
-      setCharacters(prev => [
-          ...prev, 
-          ...newChars.map(char => ({ 
-              ...char, 
-              id: `char-${char.name.toLowerCase().replace(/\s/g, '-')}-${uid()}`,
-              locationId: adventureSettings.playerLocationId,
-          }))
-      ]);
-    }, [adventureSettings.playerLocationId, setCharacters]);
-    
     const handleAddStagedCharacter = React.useCallback((character: Character) => {
-        setCharacters(prev => [...prev, character]);
-        toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
-    }, [setCharacters, toast]);
-   
-    const handleAddToCart = React.useCallback((item: SellingItem) => {
-        setLocalShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.baseItemId === item.baseItemId && cartItem.name === item.name);
-            if (existingItem) {
-                return prevCart.map(cartItem => 
-                    cartItem.baseItemId === item.baseItemId && cartItem.name === item.name 
-                    ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 } 
-                    : cartItem
-                );
-            }
-            return [...prevCart, { ...item, quantity: 1 }];
-        });
-    }, []);
-    
-    const handleRemoveFromCart = React.useCallback((itemName: string) => {
-        setLocalShoppingCart(prevCart => {
-            const existingItem = prevCart.find(cartItem => cartItem.name === itemName);
-            if (existingItem && existingItem.quantity! > 1) {
-                 return prevCart.map(cartItem => 
-                    cartItem.name === itemName
-                    ? { ...cartItem, quantity: cartItem.quantity! - 1 } 
-                    : cartItem
-                );
-            }
-            return prevCart.filter(cartItem => cartItem.name !== itemName);
-        });
-    }, []);
-
-    const onFinalizePurchase = React.useCallback(() => {
-        const totalCost = shoppingCart.reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
-
-        if ((adventureSettings.playerGold || 0) < totalCost) {
-            React.startTransition(() => {
-                toast({ title: "Fonds insuffisants", description: "Vous n'avez pas assez d'or pour cet achat.", variant: "destructive" });
-            });
+        if (characters.some(c => c.id === character.id)) {
+            toast({ title: "Personnage déjà présent", variant: 'default'});
             return;
         }
-
-        const boughtItemsSummary: string[] = [];
-
-        // Handle items to be added to inventory
-        const itemsToInventory = shoppingCart.filter(item => item.type !== 'npc');
-        if (itemsToInventory.length > 0) {
-            setAdventureSettings(prev => {
-                const newInventory = [...(prev.playerInventory || [])];
-                itemsToInventory.forEach(cartItem => {
-                    const newItem: PlayerInventoryItem = {
-                        id: `${cartItem.baseItemId}-${uid()}`,
-                        name: cartItem.name,
-                        quantity: cartItem.quantity || 1,
-                        description: cartItem.description,
-                        type: cartItem.type as any, // Cast because 'npc' is filtered out
-                        goldValue: cartItem.finalGoldValue,
-                        damage: cartItem.damage,
-                        ac: cartItem.ac,
-                        statBonuses: cartItem.statBonuses,
-                        effectType: cartItem.effectType,
-                        effectDetails: cartItem.effectDetails,
-                        familiarDetails: cartItem.familiarDetails,
-                        generatedImageUrl: null,
-                        isEquipped: false
-                    };
-                    const existingIndex = newInventory.findIndex(invItem => invItem.name === newItem.name);
-                    if (existingIndex > -1) {
-                        newInventory[existingIndex].quantity += newItem.quantity;
-                    } else {
-                        newInventory.push(newItem);
-                    }
-                    boughtItemsSummary.push(`${newItem.quantity}x ${newItem.name}`);
-                });
-                return { ...prev, playerInventory: newInventory };
-            });
-        }
-        
-        // Handle recruited NPCs
-        const npcsToRecruit = shoppingCart.filter(item => item.type === 'npc');
-        if (npcsToRecruit.length > 0) {
-            const newCharactersToAdd: Omit<Character, 'id'>[] = npcsToRecruit.map(npcItem => {
-                 const baseStats = calculateBaseDerivedStats({
-                    level: 1, characterClass: "Mercenaire", strength: 12, dexterity: 12, constitution: 12, intelligence: 10, wisdom: 10, charisma: 10
-                 });
-                boughtItemsSummary.push(`1x Compagnon: ${npcItem.name}`);
-                return {
-                    name: npcItem.name,
-                    details: npcItem.description,
-                    isAlly: true,
-                    isHostile: false,
-                    affinity: 70, // Start as loyal ally
-                    level: 1,
-                    characterClass: "Mercenaire",
-                    ...baseStats,
-                    hitPoints: baseStats.maxHitPoints,
-                    manaPoints: baseStats.maxManaPoints,
-                    locationId: adventureSettings.playerLocationId,
-                };
-            });
-            handleNewCharacters(newCharactersToAdd);
-        }
-
-        // Update player gold
-        setAdventureSettings(prev => ({...prev, playerGold: (prev.playerGold || 0) - totalCost }));
-        
-        const summaryText = boughtItemsSummary.join(', ');
-        React.startTransition(() => {
-            toast({ title: "Achat Terminé!", description: `Vous avez acquis : ${summaryText}.` });
-        });
-
-        handleSendSpecificAction(`J'achète les articles suivants : ${summaryText}.`);
-        
-        setLocalShoppingCart([]);
-        setLocalMerchantInventory([]); // Close merchant panel after purchase
-    }, [shoppingCart, adventureSettings.playerGold, handleSendSpecificAction, toast, setAdventureSettings, setLocalShoppingCart, setLocalMerchantInventory, adventureSettings.playerLocationId, handleNewCharacters]);
+        setCharacters(prev => [...prev, character]);
+        toast({ title: "Personnage Ajouté", description: `${character.name} a été ajouté à l'aventure.` });
+    }, [characters, setCharacters, toast]);
    
     const handleActionWithCombatItem = async (narrativeAction: string) => {
         handleNarrativeUpdate(narrativeAction, 'user');
@@ -688,7 +599,7 @@ export default function Home() {
         
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
+}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat, getLocalizedText]);
 
 
   const handleToggleStrategyMode = () => {
@@ -706,8 +617,7 @@ export default function Home() {
     if (!poi) return;
   
     setIsLoading(true);
-    setLocalShoppingCart([]);
-    setLocalMerchantInventory([]);
+    closeMerchantPanel();
   
     let userActionText: string | null = null;
     let locationIdOverride: string | undefined = undefined;
@@ -903,8 +813,8 @@ export default function Home() {
     setIsLoading(false);
   }, [
       adventureSettings, characters, toast, generateAdventureAction, 
-      allEnemies, setCharacters, setActiveCombat, setIsLoading, setLocalShoppingCart,
-      handleNarrativeUpdate, setAdventureSettings, setLocalMerchantInventory,
+      allEnemies, setCharacters, setActiveCombat, setIsLoading, closeMerchantPanel,
+      handleNarrativeUpdate, setAdventureSettings,
   ]);
 
   const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
@@ -1103,10 +1013,6 @@ export default function Home() {
     }), [adventureSettings, characters]);
   
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
-    const handleCloseMerchantPanel = () => {
-        setLocalMerchantInventory([]);
-        setLocalShoppingCart([]);
-    };
 
     return (
         <>
@@ -1197,15 +1103,14 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={isGeneratingCover}
-                onGenerateCover={handleGenerateCover}
+                isGeneratingCover={handleGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
                 onAddToCart={handleAddToCart}
                 onRemoveFromCart={handleRemoveFromCart}
-                onFinalizePurchase={onFinalizePurchase}
-                onCloseMerchantPanel={handleCloseMerchantPanel}
+                onFinalizePurchase={handleFinalizePurchaseWithAction}
+                onCloseMerchantPanel={closeMerchantPanel}
                 handleClaimHuntReward={handleClaimHuntReward}
             />
             {isTargeting && itemToUse && (
@@ -1264,4 +1169,3 @@ export default function Home() {
         </>
     );
 }
-

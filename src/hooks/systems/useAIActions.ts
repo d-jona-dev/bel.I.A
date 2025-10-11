@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -15,7 +16,7 @@ import { materializeCharacter } from "@/ai/flows/materialize-character";
 import type { MaterializeCharacterInput } from "@/ai/flows/materialize-character";
 import { summarizeHistory } from "@/ai/flows/summarize-history";
 import type { SummarizeHistoryInput } from "@/ai/flows/summarize-history";
-import { calculateEffectiveStats } from "@/hooks/systems/useAdventureState";
+import { calculateEffectiveStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
 import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
 import { poiLevelConfig } from "@/lib/buildings";
 
@@ -39,8 +40,7 @@ interface UseAIActionsProps {
     addCurrencyToPlayer: (amount: number) => void;
     handleNewFamiliar: (familiar: Familiar) => void;
     handleCombatUpdates: (updates: CombatUpdatesSchema) => void;
-    setMerchantInventory: React.Dispatch<React.SetStateAction<any[]>>;
-    getLocalizedText: (field: LocalizedText, lang: string) => string;
+    initializeMerchantInventory: (poi: any) => void;
 }
 
 export function useAIActions({
@@ -61,8 +61,7 @@ export function useAIActions({
     addCurrencyToPlayer,
     handleNewFamiliar,
     handleCombatUpdates,
-    setMerchantInventory,
-    getLocalizedText,
+    initializeMerchantInventory,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -163,32 +162,9 @@ export function useAIActions({
         const contextSituation = narrativeMessages.length > 1 ? [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
 
         const currentPoi = adventureSettings.mapPointsOfInterest?.find(p => p.id === (locationIdOverride || adventureSettings.playerLocationId));
-        let localMerchantInventory: any[] = [];
-        if (currentPoi && currentPoi.buildings?.some(b => ['forgeron', 'bijoutier', 'magicien'].includes(b))) {
-            const allItems = [...BASE_WEAPONS, ...BASE_ARMORS, ...BASE_JEWELRY, ...BASE_CONSUMABLES];
-            const activeUniverses = adventureSettings.activeItemUniverses || [];
-            const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
-            const inventoryConfig: Record<number, { size: number, minRarity: number, maxRarity: number }> = {
-                1: { size: 3, minRarity: 1, maxRarity: 1 }, 2: { size: 4, minRarity: 1, maxRarity: 2 },
-                3: { size: 5, minRarity: 1, maxRarity: 3 }, 4: { size: 6, minRarity: 2, maxRarity: 4 },
-                5: { size: 7, minRarity: 3, maxRarity: 5 }, 6: { size: 10, minRarity: 4, maxRarity: 5 },
-            };
-            const poiLevel = currentPoi.level || 1;
-            const config = inventoryConfig[poiLevel] || inventoryConfig[1];
+        
+        const localMerchantInventory = initializeMerchantInventory(currentPoi);
 
-            const itemsInUniverse = allItems.filter(item => activeUniverses.includes(item.universe));
-            const availableItems = itemsInUniverse.filter(item => {
-                const itemRarityValue = rarityOrder[item.rarity] || 1;
-                return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
-            });
-            
-            localMerchantInventory = availableItems.slice(0, config.size).map(item => ({
-                ...item,
-                baseItemId: item.id,
-                finalGoldValue: item.baseGoldValue * (poiLevelConfig[currentPoi.icon]?.[poiLevel]?.resources.find(r => r.type === 'currency')?.quantity || 10) / 10
-            }));
-            setMerchantInventory(localMerchantInventory);
-        }
 
         const input: GenerateAdventureInput = {
             world: getLocalizedText(adventureSettings.world, currentLanguage),
@@ -243,7 +219,7 @@ export function useAIActions({
         }
     }, [
         adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, aiConfig,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, setMerchantInventory, getLocalizedText
+        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, initializeMerchantInventory, getLocalizedText
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
