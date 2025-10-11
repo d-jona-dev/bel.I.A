@@ -58,7 +58,6 @@ interface PageStructureProps {
   adventureSettings: AdventureSettings;
   characters: Character[];
   stagedAdventureSettings: AdventureFormValues;
-  formPropKey: number;
   handleApplyStagedChanges: () => void;
   narrativeMessages: Message[];
   currentLanguage: string;
@@ -158,7 +157,6 @@ export function PageStructure({
   adventureSettings,
   characters,
   stagedAdventureSettings,
-  formPropKey,
   handleApplyStagedChanges,
   narrativeMessages,
   currentLanguage,
@@ -561,7 +559,6 @@ export function PageStructure({
                               <AccordionContent className="pt-2">
                                 <AdventureForm
                                     ref={adventureFormRef}
-                                    formPropKey={formPropKey}
                                     initialValues={stagedAdventureSettings}
                                     rpgMode={adventureSettings.rpgMode}
                                     relationsMode={adventureSettings.relationsMode}
@@ -1031,5 +1028,8 @@ export function PageStructure({
     </div>
   );
 }
+
+    
+
 
     

@@ -81,12 +81,12 @@ export default function Home() {
         setItemToSellDetails,
         sellQuantity,
         setSellQuantity,
+        getLocalizedText,
     } = useAdventureState();
     
     const [allEnemies, setAllEnemies] = React.useState<EnemyUnit[]>([]);
     
     // UI and loading states
-    const [formPropKey, setFormPropKey] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
@@ -192,7 +192,6 @@ export default function Home() {
         setItemToUse,
         isTargeting,
         setIsTargeting,
-        resolveCombatTurn,
         handleCombatUpdates,
         handleClaimHuntReward,
         applyCombatItemEffect,
@@ -212,7 +211,7 @@ export default function Home() {
         generateAdventureAction,
         regenerateLastResponse,
         suggestQuestHookAction,
-        materializeCharacter,
+        materializeCharacterAction,
         summarizeHistory,
         isSuggestingQuest,
         isRegenerating,
@@ -220,7 +219,7 @@ export default function Home() {
         isGeneratingItemImage,
         generateSceneImageActionWrapper,
         generateMapImage,
-        isGeneratingMap
+        isGeneratingMap,
     } = useAIActions({
         adventureSettings,
         characters,
@@ -229,7 +228,6 @@ export default function Home() {
         currentLanguage,
         activeCombat,
         aiConfig,
-        merchantInventory,
         isLoading,
         setIsLoading,
         setNarrativeMessages,
@@ -239,9 +237,8 @@ export default function Home() {
         handlePoiOwnershipChange,
         addCurrencyToPlayer,
         handleNewFamiliar,
-        handleCombatUpdates
+        handleCombatUpdates,
     });
-
 
     const handleSendSpecificAction = React.useCallback(async (action: string) => {
         if (!action || isLoading) return;
@@ -259,6 +256,25 @@ export default function Home() {
             setIsLoading(false);
         }
     }, [isLoading, handleNarrativeUpdate, toast, generateAdventureAction]);
+    
+    const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
+        if (isLoading) return;
+        setIsLoading(true);
+        toast({ title: `Matérialisation en cours...`, description: "L'IA crée la fiche du personnage." });
+        try {
+          await materializeCharacterAction(narrativeContext);
+        } catch (error) {
+          console.error("Caught error in onMaterializeCharacter:", error);
+          toast({
+            title: "Erreur de Création",
+            description: error instanceof Error ? error.message : "Une erreur inattendue est survenue.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoading(false);
+        }
+    }, [isLoading, materializeCharacterAction, toast]);
+
 
     const {
         comicDraft,
@@ -576,21 +592,14 @@ export default function Home() {
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }]);
         
         setActiveCombat(undefined);
-        setFormPropKey(prev => prev + 1);
+        toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
         setShowRestartConfirm(false);
     });
-     React.startTransition(() => {
-        toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
-    });
-  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat]);
+  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, getLocalizedText]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
   }, []);
-
-  const getLocalizedText = (field: LocalizedText, lang: string) => {
-        return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
-    };
 
   const handleApplyStagedChanges = React.useCallback(async () => {
     if (!adventureFormRef.current) return;
@@ -675,7 +684,7 @@ export default function Home() {
         
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat]);
+}, [adventureFormRef, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, setBaseAdventureSettings, setBaseCharacters, adventureSettings, activeCombat, getLocalizedText]);
 
 
   const handleToggleStrategyMode = () => {
@@ -807,6 +816,7 @@ export default function Home() {
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
+        handleNarrativeUpdate(userActionText, 'user');
         await generateAdventureAction(userActionText, locationIdOverride);
 
     } else {
@@ -1099,7 +1109,6 @@ export default function Home() {
                 adventureSettings={adventureSettings}
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
-                formPropKey={formPropKey}
                 handleApplyStagedChanges={handleApplyStagedChanges}
                 narrativeMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
@@ -1111,7 +1120,7 @@ export default function Home() {
                 onNarrativeChange={handleNarrativeUpdate}
                 handleCharacterUpdate={(char) => setCharacters(prev => prev.map(c => c.id === char.id ? char : c))}
                 handleNewCharacters={handleNewCharacters}
-                onMaterializeCharacter={materializeCharacter}
+                onMaterializeCharacter={onMaterializeCharacter}
                 onSummarizeHistory={summarizeHistory}
                 handleCharacterHistoryUpdate={() => {}}
                 handleAffinityUpdates={() => {}}
@@ -1249,3 +1258,5 @@ export default function Home() {
         </>
     );
 }
+
+    
