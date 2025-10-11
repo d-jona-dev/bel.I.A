@@ -14,6 +14,7 @@ import { useAdventureState, calculateEffectiveStats, getLocalizedText } from "@/
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
 import { useMerchant } from "@/hooks/systems/useMerchant";
+import { useMap } from "@/hooks/systems/useMap";
 
 import { BUILDING_DEFINITIONS, BUILDING_SLOTS, BUILDING_COST_PROGRESSION, poiLevelConfig, poiLevelNameMap } from "@/lib/buildings";
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
@@ -241,8 +242,6 @@ export default function Home() {
         generateItemImage,
         isGeneratingItemImage,
         generateSceneImageActionWrapper,
-        generateMapImage,
-        isGeneratingMap,
     } = useAIActions({
         adventureSettings,
         characters,
@@ -262,7 +261,6 @@ export default function Home() {
         handleNewFamiliar,
         handleCombatUpdates,
         initializeMerchantInventory,
-        getLocalizedText
     });
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
@@ -283,14 +281,14 @@ export default function Home() {
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
 
-    const handleSendSpecificAction = React.useCallback(async (action: string) => {
+    const handleSendSpecificAction = React.useCallback(async (action: string, locationIdOverride?: string) => {
         if (!action || isLoading) return;
 
         handleNarrativeUpdate(action, 'user');
         setIsLoading(true);
 
         try {
-            await generateAdventureAction(action);
+            await generateAdventureAction(action, locationIdOverride);
         } catch (error) { 
             console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
             React.startTransition(() => {
@@ -306,6 +304,25 @@ export default function Home() {
             handleSendSpecificAction(`J'achète les articles suivants : ${summary}.`);
         }
     }, [handleFinalizePurchase, handleSendSpecificAction]);
+    
+    const {
+        isGeneratingMap,
+        generateMapImage,
+        handlePoiPositionChange,
+        handleCreatePoi,
+        handleMapImageUpload,
+        handleMapImageUrlChange,
+        handleAddPoiToMap,
+        handleBuildInPoi,
+    } = useMap({
+        adventureSettings,
+        setAdventureSettings,
+        characters,
+        toast,
+        generateSceneImageActionWrapper,
+        aiConfig,
+        handleSendSpecificAction
+    });
 
     const {
         comicDraft,
@@ -616,123 +633,20 @@ export default function Home() {
     const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
     if (!poi) return;
   
-    setIsLoading(true);
     closeMerchantPanel();
   
     let userActionText: string | null = null;
     let locationIdOverride: string | undefined = undefined;
     
     if (action === 'attack') {
-        let enemiesToFight: Character[] = [];
-        const owner = characters.find(c => c.id === poi.ownerId);
-
-        if (poi.defenderUnitIds && poi.defenderUnitIds.length > 0) {
-             poi.defenderUnitIds.forEach(unitId => {
-                const enemyUnit = allEnemies.find(e => e.id === unitId);
-                if (enemyUnit) {
-                    enemiesToFight.push({
-                        ...enemyUnit,
-                        id: `${enemyUnit.id}-${uid()}`,
-                        hitPoints: enemyUnit.hitPoints,
-                        maxHitPoints: enemyUnit.hitPoints,
-                        locationId: poi.id,
-                    });
-                }
-            });
-        }
-        else if (owner?.race) {
-            const potentialDefenders = allEnemies.filter(unit => unit.race === owner.race);
-            if (potentialDefenders.length > 0) {
-                 const numDefenders = Math.max(1, poi.level || 1);
-                 for (let i = 0; i < numDefenders; i++) {
-                    const unit = potentialDefenders[Math.floor(Math.random() * potentialDefenders.length)];
-                     enemiesToFight.push({
-                        ...unit,
-                        id: `${unit.id}-${uid()}`,
-                        hitPoints: unit.hitPoints,
-                        maxHitPoints: unit.hitPoints,
-                        locationId: poi.id,
-                    });
-                }
-            }
-        }
-        else {
-            enemiesToFight = characters.filter(c => c.isHostile && c.locationId === poi.id);
-        }
-
-        if (enemiesToFight.length === 0) {
-            React.startTransition(() => {
-                toast({ title: "Aucun ennemi", description: "Il n'y a personne à combattre ici.", variant: "default" });
-            });
-            setIsLoading(false);
-            return;
-        }
-
-        const newDefenders = enemiesToFight.filter(ef => !characters.some(c => c.id === ef.id));
-        if (newDefenders.length > 0) {
-            setCharacters(prev => [...prev, ...newDefenders]);
-        }
-
-        const effectiveStats = calculateEffectiveStats(adventureSettings);
-        const playerCombatant: Combatant = {
-            characterId: PLAYER_ID,
-            name: adventureSettings.playerName || 'Player',
-            currentHp: adventureSettings.playerCurrentHp ?? 0,
-            maxHp: effectiveStats.playerMaxHp,
-            currentMp: adventureSettings.playerCurrentMp,
-            maxMp: effectiveStats.playerMaxMp,
-            team: 'player',
-            isDefeated: (adventureSettings.playerCurrentHp ?? 0) <= 0,
-            statusEffects: []
-        };
-        
-        const alliesInCombat: Combatant[] = characters
-            .filter(c => c.isAlly && (c.hitPoints ?? 0) > 0 && c.locationId === adventureSettings.playerLocationId)
-            .map(c => ({
-                characterId: c.id,
-                name: c.name,
-                currentHp: c.hitPoints!,
-                maxHp: c.maxHitPoints!,
-                currentMp: c.manaPoints,
-                maxMp: c.manaPoints,
-                team: 'player',
-                isDefeated: false,
-                statusEffects: c.statusEffects || [],
-            }));
-
-        const enemiesInCombat: Combatant[] = enemiesToFight
-            .map(c => ({
-                characterId: c.id,
-                name: c.name,
-                currentHp: c.hitPoints!,
-                maxHp: c.maxHitPoints!,
-                currentMp: c.manaPoints,
-                maxMp: c.manaPoints,
-                team: 'enemy',
-                isDefeated: false,
-                statusEffects: c.statusEffects || [],
-            }));
-        
-        const combatState: ActiveCombat = {
-            isActive: true,
-            combatants: [playerCombatant, ...alliesInCombat, ...enemiesInCombat],
-            environmentDescription: poi.description || 'Champ de bataille',
-            turnLog: [],
-            contestedPoiId: poi.id,
-        };
-
-        setActiveCombat(combatState);
-        userActionText = `Le combat s'engage à ${poi.name}!`;
-        handleNarrativeUpdate(userActionText, 'system');
-        
-        await generateAdventureAction(userActionText, poi.id);
+        const combatNarrative = `J'attaque le territoire de ${poi.name}.`;
+        handleSendSpecificAction(combatNarrative, poi.id);
 
     } else if (action === 'visit' && buildingId) {
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
-        handleNarrativeUpdate(userActionText, 'user');
-        await generateAdventureAction(userActionText, locationIdOverride);
+        handleSendSpecificAction(userActionText, locationIdOverride);
 
     } else {
         if (action === 'upgrade') {
@@ -780,7 +694,6 @@ export default function Home() {
                 React.startTransition(() => {
                     toast({ title: "Accès Refusé", description: "Vous n'êtes pas le propriétaire de ce lieu et ne pouvez pas collecter ses ressources.", variant: "destructive" });
                 });
-                setIsLoading(false);
                 return;
             }
              userActionText = `Je collecte les ressources à ${poi.name}.`;
@@ -792,111 +705,18 @@ export default function Home() {
             locationIdOverride = poi.id;
         }
         else {
-            setIsLoading(false);
             return;
         }
         
-        if (!userActionText) { setIsLoading(false); return; }
+        if (!userActionText) { return; }
 
-        handleNarrativeUpdate(userActionText, 'user');
-
-        try {
-            await generateAdventureAction(userActionText, locationIdOverride);
-        } catch (error) {
-            console.error("Error in handleMapAction trying to generate adventure:", error);
-            React.startTransition(() => {
-                toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure depuis la carte.", variant: "destructive" });
-            });
-        }
+        handleSendSpecificAction(userActionText, locationIdOverride);
     }
-    
-    setIsLoading(false);
   }, [
-      adventureSettings, characters, toast, generateAdventureAction, 
+      adventureSettings, characters, toast, 
       allEnemies, setCharacters, setActiveCombat, setIsLoading, closeMerchantPanel,
-      handleNarrativeUpdate, setAdventureSettings,
+      setAdventureSettings, handleSendSpecificAction
   ]);
-
-  const handlePoiPositionChange = React.useCallback((poiId: string, newPosition: { x: number, y: number }) => {
-    setAdventureSettings(prev => {
-        if (!prev.mapPointsOfInterest) return prev;
-        const newPois = prev.mapPointsOfInterest.map(poi => 
-            poi.id === poiId ? { ...poi, position: newPosition } : poi
-        );
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [setAdventureSettings]);
-  
-  const handleCreatePoi = React.useCallback((data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; level: number; buildings: string[]; defenderUnitIds?: string[] }) => {
-    const newPoi: MapPointOfInterest = {
-        id: `poi-${data.name.toLowerCase().replace(/\s/g, '-')}-${Date.now()}`,
-        name: data.name,
-        description: data.description || `Un(e) nouveau/nouvelle ${poiLevelNameMap[data.type]?.[data.level || 1]?.toLowerCase() || 'lieu'} plein(e) de potentiel.`,
-        icon: data.type,
-        level: data.level || 1,
-        position: undefined, 
-        ownerId: data.ownerId,
-        lastCollectedTurn: undefined,
-        resources: poiLevelConfig[data.type as keyof typeof poiLevelConfig]?.[data.level as keyof typeof poiLevelConfig[keyof typeof poiLevelConfig]]?.resources || [],
-        buildings: data.buildings || [],
-        defenderUnitIds: data.defenderUnitIds || [],
-    };
-    
-    const updater = (prev: AdventureSettings) => ({
-        ...prev,
-        mapPointsOfInterest: [...(prev.mapPointsOfInterest || []), newPoi],
-    });
-
-    setAdventureSettings(updater);
-    
-    React.startTransition(() => {
-        toast({
-            title: "Point d'Intérêt Créé",
-            description: `"${data.name}" a été ajouté. Vous pouvez maintenant le placer sur la carte via le bouton "+".`,
-        });
-    });
-}, [toast, setAdventureSettings]);
-  
-
-  const handleMapImageUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-        React.startTransition(() => {
-            toast({
-                title: "Fichier Invalide",
-                description: "Veuillez sélectionner un fichier image (jpeg, png, etc.).",
-                variant: "destructive",
-            });
-        });
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setAdventureSettings(prev => ({ ...prev, mapImageUrl: imageUrl }));
-        React.startTransition(() => {
-            toast({
-                title: "Image de Carte Chargée",
-                description: "Le fond de la carte a été mis à jour avec votre image.",
-            });
-        });
-    };
-    reader.readAsDataURL(file);
-    if(event.target) event.target.value = '';
-  }, [toast, setAdventureSettings]);
-
-  const handleMapImageUrlChange = React.useCallback((url: string) => {
-    setAdventureSettings(prev => ({ ...prev, mapImageUrl: url }));
-    React.startTransition(() => {
-        toast({
-            title: "Image de Carte Chargée",
-            description: "Le fond de la carte a été mis à jour depuis l'URL.",
-        });
-    });
-  }, [toast, setAdventureSettings]);
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
     setAiConfig(newConfig);
@@ -906,95 +726,10 @@ export default function Home() {
     });
   }, [toast, setAiConfig]);
   
-  const handleAddPoiToMap = React.useCallback((poiId: string) => {
-    setAdventureSettings(prev => {
-        const pois = prev.mapPointsOfInterest || [];
-        const poiExists = pois.some(p => p.id === poiId && p.position);
-        if (poiExists) {
-            React.startTransition(() => {
-                toast({ title: "Déjà sur la carte", description: "Ce point d'intérêt est déjà sur la carte.", variant: "default" });
-            });
-            return prev;
-        }
-
-        const newPois = pois.map(p => {
-            if (p.id === poiId) {
-                React.startTransition(() => {
-                    toast({ title: "POI Ajouté", description: `"${p.name}" a été ajouté à la carte.` });
-                });
-                return { ...p, position: { x: 50, y: 50 } };
-            }
-            return p;
-        });
-
-        return { ...prev, mapPointsOfInterest: newPois };
-    });
-  }, [toast, setAdventureSettings]);
-
   const handleSetCurrentLanguage = (lang: string) => {
         setCurrentLanguage(lang);
         localStorage.setItem('adventure_language', lang);
     }
-    
-  const handleBuildInPoi = React.useCallback((poiId: string, buildingId: string) => {
-    const poi = adventureSettings.mapPointsOfInterest?.find(p => p.id === poiId);
-    if (!poi || poi.ownerId !== PLAYER_ID) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Vous devez posséder le lieu pour y construire.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const buildingDef = BUILDING_DEFINITIONS.find(b => b.id === buildingId);
-    if (!buildingDef) {
-        React.startTransition(() => {
-            toast({ title: "Erreur", description: "Définition du bâtiment introuvable.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const currentBuildings = poi.buildings || [];
-    if (currentBuildings.includes(buildingId)) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Ce bâtiment existe déjà dans ce lieu.", variant: "default" });
-        });
-        return;
-    }
-
-    const maxSlots = BUILDING_SLOTS[poi.icon]?.[poi.level || 1] ?? 0;
-    if (currentBuildings.length >= maxSlots) {
-        React.startTransition(() => {
-            toast({ title: "Construction Impossible", description: "Tous les emplacements de construction sont utilisés.", variant: "destructive" });
-        });
-        return;
-    }
-
-    const cost = BUILDING_COST_PROGRESSION[currentBuildings.length] ?? Infinity;
-    if ((adventureSettings.playerGold || 0) < cost) {
-        React.startTransition(() => {
-            toast({ title: "Fonds Insuffisants", description: `Il vous faut ${cost} PO pour construire ${buildingDef.name}.`, variant: "destructive" });
-        });
-        return;
-    }
-
-    setAdventureSettings(prev => {
-        const newPois = prev.mapPointsOfInterest!.map(p => {
-            if (p.id === poiId) {
-                return { ...p, buildings: [...(p.buildings || []), buildingId] };
-            }
-            return p;
-        });
-        return {
-            ...prev,
-            playerGold: (prev.playerGold || 0) - cost,
-            mapPointsOfInterest: newPois,
-        };
-    });
-
-    React.startTransition(() => {
-        toast({ title: "Bâtiment Construit!", description: `${buildingDef.name} a été construit à ${poi.name} pour ${cost} PO.` });
-    });
-  }, [adventureSettings, toast, setAdventureSettings]);
     
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
         ...adventureSettings,
@@ -1043,7 +778,7 @@ export default function Home() {
                 handleLoad={handleLoad}
                 setCurrentLanguage={handleSetCurrentLanguage}
                 translateTextAction={async () => ({ translatedText: '' })}
-                generateAdventureAction={generateAdventureAction}
+                generateAdventureAction={handleSendSpecificAction}
                 generateSceneImageAction={generateSceneImageActionWrapper}
                 handleEditMessage={() => {}}
                 handleRegenerateLastResponse={regenerateLastResponse}
@@ -1094,7 +829,7 @@ export default function Home() {
                 onAddComicPage={handleAddComicPage}
                 onAddComicPanel={handleAddComicPanel}
                 onRemoveLastComicPanel={handleRemoveLastComicPanel}
-                onUploadToComicPanel={handleUploadToComicPanel}
+                onUploadToComicPanel={onUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={handleComicPageChange}
                 onAddToComicPage={handleAddToComicPage}

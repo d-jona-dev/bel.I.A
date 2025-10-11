@@ -67,7 +67,6 @@ export function useAIActions({
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
     const [isRegenerating, setIsRegenerating] = React.useState(false);
     const [isGeneratingItemImage, setIsGeneratingItemImage] = React.useState(false);
-    const [isGeneratingMap, setIsGeneratingMap] = React.useState(false);
     
     const handleCharacterHistoryUpdate = React.useCallback((updates: CharacterUpdateSchema[]) => {
         if (!updates || updates.length === 0) return;
@@ -358,22 +357,6 @@ export function useAIActions({
         }
       }, [generateSceneImageActionWrapper, toast, isGeneratingItemImage, setAdventureSettings]);
 
-    const generateMapImage = React.useCallback(async () => {
-        setIsGeneratingMap(true);
-        toast({ title: "Génération de la carte..." });
-        try {
-            const prompt = `A fantasy map of a world. Key locations: ${adventureSettings.mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues'}. World context: ${getLocalizedText(adventureSettings.world, 'en')}`;
-            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
-            if (result.imageUrl) {
-                setAdventureSettings(prev => ({ ...prev, mapImageUrl: result.imageUrl }));
-            }
-        } catch (error) {
-            toast({ title: "Erreur de génération de carte", variant: "destructive" });
-        } finally {
-            setIsGeneratingMap(false);
-        }
-    }, [generateSceneImageActionWrapper, toast, adventureSettings, setAdventureSettings, getLocalizedText]);
-
     return {
         generateAdventureAction,
         regenerateLastResponse,
@@ -385,7 +368,5 @@ export function useAIActions({
         generateItemImage,
         isGeneratingItemImage,
         generateSceneImageActionWrapper,
-        generateMapImage,
-        isGeneratingMap,
     };
 }
