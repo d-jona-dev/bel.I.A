@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem, LocalizedText } from "@/types";
+import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem, LocalizedText, Familiar } from "@/types";
 
 const createInitialState = (): SaveData => ({
     adventureSettings: {
@@ -86,20 +86,22 @@ export function calculateBaseDerivedStats(stats: {
 
 
 export function calculateEffectiveStats(settings: AdventureSettings) {
+    const defaultStats = {
+        playerStrength: settings.playerStrength ?? 8,
+        playerDexterity: settings.playerDexterity ?? 8,
+        playerConstitution: settings.playerConstitution ?? 8,
+        playerIntelligence: settings.playerIntelligence ?? 8,
+        playerWisdom: settings.playerWisdom ?? 8,
+        playerCharisma: settings.playerCharisma ?? 8,
+        playerMaxHp: 0,
+        playerMaxMp: 0,
+        playerArmorClass: 0,
+        playerAttackBonus: 0,
+        playerDamageBonus: "1",
+        bonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, hp: 0, mp: 0, ac: 0, attack: 0, damageValue: 0 }
+    };
     if (!settings.rpgMode) {
-        return {
-            playerStrength: settings.playerStrength ?? 8,
-            playerDexterity: settings.playerDexterity ?? 8,
-            playerConstitution: settings.playerConstitution ?? 8,
-            playerIntelligence: settings.playerIntelligence ?? 8,
-            playerWisdom: settings.playerWisdom ?? 8,
-            playerCharisma: settings.playerCharisma ?? 8,
-            playerMaxHp: 0,
-            playerMaxMp: 0,
-            playerArmorClass: 0,
-            playerAttackBonus: 0,
-            playerDamageBonus: "1",
-        };
+        return defaultStats;
     }
     
     const baseStats = {
@@ -122,6 +124,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     };
 
     const equipped = getEquippedItems();
+    const activeFamiliar = (settings.familiars || []).find(f => f.isActive);
 
     const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, hp: 0, mp: 0, ac: 0, attack: 0, damageValue: 0 };
     
@@ -133,16 +136,16 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             const normalizedKey = key.toLowerCase().trim();
             
             switch (normalizedKey) {
-                case "for": // Abbr. française
                 case "str":
+                case "for":
                 case "force":
                 case "strength":
                     bonus.str += val;
                     break;
                 case "dex":
+                case "dexterity":
                 case "dextérité":
                 case "dexterité":
-                case "dexterity":
                     bonus.dex += val;
                     break;
                 case "con":
@@ -154,13 +157,13 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                     bonus.int += val;
                     break;
                 case "wis":
-                case "sagesse":
                 case "wisdom":
+                case "sagesse":
                     bonus.wis += val;
                     break;
                 case "cha":
-                case "charisme":
                 case "charisma":
+                case "charisme":
                     bonus.cha += val;
                     break;
                 case "hp":
@@ -178,8 +181,8 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                 case "ac":
                 case "armorclass":
                 case "ca":
-                case "armure":
                 case "armor":
+                case "armure":
                     bonus.ac += val;
                     break;
                 case "attack":
@@ -194,9 +197,27 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                         bonus.damageValue += val;
                     }
                     break;
-                default:
-                    // This can be useful for debugging new or misspelled stat keys
-                    // console.warn(`⚠️ Unknown stat key: "${key}" in item "${item.name}"`);
+            }
+        }
+    }
+
+    if (activeFamiliar) {
+        const { type, value, description } = activeFamiliar.passiveBonus;
+        const totalBonusValue = value * activeFamiliar.level;
+        if (type !== 'narrative' && type !== 'gold_find' && type !== 'exp_gain') {
+            const statKey = {
+                strength: 'str',
+                dexterity: 'dex',
+                constitution: 'con',
+                intelligence: 'int',
+                wisdom: 'wis',
+                charisma: 'cha',
+                armor_class: 'ac',
+                attack_bonus: 'attack',
+            }[type];
+
+            if (statKey) {
+                (bonus as any)[statKey] += totalBonusValue;
             }
         }
     }
@@ -268,6 +289,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         playerArmorClass: finalArmorClass,
         playerAttackBonus: baseDerived.attackBonus + bonus.attack,
         playerDamageBonus: finalDamageBonus,
+        bonuses: bonus, // Return the aggregated bonuses
     };
 }
 
@@ -294,10 +316,12 @@ export function useAdventureState() {
     const [sellQuantity, setSellQuantity] = React.useState(1);
     
     React.useEffect(() => {
-        setComputedStats(calculateEffectiveStats(adventureSettings));
+        const newStats = calculateEffectiveStats(adventureSettings);
+        setComputedStats(newStats);
     }, [
         adventureSettings.equippedItemIds,
         adventureSettings.playerInventory,
+        adventureSettings.familiars,
         adventureSettings.playerStrength,
         adventureSettings.playerDexterity,
         adventureSettings.playerConstitution,
@@ -305,7 +329,7 @@ export function useAdventureState() {
         adventureSettings.playerWisdom,
         adventureSettings.playerCharisma,
         adventureSettings.playerLevel,
-        adventureSettings.rpgMode
+        adventureSettings.rpgMode,
     ]);
 
 
@@ -551,5 +575,3 @@ export function useAdventureState() {
         computedStats,
     };
 }
-
-    

@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { translateText } from "@/ai/flows/translate-text";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { calculateEffectiveStats } from "@/hooks/systems/useAdventureState";
 
 
 export type FormCharacterDefinition = {
@@ -65,6 +66,7 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     world: LocalizedText;
     initialSituation: LocalizedText;
     characters: FormCharacterDefinition[];
+    computedStats?: ReturnType<typeof calculateEffectiveStats>;
 };
 
 export interface AdventureFormHandle {
@@ -164,6 +166,7 @@ const adventureFormSchema = z.object({
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
   timeManagement: timeManagementSchema.optional(),
   activeItemUniverses: z.array(z.string()).optional(),
+  computedStats: z.any().optional(), // To hold calculated stats without being part of the form data itself
 });
 
 
@@ -855,6 +858,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </div>
     );
 
+    const bonusFor = (stat: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha'): number => {
+        return watchedValues.computedStats?.bonuses?.[stat] || 0;
+    };
+
+
     return (
         <Form {...form}>
         <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
@@ -1272,21 +1280,26 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     </Tooltip>
                                                 </TooltipProvider>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                                {ATTRIBUTES.map(attr => (
+                                            <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                                                {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map(attr => (
                                                      <FormField
                                                         key={attr}
                                                         control={form.control}
-                                                        name={attr as any}
+                                                        name={`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any}
                                                         render={({ field }) => (
                                                           <FormItem>
-                                                            <FormLabel className="text-xs capitalize">{attr.replace('player', '')}</FormLabel>
+                                                            <div className="flex items-center justify-between">
+                                                              <FormLabel className="text-xs capitalize">{attr}</FormLabel>
+                                                              {bonusFor(attr as any) !== 0 && (
+                                                                  <span className="text-xs font-bold text-green-600">[{bonusFor(attr as any) > 0 ? '+' : ''}{bonusFor(attr as any)}]</span>
+                                                              )}
+                                                            </div>
                                                             <FormControl>
                                                               <Input
                                                                 type="number"
                                                                 {...field}
                                                                 onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                                                                onBlur={() => handleAttributeBlur(attr as any)}
+                                                                onBlur={() => handleAttributeBlur(`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any)}
                                                                 className="h-8"
                                                               />
                                                             </FormControl>
@@ -2080,3 +2093,4 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
     
 
     
+
