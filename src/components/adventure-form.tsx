@@ -858,7 +858,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         </div>
     );
 
-    const bonusFor = (stat: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha'): number => {
+    const bonusFor = (stat: keyof (AdventureFormValues['computedStats']['bonuses'])): number => {
         return watchedValues.computedStats?.bonuses?.[stat] || 0;
     };
 
@@ -1282,7 +1282,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             </div>
                                             <div className="grid grid-cols-3 gap-x-3 gap-y-2">
                                                 {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map(attr => {
-                                                    const bonusValue = bonusFor(attr);
+                                                    const bonusValue = bonusFor(attr as keyof typeof watchedValues.computedStats.bonuses);
                                                     return (
                                                          <FormField
                                                             key={attr}
@@ -2098,5 +2098,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
     
 
 
+
+    
 
     
