@@ -683,7 +683,7 @@ export default function Home() {
                 return { ...prev, playerGold: (prev.playerGold || 0) - upgradeCost!, mapPointsOfInterest: newPois };
             });
             React.startTransition(() => {
-                toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${cost} PO.` });
+                toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${upgradeCost} PO.` });
             });
             
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
@@ -904,5 +904,3 @@ export default function Home() {
         </>
     );
 }
-
-    
