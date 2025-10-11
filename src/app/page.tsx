@@ -285,7 +285,6 @@ export default function Home() {
     const handleSendSpecificAction = React.useCallback(async (action: string, locationIdOverride?: string, visitedBuildingId?: string) => {
         if (!action || isLoading) return;
 
-        handleNarrativeUpdate(action, 'user');
         setIsLoading(true);
 
         try {
@@ -297,7 +296,7 @@ export default function Home() {
             });
             setIsLoading(false);
         }
-    }, [isLoading, handleNarrativeUpdate, toast, generateAdventureAction]);
+    }, [isLoading, toast, generateAdventureAction]);
 
     const handleFinalizePurchaseWithAction = React.useCallback(() => {
         const summary = handleFinalizePurchase();
@@ -490,11 +489,11 @@ export default function Home() {
             setItemToUse(itemUsed);
             setIsTargeting(true);
         } else {
-             // This function now just calls the AI and doesn't update the narrative itself
+             handleNarrativeUpdate(narrativeAction, 'user');
              await handleActionWithCombatItem(narrativeAction);
         }
     }
-  }, [handlePlayerItemAction, handleUseFamiliarItem, setItemToUse, setIsTargeting, activeCombat, handleActionWithCombatItem]);
+  }, [handlePlayerItemAction, handleUseFamiliarItem, setItemToUse, setIsTargeting, activeCombat, handleActionWithCombatItem, handleNarrativeUpdate]);
 
     const { handleSave, handleLoad } = useSaveLoad({
         adventureSettings,
@@ -652,13 +651,15 @@ export default function Home() {
     
     if (action === 'attack') {
         const combatNarrative = `J'attaque le territoire de ${poi.name}.`;
+        handleNarrativeUpdate(combatNarrative, 'user');
         handleSendSpecificAction(combatNarrative, poi.id);
 
     } else if (action === 'visit' && buildingId) {
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
-        handleSendSpecificAction(userActionText, locationIdOverride, buildingId);
+        handleNarrativeUpdate(userActionText, 'user');
+        handleSendSpecificAction(userActionText, locationIdOverride, visitedBuildingId);
 
     } else {
         if (action === 'upgrade') {
@@ -721,13 +722,14 @@ export default function Home() {
         }
         
         if (!userActionText) { return; }
-
+        
+        handleNarrativeUpdate(userActionText, 'user');
         handleSendSpecificAction(userActionText, locationIdOverride);
     }
   }, [
       adventureSettings, characters, toast, 
       allEnemies, setCharacters, setActiveCombat, setIsLoading, closeMerchantPanel,
-      setAdventureSettings, handleSendSpecificAction
+      setAdventureSettings, handleSendSpecificAction, handleNarrativeUpdate
   ]);
     
   const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
@@ -854,8 +856,7 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={isGeneratingCover}
-                onGenerateCover={onGenerateCover}
+                isGeneratingCover={onGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
