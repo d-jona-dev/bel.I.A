@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -684,7 +683,7 @@ export default function Home() {
                 return { ...prev, playerGold: (prev.playerGold || 0) - upgradeCost!, mapPointsOfInterest: newPois };
             });
             React.startTransition(() => {
-                toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${upgradeCost} PO.` });
+                toast({ title: "Lieu Amélioré!", description: `${poi.name} est passé au niveau ${(poi.level || 1) + 1} pour ${cost} PO.` });
             });
             
             userActionText = `Je supervise l'amélioration de ${poi.name}.`;
@@ -829,7 +828,7 @@ export default function Home() {
                 onAddComicPage={handleAddComicPage}
                 onAddComicPanel={handleAddComicPanel}
                 onRemoveLastComicPanel={handleRemoveLastComicPanel}
-                onUploadToComicPanel={onUploadToComicPanel}
+                onUploadToComicPanel={handleUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={handleComicPageChange}
                 onAddToComicPage={handleAddToComicPage}
@@ -905,3 +904,5 @@ export default function Home() {
         </>
     );
 }
+
+    
