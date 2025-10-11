@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as UiCardDescription } from "@/components/ui/card";
 import { Package, PlusCircle, Trash2, Edit2, Download, Upload, PawPrint } from "lucide-react";
 import type { AdventureFormValues } from "../adventure-form";
 import type { BaseItem, Familiar, FamiliarPassiveBonus } from "@/types";
@@ -34,6 +34,28 @@ import { Separator } from "../ui/separator";
 
 const defaultUniverses = ['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'];
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
+
+const bonusTypes: Array<{ value: FamiliarPassiveBonus['type']; label: string }> = [
+    { value: 'strength', label: 'Force' },
+    { value: 'dexterity', label: 'Dextérité' },
+    { value: 'constitution', label: 'Constitution' },
+    { value: 'intelligence', label: 'Intelligence' },
+    { value: 'wisdom', label: 'Sagesse' },
+    { value: 'charisma', label: 'Charisme' },
+    { value: 'armor_class', label: "Classe d'Armure" },
+    { value: 'attack_bonus', label: "Bonus d'Attaque" },
+    { value: 'gold_find', label: "Découverte d'Or" },
+    { value: 'exp_gain', label: "Gain d'EXP" },
+    { value: 'narrative', label: 'Narratif (personnalisé)' },
+];
+
+const bonusRarityValues: Record<Familiar['rarity'], number> = {
+    'common': 1,
+    'uncommon': 2,
+    'rare': 5,
+    'epic': 10,
+    'legendary': 15,
+};
 
 
 export function ItemConfig() {
@@ -55,15 +77,7 @@ export function ItemConfig() {
     const [selectedPhysical, setSelectedPhysical] = React.useState<string | undefined>(undefined);
     const [selectedDescriptor, setSelectedDescriptor] = React.useState<string | undefined>(undefined);
     const [selectedRarity, setSelectedRarity] = React.useState<Familiar['rarity']>('common');
-    const [generatedBonus, setGeneratedBonus] = React.useState<FamiliarPassiveBonus | null>(null);
-    
-    const { createInitialState } = useAdventureState();
-    const { generateDynamicFamiliarBonus } = useFamiliar({
-        adventureSettings: createInitialState().adventureSettings,
-        setAdventureSettings: () => {},
-        toast,
-        handleSendSpecificAction: () => {},
-    });
+    const [selectedBonus, setSelectedBonus] = React.useState<FamiliarPassiveBonus | null>(null);
 
     React.useEffect(() => {
         try {
@@ -128,13 +142,35 @@ export function ItemConfig() {
         saveCustomItems(customItems.filter(item => item.id !== itemId));
     }
     
-    const handleGenerateBonus = () => {
-        setGeneratedBonus(generateDynamicFamiliarBonus(selectedRarity));
+    const handleBonusTypeChange = (type: FamiliarPassiveBonus['type']) => {
+        const bonusValue = bonusRarityValues[selectedRarity] || 1;
+        const bonusLabel = bonusTypes.find(b => b.value === type)?.label || type;
+        const description = type === 'narrative' ? "Rend les PNJ plus enclins à discuter." : `+X en ${bonusLabel}`;
+        setSelectedBonus({ type, value: bonusValue, description });
     };
 
+    const handleBonusValueChange = (value: number) => {
+        if (selectedBonus) {
+            setSelectedBonus({ ...selectedBonus, value });
+        }
+    };
+    
+    const handleBonusDescriptionChange = (description: string) => {
+        if (selectedBonus && selectedBonus.type === 'narrative') {
+            setSelectedBonus({ ...selectedBonus, description });
+        }
+    };
+    
+    React.useEffect(() => {
+        if (selectedBonus) {
+            const newBonusValue = bonusRarityValues[selectedRarity] || 1;
+            setSelectedBonus(prev => prev ? { ...prev, value: newBonusValue } : null);
+        }
+    }, [selectedRarity]);
+
     const handleSaveFamiliarItem = () => {
-        if (!selectedCreature || !selectedPhysical || !generatedBonus) {
-            toast({ title: "Champs Requis", description: "Veuillez sélectionner une créature, un composant physique et générer un bonus.", variant: "destructive" });
+        if (!selectedCreature || !selectedPhysical || !selectedBonus) {
+            toast({ title: "Champs Requis", description: "Veuillez sélectionner une créature, un composant physique et un bonus.", variant: "destructive" });
             return;
         }
         
@@ -161,7 +197,7 @@ export function ItemConfig() {
                 level: 1,
                 currentExp: 0,
                 expToNextLevel: 100,
-                passiveBonus: generatedBonus,
+                passiveBonus: selectedBonus,
             },
         };
         
@@ -280,6 +316,7 @@ export function ItemConfig() {
                              <Card className="p-4 bg-muted/30 border-dashed">
                                  <CardHeader className="p-0 pb-4">
                                      <CardTitle className="text-base">Créateur d'Objets d'Invocation</CardTitle>
+                                     <UiCardDescription>Créez un objet "consommable" pour invoquer un familier avec un bonus passif personnalisé.</UiCardDescription>
                                  </CardHeader>
                                  <CardContent className="p-0 space-y-4">
                                      <div className="p-3 border rounded-md bg-background">
@@ -305,7 +342,7 @@ export function ItemConfig() {
                                              </div>
                                              <div className="space-y-2">
                                                  <Label>Descripteur (Optionnel)</Label>
-                                                 <Select value={selectedDescriptor} onValueChange={setSelectedDescriptor}>
+                                                 <Select value={selectedDescriptor} onValueChange={(val) => setSelectedDescriptor(val === 'none' ? undefined : val)}>
                                                      <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
                                                      <SelectContent>
                                                          <SelectItem value="none">Aucun</SelectItem>
@@ -318,31 +355,61 @@ export function ItemConfig() {
                                      
                                      <div className="p-3 border rounded-md bg-background">
                                          <h4 className="text-sm font-semibold mb-2">2. Définir la Rareté et le Bonus</h4>
-                                         <div className="space-y-2">
-                                             <Label>Rareté du familier</Label>
-                                             <Select value={selectedRarity} onValueChange={(v) => setSelectedRarity(v as Familiar['rarity'])}>
-                                                 <SelectTrigger><SelectValue/></SelectTrigger>
-                                                 <SelectContent>
-                                                     <SelectItem value="common">Commun</SelectItem>
-                                                     <SelectItem value="uncommon">Peu Commun</SelectItem>
-                                                     <SelectItem value="rare">Rare</SelectItem>
-                                                     <SelectItem value="epic">Épique</SelectItem>
-                                                     <SelectItem value="legendary">Légendaire</SelectItem>
-                                                 </SelectContent>
-                                             </Select>
+                                         <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                 <Label>Rareté du familier</Label>
+                                                 <Select value={selectedRarity} onValueChange={(v) => setSelectedRarity(v as Familiar['rarity'])}>
+                                                     <SelectTrigger><SelectValue/></SelectTrigger>
+                                                     <SelectContent>
+                                                         <SelectItem value="common">Commun</SelectItem>
+                                                         <SelectItem value="uncommon">Peu Commun</SelectItem>
+                                                         <SelectItem value="rare">Rare</SelectItem>
+                                                         <SelectItem value="epic">Épique</SelectItem>
+                                                         <SelectItem value="legendary">Légendaire</SelectItem>
+                                                     </SelectContent>
+                                                 </Select>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Type de Bonus</Label>
+                                                     <Select value={selectedBonus?.type} onValueChange={(type) => handleBonusTypeChange(type as FamiliarPassiveBonus['type'])}>
+                                                        <SelectTrigger><SelectValue placeholder="Choisir un bonus..."/></SelectTrigger>
+                                                        <SelectContent>
+                                                            {bonusTypes.map(b => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Valeur du Bonus</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        value={selectedBonus?.value ?? ''} 
+                                                        onChange={(e) => handleBonusValueChange(Number(e.target.value))}
+                                                        disabled={!selectedBonus || selectedBonus.type === 'narrative'}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {selectedBonus?.type === 'narrative' && (
+                                                <div className="space-y-2">
+                                                    <Label>Description du Bonus Narratif</Label>
+                                                    <Input 
+                                                        value={selectedBonus.description} 
+                                                        onChange={(e) => handleBonusDescriptionChange(e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
                                          </div>
-                                         <Button onClick={handleGenerateBonus} variant="secondary" className="mt-2 w-full">Générer un Bonus Passif</Button>
-                                         {generatedBonus && (
-                                             <div className="p-2 border rounded-md bg-background mt-2">
-                                                 <p className="font-semibold text-sm">Bonus généré :</p>
-                                                 <p className="text-sm">{generatedBonus.description.replace('X', String(generatedBonus.value * 1))}</p>
+                                         {selectedBonus && (
+                                             <div className="p-2 border rounded-md bg-muted/50 mt-4">
+                                                 <p className="font-semibold text-sm">Aperçu du Bonus:</p>
+                                                 <p className="text-sm">{selectedBonus.description.replace('X', String(selectedBonus.value * 1))}</p>
                                              </div>
                                          )}
                                      </div>
                                      
                                      <Separator />
 
-                                     <Button onClick={handleSaveFamiliarItem} disabled={!generatedBonus || !selectedCreature || !selectedPhysical} className="w-full">
+                                     <Button onClick={handleSaveFamiliarItem} disabled={!selectedBonus || !selectedCreature || !selectedPhysical} className="w-full">
                                          <PlusCircle className="mr-2 h-4 w-4" /> Créer et Sauvegarder l'Objet
                                      </Button>
                                  </CardContent>
