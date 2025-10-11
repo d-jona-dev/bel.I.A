@@ -181,7 +181,7 @@ export function useMap({
         toast({ title: "Génération de la carte..." });
         try {
             const prompt = `A fantasy map of a world. Key locations: ${adventureSettings.mapPointsOfInterest?.map(poi => poi.name).join(', ') || 'terres inconnues'}. World context: ${getLocalizedText(adventureSettings.world, 'en')}`;
-            const result = await generateSceneImage(prompt, aiConfig);
+            const result = await generateSceneImageActionWrapper({ sceneDescription: prompt });
             if (result.imageUrl) {
                 setAdventureSettings(prev => ({ ...prev, mapImageUrl: result.imageUrl }));
             }
@@ -190,7 +190,7 @@ export function useMap({
         } finally {
             setIsGeneratingMap(false);
         }
-    }, [generateSceneImage, toast, adventureSettings, setAdventureSettings, getLocalizedText, aiConfig]);
+    }, [generateSceneImageActionWrapper, toast, adventureSettings, setAdventureSettings, getLocalizedText]);
 
     return {
         isGeneratingMap,
