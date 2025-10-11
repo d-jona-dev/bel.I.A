@@ -1305,7 +1305,7 @@ export function AdventureDisplay({
                                             onClick={() => {
                                                 const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai');
                                                 if (lastAiMessage) {
-                                                    setImageToEdit({ url: lastAiMessage.imageUrl || null, message: lastAiMessage });
+                                                    setImageToEdit({ url: imageForDisplay, message: lastAiMessage });
                                                     setImageEditorOpen(true);
                                                 } else {
                                                     toast({ title: "Aucune scène à éditer", description: "Il n'y a pas encore de réponse de l'IA à visualiser.", variant: "default" });
