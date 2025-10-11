@@ -88,6 +88,12 @@ export function calculateBaseDerivedStats(stats: {
 export function calculateEffectiveStats(settings: AdventureSettings) {
     if (!settings.rpgMode) {
         return {
+            playerStrength: settings.playerStrength ?? 8,
+            playerDexterity: settings.playerDexterity ?? 8,
+            playerConstitution: settings.playerConstitution ?? 8,
+            playerIntelligence: settings.playerIntelligence ?? 8,
+            playerWisdom: settings.playerWisdom ?? 8,
+            playerCharisma: settings.playerCharisma ?? 8,
             playerMaxHp: 0,
             playerMaxMp: 0,
             playerArmorClass: 0,
@@ -150,7 +156,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
     const equippedArmor = equipped.find(i => i.type === 'armor');
     let finalArmorClass = baseDerived.armorClass; 
     if (equippedArmor?.ac) {
-         if (typeof equippedArmor.ac === "string" && equippedArmor.ac.includes('+')) {
+        if (typeof equippedArmor.ac === "string" && equippedArmor.ac.includes('+')) {
             const parts = equippedArmor.ac.split('+').map(s => s.trim());
             const baseArmorAc = parseInt(parts[0], 10);
             if (!isNaN(baseArmorAc)) finalArmorClass = baseArmorAc;
@@ -165,7 +171,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                 }
             }
         } else {
-            const armorAcValue = parseInt(equippedArmor.ac, 10);
+            const armorAcValue = parseInt(String(equippedArmor.ac), 10);
             if (!isNaN(armorAcValue)) finalArmorClass = armorAcValue;
         }
     }
@@ -178,7 +184,6 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         let baseDamage = equippedWeapon.damage;
         let totalBonus = strMod + bonusDamageValue;
         
-        // Check if baseDamage already has a bonus
         const existingBonusMatch = baseDamage.match(/([+-]\d+)/);
         if (existingBonusMatch) {
             totalBonus += parseInt(existingBonusMatch[0], 10);
@@ -188,8 +193,13 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         finalDamageBonus = totalBonus !== 0 ? `${baseDamage}${totalBonus > 0 ? '+' : ''}${totalBonus}` : baseDamage;
     }
 
-
     return {
+        playerStrength: effectiveStats.playerStrength,
+        playerDexterity: effectiveStats.playerDexterity,
+        playerConstitution: effectiveStats.playerConstitution,
+        playerIntelligence: effectiveStats.playerIntelligence,
+        playerWisdom: effectiveStats.playerWisdom,
+        playerCharisma: effectiveStats.playerCharisma,
         playerMaxHp: baseDerived.maxHitPoints + bonusHp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: finalArmorClass,
@@ -474,5 +484,3 @@ export function useAdventureState() {
         getLocalizedText,
     };
 }
-
-    
