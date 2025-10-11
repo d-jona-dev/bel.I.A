@@ -90,6 +90,12 @@ export default function Home() {
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
+    const [computedStats, setComputedStats] = React.useState(() => calculateEffectiveStats(adventureSettings));
+
+    React.useEffect(() => {
+        setComputedStats(calculateEffectiveStats(adventureSettings));
+    }, [adventureSettings]);
+
     const playerName = adventureSettings.playerName || "Player";
     
     const handleNarrativeUpdate = React.useCallback((content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => {
@@ -731,6 +737,7 @@ export default function Home() {
     }
     
   const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
+        ...computedStats,
         ...adventureSettings,
         characters: characters.map(c => ({ 
             id: c.id, 
@@ -744,7 +751,7 @@ export default function Home() {
             affinity: c.affinity,
             relations: c.relations,
         })),
-    }), [adventureSettings, characters]);
+    }), [adventureSettings, characters, computedStats]);
   
   const isUiLocked = isLoading || isRegenerating || isSuggestingQuest || isGeneratingItemImage || isGeneratingMap;
 
@@ -752,7 +759,7 @@ export default function Home() {
         <>
             <PageStructure
                 adventureFormRef={adventureFormRef}
-                adventureSettings={adventureSettings}
+                adventureSettings={memoizedStagedAdventureSettingsForForm}
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
                 handleApplyStagedChanges={handleApplyStagedChanges}
@@ -904,5 +911,3 @@ export default function Home() {
         </>
     );
 }
-
-    

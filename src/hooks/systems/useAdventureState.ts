@@ -377,7 +377,8 @@ export function useAdventureState() {
             if (newItemIndex > -1) newInventory[newItemIndex].isEquipped = true;
             
             toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` });
-            return { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            const updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            return updatedSettings;
         });
     }, [toast]);
 
@@ -393,7 +394,8 @@ export function useAdventureState() {
             const itemUnequipped = prevSettings.playerInventory.find(i => i.id === itemIdToUnequip);
             toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` });
 
-            return { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            const updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
+            return updatedSettings;
         });
     }, [toast]);
 
@@ -467,5 +469,3 @@ export function useAdventureState() {
         getLocalizedText,
     };
 }
-
-    
