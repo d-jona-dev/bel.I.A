@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, PlusCircle, Trash2, Edit2, Download, Upload, PawPrint } from "lucide-react";
 import type { AdventureFormValues } from "../adventure-form";
 import type { BaseItem, Familiar, FamiliarPassiveBonus } from "@/types";
@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { useAdventureState } from "@/hooks/systems/useAdventureState";
+import { Separator } from "../ui/separator";
 
 
 const defaultUniverses = ['Médiéval-Fantastique', 'Post-Apo', 'Futuriste', 'Space-Opéra'];
@@ -264,7 +265,7 @@ export function ItemConfig() {
                     </div>
                     
                     <Tabs defaultValue="weapon">
-                        <TabsList className="h-auto flex-wrap">
+                        <TabsList className="h-auto flex-wrap justify-start">
                             <TabsTrigger value="weapon">Armes</TabsTrigger>
                             <TabsTrigger value="armor">Armures</TabsTrigger>
                             <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
@@ -276,62 +277,76 @@ export function ItemConfig() {
                         <TabsContent value="jewelry">{renderItemList('jewelry')}</TabsContent>
                         <TabsContent value="consumable">{renderItemList('consumable')}</TabsContent>
                          <TabsContent value="familiar">
-                            <Card className="p-4">
-                                <CardContent className="space-y-4">
-                                    <h3 className="font-semibold">Créateur d'Objets d'Invocation</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Composant Physique</Label>
-                                            <Select value={selectedPhysical} onValueChange={setSelectedPhysical}>
-                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
-                                                <SelectContent>
-                                                    {BASE_FAMILIAR_PHYSICAL_ITEMS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                             <Card className="p-4 bg-muted/30 border-dashed">
+                                 <CardHeader className="p-0 pb-4">
+                                     <CardTitle className="text-base">Créateur d'Objets d'Invocation</CardTitle>
+                                 </CardHeader>
+                                 <CardContent className="p-0 space-y-4">
+                                     <div className="p-3 border rounded-md bg-background">
+                                         <h4 className="text-sm font-semibold mb-2">1. Assembler le Familier</h4>
+                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                             <div className="space-y-2">
+                                                 <Label>Composant Physique</Label>
+                                                 <Select value={selectedPhysical} onValueChange={setSelectedPhysical}>
+                                                     <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                     <SelectContent>
+                                                         {BASE_FAMILIAR_PHYSICAL_ITEMS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                     </SelectContent>
+                                                 </Select>
+                                             </div>
+                                             <div className="space-y-2">
+                                                 <Label>Créature de Base</Label>
+                                                 <Select value={selectedCreature} onValueChange={setSelectedCreature}>
+                                                     <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                     <SelectContent>
+                                                         {BASE_FAMILIAR_CREATURES.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                     </SelectContent>
+                                                 </Select>
+                                             </div>
+                                             <div className="space-y-2">
+                                                 <Label>Descripteur (Optionnel)</Label>
+                                                 <Select value={selectedDescriptor} onValueChange={setSelectedDescriptor}>
+                                                     <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
+                                                     <SelectContent>
+                                                         <SelectItem value="none">Aucun</SelectItem>
+                                                         {BASE_FAMILIAR_DESCRIPTORS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                                     </SelectContent>
+                                                 </Select>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     
+                                     <div className="p-3 border rounded-md bg-background">
+                                         <h4 className="text-sm font-semibold mb-2">2. Définir la Rareté et le Bonus</h4>
                                          <div className="space-y-2">
-                                            <Label>Créature de Base</Label>
-                                            <Select value={selectedCreature} onValueChange={setSelectedCreature}>
-                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
-                                                <SelectContent>
-                                                    {BASE_FAMILIAR_CREATURES.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                         <div className="space-y-2">
-                                            <Label>Descripteur (Optionnel)</Label>
-                                            <Select value={selectedDescriptor} onValueChange={setSelectedDescriptor}>
-                                                <SelectTrigger><SelectValue placeholder="Choisir..."/></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">Aucun</SelectItem>
-                                                    {BASE_FAMILIAR_DESCRIPTORS.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Rareté du familier</Label>
-                                        <Select value={selectedRarity} onValueChange={(v) => setSelectedRarity(v as Familiar['rarity'])}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="common">Commun</SelectItem>
-                                                <SelectItem value="uncommon">Peu Commun</SelectItem>
-                                                <SelectItem value="rare">Rare</SelectItem>
-                                                <SelectItem value="epic">Épique</SelectItem>
-                                                <SelectItem value="legendary">Légendaire</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <Button onClick={handleGenerateBonus} variant="secondary">Générer un Bonus Passif</Button>
-                                    {generatedBonus && (
-                                        <div className="p-2 border rounded-md bg-background">
-                                            <p className="font-semibold text-sm">Bonus généré :</p>
-                                            <p className="text-sm">{generatedBonus.description.replace('X', String(generatedBonus.value * 1))}</p>
-                                        </div>
-                                    )}
-                                    <Button onClick={handleSaveFamiliarItem} disabled={!generatedBonus}>Sauvegarder l'Objet d'Invocation</Button>
-                                </CardContent>
-                            </Card>
+                                             <Label>Rareté du familier</Label>
+                                             <Select value={selectedRarity} onValueChange={(v) => setSelectedRarity(v as Familiar['rarity'])}>
+                                                 <SelectTrigger><SelectValue/></SelectTrigger>
+                                                 <SelectContent>
+                                                     <SelectItem value="common">Commun</SelectItem>
+                                                     <SelectItem value="uncommon">Peu Commun</SelectItem>
+                                                     <SelectItem value="rare">Rare</SelectItem>
+                                                     <SelectItem value="epic">Épique</SelectItem>
+                                                     <SelectItem value="legendary">Légendaire</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
+                                         <Button onClick={handleGenerateBonus} variant="secondary" className="mt-2 w-full">Générer un Bonus Passif</Button>
+                                         {generatedBonus && (
+                                             <div className="p-2 border rounded-md bg-background mt-2">
+                                                 <p className="font-semibold text-sm">Bonus généré :</p>
+                                                 <p className="text-sm">{generatedBonus.description.replace('X', String(generatedBonus.value * 1))}</p>
+                                             </div>
+                                         )}
+                                     </div>
+                                     
+                                     <Separator />
+
+                                     <Button onClick={handleSaveFamiliarItem} disabled={!generatedBonus || !selectedCreature || !selectedPhysical} className="w-full">
+                                         <PlusCircle className="mr-2 h-4 w-4" /> Créer et Sauvegarder l'Objet
+                                     </Button>
+                                 </CardContent>
+                             </Card>
                          </TabsContent>
                     </Tabs>
 
