@@ -114,52 +114,35 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
     const equipped = getEquippedItems();
 
-    // Start with base stats from settings
-    const baseStats = {
-        playerStrength: settings.playerStrength ?? 8,
-        playerDexterity: settings.playerDexterity ?? 8,
-        playerConstitution: settings.playerConstitution ?? 8,
-        playerIntelligence: settings.playerIntelligence ?? 8,
-        playerWisdom: settings.playerWisdom ?? 8,
-        playerCharisma: settings.playerCharisma ?? 8,
-    };
+    const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, hp: 0, ac: 0, attack: 0, damageValue: 0 };
     
-    // Accumulate bonuses from equipment
-    let bonusHp = 0;
-    let bonusAc = 0;
-    let bonusAttack = 0;
-    let bonusDamageValue = 0;
-    const bonusStats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
-
     for (const item of equipped) {
         const b = item?.statBonuses || {};
         for (const [key, value] of Object.entries(b)) {
             const val = Number(value) || 0;
             switch (key.toLowerCase()) {
-                case "str": bonusStats.str += val; break;
-                case "dex": bonusStats.dex += val; break;
-                case "con": bonusStats.con += val; break;
-                case "int": bonusStats.int += val; break;
-                case "wis": bonusStats.wis += val; break;
-                case "cha": bonusStats.cha += val; break;
-                case "hp": bonusHp += val; break;
-                case "ac": bonusAc += val; break;
-                case "attack": bonusAttack += val; break;
-                case "damage": if (!isNaN(val)) bonusDamageValue += val; break;
+                case "str": bonus.str += val; break;
+                case "dex": bonus.dex += val; break;
+                case "con": bonus.con += val; break;
+                case "int": bonus.int += val; break;
+                case "wis": bonus.wis += val; break;
+                case "cha": bonus.cha += val; break;
+                case "hp": bonus.hp += val; break;
+                case "ac": bonus.ac += val; break;
+                case "attack": bonus.attack += val; break;
+                case "damage": if (!isNaN(val)) bonus.damageValue += val; break;
             }
         }
     }
     
-    // Calculate effective primary stats by adding bonuses to base stats
     const effectivePrimaryStats = {
-        strength: baseStats.playerStrength + bonusStats.str,
-        dexterity: baseStats.playerDexterity + bonusStats.dex,
-        constitution: baseStats.playerConstitution + bonusStats.con,
-        intelligence: baseStats.playerIntelligence + bonusStats.int,
-        wisdom: baseStats.playerWisdom + bonusStats.wis,
-        charisma: baseStats.playerCharisma + bonusStats.cha,
+        strength: (settings.playerStrength ?? 8) + bonus.str,
+        dexterity: (settings.playerDexterity ?? 8) + bonus.dex,
+        constitution: (settings.playerConstitution ?? 8) + bonus.con,
+        intelligence: (settings.playerIntelligence ?? 8) + bonus.int,
+        wisdom: (settings.playerWisdom ?? 8) + bonus.wis,
+        charisma: (settings.playerCharisma ?? 8) + bonus.cha,
     };
-
 
     const baseDerived = calculateBaseDerivedStats({
         level: settings.playerLevel ?? 1,
@@ -189,14 +172,14 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             if (!isNaN(armorAcValue)) finalArmorClass = armorAcValue;
         }
     }
-    finalArmorClass += bonusAc; 
+    finalArmorClass += bonus.ac; 
 
     const equippedWeapon = equipped.find(i => i.type === 'weapon');
     let finalDamageBonus = baseDerived.damageBonus;
     if (equippedWeapon?.damage && typeof equippedWeapon.damage === 'string') {
         const strMod = Math.floor((effectivePrimaryStats.strength - 10) / 2);
         let baseDamage = equippedWeapon.damage;
-        let totalBonus = strMod + bonusDamageValue;
+        let totalBonus = strMod + bonus.damageValue;
         
         const existingBonusMatch = baseDamage.match(/([+-]\d+)/);
         if (existingBonusMatch) {
@@ -214,15 +197,15 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         playerIntelligence: effectivePrimaryStats.intelligence,
         playerWisdom: effectivePrimaryStats.wisdom,
         playerCharisma: effectivePrimaryStats.charisma,
-        playerMaxHp: baseDerived.maxHitPoints + bonusHp,
+        playerMaxHp: baseDerived.maxHitPoints + bonus.hp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: finalArmorClass,
-        playerAttackBonus: baseDerived.attackBonus + bonusAttack,
+        playerAttackBonus: baseDerived.attackBonus + bonus.attack,
         playerDamageBonus: finalDamageBonus,
     };
 }
 
-export const getLocalizedText = (field: LocalizedText, lang: string) => {
+export const getLocalizedText = (field: LocalizedText, lang: string): string => {
     if (!field || typeof field !== 'object') return "";
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
 };
@@ -235,7 +218,7 @@ export function useAdventureState() {
     const [characters, setCharacters] = React.useState<Character[]>(initialState.characters);
     const [narrativeMessages, setNarrativeMessages] = React.useState<Message[]>(initialState.narrative);
     const [currentLanguage, setCurrentLanguage] = React.useState<string>(initialState.currentLanguage);
-    const [aiConfig, setAiConfig] = React.useState<AiConfig>(initialState.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
+    const [aiConfig, setAiConfig] = React.useState<AiConfig>(initialState.aiConfig);
     
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(JSON.parse(JSON.stringify(initialState.adventureSettings)));
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(JSON.parse(JSON.stringify(initialState.characters)));
@@ -252,20 +235,14 @@ export function useAdventureState() {
         }
 
         const settingsWithDefaults = { ...createInitialState().adventureSettings, ...data.adventureSettings };
-        const effectiveStats = calculateEffectiveStats(settingsWithDefaults);
-        const finalSettings = {
-            ...settingsWithDefaults,
-            ...effectiveStats,
-            playerCurrentHp: data.adventureSettings.playerCurrentHp ?? effectiveStats.playerMaxHp,
-        };
-
-        setAdventureSettings(finalSettings);
+        
+        setAdventureSettings(settingsWithDefaults);
         setCharacters(data.characters || []);
         setNarrativeMessages(data.narrative || createInitialState().narrative);
         setCurrentLanguage(data.currentLanguage || 'fr');
         setAiConfig(data.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
         
-        setBaseAdventureSettings(JSON.parse(JSON.stringify(finalSettings)));
+        setBaseAdventureSettings(JSON.parse(JSON.stringify(settingsWithDefaults)));
         setBaseCharacters(JSON.parse(JSON.stringify(data.characters || [])));
 
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
@@ -399,11 +376,8 @@ export function useAdventureState() {
             const newItemIndex = newInventory.findIndex(i => i.id === item.id);
             if (newItemIndex > -1) newInventory[newItemIndex].isEquipped = true;
             
-            let updatedSettings = { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
-            const effectiveStats = calculateEffectiveStats(updatedSettings);
-
             toast({ title: "Objet Équipé", description: `${item.name} a été équipé.` });
-            return { ...updatedSettings, ...effectiveStats };
+            return { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
         });
     }, [toast]);
 
@@ -413,18 +387,13 @@ export function useAdventureState() {
             const itemIdToUnequip = prevSettings.equippedItemIds[slotToUnequip];
             if (!itemIdToUnequip) return prevSettings;
             
-            let updatedSettings = { ...prevSettings };
-            const newEquippedItemIds = { ...updatedSettings.equippedItemIds, [slotToUnequip]: null };
-            updatedSettings.equippedItemIds = newEquippedItemIds;
-
-            const newInventory = updatedSettings.playerInventory.map(invItem => invItem.id === itemIdToUnequip ? { ...invItem, isEquipped: false } : invItem);
-            updatedSettings.playerInventory = newInventory;
+            let newEquippedItemIds = { ...prevSettings.equippedItemIds, [slotToUnequip]: null };
+            let newInventory = prevSettings.playerInventory.map(invItem => invItem.id === itemIdToUnequip ? { ...invItem, isEquipped: false } : invItem);
             
             const itemUnequipped = prevSettings.playerInventory.find(i => i.id === itemIdToUnequip);
-            const effectiveStats = calculateEffectiveStats(updatedSettings);
-            
             toast({ title: "Objet Déséquipé", description: `${itemUnequipped?.name || 'Objet'} a été déséquipé.` });
-            return { ...updatedSettings, ...effectiveStats };
+
+            return { ...prevSettings, equippedItemIds: newEquippedItemIds, playerInventory: newInventory };
         });
     }, [toast]);
 
