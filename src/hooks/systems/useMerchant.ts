@@ -28,23 +28,24 @@ export function useMerchant({
     const [merchantInventory, setMerchantInventory] = React.useState<SellingItem[]>([]);
     const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
 
-    const initializeMerchantInventory = React.useCallback((currentPoi: MapPointOfInterest | undefined): SellingItem[] => {
-        const merchantBuildings = currentPoi?.buildings?.filter(b => ['forgeron', 'bijoutier', 'magicien'].includes(b)) || [];
-
-        if (!currentPoi || merchantBuildings.length === 0) {
+    const initializeMerchantInventory = React.useCallback((currentPoi: MapPointOfInterest | undefined, visitedBuildingId?: string): SellingItem[] => {
+        
+        if (!currentPoi || !visitedBuildingId || !['forgeron', 'bijoutier', 'magicien'].includes(visitedBuildingId)) {
             setMerchantInventory([]);
             return [];
         }
 
-        let itemPool: BaseItem[] = [];
-        if (merchantBuildings.includes('forgeron')) {
-            itemPool.push(...BASE_WEAPONS, ...BASE_ARMORS);
-        }
-        if (merchantBuildings.includes('bijoutier')) {
-            itemPool.push(...BASE_JEWELRY);
-        }
-        if (merchantBuildings.includes('magicien')) {
-            itemPool.push(...BASE_CONSUMABLES);
+        const buildingToSourceMap: Record<string, BaseItem[]> = {
+            'forgeron': [...BASE_WEAPONS, ...BASE_ARMORS],
+            'bijoutier': BASE_JEWELRY,
+            'magicien': BASE_CONSUMABLES,
+        };
+
+        const itemPool: BaseItem[] = buildingToSourceMap[visitedBuildingId] || [];
+
+        if (itemPool.length === 0) {
+            setMerchantInventory([]);
+            return [];
         }
 
         const activeUniverses = adventureSettings.activeItemUniverses || [];
@@ -65,7 +66,6 @@ export function useMerchant({
             return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
         });
 
-        // Shuffle the available items to ensure variety
         const shuffledItems = availableItems.sort(() => 0.5 - Math.random());
 
         const finalInventory = shuffledItems.slice(0, config.size).map(item => ({

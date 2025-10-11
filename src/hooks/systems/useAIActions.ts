@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, ActiveCombat, LootedItem, PlayerInventoryItem, Familiar, AiConfig, LocalizedText, GenerateAdventureInput, Combatant } from "@/types";
+import type { AdventureSettings, Character, Message, ActiveCombat, LootedItem, PlayerInventoryItem, Familiar, AiConfig, LocalizedText, GenerateAdventureInput, Combatant, MapPointOfInterest } from "@/types";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureFlowOutput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema, NewFamiliarSchema } from "@/ai/flows/generate-adventure";
@@ -40,7 +39,7 @@ interface UseAIActionsProps {
     addCurrencyToPlayer: (amount: number) => void;
     handleNewFamiliar: (familiar: Familiar) => void;
     handleCombatUpdates: (updates: CombatUpdatesSchema) => void;
-    initializeMerchantInventory: (poi: any) => void;
+    initializeMerchantInventory: (poi: MapPointOfInterest | undefined, visitedBuildingId?: string) => void;
 }
 
 export function useAIActions({
@@ -154,7 +153,7 @@ export function useAIActions({
         });
     }, [setAdventureSettings]);
 
-    const generateAdventureAction = React.useCallback(async (userActionText: string, locationIdOverride?: string) => {
+    const generateAdventureAction = React.useCallback(async (userActionText: string, locationIdOverride?: string, visitedBuildingId?: string) => {
         setIsLoading(true);
         
         const effectivePlayerStats = calculateEffectiveStats(adventureSettings);
@@ -162,7 +161,7 @@ export function useAIActions({
 
         const currentPoi = adventureSettings.mapPointsOfInterest?.find(p => p.id === (locationIdOverride || adventureSettings.playerLocationId));
         
-        const localMerchantInventory = initializeMerchantInventory(currentPoi);
+        const localMerchantInventory = initializeMerchantInventory(currentPoi, visitedBuildingId);
 
 
         const input: GenerateAdventureInput = {

@@ -280,14 +280,14 @@ export default function Home() {
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
 
-    const handleSendSpecificAction = React.useCallback(async (action: string, locationIdOverride?: string) => {
+    const handleSendSpecificAction = React.useCallback(async (action: string, locationIdOverride?: string, visitedBuildingId?: string) => {
         if (!action || isLoading) return;
 
         handleNarrativeUpdate(action, 'user');
         setIsLoading(true);
 
         try {
-            await generateAdventureAction(action, locationIdOverride);
+            await generateAdventureAction(action, locationIdOverride, visitedBuildingId);
         } catch (error) { 
             console.error("Error in handleSendSpecificAction trying to generate adventure:", error);
             React.startTransition(() => {
@@ -645,7 +645,7 @@ export default function Home() {
         locationIdOverride = poi.id;
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
-        handleSendSpecificAction(userActionText, locationIdOverride);
+        handleSendSpecificAction(userActionText, locationIdOverride, buildingId);
 
     } else {
         if (action === 'upgrade') {
