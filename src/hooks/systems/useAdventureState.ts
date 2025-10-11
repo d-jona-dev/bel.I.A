@@ -101,6 +101,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             playerDamageBonus: "1",
         };
     }
+    
     const baseStats = {
         playerStrength: settings.playerStrength ?? 8,
         playerDexterity: settings.playerDexterity ?? 8,
@@ -122,26 +123,93 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
     const equipped = getEquippedItems();
 
-    const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, hp: 0, ac: 0, attack: 0, damageValue: 0 };
+    // CORRECTION : Ajout de logs pour debug et normalisation des clés
+    const bonus = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, hp: 0, mp: 0, ac: 0, attack: 0, damageValue: 0 };
     
     for (const item of equipped) {
         const b = item?.statBonuses || {};
+        console.log(`🔍 Processing item: ${item.name}, type: ${item.type}, bonuses:`, b);
+        
         for (const [key, value] of Object.entries(b)) {
             const val = Number(value) || 0;
-            switch (key.toLowerCase()) {
-                case "str": bonus.str += val; break;
-                case "dex": bonus.dex += val; break;
-                case "con": bonus.con += val; break;
-                case "int": bonus.int += val; break;
-                case "wis": bonus.wis += val; break;
-                case "cha": bonus.cha += val; break;
-                case "hp": bonus.hp += val; break;
-                case "ac": bonus.ac += val; break;
-                case "attack": bonus.attack += val; break;
-                case "damage": if (!isNaN(val)) bonus.damageValue += val; break;
+            const normalizedKey = key.toLowerCase().trim();
+            
+            switch (normalizedKey) {
+                case "str":
+                case "force":
+                case "strength":
+                    bonus.str += val;
+                    console.log(`  ✅ STR +${val}`);
+                    break;
+                case "dex":
+                case "dexterity":
+                case "dextérité":
+                    bonus.dex += val;
+                    console.log(`  ✅ DEX +${val}`);
+                    break;
+                case "con":
+                case "constitution":
+                    bonus.con += val;
+                    console.log(`  ✅ CON +${val}`);
+                    break;
+                case "int":
+                case "intelligence":
+                    bonus.int += val;
+                    console.log(`  ✅ INT +${val}`);
+                    break;
+                case "wis":
+                case "wisdom":
+                case "sagesse":
+                    bonus.wis += val;
+                    console.log(`  ✅ WIS +${val}`);
+                    break;
+                case "cha":
+                case "charisma":
+                case "charisme":
+                    bonus.cha += val;
+                    console.log(`  ✅ CHA +${val}`);
+                    break;
+                case "hp":
+                case "hitpoints":
+                case "pv":
+                    bonus.hp += val;
+                    console.log(`  ✅ HP +${val}`);
+                    break;
+                case "mp":
+                case "manapoints":
+                case "pm":
+                case "mana":
+                    bonus.mp += val;
+                    console.log(`  ✅ MP +${val}`);
+                    break;
+                case "ac":
+                case "armorclass":
+                case "ca":
+                case "armor":
+                    bonus.ac += val;
+                    console.log(`  ✅ AC +${val}`);
+                    break;
+                case "attack":
+                case "attackbonus":
+                case "attaque":
+                    bonus.attack += val;
+                    console.log(`  ✅ Attack +${val}`);
+                    break;
+                case "damage":
+                case "dégâts":
+                case "degats":
+                    if (!isNaN(val)) {
+                        bonus.damageValue += val;
+                        console.log(`  ✅ Damage +${val}`);
+                    }
+                    break;
+                default:
+                    console.warn(`  ⚠️ Unknown stat key: "${key}"`);
             }
         }
     }
+    
+    console.log("📊 Total bonuses:", bonus);
     
     const effectivePrimaryStats = {
         strength: baseStats.playerStrength + bonus.str,
@@ -158,6 +226,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         ...effectivePrimaryStats,
     });
     
+    // Calcul de l'armure (avec bonus des bijoux maintenant)
     const equippedArmor = equipped.find(i => i.type === 'armor');
     let finalArmorClass = baseDerived.armorClass; 
     if (equippedArmor?.ac && typeof equippedArmor.ac === "string") {
@@ -180,8 +249,9 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             if (!isNaN(armorAcValue)) finalArmorClass = armorAcValue;
         }
     }
-    finalArmorClass += bonus.ac; 
+    finalArmorClass += bonus.ac; // ✅ Bonus d'AC (y compris des bijoux)
 
+    // Calcul des dégâts
     const equippedWeapon = equipped.find(i => i.type === 'weapon');
     let finalDamageBonus = baseDerived.damageBonus;
     if (equippedWeapon?.damage && typeof equippedWeapon.damage === 'string') {
@@ -198,7 +268,7 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         finalDamageBonus = totalBonus !== 0 ? `${baseDamage}${totalBonus > 0 ? '+' : ''}${totalBonus}` : baseDamage;
     }
 
-    return {
+    const finalStats = {
         playerStrength: effectivePrimaryStats.strength,
         playerDexterity: effectivePrimaryStats.dexterity,
         playerConstitution: effectivePrimaryStats.constitution,
@@ -206,11 +276,15 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
         playerWisdom: effectivePrimaryStats.wisdom,
         playerCharisma: effectivePrimaryStats.charisma,
         playerMaxHp: baseDerived.maxHitPoints + bonus.hp,
-        playerMaxMp: baseDerived.maxManaPoints,
+        playerMaxMp: baseDerived.maxManaPoints + bonus.mp, // ✅ Ajout du bonus MP
         playerArmorClass: finalArmorClass,
         playerAttackBonus: baseDerived.attackBonus + bonus.attack,
         playerDamageBonus: finalDamageBonus,
     };
+    
+    console.log("🎯 Final stats:", finalStats);
+    
+    return finalStats;
 }
 
 export const getLocalizedText = (field: LocalizedText, lang: string): string => {
@@ -237,7 +311,7 @@ export function useAdventureState() {
     
     React.useEffect(() => {
         setComputedStats(calculateEffectiveStats(adventureSettings));
-    }, [adventureSettings.equippedItemIds, adventureSettings.playerInventory, adventureSettings.playerStrength, adventureSettings.playerDexterity, adventureSettings.playerConstitution, adventureSettings.playerIntelligence, adventureSettings.playerWisdom, adventureSettings.playerCharisma]);
+    }, [adventureSettings]);
 
 
     const loadAdventureState = React.useCallback((data: SaveData) => {
@@ -482,3 +556,5 @@ export function useAdventureState() {
         computedStats,
     };
 }
+
+    
