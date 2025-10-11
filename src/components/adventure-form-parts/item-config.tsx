@@ -264,7 +264,7 @@ export function ItemConfig() {
                     </div>
                     
                     <Tabs defaultValue="weapon">
-                        <TabsList>
+                        <TabsList className="h-auto flex-wrap">
                             <TabsTrigger value="weapon">Armes</TabsTrigger>
                             <TabsTrigger value="armor">Armures</TabsTrigger>
                             <TabsTrigger value="jewelry">Bijoux</TabsTrigger>
