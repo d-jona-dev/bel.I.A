@@ -10,7 +10,7 @@ import { PageStructure } from "./page.structure";
 import { useFamiliar } from "@/hooks/systems/useFamiliar";
 import { useComic } from "@/hooks/systems/useComic";
 import { useCombat } from "@/hooks/systems/useCombat";
-import { useAdventureState, calculateEffectiveStats, calculateBaseDerivedStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
+import { useAdventureState, calculateEffectiveStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
 import { useMerchant } from "@/hooks/systems/useMerchant";
@@ -279,7 +279,7 @@ export default function Home() {
             variant: "destructive"
           });
         } finally {
-          setIsLoading(false);
+            setIsLoading(false);
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
 
@@ -510,7 +510,7 @@ export default function Home() {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
         setShowRestartConfirm(false);
     });
-  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat]);
+  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, setActiveCombat, getLocalizedText]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -1103,7 +1103,8 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                isGeneratingCover={handleGenerateCover}
+                isGeneratingCover={isGeneratingCover}
+                onGenerateCover={handleGenerateCover}
                 onSaveToLibrary={handleSaveToLibrary}
                 merchantInventory={merchantInventory}
                 shoppingCart={shoppingCart}
