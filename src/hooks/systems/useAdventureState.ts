@@ -71,7 +71,7 @@ export function calculateBaseDerivedStats(stats: {
 }) {
     const baseMaxHp = 10 + (stats.constitution || 8) * 2;
     const baseMaxMp = (stats.intelligence || 8);
-    const baseAc = 10 + (stats.dexterity || 8);
+    const baseAc = 10 + Math.floor(((stats.dexterity || 8) - 10) / 2);
     const strengthMod = Math.floor(((stats.strength || 8) - 10) / 2);
 
     return {
@@ -92,12 +92,6 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             playerArmorClass: 0,
             playerAttackBonus: 0,
             playerDamageBonus: "1",
-            playerStrength: 8,
-            playerDexterity: 8,
-            playerConstitution: 8,
-            playerIntelligence: 8,
-            playerWisdom: 8,
-            playerCharisma: 8,
         };
     }
 
@@ -195,7 +189,6 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
 
 
     return {
-        ...effectiveStats,
         playerMaxHp: baseDerived.maxHitPoints + bonusHp,
         playerMaxMp: baseDerived.maxManaPoints,
         playerArmorClass: finalArmorClass,
