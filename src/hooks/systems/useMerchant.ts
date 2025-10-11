@@ -29,12 +29,24 @@ export function useMerchant({
     const [shoppingCart, setShoppingCart] = React.useState<SellingItem[]>([]);
 
     const initializeMerchantInventory = React.useCallback((currentPoi: MapPointOfInterest | undefined): SellingItem[] => {
-        if (!currentPoi || !currentPoi.buildings?.some(b => ['forgeron', 'bijoutier', 'magicien'].includes(b))) {
+        const merchantBuildings = currentPoi?.buildings?.filter(b => ['forgeron', 'bijoutier', 'magicien'].includes(b)) || [];
+
+        if (!currentPoi || merchantBuildings.length === 0) {
             setMerchantInventory([]);
             return [];
         }
 
-        const allItems = [...BASE_WEAPONS, ...BASE_ARMORS, ...BASE_JEWELRY, ...BASE_CONSUMABLES];
+        let itemPool: BaseItem[] = [];
+        if (merchantBuildings.includes('forgeron')) {
+            itemPool.push(...BASE_WEAPONS, ...BASE_ARMORS);
+        }
+        if (merchantBuildings.includes('bijoutier')) {
+            itemPool.push(...BASE_JEWELRY);
+        }
+        if (merchantBuildings.includes('magicien')) {
+            itemPool.push(...BASE_CONSUMABLES);
+        }
+
         const activeUniverses = adventureSettings.activeItemUniverses || [];
         const rarityOrder: { [key: string]: number } = { 'Commun': 1, 'Rare': 2, 'Epique': 3, 'Légendaire': 4, 'Divin': 5 };
         
@@ -46,20 +58,24 @@ export function useMerchant({
         const poiLevel = currentPoi.level || 1;
         const config = inventoryConfig[poiLevel] || inventoryConfig[1];
 
-        const itemsInUniverse = allItems.filter(item => activeUniverses.includes(item.universe));
+        const itemsInUniverse = itemPool.filter(item => activeUniverses.includes(item.universe));
+        
         const availableItems = itemsInUniverse.filter(item => {
             const itemRarityValue = rarityOrder[item.rarity] || 1;
             return itemRarityValue >= config.minRarity && itemRarityValue <= config.maxRarity;
         });
 
-        const localMerchantInventory = availableItems.slice(0, config.size).map(item => ({
+        // Shuffle the available items to ensure variety
+        const shuffledItems = availableItems.sort(() => 0.5 - Math.random());
+
+        const finalInventory = shuffledItems.slice(0, config.size).map(item => ({
             ...item,
             baseItemId: item.id,
             finalGoldValue: Math.max(1, Math.floor(item.baseGoldValue * (poiLevelConfig[currentPoi.icon as keyof typeof poiLevelConfig]?.[poiLevel]?.resources.find(r => r.type === 'currency')?.quantity || 10) / 10)),
         }));
         
-        setMerchantInventory(localMerchantInventory);
-        return localMerchantInventory;
+        setMerchantInventory(finalInventory);
+        return finalInventory;
     }, [adventureSettings.activeItemUniverses]);
 
     const handleAddToCart = React.useCallback((item: SellingItem) => {
