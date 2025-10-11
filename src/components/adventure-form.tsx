@@ -1281,32 +1281,35 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                 </TooltipProvider>
                                             </div>
                                             <div className="grid grid-cols-3 gap-x-3 gap-y-2">
-                                                {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map(attr => (
-                                                     <FormField
-                                                        key={attr}
-                                                        control={form.control}
-                                                        name={`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any}
-                                                        render={({ field }) => (
-                                                          <FormItem>
-                                                            <div className="flex items-center justify-between">
-                                                              <FormLabel className="text-xs capitalize">{attr}</FormLabel>
-                                                              {bonusFor(attr as any) !== 0 && (
-                                                                  <span className="text-xs font-bold text-green-600">[{bonusFor(attr as any) > 0 ? '+' : ''}{bonusFor(attr as any)}]</span>
-                                                              )}
-                                                            </div>
-                                                            <FormControl>
-                                                              <Input
-                                                                type="number"
-                                                                {...field}
-                                                                onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                                                                onBlur={() => handleAttributeBlur(`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any)}
-                                                                className="h-8"
-                                                              />
-                                                            </FormControl>
-                                                          </FormItem>
-                                                        )}
-                                                      />
-                                                ))}
+                                                {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map(attr => {
+                                                    const bonusValue = bonusFor(attr);
+                                                    return (
+                                                         <FormField
+                                                            key={attr}
+                                                            control={form.control}
+                                                            name={`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any}
+                                                            render={({ field }) => (
+                                                              <FormItem>
+                                                                <div className="flex items-center justify-between">
+                                                                  <FormLabel className="text-xs capitalize">{attr}</FormLabel>
+                                                                  {bonusValue > 0 && (
+                                                                      <span className="text-xs font-bold text-green-600">[+{bonusValue}]</span>
+                                                                  )}
+                                                                </div>
+                                                                <FormControl>
+                                                                  <Input
+                                                                    type="number"
+                                                                    {...field}
+                                                                    onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                                                    onBlur={() => handleAttributeBlur(`player${attr.charAt(0).toUpperCase() + attr.slice(1)}` as any)}
+                                                                    className="h-8"
+                                                                  />
+                                                                </FormControl>
+                                                              </FormItem>
+                                                            )}
+                                                          />
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     </>
@@ -2094,3 +2097,6 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 
     
 
+
+
+    
