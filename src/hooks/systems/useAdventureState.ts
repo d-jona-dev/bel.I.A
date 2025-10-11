@@ -133,15 +133,16 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
             const normalizedKey = key.toLowerCase().trim();
             
             switch (normalizedKey) {
+                case "for": // Abbr. française
                 case "str":
                 case "force":
                 case "strength":
                     bonus.str += val;
                     break;
                 case "dex":
-                case "dexterity":
                 case "dextérité":
                 case "dexterité":
+                case "dexterity":
                     bonus.dex += val;
                     break;
                 case "con":
@@ -153,13 +154,13 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                     bonus.int += val;
                     break;
                 case "wis":
-                case "wisdom":
                 case "sagesse":
+                case "wisdom":
                     bonus.wis += val;
                     break;
                 case "cha":
-                case "charisma":
                 case "charisme":
+                case "charisma":
                     bonus.cha += val;
                     break;
                 case "hp":
@@ -177,8 +178,8 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                 case "ac":
                 case "armorclass":
                 case "ca":
-                case "armor":
                 case "armure":
+                case "armor":
                     bonus.ac += val;
                     break;
                 case "attack":
@@ -189,11 +190,13 @@ export function calculateEffectiveStats(settings: AdventureSettings) {
                 case "damage":
                 case "dégâts":
                 case "degats":
-                case "dégats":
                     if (!isNaN(val)) {
                         bonus.damageValue += val;
                     }
                     break;
+                default:
+                    // This can be useful for debugging new or misspelled stat keys
+                    // console.warn(`⚠️ Unknown stat key: "${key}" in item "${item.name}"`);
             }
         }
     }
@@ -291,8 +294,7 @@ export function useAdventureState() {
     const [sellQuantity, setSellQuantity] = React.useState(1);
     
     React.useEffect(() => {
-        const newStats = calculateEffectiveStats(adventureSettings);
-        setComputedStats(newStats);
+        setComputedStats(calculateEffectiveStats(adventureSettings));
     }, [
         adventureSettings.equippedItemIds,
         adventureSettings.playerInventory,
@@ -303,7 +305,7 @@ export function useAdventureState() {
         adventureSettings.playerWisdom,
         adventureSettings.playerCharisma,
         adventureSettings.playerLevel,
-        adventureSettings.rpgMode,
+        adventureSettings.rpgMode
     ]);
 
 
@@ -549,3 +551,5 @@ export function useAdventureState() {
         computedStats,
     };
 }
+
+    
