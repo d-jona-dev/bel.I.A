@@ -133,10 +133,11 @@ const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
 ];
 
 const formatTimeToDisplay = (time24h: string, format: '12h' | '24h' | undefined) => {
-    if (format !== '12h') {
+    if (format !== '12h' || !time24h) {
         return time24h;
     }
     const [hours, minutes] = time24h.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return time24h;
     const ampm = hours >= 12 ? 'PM' : 'AM';
     let hours12 = hours % 12;
     if (hours12 === 0) {
