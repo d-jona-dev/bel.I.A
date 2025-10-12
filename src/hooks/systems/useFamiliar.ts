@@ -4,6 +4,7 @@
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Familiar, PlayerInventoryItem, AdventureSettings, FamiliarPassiveBonus } from "@/types";
+import { calculateEffectiveStats } from "./useAdventureState";
 
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
@@ -100,11 +101,23 @@ export function useFamiliar({
         setAdventureSettings(prevSettings => {
             let newSettings = { ...prevSettings };
             const familiars = newSettings.familiars || [];
+            
+            // Toggle active state: if activating one, deactivate others
             const updatedFamiliars = familiars.map(f =>
                 f.id === updatedFamiliar.id ? updatedFamiliar : (updatedFamiliar.isActive ? { ...f, isActive: false } : f)
             );
             newSettings.familiars = updatedFamiliars;
-            return newSettings; // Note: calculateEffectiveStats is not called here, it should be called in the main component after state update
+
+            // Recalculate stats immediately based on the new active familiar state
+            const effectiveStats = calculateEffectiveStats(newSettings);
+            const newLiveSettings: AdventureSettings = {
+                ...newSettings,
+                ...effectiveStats,
+                playerCurrentHp: Math.min(newSettings.playerCurrentHp ?? effectiveStats.playerMaxHp, effectiveStats.playerMaxHp),
+                playerCurrentMp: Math.min(newSettings.playerCurrentMp ?? effectiveStats.playerMaxMp, effectiveStats.playerMaxMp),
+            };
+
+            return newLiveSettings;
         });
     }, [setAdventureSettings]);
 
@@ -180,5 +193,3 @@ export function useFamiliar({
         generateDynamicFamiliarBonus,
     };
 }
-
-    
