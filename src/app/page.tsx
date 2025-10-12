@@ -489,7 +489,6 @@ export default function Home() {
             setItemToUse(itemUsed);
             setIsTargeting(true);
         } else {
-             handleNarrativeUpdate(narrativeAction, 'user');
              await handleActionWithCombatItem(narrativeAction);
         }
     }
@@ -659,7 +658,7 @@ export default function Home() {
         const buildingName = BUILDING_DEFINITIONS.find(b => b.id === buildingId)?.name || buildingId;
         userActionText = `Je visite le bâtiment '${buildingName}' à ${poi.name}.`;
         handleNarrativeUpdate(userActionText, 'user');
-        handleSendSpecificAction(userActionText, locationIdOverride, visitedBuildingId);
+        handleSendSpecificAction(userActionText, locationIdOverride, buildingId);
 
     } else {
         if (action === 'upgrade') {
