@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -648,7 +649,7 @@ export function AdventureDisplay({
                 {(combatData.maxMp ?? 0) > 0 && (
                     <div>
                         <div className="flex justify-between items-center mb-0.5">
-                            <Label htmlFor={`${combatData.characterId}-mp`} className="text-xs font-medium flex items-center"><ZapIcon className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
+                            <Label htmlFor={`${combatData.characterId}-mp`} className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
                             <span className="text-xs text-muted-foreground">{combatData.currentMp} / {combatData.maxMp}</span>
                         </div>
                         <Progress id={`${combatData.characterId}-mp`} value={((combatData.currentMp ?? 0) / (combatData.maxMp || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
