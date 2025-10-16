@@ -19,7 +19,14 @@ const SuggestionSchema = z.object({
       'strategyMode',
       'comicModeActive'
     ]).describe("The target form field for the suggestion."),
-  value: z.union([z.string(), z.boolean(), z.record(z.string())]).describe("The suggested content. For 'world' and 'initialSituation', this MUST be an object like {'fr': 'text...'}. For character fields, it's a string. For modes, it's a boolean."),
+  value: z.union([
+      z.string(), 
+      z.boolean(), 
+      z.object({
+          fr: z.string().optional(),
+          en: z.string().optional(),
+      }).catchall(z.string()) // More specific object schema for localized text
+    ]).describe("The suggested content. For 'world' and 'initialSituation', this MUST be an object like {'fr': 'text...'}. For character fields, it's a string. For modes, it's a boolean."),
 });
 
 const HistoryMessageSchema = z.object({
