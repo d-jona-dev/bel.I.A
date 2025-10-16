@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm, FormProvider, UseFieldArrayAppend } from "react-hook-form";
+import { useForm, FormProvider, useFieldArray, type UseFieldArrayAppend } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -17,7 +17,6 @@ import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config'
 import { TimeConfig } from './adventure-form-parts/time-config';
 import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
-import { calculateEffectiveStats } from "@/hooks/systems/useAdventureState";
 
 // Schemas are kept here as they define the shape for the entire form,
 // which is still managed by this parent component.
@@ -40,7 +39,6 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     world: LocalizedText;
     initialSituation: LocalizedText;
     characters: FormCharacterDefinition[];
-    computedStats?: ReturnType<typeof calculateEffectiveStats>;
 };
 
 export interface AdventureFormHandle {
@@ -102,7 +100,7 @@ const timeManagementSchema = z.object({
     timeElapsedPerTurn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("00:15"),
 }).optional();
 
-const BASE_ATTRIBUTE_VALUE_FORM = 8;
+
 const adventureFormSchema = z.object({
   world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
   initialSituation: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La situation initiale est requise dans au moins une langue."}),
@@ -120,19 +118,8 @@ const adventureFormSchema = z.object({
   playerOrientation: z.string().optional(),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
-  playerInitialAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs de création (au niveau 1)."),
-  totalDistributableAttributePoints: z.number().int().min(0).optional().default(10).describe("Points d'attributs totaux à distribuer pour le niveau actuel (création + niveaux)."),
-  playerStrength: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerDexterity: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerConstitution: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerIntelligence: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerWisdom: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerCharisma: z.number().int().min(BASE_ATTRIBUTE_VALUE_FORM).optional().default(BASE_ATTRIBUTE_VALUE_FORM),
-  playerGold: z.number().int().min(0).optional().default(0),
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
   timeManagement: timeManagementSchema.optional(),
-  activeItemUniverses: z.array(z.string()).optional(),
-  computedStats: z.any().optional(),
 });
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
@@ -144,6 +131,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         resolver: zodResolver(adventureFormSchema),
         defaultValues: initialValues,
         mode: "onChange",
+    });
+
+    const { append } = useFieldArray({
+        control: form.control,
+        name: "characters",
     });
     
     React.useEffect(() => {
@@ -165,7 +157,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         },
         getValues: form.getValues,
         setValue: form.setValue,
-        append: form.register("characters" as const) as any, // Simplified for brevity
+        append: append,
     }));
 
     React.useEffect(() => {
@@ -191,23 +183,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" }, roleInStory: "Petite amie" },
                 { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
-            rpgMode: true,
+            rpgMode: false,
             relationsMode: true,
-            strategyMode: true,
+            strategyMode: false,
             comicModeActive: true,
             playerName: "Héros",
-            playerClass: "Étudiant Combattant",
+            playerClass: "Étudiant",
             playerLevel: 1,
-            playerInitialAttributePoints: 10,
-            playerStrength: 8,
-            playerDexterity: 8,
-            playerConstitution: 8,
-            playerIntelligence: 8,
-            playerWisdom: 8,
-            playerCharisma: 8,
-            playerGold: 50,
             mapPointsOfInterest: [],
-            activeItemUniverses: ['Médiéval-Fantastique'],
         };
         form.reset(loadedData);
         toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
