@@ -1,6 +1,6 @@
 
 // src/app/familiers/layout.tsx
-"use client"; // Add 'use client' directive
+"use client";
 
 import * as React from 'react';
 import Link from 'next/link';
@@ -18,20 +18,18 @@ export default function FamiliersLayout({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Load triggered from familiers layout", event.target.files);
+    // This functionality is disabled
   };
 
 
   return (
     <>
-      {/* Left Sidebar: Global Actions & Navigation */}
-       <Sidebar side="left" variant="sidebar" collapsible="icon">
+      <Sidebar side="left" variant="sidebar" collapsible="icon">
          <SidebarHeader className="p-4 border-b border-sidebar-border">
            <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
          </SidebarHeader>
          <ScrollArea className="flex-1">
             <SidebarContent className="p-4 space-y-4">
-               {/* Navigation Links */}
                <nav className="space-y-2">
                   <TooltipProvider>
                      <Tooltip>
@@ -101,18 +99,15 @@ export default function FamiliersLayout({
                   <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
-                          <Link href="/familiers">
-                            <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
-                                <PawPrint className="h-5 w-5" />
-                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
-                            </Button>
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" align="center">Gérer les Familiers</TooltipContent>
+                          <Button variant="destructive" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
+                              <PawPrint className="h-5 w-5" />
+                              <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
+                          </Button>
+                       </TooltipTrigger>
+                       <TooltipContent side="right" align="center">Fonctionnalité désactivée</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                </nav>
-
            </SidebarContent>
          </ScrollArea>
          <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">

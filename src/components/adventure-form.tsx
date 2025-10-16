@@ -14,8 +14,6 @@ import { Upload } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
-import { ItemConfig } from './adventure-form-parts/item-config';
-import { MapConfig } from './adventure-form-parts/map-config';
 import { TimeConfig } from './adventure-form-parts/time-config';
 import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
@@ -232,12 +230,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         aiConfig={aiConfig} 
                         initialValues={initialValues} 
                     />
-                    
-                    {strategyMode && <MapConfig />}
-                    
+                                        
                     <NpcCharacterConfig relationsMode={relationsMode} strategyMode={strategyMode} />
 
-                    <ItemConfig />
                     <TimeConfig />
                 </div>
             </form>
