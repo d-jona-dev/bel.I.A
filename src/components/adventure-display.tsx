@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema, SellingItem } from "@/types";
+import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
@@ -73,25 +73,10 @@ interface AdventureDisplayProps {
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
     onMaterializeCharacter: (narrativeContext: string) => Promise<void>; // New prop
-    activeCombat?: ActiveCombat;
-    onCombatUpdates: (updates: CombatUpdatesSchema) => void;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
-    handleTakeLoot: (messageId: string, itemsToTake: PlayerInventoryItem[]) => void;
-    handleDiscardLoot: (messageId: string) => void;
-    handlePlayerItemAction: (itemId: string, action: 'use' | 'discard') => void;
-    handleEquipItem: (itemId: string) => void;
-    handleUnequipItem: (slot: keyof NonNullable<AdventureSettings['equippedItemIds']>) => void;
-    handleMapAction: (poiId: string, action: 'travel' | 'examine' | 'collect' | 'attack' | 'upgrade' | 'visit', buildingId?: string) => void;
     useAestheticFont: boolean;
     onToggleAestheticFont: () => void;
-    onGenerateMap: () => Promise<void>;
-    isGeneratingMap: boolean;
-    onPoiPositionChange: (poiId: string, newPosition: { x: number, y: number; }) => void;
-    onCreatePoi: (data: { name: string; description: string; type: MapPointOfInterest['icon']; ownerId: string; }) => void;
-    onMapImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-    onMapImageUrlChange: (url: string) => void;
-    onAddPoiToMap: (poiId: string) => void;
     comicDraft: ComicPage[];
     onDownloadComicDraft: () => void;
     onAddComicPage: () => void;
@@ -106,17 +91,9 @@ interface AdventureDisplayProps {
     comicTitle: string;
     setComicTitle: (title: string) => void;
     comicCoverUrl: string | null;
-    isGeneratingCover: boolean;
     onGenerateCover: () => void;
     onSaveToLibrary: () => void;
-    merchantInventory: SellingItem[];
-    shoppingCart: SellingItem[];
-    onAddToCart: (item: SellingItem) => void;
-    onRemoveFromCart: (itemName: string) => void;
-    onFinalizePurchase: () => void;
-    onCloseMerchantPanel: () => void;
     isLoading: boolean;
-    handleClaimHuntReward: (combatantId: string) => void;
 }
 
 interface CustomImageStyle {
@@ -172,25 +149,10 @@ export function AdventureDisplay({
     onRegenerateLastResponse,
     onUndoLastMessage,
     onMaterializeCharacter,
-    activeCombat,
-    onCombatUpdates,
     onRestartAdventure,
     isSuggestingQuest,
-    handleTakeLoot,
-    handleDiscardLoot,
-    handlePlayerItemAction,
-    handleEquipItem,
-    handleUnequipItem,
-    handleMapAction,
     useAestheticFont,
     onToggleAestheticFont,
-    onGenerateMap,
-    isGeneratingMap,
-    onPoiPositionChange,
-    onCreatePoi,
-    onMapImageUpload,
-    onMapImageUrlChange,
-    onAddPoiToMap,
     comicDraft,
     onDownloadComicDraft,
     onAddComicPage,
@@ -205,17 +167,9 @@ export function AdventureDisplay({
     comicTitle,
     setComicTitle,
     comicCoverUrl,
-    isGeneratingCover,
     onGenerateCover,
     onSaveToLibrary,
-    merchantInventory,
-    shoppingCart,
-    onAddToCart,
-    onRemoveFromCart,
-    onFinalizePurchase,
-    onCloseMerchantPanel,
     isLoading, // Destructure isLoading
-    handleClaimHuntReward,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
@@ -459,10 +413,6 @@ export function AdventureDisplay({
     }
   };
 
-  const cartTotal = React.useMemo(() => {
-    return (shoppingCart || []).reduce((acc, item) => acc + (item.finalGoldValue * (item.quantity || 1)), 0);
-  }, [shoppingCart]);
-
   // NEW: Function to parse and format the comic-style narrative
   const renderFormattedNarrative = (text: string) => {
     const parts = text.split(/(\*.*?\*)|(".*?")/g).filter(Boolean);
@@ -480,195 +430,6 @@ export function AdventureDisplay({
       </>
     );
   };
-
-
-  const PlayerStatusCard = () => {
-    if (!adventureSettings.rpgMode) return null;
-    const playerCombatData = activeCombat?.isActive ? activeCombat.combatants.find(c => c.characterId === playerId) : undefined;
-    const hpToShow = playerCombatData?.currentHp ?? adventureSettings.playerCurrentHp ?? 0;
-    const maxHpToShow = playerCombatData?.maxHp ?? adventureSettings.playerMaxHp ?? 0;
-
-    return (
-        <Card className="shadow-md rounded-lg mb-3">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center justify-between">
-                   <span>{adventureSettings.playerName || "Joueur"}</span>
-                   <span className="text-sm text-muted-foreground">{adventureSettings.playerClass || "Aventurier"} - Niv. {adventureSettings.playerLevel || 1}</span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-                <div>
-                    <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs font-medium">CA</Label>
-                        <span className="text-xs font-semibold">{adventureSettings.playerArmorClass ?? 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs font-medium">Attaque</Label>
-                        <span className="text-xs font-semibold">+{adventureSettings.playerAttackBonus ?? 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs font-medium">Dégâts</Label>
-                        <span className="text-xs font-semibold">{adventureSettings.playerDamageBonus || 'N/A'}</span>
-                    </div>
-                </div>
-                <Separator/>
-                <div>
-                    <div className="flex justify-between items-center mb-1">
-                        <Label htmlFor="player-hp" className="text-sm font-medium flex items-center"><Heart className="h-4 w-4 mr-1 text-red-500"/>PV</Label>
-                        <span className="text-xs text-muted-foreground">
-                            {hpToShow} / {maxHpToShow}
-                        </span>
-                    </div>
-                    <Progress id="player-hp" value={(hpToShow / (maxHpToShow || 1)) * 100} className="h-2 [&>div]:bg-red-500" />
-                </div>
-
-                {(adventureSettings.playerMaxMp ?? 0) > 0 && (
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <Label htmlFor="player-mp" className="text-sm font-medium flex items-center"><ZapIcon className="h-4 w-4 mr-1 text-blue-500"/>PM</Label>
-                            <span className="text-xs text-muted-foreground">
-                                {playerCombatData?.currentMp ?? adventureSettings.playerCurrentMp ?? 0} / {playerCombatData?.maxMp ?? adventureSettings.playerMaxMp ?? 0}
-                            </span>
-                        </div>
-                        <Progress id="player-mp" value={((playerCombatData?.currentMp ?? adventureSettings.playerCurrentMp ?? 0) / (playerCombatData?.maxMp ?? adventureSettings.playerMaxMp || 1)) * 100} className="h-2 [&>div]:bg-blue-500" />
-                    </div>
-                )}
-
-                <div>
-                    <div className="flex justify-between items-center mb-1">
-                        <Label htmlFor="player-exp" className="text-sm font-medium flex items-center"><BarChart2 className="h-4 w-4 mr-1 text-yellow-500"/>EXP</Label>
-                        <span className="text-xs text-muted-foreground">{adventureSettings.playerCurrentExp ?? 0} / {adventureSettings.playerExpToNextLevel ?? 0}</span>
-                    </div>
-                    <Progress id="player-exp" value={((adventureSettings.playerCurrentExp ?? 0) / (adventureSettings.playerExpToNextLevel || 1)) * 100} className="h-2 [&>div]:bg-yellow-500" />
-                </div>
-
-                 <Separator />
-                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-center">
-                    <div>
-                        <Label className="text-xs text-muted-foreground">FOR</Label>
-                        <p className="font-bold">{adventureSettings.playerStrength ?? 8}</p>
-                    </div>
-                    <div>
-                        <Label className="text-xs text-muted-foreground">DEX</Label>
-                        <p className="font-bold">{adventureSettings.playerDexterity ?? 8}</p>
-                    </div>
-                    <div>
-                        <Label className="text-xs text-muted-foreground">CON</Label>
-                        <p className="font-bold">{adventureSettings.playerConstitution ?? 8}</p>
-                    </div>
-                     <div>
-                        <Label className="text-xs text-muted-foreground">INT</Label>
-                        <p className="font-bold">{adventureSettings.playerIntelligence ?? 8}</p>
-                    </div>
-                     <div>
-                        <Label className="text-xs text-muted-foreground">SAG</Label>
-                        <p className="font-bold">{adventureSettings.playerWisdom ?? 8}</p>
-                    </div>
-                     <div>
-                        <Label className="text-xs text-muted-foreground">CHA</Label>
-                        <p className="font-bold">{adventureSettings.playerCharisma ?? 8}</p>
-                    </div>
-                </div>
-
-                {playerCombatData?.statusEffects && playerCombatData.statusEffects.length > 0 && (
-                    <div className="mt-2">
-                        <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts Actifs</Label>
-                        <div className="text-xs text-muted-foreground">
-                            {playerCombatData.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'permanent' : se.duration + 't'})`).join(', ')}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-  };
-
-  const NpcCombatantCard = ({ combatData }: { combatData: Combatant }) => {
-    const character = characters.find(c => c.id === combatData.characterId);
-    const name = character?.name || combatData.name;
-    const charClass = character?.characterClass;
-    const level = character?.level;
-    
-    const cardBorderColor = combatData.team === 'player' ? 'border-green-500' : 'border-red-500';
-
-    return (
-        <Card className={`bg-muted/50 shadow-sm mb-3 border-2 ${cardBorderColor}`}>
-            <CardHeader className="p-3 pb-2 flex-row justify-between items-start">
-                 <div className="flex-1">
-                    <CardTitle className="text-base flex items-center">
-                        <span className="truncate">{name}</span>
-                        {combatData.isDefeated && combatData.rewardItem && (
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6 ml-2"
-                                            onClick={() => handleClaimHuntReward(combatData.characterId)}
-                                        >
-                                            <Diamond className="h-4 w-4 text-purple-500 hover:text-purple-400" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Récupérer le trophée</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                         {combatData.rewardItem && !combatData.isDefeated && (
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Diamond className="h-4 w-4 ml-2 text-muted-foreground/50" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Vaincre pour récupérer le trophée</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
-                    </CardTitle>
-                    {charClass && level !== undefined && (
-                        <UICardDescription className="text-xs">
-                            {charClass} Niv. {level}
-                        </UICardDescription>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 space-y-1">
-                <div>
-                    <div className="flex justify-between items-center mb-0.5">
-                        <Label htmlFor={`${combatData.characterId}-hp`} className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                        <span className="text-xs text-muted-foreground">
-                            {combatData.currentHp} / {combatData.maxHp}
-                        </span>
-                    </div>
-                    <Progress id={`${combatData.characterId}-hp`} value={(combatData.currentHp / (combatData.maxHp || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
-                </div>
-                {(combatData.maxMp ?? 0) > 0 && (
-                    <div>
-                        <div className="flex justify-between items-center mb-0.5">
-                            <Label htmlFor={`${combatData.characterId}-mp`} className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                            <span className="text-xs text-muted-foreground">{combatData.currentMp} / {combatData.maxMp}</span>
-                        </div>
-                        <Progress id={`${combatData.characterId}-mp`} value={((combatData.currentMp ?? 0) / (combatData.maxMp || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
-                    </div>
-                )}
-                {combatData.statusEffects && combatData.statusEffects.length > 0 && (
-                    <div className="mt-1">
-                        <Label className="text-xs font-medium flex items-center"><ShieldAlert className="h-3 w-3 mr-1 text-orange-500"/>Statuts</Label>
-                        <div className="text-xs text-muted-foreground">
-                            {combatData.statusEffects.map(se => `${se.name} (${se.duration === -1 ? 'perm.' : se.duration + 't'})`).join(', ')}
-                        </div>
-                    </div>
-                )}
-                 {combatData.isDefeated && <p className="text-xs text-destructive font-semibold text-center mt-1">VAINCU</p>}
-            </CardContent>
-        </Card>
-    );
-  };
-
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -856,30 +617,6 @@ export function AdventureDisplay({
                                                                     <TooltipContent side="top">Voir le butin</TooltipContent>
                                                                 </Tooltip>
                                                             </TooltipProvider>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Butin Trouvé !</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        Vous avez trouvé les objets suivants :
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <ScrollArea className="max-h-60 my-4">
-                                                                    <div className="space-y-3 py-2 pr-2">
-                                                                        {message.loot!.map((item, itemIdx) => (
-                                                                            <Card key={item.id || itemIdx} className="p-3 bg-muted/50 shadow-sm">
-                                                                                <p className="font-semibold">{item.name} (x{item.quantity})</p>
-                                                                                {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
-                                                                                {item.effect && <p className="text-sm text-primary">Effet : {item.effect}</p>}
-                                                                                {item.type && <p className="text-xs text-muted-foreground">Type : {item.type}</p>}
-                                                                            </Card>
-                                                                        ))}
-                                                                    </div>
-                                                                </ScrollArea>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel onClick={() => handleDiscardLoot(message.id!)}>Laisser</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleTakeLoot(message.id!, message.loot!)}>Ramasser</AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
                                                         </AlertDialog>
                                                       </div>
                                                   )}
@@ -911,161 +648,11 @@ export function AdventureDisplay({
                       </ScrollArea>
                     </TabsContent>
                     <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0 relative">
-                       <MapDisplay 
-                            playerId={playerId}
-                            pointsOfInterest={adventureSettings.mapPointsOfInterest || []} 
-                            onMapAction={handleMapAction} 
-                            useAestheticFont={useAestheticFont}
-                            onToggleAestheticFont={onToggleAestheticFont}
-                            mapImageUrl={adventureSettings.mapImageUrl}
-                            onGenerateMap={onGenerateMap}
-                            isGeneratingMap={isGeneratingMap}
-                            onPoiPositionChange={onPoiPositionChange}
-                            characters={characters}
-                            playerName={adventureSettings.playerName || "Joueur"}
-                            onCreatePoi={onCreatePoi}
-                            playerLocationId={adventureSettings.playerLocationId}
-                            onMapImageUpload={onMapImageUpload}
-                            onMapImageUrlChange={onMapImageUrlChange}
-                            onAddPoiToMap={onAddPoiToMap}
-                        />
+                       {/* MapDisplay is removed as strategy mode is removed */}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
-                    {adventureSettings.rpgMode && activeCombat?.isActive && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="destructive" size="sm" onClick={() => handleSendSpecificAction("Attaquer avec mon arme principale")} disabled={isLoading}>
-                                        <Swords className="h-4 w-4 mr-1"/>Attaquer
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Lancer une attaque physique.</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button variant="secondary" size="sm" onClick={() => handleSendSpecificAction("Prendre une posture défensive")} disabled={isLoading}>
-                                        <Shield className="h-4 w-4 mr-1"/>Défendre
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Action de combat : Se défendre.</TooltipContent>
-                                </Tooltip>
-
-                                <DropdownMenu>
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="secondary" size="sm" disabled={isLoading || (playerSpells.length === 0 && playerCombatSkills.length === 0 && genericSkills.length === 0)}>
-                                                    <Sparkles className="h-4 w-4 mr-1"/>Sort/Comp.
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Utiliser un sort ou une compétence de combat.</TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <DropdownMenuContent>
-                                        {playerSpells.length > 0 && (
-                                            <>
-                                                {playerSpells.map(spell => (
-                                                    <DropdownMenuItem key={spell} onSelect={() => handleSendSpecificAction(`Utiliser le sort : ${spell}`)}>
-                                                        {spell}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                                <DropdownMenuSeparator />
-                                            </>
-                                        )}
-                                        {playerCombatSkills.length > 0 && (
-                                            <>
-                                                {playerCombatSkills.map(skill => (
-                                                    <DropdownMenuItem key={skill.id} onSelect={() => handleSendSpecificAction(`Utiliser la compétence de combat : ${skill.name}`)}>
-                                                        {skill.name}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                                <DropdownMenuSeparator />
-                                            </>
-                                        )}
-                                        {genericSkills.map(skill => (
-                                             <DropdownMenuItem key={skill} onSelect={() => handleSendSpecificAction(skill)}>
-                                                {skill}
-                                             </DropdownMenuItem>
-                                        ))}
-                                        {(playerSpells.length > 0 || playerCombatSkills.length > 0 || genericSkills.length > 0) && <DropdownMenuSeparator />}
-                                        <DropdownMenuItem onSelect={() => setUserAction("Utiliser compétence/sort : ")}>
-                                            Autre... (Décrire)
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-
-                                 <DropdownMenu>
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="secondary" size="sm" disabled={isLoading || playerInventoryItems.length === 0}>
-                                                        <Briefcase className="h-4 w-4 mr-1"/>Objet
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent>Utiliser un objet de l'inventaire.</TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <DropdownMenuContent>
-                                        {playerInventoryItems.length > 0 ? (
-                                            playerInventoryItems.map(item => (
-                                                <DropdownMenuSub key={item.id}>
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <DropdownMenuSubTrigger disabled={(item.type !== 'consumable' && item.type !== 'misc') && !(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry')}>
-                                                                    {item.name} (x{item.quantity}) {item.isEquipped ? <Shirt className="h-3 w-3 ml-1 text-green-500"/> : ""}
-                                                                </DropdownMenuSubTrigger>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="right" align="start">
-                                                                <p className="font-semibold">{item.name} {item.isEquipped ? "(Équipé)" : ""}</p>
-                                                                {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
-                                                                {item.effect && <p className="text-xs text-primary">Effet: {item.effect}</p>}
-                                                                {item.type && <p className="text-xs capitalize">Type: {item.type}</p>}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                    <DropdownMenuSubContent>
-                                                        {(item.type === 'weapon' || item.type === 'armor' || item.type === 'jewelry') && (
-                                                            item.isEquipped ? (
-                                                                <DropdownMenuItem onSelect={() => handleUnequipItem(item.type as 'weapon' | 'armor' | 'jewelry')}>
-                                                                    <Trash2Icon className="mr-2 h-4 w-4" /> Déséquiper
-                                                                </DropdownMenuItem>
-                                                            ) : (
-                                                                <DropdownMenuItem onSelect={() => handleEquipItem(item.id)}>
-                                                                    <Shirt className="mr-2 h-4 w-4" /> Équiper
-                                                                </DropdownMenuItem>
-                                                            )
-                                                        )}
-                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'use')} disabled={item.type !== 'consumable' && item.type !== 'misc'}>
-                                                            <PlayCircle className="mr-2 h-4 w-4" /> Utiliser
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => handlePlayerItemAction(item.id, 'discard')}>
-                                                            <Trash2Icon className="mr-2 h-4 w-4" /> Jeter
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuSubContent>
-                                                </DropdownMenuSub>
-                                            ))
-                                        ) : (
-                                            <DropdownMenuItem disabled>Inventaire vide</DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => setUserAction("Utiliser un objet : ")}>
-                                            Autre... (Décrire)
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TooltipProvider>
-                        </div>
-                    )}
-
                     <div className="flex gap-2">
                          <TooltipProvider>
                              <Tooltip>
@@ -1090,7 +677,7 @@ export function AdventureDisplay({
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                Toute la progression narrative sera perdue et l'aventure recommencera depuis la situation initiale. Les paramètres de l'aventure (monde, personnages initiaux, etc.) ne seront pas modifiés. L'état de combat et les statistiques du joueur seront également réinitialisés.
+                                                Toute la progression narrative sera perdue et l'aventure recommencera depuis la situation initiale. Les paramètres de l'aventure (monde, personnages initiaux, etc.) ne seront pas modifiés.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -1103,41 +690,6 @@ export function AdventureDisplay({
                                   <TooltipContent>Recommencer l'Aventure depuis le début</TooltipContent>
                               </Tooltip>
                           </TooltipProvider>
-                           <DropdownMenu>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="icon"
-                                                    disabled={isLoading || (adventureSettings.rpgMode && (!adventureSettings.playerSkills || adventureSettings.playerSkills.length === 0))}
-                                                >
-                                                    <BookOpen className="h-5 w-5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Utiliser une compétence hors combat</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                <DropdownMenuContent>
-                                    {(adventureSettings.playerSkills && adventureSettings.playerSkills.length > 0) ? (
-                                        playerNonCombatSkills.map(skill => (
-                                            <DropdownMenuItem key={skill.id} onSelect={() => setUserAction(`J'utilise ma compétence : ${skill.name}.`)}>
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild><span>{skill.name}</span></TooltipTrigger>
-                                                        <TooltipContent side="right" align="start">{skill.description}</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </DropdownMenuItem>
-                                        ))
-                                    ) : (
-                                        <DropdownMenuItem disabled>Aucune compétence disponible</DropdownMenuItem>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                           <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1156,18 +708,18 @@ export function AdventureDisplay({
                         </TooltipProvider>
 
                         <Textarea
-                            placeholder={adventureSettings.rpgMode && activeCombat?.isActive ? "Décrivez votre action de combat ou complétez l'action pré-remplie..." : "Que faites-vous ? Décrivez votre action..."}
+                            placeholder={"Que faites-vous ? Décrivez votre action..."}
                             value={userAction}
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
                             rows={1}
                             className="min-h-[40px] max-h-[150px] resize-y flex-1"
-                            disabled={isLoading || (adventureSettings.strategyMode && currentMode === 'map')}
+                            disabled={isLoading}
                         />
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim() || (adventureSettings.strategyMode && currentMode === 'map')}>
+                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim()}>
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
@@ -1323,74 +875,7 @@ export function AdventureDisplay({
                         </div>
                     </CardFooter>
                 </Card>
-                 {merchantInventory.length > 0 && (
-                    <Card>
-                        <CardHeader className="p-3 flex flex-row items-center justify-between">
-                            <CardTitle className="text-base flex items-center gap-2">
-                               <ShoppingCart className="h-5 w-5"/> Marchand Local
-                            </CardTitle>
-                             <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCloseMerchantPanel}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Fermer la boutique</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </CardHeader>
-                        <CardContent className="p-3 pt-0">
-                             <ScrollArea className="h-32">
-                                <div className="space-y-2">
-                                    {merchantInventory.map((item, idx) => (
-                                        <Card key={`${item.baseItemId}-${idx}`} className="p-2 bg-background shadow-sm">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-semibold text-sm">{item.name}</p>
-                                                    <p className={`text-xs font-semibold ${rarityColorClass(item.rarity)}`}>{item.rarity}</p>
-                                                    {item.damage && <p className="text-xs text-muted-foreground">Dégâts: {item.damage}</p>}
-                                                    {item.ac && <p className="text-xs text-muted-foreground">CA: {item.ac} {item.statBonuses?.ac ? `(+${item.statBonuses.ac})` : ''}</p>}
-                                                </div>
-                                                <Button size="sm" variant="secondary" onClick={() => onAddToCart(item)} disabled={isLoading}>
-                                                    {item.finalGoldValue} PO
-                                                </Button>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                            {(shoppingCart || []).length > 0 && (
-                                <div className="mt-3 pt-3 border-t">
-                                    <h4 className="text-sm font-semibold mb-2">Panier</h4>
-                                    <ScrollArea className="h-24">
-                                        {(shoppingCart || []).map((item, idx) => (
-                                            <div key={`cart-${item.baseItemId}-${idx}`} className="flex justify-between items-center text-xs mb-1">
-                                                <span>{item.name} (x{item.quantity || 1})</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span>{item.finalGoldValue * (item.quantity || 1)} PO</span>
-                                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onRemoveFromCart(item.name)}><Trash2Icon className="h-3 w-3 text-destructive"/></Button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </ScrollArea>
-                                    <Separator className="my-2"/>
-                                    <div className="text-xs space-y-1">
-                                        <div className="flex justify-between font-semibold"><span>Total:</span><span>{cartTotal} PO</span></div>
-                                        <div className="flex justify-between text-muted-foreground"><span>Votre Or:</span><span>{adventureSettings.playerGold || 0} PO</span></div>
-                                        <div className={`flex justify-between font-semibold ${(adventureSettings.playerGold || 0) < cartTotal ? 'text-destructive' : 'text-primary'}`}>
-                                            <span>Restant:</span>
-                                            <span>{(adventureSettings.playerGold || 0) - cartTotal} PO</span>
-                                        </div>
-                                    </div>
-                                    <Button className="w-full mt-2" onClick={onFinalizePurchase} disabled={isLoading || (adventureSettings.playerGold || 0) < cartTotal}>
-                                        Effectuer la Transaction
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
+                
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between p-3">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -1502,12 +987,12 @@ export function AdventureDisplay({
                              <div className="space-y-2">
                                 <Label>Couverture</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
-                                    {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
+                                    {isLoading ? <Loader2 className="h-8 w-8 animate-spin"/> :
                                      isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" layout="fill" objectFit="cover" className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
-                                <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
-                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? "Génération..." : "Générer une couverture"}
+                                <Button onClick={onGenerateCover} disabled={isLoading} className="w-full mt-2">
+                                    <Wand2 className="mr-2 h-4 w-4"/> {isLoading ? "Génération..." : "Générer une couverture"}
                                 </Button>
                             </div>
                         </div>
@@ -1518,65 +1003,6 @@ export function AdventureDisplay({
                     </DialogContent>
                 </Dialog>
 
-                {/* Combat Status Display or Static Ally Display */}
-                {adventureSettings.rpgMode && (
-                    <div className="space-y-0">
-                        <PlayerStatusCard />
-                        
-                        {/* Allies in Combat */}
-                        {activeCombat?.isActive &&
-                          activeCombat.combatants
-                            .filter(
-                              (c) =>
-                                c.team === 'player' &&
-                                c.characterId !== playerId &&
-                                !c.isDefeated
-                            )
-                            .map((ally, index) => (
-                                <NpcCombatantCard
-                                  key={`ally-${ally.characterId}-${index}`}
-                                  combatData={ally}
-                                />
-                              )
-                            )}
-                        
-                        {/* Enemies in Combat */}
-                        {activeCombat?.isActive && activeCombat.combatants.filter(c => c.team === 'enemy' && !c.isDefeated).length > 0 && (
-                            <Card className={`my-3 border-2 shadow-md ${activeCombat.contestedPoiId ? 'border-orange-500 bg-orange-500/10' : 'border-red-500 bg-red-500/10'}`}>
-                                <CardHeader className="p-2 text-center">
-                                    {activeCombat.contestedPoiId ? (
-                                        <>
-                                            <UICardDescription className="text-xs font-semibold text-orange-600">Défenseurs de :</UICardDescription>
-                                            <CardTitle className="text-base text-foreground">
-                                                {adventureSettings.mapPointsOfInterest?.find(p => p.id === activeCombat.contestedPoiId)?.name || 'Territoire Inconnu'}
-                                            </CardTitle>
-                                        </>
-                                    ) : (
-                                        <UICardDescription className="text-xs font-semibold text-red-600">Ennemis</UICardDescription>
-                                    )}
-                                </CardHeader>
-                                <CardContent className="p-2 pt-0">
-                                    {activeCombat.combatants
-                                        .filter(c => c.team === 'enemy' && !c.isDefeated)
-                                        .map((enemy, index) => (
-                                            <NpcCombatantCard key={`enemy-${enemy.characterId}-${index}`} combatData={enemy} />
-                                        ))}
-                                </CardContent>
-                            </Card>
-                        )}
-                        
-                        {/* Defeated Combatants */}
-                         {activeCombat?.isActive && activeCombat.combatants.filter(c => c.isDefeated).length > 0 && (
-                            <>
-                                <Separator className="my-2" />
-                                <UICardDescription className="text-xs text-center py-1">Combattants Vaincus</UICardDescription>
-                                {activeCombat.combatants.filter(c => c.isDefeated).map((defeated, index) => (
-                                     <NpcCombatantCard key={`defeated-${defeated.characterId}-${index}`} combatData={defeated}/>
-                                ))}
-                            </>
-                         )}
-                    </div>
-                )}
             </div>
       </div>
     </div>

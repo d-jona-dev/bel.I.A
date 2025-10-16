@@ -17,8 +17,6 @@ import type { MaterializeCharacterInput } from "@/ai/flows/materialize-character
 import { summarizeHistory } from "@/ai/flows/summarize-history";
 import type { SummarizeHistoryInput } from "@/ai/flows/summarize-history";
 import { calculateEffectiveStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
-import { BASE_WEAPONS, BASE_ARMORS, BASE_JEWELRY, BASE_CONSUMABLES } from "@/lib/items";
-import { poiLevelConfig } from "@/lib/buildings";
 
 const PLAYER_ID = "player";
 
@@ -28,19 +26,12 @@ interface UseAIActionsProps {
     baseCharacters: Character[];
     narrativeMessages: Message[];
     currentLanguage: string;
-    activeCombat: ActiveCombat | undefined;
     aiConfig: AiConfig;
     isLoading: boolean;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
-    setActiveCombat: React.Dispatch<React.SetStateAction<ActiveCombat | undefined>>;
-    handlePoiOwnershipChange: (changes: { poiId: string; newOwnerId: string }[]) => void;
-    addCurrencyToPlayer: (amount: number) => void;
-    handleNewFamiliar: (familiar: Familiar) => void;
-    handleCombatUpdates: (updates: CombatUpdatesSchema) => void;
-    initializeMerchantInventory: (poi: MapPointOfInterest | undefined, visitedBuildingId?: string) => void;
 }
 
 export function useAIActions({
@@ -49,19 +40,12 @@ export function useAIActions({
     baseCharacters,
     narrativeMessages,
     currentLanguage,
-    activeCombat,
     aiConfig,
     isLoading,
     setIsLoading,
     setNarrativeMessages,
     setAdventureSettings,
     setCharacters,
-    setActiveCombat,
-    handlePoiOwnershipChange,
-    addCurrencyToPlayer,
-    handleNewFamiliar,
-    handleCombatUpdates,
-    initializeMerchantInventory,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -157,13 +141,7 @@ export function useAIActions({
     const generateAdventureAction = React.useCallback(async (userActionText: string, locationIdOverride?: string, visitedBuildingId?: string) => {
         setIsLoading(true);
         
-        const effectivePlayerStats = calculateEffectiveStats(adventureSettings);
         const contextSituation = narrativeMessages.length > 1 ? [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
-
-        const currentPoi = adventureSettings.mapPointsOfInterest?.find(p => p.id === (locationIdOverride || adventureSettings.playerLocationId));
-        
-        const localMerchantInventory = initializeMerchantInventory(currentPoi, visitedBuildingId);
-
 
         const input: GenerateAdventureInput = {
             world: getLocalizedText(adventureSettings.world, currentLanguage),
@@ -172,28 +150,14 @@ export function useAIActions({
             userAction: userActionText,
             currentLanguage,
             playerName: adventureSettings.playerName || "Player",
-            rpgModeActive: adventureSettings.rpgMode,
             relationsModeActive: adventureSettings.relationsMode ?? true,
+            rpgModeActive: false, // Forced to false
             comicModeActive: adventureSettings.comicModeActive ?? false,
-            activeCombat: activeCombat,
-            playerGold: adventureSettings.playerGold,
-            playerSkills: adventureSettings.playerSkills,
-            playerClass: adventureSettings.playerClass,
-            playerLevel: adventureSettings.playerLevel,
-            playerCurrentHp: adventureSettings.playerCurrentHp,
-            playerMaxHp: effectivePlayerStats.playerMaxHp,
-            playerCurrentMp: adventureSettings.playerCurrentMp,
-            playerMaxMp: effectivePlayerStats.playerMaxMp,
-            playerCurrentExp: adventureSettings.playerCurrentExp,
-            playerExpToNextLevel: adventureSettings.playerExpToNextLevel,
-            ...effectivePlayerStats,
             playerPortraitUrl: adventureSettings.playerPortraitUrl,
             playerFaceSwapEnabled: adventureSettings.playerFaceSwapEnabled,
             playerLocationId: locationIdOverride || adventureSettings.playerLocationId,
-            mapPointsOfInterest: adventureSettings.mapPointsOfInterest,
             aiConfig,
             timeManagement: adventureSettings.timeManagement,
-            merchantInventory: localMerchantInventory,
         };
 
         try {
@@ -202,14 +166,12 @@ export function useAIActions({
             if (result.error && !result.narrative) {
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             } else {
-                setNarrativeMessages(prev => [...prev, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage, loot: (result.itemsObtained || []).map(item => ({...item} as PlayerInventoryItem)), lootTaken: false, speakingCharacterNames: result.speakingCharacterNames }]);
+                setNarrativeMessages(prev => [...prev, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage, speakingCharacterNames: result.speakingCharacterNames }]);
                 if (adventureSettings.relationsMode) {
                     if (result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                     if (result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 }
-                if (result.newFamiliars) result.newFamiliars.forEach(handleNewFamiliar);
                 if (adventureSettings.timeManagement?.enabled) handleTimeUpdate(result.updatedTime);
-                if (adventureSettings.rpgMode && result.currencyGained) addCurrencyToPlayer(result.currencyGained);
             }
         } catch (error) { 
             toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
@@ -217,8 +179,8 @@ export function useAIActions({
             setIsLoading(false);
         }
     }, [
-        adventureSettings, characters, narrativeMessages, currentLanguage, activeCombat, aiConfig,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleNewFamiliar, handleTimeUpdate, addCurrencyToPlayer, toast, initializeMerchantInventory, getLocalizedText
+        adventureSettings, characters, narrativeMessages, currentLanguage, aiConfig,
+        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, handleTimeUpdate, toast, getLocalizedText
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
@@ -249,8 +211,6 @@ export function useAIActions({
         toast({ title: "Régénération en cours..." });
 
         const currentTurnSettings = JSON.parse(JSON.stringify(adventureSettings));
-        const effectiveStatsThisTurn = calculateEffectiveStats(currentTurnSettings);
-        let currentActiveCombatRegen: ActiveCombat | undefined = activeCombat ? JSON.parse(JSON.stringify(activeCombat)) : undefined;
 
         const worldText = getLocalizedText(currentTurnSettings.world, currentLanguage);
         const contextSituationText = contextMessages.map(msg => msg.type === 'user' ? `${currentTurnSettings.playerName}: ${msg.content}` : msg.content).join('\n\n');
@@ -264,7 +224,6 @@ export function useAIActions({
                  currentLanguage: currentLanguage,
                  playerName: currentTurnSettings.playerName || "Player",
                  ...currentTurnSettings,
-                 ...effectiveStatsThisTurn
              };
 
              const result: GenerateAdventureFlowOutput = await generateAdventure(input);
@@ -288,7 +247,7 @@ export function useAIActions({
          } finally {
             setIsRegenerating(false);
          }
-    }, [ isRegenerating, isLoading, narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig, setNarrativeMessages, getLocalizedText ]);
+    }, [ isRegenerating, isLoading, narrativeMessages, currentLanguage, toast, adventureSettings, characters, aiConfig, setNarrativeMessages, getLocalizedText ]);
 
     const suggestQuestHookAction = React.useCallback(async () => {
         setIsSuggestingQuest(true);
