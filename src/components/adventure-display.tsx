@@ -9,9 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Map as MapIcon, Wand2, Swords, Shield, ScrollText, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Heart, Zap as ZapIcon, BarChart2, Sparkles, Users2, ShieldAlert, Lightbulb, Briefcase, Gift, PackageOpen, PlayCircle, Shirt, BookOpen, Type as FontIcon, Palette, Expand, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Edit3, Save, Download, PlusCircle, Clapperboard, Upload, FileUp, PlusSquare, Library, ShoppingCart, X, Diamond, UserPlus, BrainCircuit } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,13 +20,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, LootedItem, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, CombatUpdatesSchema } from "@/types";
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
-import type { Message, Character, ActiveCombat, AdventureSettings, PlayerInventoryItem, PlayerSkill, Combatant, MapPointOfInterest, ImageTransform, TimeManagementSettings, ComicPage, Panel, Bubble } from "@/types";
+import type { Message, Character, AdventureSettings, ImageTransform, TimeManagementSettings, ComicPage, Panel, Bubble } from "@/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,33 +44,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { MapDisplay } from "./map-display";
-import ImageEditor from "@/components/ImageEditor";
+import ImageEditor from "./ImageEditor";
 import { Input } from "./ui/input";
-import { CalendarDays, Clock, Drama } from "lucide-react";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "./ComicPageEditor";
-
+import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 
 interface AdventureDisplayProps {
     playerId: string;
     generateAdventureAction: (userActionText: string) => Promise<void>;
-    generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>; // Updated prop type
+    generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>;
     suggestQuestHookAction: () => Promise<void>;
     onSummarizeHistory: (narrativeContext: string) => Promise<void>;
     adventureSettings: AdventureSettings;
-    characters: Character[]; // Global list of all characters
+    characters: Character[];
     initialMessages: Message[];
     currentLanguage: string;
-    onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => void;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
     onUndoLastMessage: () => void;
-    onMaterializeCharacter: (narrativeContext: string) => Promise<void>; // New prop
+    onMaterializeCharacter: (narrativeContext: string) => Promise<void>;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
     useAestheticFont: boolean;
@@ -94,6 +87,7 @@ interface AdventureDisplayProps {
     onGenerateCover: () => void;
     onSaveToLibrary: () => void;
     isLoading: boolean;
+    timeState: GameClockState; // NOUVEAU
 }
 
 interface CustomImageStyle {
@@ -110,18 +104,15 @@ const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
     { name: "Comics", isDefault: true },
 ];
 
-const formatTimeToDisplay = (time24h: string, format: '12h' | '24h' | undefined) => {
-    if (format !== '12h' || !time24h) {
-        return time24h;
+const formatTimeToDisplay = (hour: number, minute: number, format: '12h' | '24h' | undefined) => {
+    const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    if (format !== '12h') {
+        return timeString;
     }
-    const [hours, minutes] = time24h.split(':').map(Number);
-    if (isNaN(hours) || isNaN(minutes)) return time24h;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    let hours12 = hours % 12;
-    if (hours12 === 0) {
-        hours12 = 12; // Midnight and Noon case
-    }
-    return `${hours12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    let hours12 = hour % 12;
+    if (hours12 === 0) hours12 = 12;
+    return `${hours12}:${String(minute).padStart(2, '0')} ${ampm}`;
 };
 
 interface ImageToEdit {
@@ -141,10 +132,9 @@ export function AdventureDisplay({
     suggestQuestHookAction,
     onSummarizeHistory,
     adventureSettings,
-    characters, // Global list of all characters
+    characters,
     initialMessages,
     currentLanguage,
-    onNarrativeChange,
     onEditMessage,
     onRegenerateLastResponse,
     onUndoLastMessage,
@@ -169,22 +159,22 @@ export function AdventureDisplay({
     comicCoverUrl,
     onGenerateCover,
     onSaveToLibrary,
-    isLoading, // Destructure isLoading
+    isLoading,
+    timeState, // NOUVEAU
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
-  const [currentMode, setCurrentMode] = React.useState<"narrative" | "map">("narrative");
+  
   const [imageStyle, setImageStyle] = React.useState<string>("");
   
   const [imageForDisplay, setImageForDisplay] = React.useState<string | null>(null);
 
   const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
   const [editContent, setEditContent] = React.useState<string>("");
-  const [editImageTransform, setEditImageTransform] = React.useState<ImageTransform>({ scale: 1, translateX: 0, translateY: 0 });
-  const [imageEditorOpen, setImageEditorOpen] = React.useState(false);
   
   const [imageToEdit, setImageToEdit] = React.useState<ImageToEdit | null>(null);
+  const [imageEditorOpen, setImageEditorOpen] = React.useState(false);
 
   const [isCustomStyleDialogOpen, setIsCustomStyleDialogOpen] = React.useState(false);
   const [customStylePrompt, setCustomStylePrompt] = React.useState("");
@@ -195,14 +185,6 @@ export function AdventureDisplay({
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const messagesRef = React.useRef(messages);
   const { toast } = useToast();
-
-    const playerSpells = adventureSettings.playerClass?.toLowerCase().includes("mage") || adventureSettings.playerClass?.toLowerCase().includes("sorcier") || adventureSettings.playerClass?.toLowerCase().includes("étudiant")
-      ? ["Boule de Feu (5 PM)", "Soin Léger (3 PM)", "Éclair (4 PM)"] // Examples
-      : [];
-    const playerNonCombatSkills = (adventureSettings.playerSkills || []).filter(skill => skill.category !== 'combat') || [];
-    const playerCombatSkills = (adventureSettings.playerSkills || []).filter(skill => skill.category === 'combat') || [];
-    const genericSkills = ["Examiner l'ennemi", "Tenter de parler"];
-
     React.useEffect(() => {
         try {
             const savedStyles = localStorage.getItem("customImageStyles_v1");
@@ -271,24 +253,17 @@ export function AdventureDisplay({
     }, [messages]);
 
 
-  const handleSendSpecificAction = async (action: string) => {
-    if (!action || isLoading) return;
-
-    onNarrativeChange(action, 'user');
-
+  const handleSendFromTextarea = async () => {
+    const currentTextAction = userAction.trim();
+    if (!currentTextAction || isLoading) return;
+    setUserAction("");
+    setMessages(prev => [...prev, { id: `user-${Date.now()}`, type: 'user', content: currentTextAction, timestamp: Date.now() }]);
     try {
-        await generateAdventureAction(action);
+        await generateAdventureAction(currentTextAction);
     } catch (error) { 
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
          toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
     }
-  };
-
-  const handleSendFromTextarea = async () => {
-    const currentTextAction = userAction.trim();
-    if (!currentTextAction) return;
-    setUserAction("");
-    await handleSendSpecificAction(currentTextAction);
   };
 
 
@@ -372,12 +347,11 @@ export function AdventureDisplay({
     const openEditDialog = (message: Message) => {
         setEditingMessage(message);
         setEditContent(message.content);
-        setEditImageTransform(message.imageTransform || { scale: 1, translateX: 0, translateY: 0 });
     };
 
     const handleSaveChanges = () => {
         if (editingMessage) {
-            onEditMessage(editingMessage.id, editContent, editImageTransform);
+            onEditMessage(editingMessage.id, editContent);
             setEditingMessage(null);
         }
     };
@@ -399,33 +373,20 @@ export function AdventureDisplay({
     }
   };
 
-  const playerInventoryItems = adventureSettings.playerInventory?.filter(item => item.quantity > 0) || [];
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
-  
-  const rarityColorClass = (rarity?: 'Commun' | 'Rare' | 'Epique' | 'Légendaire' | 'Divin') => {
-    switch (rarity?.toLowerCase()) {
-      case 'commun': return 'text-gray-500';
-      case 'rare': return 'text-blue-500';
-      case 'epique': return 'text-purple-500';
-      case 'légendaire': return 'text-orange-500';
-      case 'divin': return 'text-yellow-400';
-      default: return 'text-gray-500';
-    }
-  };
 
-  // NEW: Function to parse and format the comic-style narrative
   const renderFormattedNarrative = (text: string) => {
     const parts = text.split(/(\*.*?\*)|(".*?")/g).filter(Boolean);
     return (
       <>
         {parts.map((part, index) => {
           if (part.startsWith('"') && part.endsWith('"')) {
-            return <strong key={index}>{part}</strong>; // Dialogue with quotes
+            return <strong key={index}>{part}</strong>;
           }
           if (part.startsWith('*') && part.endsWith('*')) {
-            return <em key={index}>{part.slice(1, -1)}</em>; // Thought
+            return <em key={index}>{part.slice(1, -1)}</em>;
           }
-          return <React.Fragment key={index}>{part}</React.Fragment>; // Narration
+          return <React.Fragment key={index}>{part}</React.Fragment>;
         })}
       </>
     );
@@ -433,27 +394,19 @@ export function AdventureDisplay({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-       {adventureSettings.strategyMode && (
-         <Tabs defaultValue="narrative" value={currentMode} onValueChange={(value) => setCurrentMode(value as "narrative" | "map")} className="mb-2">
-           <TabsList className="grid w-full grid-cols-2">
-             <TabsTrigger value="narrative"><ScrollText className="mr-2 h-4 w-4" />Narrative</TabsTrigger>
-             <TabsTrigger value="map"><MapIcon className="mr-2 h-4 w-4" />Carte</TabsTrigger>
-           </TabsList>
-         </Tabs>
-       )}
-       {adventureSettings.timeManagement?.enabled && (
+       {adventureSettings.timeManagement?.enabled && timeState && (
            <Card className="mb-2 shadow-sm">
                <CardContent className="p-2 text-xs flex justify-around items-center">
                    <div className="flex items-center gap-2">
                        <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                       <span className="font-semibold">Jour {adventureSettings.timeManagement.day}:</span>
-                       <span>{adventureSettings.timeManagement.dayName}</span>
+                       <span className="font-semibold">Jour {timeState.day}:</span>
+                       <span>{timeState.dayName}</span>
                    </div>
                    <Separator orientation="vertical" className="h-4"/>
                    <div className="flex items-center gap-2">
                        <Clock className="h-4 w-4 text-muted-foreground"/>
                        <span className="font-semibold">Heure:</span>
-                       <span>{formatTimeToDisplay(adventureSettings.timeManagement.currentTime, adventureSettings.timeManagement.timeFormat)}</span>
+                       <span>{formatTimeToDisplay(timeState.hour, timeState.minute, adventureSettings.timeManagement.timeFormat)}</span>
                    </div>
                     <Separator orientation="vertical" className="h-4"/>
                    <div className="flex items-center gap-2">
@@ -469,21 +422,18 @@ export function AdventureDisplay({
       <div className="flex-1 flex gap-4 overflow-hidden">
             <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardContent className="flex-1 overflow-hidden p-0">
-                  <Tabs defaultValue="narrative" value={currentMode} className="h-full flex flex-col">
-                    <TabsContent value="narrative" className="flex-1 overflow-hidden p-0 m-0">
                       <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
                           <div className="space-y-4">
                               {messages.map((message, index) => {
                                   const isLastMessage = index === messages.length - 1;
                                   const isLastAiMessage = isLastMessage && message.type === 'ai';
                                   const isFirstMessage = index === 0;
-                                  const showLootInteraction = message.type === 'ai' && message.loot && message.loot.length > 0 && !message.lootTaken;
                                   
                                   const speakers = (message.type === 'ai' && message.speakingCharacterNames)
                                     ? message.speakingCharacterNames
                                         .map(name => characters.find(c => c.name === name))
-                                        .filter((c): c is Character => !!c) // Filter out undefined
-                                        .slice(0, 3) // Limit to 3 speakers
+                                        .filter((c): c is Character => !!c)
+                                        .slice(0, 3)
                                     : [];
 
                                   return (
@@ -525,9 +475,6 @@ export function AdventureDisplay({
                                                               <DialogContent>
                                                               <DialogHeader>
                                                                   <DialogTitle>Modifier le Message</DialogTitle>
-                                                                  <DialogDescription>
-                                                                  Modifiez le contenu du message et l'image ci-dessous.
-                                                                  </DialogDescription>
                                                               </DialogHeader>
                                                               <Textarea
                                                                       value={editContent}
@@ -535,19 +482,6 @@ export function AdventureDisplay({
                                                                       rows={10}
                                                                       className="my-4"
                                                                   />
-                                                              {editingMessage?.imageUrl && (
-                                                                  <div className="space-y-2">
-                                                                      <Label>Ajuster l'image</Label>
-                                                                      <div className="relative w-full aspect-video rounded-md overflow-hidden border">
-                                                                          <Image 
-                                                                              src={editingMessage.imageUrl} 
-                                                                              alt="Ajustement de l'image"
-                                                                              fill
-                                                                              style={{ objectFit: 'cover' }}
-                                                                          />
-                                                                      </div>
-                                                                  </div>
-                                                              )}
                                                               <DialogFooter>
                                                                   <Button variant="outline" onClick={() => setEditingMessage(null)}>Annuler</Button>
                                                                   <Button onClick={handleSaveChanges}>Enregistrer</Button>
@@ -602,24 +536,6 @@ export function AdventureDisplay({
                                                           )}
                                                       </div>
                                                   )}
-                                                   {showLootInteraction && message.loot && (
-                                                      <div className="absolute bottom-1 right-1 z-20">
-                                                        <AlertDialog>
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <AlertDialogTrigger asChild>
-                                                                            <Button variant="outline" size="icon" className="h-7 w-7 text-amber-600 hover:text-amber-500 border-amber-600 hover:border-amber-500">
-                                                                                <Gift className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </AlertDialogTrigger>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent side="top">Voir le butin</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </AlertDialog>
-                                                      </div>
-                                                  )}
                                               </div>
                                               {message.type === 'user' && (
                                                 <Avatar className="h-8 w-8 border">
@@ -646,11 +562,6 @@ export function AdventureDisplay({
                               )}
                           </div>
                       </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="map" className="flex-1 overflow-hidden p-0 m-0 relative">
-                       {/* MapDisplay is removed as strategy mode is removed */}
-                    </TabsContent>
-                  </Tabs>
                 </CardContent>
                 <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
                     <div className="flex gap-2">
@@ -780,8 +691,8 @@ export function AdventureDisplay({
                                                 <Image
                                                     src={imageForDisplay}
                                                     alt="Generated Scene in Fullscreen"
-                                                    layout="fill"
-                                                    objectFit="contain"
+                                                    fill
+                                                    style={{ objectFit: 'contain' }}
                                                 />
                                             </div>
                                         </DialogContent>
@@ -901,11 +812,11 @@ export function AdventureDisplay({
                     <CardContent className="p-3 pt-0">
                          <div className="flex items-center justify-center gap-2 mb-2">
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
-                                <ArrowLeft className="h-4 w-4"/>
+                                <X className="h-4 w-4 transform rotate-90"/> {/* Left Arrow */}
                             </Button>
                             <span className="text-xs font-medium">Page {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
-                                <ArrowRight className="h-4 w-4"/>
+                                <X className="h-4 w-4 transform -rotate-90"/> {/* Right Arrow */}
                             </Button>
                          </div>
                          <ScrollArea className="h-48 w-full">
@@ -914,7 +825,7 @@ export function AdventureDisplay({
                                  comicDraft[currentComicPageIndex].panels.map((panel, panelIndex) => (
                                     <div key={panel.id} className="relative aspect-square bg-muted rounded-md flex items-center justify-center group">
                                         {isValidUrl(panel.imageUrl) ? (
-                                            <Image src={panel.imageUrl} alt={`Panel ${panelIndex + 1}`} layout="fill" objectFit="cover" className="rounded-md"/>
+                                            <Image src={panel.imageUrl} alt={`Panel ${panelIndex + 1}`} fill style={{objectFit: 'cover'}} className="rounded-md"/>
                                         ) : (
                                              <ImageIcon className="h-8 w-8 text-muted-foreground"/>
                                         )}
@@ -988,7 +899,7 @@ export function AdventureDisplay({
                                 <Label>Couverture</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
                                     {isLoading ? <Loader2 className="h-8 w-8 animate-spin"/> :
-                                     isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" layout="fill" objectFit="cover" className="rounded-md"/>
+                                     isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" fill style={{objectFit: 'cover'}} className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
                                 <Button onClick={onGenerateCover} disabled={isLoading} className="w-full mt-2">
@@ -1008,3 +919,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    

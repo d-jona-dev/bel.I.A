@@ -13,11 +13,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, Map as MapIconLucide, PawPrint, Clapperboard, Download, Gamepad2, Link as LinkIcon, Map, Users as UsersIcon, UserPlus } from 'lucide-react'; // Added Download and fixed FontIcon
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, PlayerInventoryItem, LootedItem, PlayerSkill, MapPointOfInterest, AiConfig, ComicPage } from "@/types";
-import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure-genkit";
-import { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
+import type { Character, AdventureSettings, Message, AiConfig, ComicPage } from "@/types";
+import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,15 +32,12 @@ import { CharacterSidebar } from '@/components/character-sidebar';
 import { ModelManager } from '@/components/model-manager';
 import { AdventureDisplay } from '@/components/adventure-display';
 import { LanguageSelector } from '@/components/language-selector';
-import type { SuggestQuestHookInput } from '@/ai/flows/suggest-quest-hook';
-import type { SummarizeHistoryInput } from '@/ai/flows/summarize-history';
 import { cn } from "@/lib/utils";
-import { Separator } from '@/components/ui/separator';
 import { Dialog } from '../components/ui/dialog';
-import type { NewCharacterSchema } from '@/ai/flows/materialize-character-genkit';
+import type { NewCharacterSchema } from '@/ai/flows/materialize-character';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-
+import type { GameClockState } from '@/lib/game-clock'; // NOUVEAU
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
@@ -52,11 +48,8 @@ interface PageStructureProps {
   currentLanguage: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   adventureFormRef: React.RefObject<AdventureFormHandle>;
-  handleToggleRpgMode: () => void;
   handleToggleRelationsMode: () => void;
-  handleToggleStrategyMode: () => void;
   handleCharacterUpdate: (updatedCharacter: Character) => void;
-  handleNewCharacters: (newChars: NewCharacterSchema[]) => void;
   onMaterializeCharacter: (context: string) => Promise<void>;
   onSummarizeHistory: (context: string) => Promise<void>;
   handleSaveNewCharacter: (character: Character) => void;
@@ -66,7 +59,7 @@ interface PageStructureProps {
   setCurrentLanguage: (lang: string) => void;
   translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
   generateAdventureAction: (userActionText: string) => Promise<void>;
-  generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+  generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>;
   handleEditMessage: (messageId: string, newContent: string) => void;
   handleRegenerateLastResponse: () => Promise<void>;
   handleUndoLastMessage: () => void;
@@ -80,7 +73,6 @@ interface PageStructureProps {
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
   currentTurn: number;
-  onNarrativeChange: (content: string, type: 'user' | 'ai', sceneDesc?: string, lootItems?: LootedItem[], imageUrl?: string, imageTransform?: ImageTransform, speakingCharacterNames?: string[]) => void;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
   comicDraft: ComicPage[];
@@ -100,6 +92,7 @@ interface PageStructureProps {
   onGenerateCover: () => void;
   onSaveToLibrary: () => void;
   isLoading: boolean;
+  timeState: GameClockState; // NOUVEAU
 }
 
 export function PageStructure({
@@ -111,12 +104,8 @@ export function PageStructure({
   currentLanguage,
   fileInputRef,
   adventureFormRef,
-  handleToggleRpgMode,
   handleToggleRelationsMode,
-  handleToggleStrategyMode,
-  onNarrativeChange,
   handleCharacterUpdate,
-  handleNewCharacters,
   onMaterializeCharacter,
   onSummarizeHistory,
   handleSaveNewCharacter,
@@ -159,6 +148,7 @@ export function PageStructure({
   comicCoverUrl,
   onGenerateCover,
   onSaveToLibrary,
+  timeState, // NOUVEAU
 }: PageStructureProps) {
 
   const stagedCharacters = stagedAdventureSettings?.characters || [];
@@ -324,7 +314,6 @@ export function PageStructure({
                     characters={characters}
                     initialMessages={narrativeMessages}
                     currentLanguage={currentLanguage}
-                    onNarrativeChange={onNarrativeChange}
                     onEditMessage={handleEditMessage}
                     onRegenerateLastResponse={handleRegenerateLastResponse}
                     onUndoLastMessage={handleUndoLastMessage}
@@ -350,6 +339,7 @@ export function PageStructure({
                     onGenerateCover={onGenerateCover}
                     onSaveToLibrary={onSaveToLibrary}
                     isLoading={isLoading}
+                    timeState={timeState} // NOUVEAU
                 />
             </main>
         </SidebarInset>
@@ -388,9 +378,9 @@ export function PageStructure({
                                 <AdventureForm
                                     ref={adventureFormRef}
                                     initialValues={stagedAdventureSettings}
-                                    rpgMode={adventureSettings.rpgMode}
+                                    rpgMode={false}
                                     relationsMode={adventureSettings.relationsMode}
-                                    strategyMode={adventureSettings.strategyMode}
+                                    strategyMode={false}
                                 />
                               </AccordionContent>
                           </AccordionItem>
@@ -404,7 +394,6 @@ export function PageStructure({
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pt-2 space-y-3">
-                                  {/* Player details would go here if needed, simplified for relationship version */}
                                   <p className="text-xs text-muted-foreground p-2">Les détails du personnage joueur sont gérés dans l'onglet "Avatars".</p>
                               </AccordionContent>
                           </AccordionItem>
