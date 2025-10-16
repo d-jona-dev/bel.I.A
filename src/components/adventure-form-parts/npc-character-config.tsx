@@ -31,10 +31,9 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 
 interface NpcCharacterConfigProps {
     relationsMode: boolean;
-    strategyMode: boolean;
 }
 
-export function NpcCharacterConfig({ relationsMode, strategyMode }: NpcCharacterConfigProps) {
+export function NpcCharacterConfig({ relationsMode }: NpcCharacterConfigProps) {
     const { control, watch } = useFormContext<AdventureFormValues>();
     const { fields, append, remove } = useFieldArray({
         control,
@@ -90,15 +89,8 @@ export function NpcCharacterConfig({ relationsMode, strategyMode }: NpcCharacter
                             {!watch(`characters.${index}.isPlaceholder`) && (
                                 <>
                                     <FormField control={control} name={`characters.${index}.details`} render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem>)}/>
-                                    <FormField control={control} name={`characters.${index}.portraitUrl`} render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                    {strategyMode && (
-                                        <FormField control={control} name={`characters.${index}.factionColor`} render={({ field }) => (
-                                            <FormItem className="flex items-center gap-2">
-                                                <FormLabel><Palette className="h-4 w-4"/></FormLabel>
-                                                <FormControl><Input type="color" {...field} className="w-12 h-8 p-1" /></FormControl>
-                                            </FormItem>
-                                        )}/>
-                                    )}
+                                    <FormField control={control} name={`characters.${index}.portraitUrl`} render={({ field }) => (<FormItem><FormLabel>URL du Portrait</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)}/>
+                                    
                                     {relationsMode && (
                                         <Card>
                                             <CardContent className="p-3">
@@ -109,7 +101,7 @@ export function NpcCharacterConfig({ relationsMode, strategyMode }: NpcCharacter
                                                     defaultValue="Inconnu"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormControl><Input {...field} /></FormControl>
+                                                            <FormControl><Input {...field} value={field.value || 'Inconnu'}/></FormControl>
                                                         </FormItem>
                                                     )}
                                                 />
