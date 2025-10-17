@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -23,7 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, MapPointOfInterest } from "@/types";
+import type { Character } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -79,13 +80,10 @@ interface CharacterSidebarProps {
     onAddStagedCharacter: (character: Character) => void;
     onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    rpgMode: boolean;
     relationsMode: boolean;
-    strategyMode: boolean;
     playerId: string;
     playerName: string;
     currentLanguage: string;
-    pointsOfInterest: MapPointOfInterest[]; // Add POIs for location selection
 }
 
 // Helper Components (defined outside CharacterSidebar)
@@ -150,7 +148,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'history' | 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'history' | 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'history' | 'spells', index: number) => void, onAdd: (charId: string, field: 'history' | 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'spells', index: number) => void, onAdd: (charId: string, field: 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
 
     const handleAddItem = () => {
         onAdd(charId, field);
@@ -201,14 +199,22 @@ export function CharacterSidebar({
     onAddStagedCharacter,
     onRelationUpdate,
     generateImageAction,
-    rpgMode,
     relationsMode,
-    strategyMode,
     playerId,
     playerName,
     currentLanguage,
-    pointsOfInterest,
-}: CharacterSidebarProps) {
+}: {
+    characters: Character[];
+    onCharacterUpdate: (updatedCharacter: Character) => void;
+    onSaveNewCharacter: (character: Character) => void;
+    onAddStagedCharacter: (character: Character) => void;
+    onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
+    generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
+    relationsMode: boolean;
+    playerId: string;
+    playerName: string;
+    currentLanguage: string;
+}) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [describingAppearanceStates, setDescribingAppearanceStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
@@ -279,24 +285,16 @@ export function CharacterSidebar({
             if (field === 'locationId' && value === '__traveling__') {
                 value = null; // Convert special value to null
             }
-            const numberFields: (keyof Character)[] = ['level', 'strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma', 'hitPoints', 'maxHitPoints', 'manaPoints', 'maxManaPoints', 'armorClass', 'affinity', 'initialAttributePoints', 'currentExp', 'expToNextLevel'];
+            const numberFields: (keyof Character)[] = ['level', 'affinity'];
             let processedValue = value;
             if (numberFields.includes(field) && typeof value === 'string') {
                  let numValue = parseInt(value, 10);
                  if (field === 'affinity') {
                     numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
-                 } else if (field === 'initialAttributePoints') {
-                    numValue = Math.max(0, isNaN(numValue) ? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT : numValue);
-                 } else if (field === 'currentExp' || field === 'expToNextLevel') {
-                    numValue = Math.max(0, isNaN(numValue) ? (field === 'expToNextLevel' ? 100 : 0) : numValue);
                  }
-                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : (field === 'manaPoints' || field === 'maxManaPoints' || field === 'currentExp' ? 0 : (field === 'expToNextLevel' ? 100 : 10) )) : numValue;
+                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : 1) : numValue;
             } else if (field === 'affinity' && typeof processedValue === 'number') {
                 processedValue = Math.max(0, Math.min(100, processedValue));
-            } else if (field === 'initialAttributePoints' && typeof processedValue === 'number') {
-                processedValue = Math.max(0, processedValue);
-            } else if ((field === 'currentExp' || field === 'expToNextLevel') && typeof processedValue === 'number') {
-                processedValue = Math.max(0, processedValue);
             }
             onCharacterUpdate({ ...character, [field]: processedValue });
         }
@@ -320,32 +318,6 @@ export function CharacterSidebar({
              if (field === 'relations') {
                  onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
              }
-        }
-    };
-
-    const handleArrayFieldChange = (charId: string, field: 'history' | 'spells' | 'memory', index: number, value: string) => {
-        const character = initialCharacters.find(c => c.id === charId);
-        if (character) {
-            const updatedArray = [...(character[field as 'history' | 'spells'] || [])];
-            updatedArray[index] = value;
-            onCharacterUpdate({ ...character, [field]: updatedArray });
-        }
-    };
-
-    const addArrayFieldItem = (charId: string, field: 'history' | 'spells' | 'memory') => {
-        const character = initialCharacters.find(c => c.id === charId);
-        if (character) {
-            const updatedArray = [...(character[field as 'history' | 'spells' | 'memory'] || []), ""];
-            onCharacterUpdate({ ...character, [field]: updatedArray });
-        }
-    };
-
-    const removeArrayFieldItem = (charId: string, field: 'history' | 'spells', index: number) => {
-        const character = initialCharacters.find(c => c.id === charId);
-         if (character && character[field as 'history' | 'spells']) {
-            const updatedArray = [...character[field as 'history' | 'spells']!];
-            updatedArray.splice(index, 1);
-            onCharacterUpdate({ ...character, [field]: updatedArray });
         }
     };
 
@@ -440,18 +412,12 @@ export function CharacterSidebar({
                         handleFieldChange={handleFieldChange}
                         handleNestedFieldChange={handleNestedFieldChange}
                         removeNestedField={removeNestedField}
-                        handleArrayFieldChange={handleArrayFieldChange}
-                        addArrayFieldItem={addArrayFieldItem}
-                        removeArrayFieldItem={removeArrayFieldItem}
                         onCharacterUpdate={onCharacterUpdate}
                         getAffinityLabel={getAffinityLabel}
-                        rpgMode={rpgMode}
                         relationsMode={relationsMode}
-                        strategyMode={strategyMode}
                         playerId={playerId}
                         playerName={playerName}
                         currentLanguage={currentLanguage}
-                        pointsOfInterest={pointsOfInterest}
                         allCharacters={initialCharacters}
                     />
                 ))}
@@ -476,18 +442,12 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleFieldChange,
     handleNestedFieldChange,
     removeNestedField,
-    handleArrayFieldChange,
-    addArrayFieldItem,
-    removeArrayFieldItem,
     onCharacterUpdate,
     getAffinityLabel,
-    rpgMode,
     relationsMode,
-    strategyMode,
     playerId,
     playerName,
     currentLanguage,
-    pointsOfInterest,
     allCharacters,
 }: {
     character: Character;
@@ -503,25 +463,16 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     handleFieldChange: (charId: string, field: keyof Character, value: any) => void;
     handleNestedFieldChange: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void;
     removeNestedField: (charId: string, field: 'relations', key: string) => void;
-    handleArrayFieldChange: (charId: string, field: 'history' | 'spells', index: number, value: string) => void;
-    addArrayFieldItem: (charId: string, field: 'history' | 'spells' | 'memory') => void;
-    removeArrayFieldItem: (charId: string, field: 'history' | 'spells', index: number) => void;
     onCharacterUpdate: (updatedCharacter: Character) => void;
     getAffinityLabel: (affinity: number | undefined) => string;
-    rpgMode: boolean;
     relationsMode: boolean;
-    strategyMode: boolean;
     playerId: string;
     playerName: string;
     currentLanguage: string;
-    pointsOfInterest: MapPointOfInterest[];
     allCharacters: Character[];
 }) {
     const { toast } = useToast();
-    const ATTRIBUTES: (keyof Character)[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-
-    const [isAddSpellDialogOpen, setIsAddSpellDialogOpen] = React.useState(false);
-    const [newSpellName, setNewSpellName] = React.useState("");
+    
     const [imageStyle, setImageStyle] = React.useState<string>("");
     const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
     const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
@@ -532,7 +483,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         defaultValues: char,
     });
     
-    // Sync form with external prop changes
     React.useEffect(() => {
         formMethods.reset(char);
     }, [char, formMethods]);
@@ -580,67 +530,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             setDescribingAppearanceStates(prev => ({ ...prev, [char.id]: false }));
         }
     };
-    const { total: totalDistributablePoints, spent: spentPoints } = React.useMemo(() => {
-        if (!rpgMode || !char.isAlly) return { total: 0, spent: 0 };
-        const creationPoints = char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT;
-        const levelPoints = char.level && char.level > 1 ? (char.level - 1) * ATTRIBUTE_POINTS_PER_LEVEL_GAIN_FORM : 0;
-        const total = creationPoints + levelPoints;
-
-        const spent = ATTRIBUTES.reduce((acc, attr) => {
-            return acc + ((Number(char[attr]) || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM);
-        }, 0);
-        
-        return { total, spent };
-    }, [char, rpgMode, ATTRIBUTES]);
-
-    const remainingPoints = totalDistributablePoints - spentPoints;
     
-    React.useEffect(() => {
-        if (!rpgMode || !char.isAlly) return;
-        
-        const currentSpent = ATTRIBUTES.reduce((acc, attr) => acc + (Number(char[attr] || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM), 0);
-        
-        if (currentSpent > totalDistributablePoints) {
-            let characterWithCorrectedPoints = { ...char };
-            let pointsOver = currentSpent - totalDistributablePoints;
-            
-            const sortedAttrs = ATTRIBUTES
-                .map(attr => ({ name: attr, value: Number(characterWithCorrectedPoints[attr] || BASE_ATTRIBUTE_VALUE_FORM) }))
-                .sort((a, b) => b.value - a.value);
-                
-            for (const attr of sortedAttrs) {
-                if (pointsOver <= 0) break;
-                const currentValue = attr.value;
-                const canReduceBy = currentValue - BASE_ATTRIBUTE_VALUE_FORM;
-                const reduction = Math.min(pointsOver, canReduceBy);
-
-                if (reduction > 0) {
-                    (characterWithCorrectedPoints as any)[attr.name] = currentValue - reduction;
-                    pointsOver -= reduction;
-                }
-            }
-            onCharacterUpdate(characterWithCorrectedPoints);
-        }
-    }, [char.id, char.level, char.initialAttributePoints, rpgMode, char.isAlly, onCharacterUpdate]);
-    
-    const handleNpcAttributeBlur = (fieldName: keyof Character) => {
-        let character = { ...char };
-        let numericValue = Number(character[fieldName]);
-        
-        if (isNaN(numericValue) || numericValue < BASE_ATTRIBUTE_VALUE_FORM) {
-            numericValue = BASE_ATTRIBUTE_VALUE_FORM;
-            (character as any)[fieldName] = numericValue;
-        }
-
-        const currentSpent = ATTRIBUTES.reduce((acc, attr) => acc + (Number(character[attr] || BASE_ATTRIBUTE_VALUE_FORM) - BASE_ATTRIBUTE_VALUE_FORM), 0);
-
-        if (currentSpent > totalDistributablePoints) {
-            const overspent = currentSpent - totalDistributablePoints;
-            (character as any)[fieldName] = numericValue - overspent;
-        }
-        onCharacterUpdate(character);
-    };
-
     const handleGeneratePortrait = async () => {
         if (imageLoadingStates[char.id]) return;
         setImageLoadingStates(prev => ({ ...prev, [char.id]: true }));
@@ -666,17 +556,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
       };
 
 
-    const handleAddSpell = () => {
-        if (!newSpellName.trim()) {
-            toast({ title: "Nom du sort requis", variant: "destructive" });
-            return;
-        }
-        const currentSpells = char.spells || [];
-        onCharacterUpdate({ ...char, spells: [...currentSpells, newSpellName.trim()] });
-        setNewSpellName("");
-        setIsAddSpellDialogOpen(false);
-    };
-
     const handleSaveUrl = () => {
         handleFieldChange(char.id, 'portraitUrl', portraitUrl);
         setIsUrlDialogOpen(false);
@@ -685,22 +564,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
     const isPotentiallyNew = isClient && !char._lastSaved;
     const currentAffinity = char.affinity ?? 50;
-    const isAllyAndRpg = rpgMode && char.isAlly;
-
-    const RULER_CLASSES = ["impératrice", "empereur", "duc", "duchesse", "roi", "reine", "noble"];
-    const AFFINITY_THRESHOLD = 80;
-
-    const isRuler = RULER_CLASSES.some(rulerClass =>
-        char.characterClass?.toLowerCase().includes(rulerClass)
-    );
-
-    const canRecruit = !isRuler || (char.affinity ?? 0) >= AFFINITY_THRESHOLD;
-    const isAllySwitchDisabled = !canRecruit;
-
-    const tooltipContent = isAllySwitchDisabled
-        ? `L'affinité doit être d'au moins ${AFFINITY_THRESHOLD} pour recruter ce dirigeant. (Actuelle: ${char.affinity ?? 50})`
-        : null;
-
+    
     if (isPlaceholder) {
         return (
             <AccordionItem value={char.id}>
@@ -746,7 +610,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             )}
                         </Avatar>
                         <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
-                        {char.isAlly && rpgMode ? <Users className="inline h-4 w-4 ml-1 text-green-500 flex-shrink-0"/> : ''}
                         {isPotentiallyNew && (
                             <TooltipProvider>
                                 <Tooltip>
@@ -949,129 +812,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         </div>
                     </div>
 
-
-                    {strategyMode && (
-                        <div className="space-y-1">
-                            <Label htmlFor={`${char.id}-location`} className="flex items-center gap-1"><MapPin className="h-4 w-4"/> Localisation Actuelle</Label>
-                            <Select value={char.locationId ?? "__traveling__"} onValueChange={(value) => handleFieldChange(char.id, 'locationId', value)}>
-                                <SelectTrigger id={`${char.id}-location`} className="h-8 text-sm bg-background border">
-                                    <SelectValue placeholder="Sélectionner un lieu..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__traveling__">Aucun lieu (En voyage)</SelectItem>
-                                    {pointsOfInterest.map(poi => (
-                                        <SelectItem key={poi.id} value={poi.id}>{poi.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-
-                    {rpgMode && (
-                        <TooltipProvider>
-                            <Tooltip delayDuration={300}>
-                                <TooltipTrigger asChild>
-                                    <div className={`flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30 ${isAllySwitchDisabled ? 'cursor-not-allowed' : ''}`}>
-                                        <div className="space-y-0.5">
-                                            <Label htmlFor={`${char.id}-isAlly`} className="flex items-center gap-2"><Users className="h-4 w-4 text-green-600"/> Allié du Joueur</Label>
-                                            <UICardDescription className="text-xs">
-                                                Permet de modifier ses attributs et de l'intégrer à l'équipe.
-                                            </UICardDescription>
-                                        </div>
-                                        {/* The span wrapper is a trick to make tooltips work on disabled elements */}
-                                        <span tabIndex={isAllySwitchDisabled ? 0 : -1}>
-                                            <Switch
-                                                id={`${char.id}-isAlly`}
-                                                checked={char.isAlly ?? false}
-                                                onCheckedChange={(checked) => handleFieldChange(char.id, 'isAlly', checked)}
-                                                disabled={isAllySwitchDisabled}
-                                            />
-                                        </span>
-                                    </div>
-                                </TooltipTrigger>
-                                {tooltipContent && (
-                                    <TooltipContent>
-                                        <p>{tooltipContent}</p>
-                                    </TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
-                    )}
-
-                    {rpgMode && (
-                        <Card className="border-dashed bg-muted/20">
-                            <CardHeader className="pb-2 pt-4">
-                                <UICardDescription className="text-xs uppercase tracking-wider flex items-center gap-1">
-                                    <FilePenLine className="h-3 w-3" />
-                                    Fiche Personnage {char.isAlly ? "(Modifiable si Allié)" : "(Lecture Seule)"}
-                                </UICardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2 text-sm">
-                                <EditableField label="Classe" id={`${char.id}-class`} value={char.characterClass} onChange={(e) => handleFieldChange(char.id, 'characterClass', e.target.value)} onBlur={e => handleFieldChange(char.id, 'characterClass', e.target.value)} placeholder="Guerrier, Mage..." disabled={!isAllyAndRpg} />
-                                <EditableField label="Niveau" id={`${char.id}-level`} type="number" value={char.level} onChange={(e) => handleFieldChange(char.id, 'level', e.target.value)} onBlur={e => handleFieldChange(char.id, 'level', e.target.value)} disabled={!isAllyAndRpg} />
-                                {char.level !== undefined && char.level >=1 && (
-                                    <>
-                                    <div className="flex justify-between items-center mb-0.5">
-                                        <Label htmlFor={`${char.id}-exp`} className="text-xs font-medium flex items-center"><ExpIcon className="h-3 w-3 mr-1 text-yellow-500"/>EXP</Label>
-                                        <span className="text-xs text-muted-foreground">{char.currentExp ?? 0} / {char.expToNextLevel ?? (100 * Math.pow(1.5, char.level -1))}</span>
-                                    </div>
-                                    <Progress id={`${char.id}-exp`} value={(((char.currentExp ?? 0) / (char.expToNextLevel || 1))) * 100} className="h-1.5 [&>div]:bg-yellow-500" />
-                                    </>
-                                )}
-                                <Separator className="my-1"/>
-                                <div className="flex justify-between items-center">
-                                    <Label className="text-xs font-medium flex items-center"><Heart className="h-3 w-3 mr-1 text-red-500"/>PV</Label>
-                                    <span className="text-xs">{char.hitPoints ?? 'N/A'} / {char.maxHitPoints ?? 'N/A'}</span>
-                                </div>
-                                <Progress value={((char.hitPoints ?? 0) / (char.maxHitPoints || 1)) * 100} className="h-1.5 [&>div]:bg-red-500" />
-                                {(char.maxManaPoints ?? 0) > 0 && (
-                                    <>
-                                    <div className="flex justify-between items-center mt-1">
-                                        <Label className="text-xs font-medium flex items-center"><Zap className="h-3 w-3 mr-1 text-blue-500"/>PM</Label>
-                                        <span className="text-xs">{char.manaPoints ?? 'N/A'} / {char.maxManaPoints ?? 'N/A'}</span>
-                                    </div>
-                                    <Progress value={((char.manaPoints ?? 0) / (char.maxManaPoints || 1)) * 100} className="h-1.5 [&>div]:bg-blue-500" />
-                                    </>
-                                )}
-                                <Separator className="my-1"/>
-                                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
-                                    <span>CA: {char.armorClass ?? 'N/A'}</span>
-                                    <span className="truncate">Atk: +{char.attackBonus ?? 'N/A'}</span>
-                                    <span className="truncate">Dmg: {char.damageBonus || 'N/A'}</span>
-                                </div>
-                                {char.isHostile !== undefined && (
-                                    <div className={`text-xs ${char.isHostile ? 'text-destructive' : 'text-green-600'}`}>
-                                        {char.isHostile ? (currentLanguage === 'fr' ? 'Hostile' : 'Hostile') : (currentLanguage === 'fr' ? 'Non-Hostile' : 'Non-Hostile')}
-                                    </div>
-                                )}
-                                {isAllyAndRpg && (
-                                    <>
-                                        <Separator className="my-2"/>
-                                        <Label className="flex items-center gap-1 text-xs uppercase tracking-wider"><Dices className="h-3 w-3"/> Attributs</Label>
-                                        <EditableField label="Points d'Attributs de Création" id={`${char.id}-initialAttributePoints`} type="number" value={char.initialAttributePoints ?? INITIAL_CREATION_ATTRIBUTE_POINTS_NPC_DEFAULT} onChange={(e) => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} onBlur={e => handleFieldChange(char.id, 'initialAttributePoints', e.target.value)} min="0" disabled={!isAllyAndRpg}/>
-                                        
-                                        <div className="p-1 border rounded-md bg-background text-center text-xs">
-                                            Points d'attributs restants : <span className={`font-bold ${remainingPoints < 0 ? 'text-destructive' : 'text-primary'}`}>{remainingPoints}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {ATTRIBUTES.map(attr => (
-                                                <EditableField 
-                                                    key={attr} 
-                                                    label={attr.charAt(0).toUpperCase() + attr.slice(1)} 
-                                                    id={`${char.id}-${attr}`} type="number" 
-                                                    value={char[attr]} 
-                                                    onChange={(e) => onCharacterUpdate({ ...char, [attr]: e.target.value ? parseInt(e.target.value, 10) : BASE_ATTRIBUTE_VALUE_FORM })}
-                                                    onBlur={() => handleNpcAttributeBlur(attr)} 
-                                                    min={BASE_ATTRIBUTE_VALUE_FORM.toString()} 
-                                                    disabled={!isAllyAndRpg}
-                                                />
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
                     <Separator />
                     <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
                     <EditableField
@@ -1158,73 +898,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             />
                         </>
                     )}
-                    {rpgMode && (
-                        <>
-                            <Separator />
-                            <ArrayEditableCard
-                                charId={char.id}
-                                field="spells"
-                                title="Sorts"
-                                icon={Zap}
-                                data={char.spells}
-                                addLabel="Ajouter Sort"
-                                onUpdate={handleArrayFieldChange}
-                                onRemove={removeArrayFieldItem}
-                                onAdd={addArrayFieldItem}
-                                currentLanguage={currentLanguage}
-                                disabled={!isAllyAndRpg}
-                                addDialog={
-                                    <AlertDialog open={isAddSpellDialogOpen} onOpenChange={setIsAddSpellDialogOpen}>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="w-full mt-2" disabled={!isAllyAndRpg}>
-                                                <PlusCircle className="mr-1 h-4 w-4" /> Ajouter Sort
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Ajouter un nouveau sort</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Entrez le nom du sort à ajouter pour {char.name}.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <div className="py-4">
-                                                <Label htmlFor="new-spell-name">Nom du Sort</Label>
-                                                <Input
-                                                    id="new-spell-name"
-                                                    value={newSpellName}
-                                                    onChange={(e) => setNewSpellName(e.target.value)}
-                                                    className="mt-1"
-                                                    placeholder="Ex: Boule de Feu"
-                                                />
-                                            </div>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setNewSpellName("")}>Annuler</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleAddSpell}>Ajouter</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                }
-                            />
-                        </>
-                    )}
-                    <Separator />
-                    <ArrayEditableCard
-                        charId={char.id}
-                        field="history"
-                        title="Historique Narratif"
-                        icon={History}
-                        data={char.history}
-                        addLabel="Ajouter Entrée Historique"
-                        onUpdate={handleArrayFieldChange}
-                        onRemove={removeArrayFieldItem}
-                        onAdd={addArrayFieldItem}
-                        currentLanguage={currentLanguage}
-                    />
-                    
                 </AccordionContent>
             </AccordionItem>
         </FormProvider>
     );
 });
-
-    

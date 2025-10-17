@@ -31,7 +31,6 @@ export interface Character {
   biographyNotes?: string;
   appearanceDescription?: string;
   lastAppearanceUpdate?: number;
-  history?: string[];
   memory?: string;
   portraitUrl?: string | null;
   faceSwapEnabled?: boolean;
@@ -179,7 +178,6 @@ const CharacterWithContextSummarySchema = z.object({
   biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character."),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player."),
   relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player."),
-  historySummary: z.string().optional().describe('A brief summary of the last few history entries.'),
   relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relationship statuses.'),
   faceSwapEnabled: z.boolean().optional(),
   portraitUrl: z.string().nullable().optional(),
@@ -209,7 +207,6 @@ export const NewCharacterSchema = z.object({
     name: z.string().describe("The name of the newly introduced character."),
     details: z.string().optional().describe("A brief description of the new character derived from the narrative context."),
     biographyNotes: z.string().optional(),
-    initialHistoryEntry: z.string().optional(),
 });
 export type NewCharacterSchema = z.infer<typeof NewCharacterSchema>;
 
@@ -248,3 +245,4 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+

@@ -1,16 +1,16 @@
 
+
 "use client";
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { SaveData, AdventureSettings, Character, Message, ActiveCombat, AiConfig } from "@/types";
+import type { SaveData, AdventureSettings, Character, Message, AiConfig } from "@/types";
 
 interface UseSaveLoadProps {
     adventureSettings: AdventureSettings;
     characters: Character[];
     narrativeMessages: Message[];
     currentLanguage: string;
-    activeCombat: ActiveCombat | undefined;
     aiConfig: AiConfig;
     loadAdventureState: (data: SaveData) => void;
 }
@@ -22,7 +22,6 @@ export function useSaveLoad({
     characters,
     narrativeMessages,
     currentLanguage,
-    activeCombat,
     aiConfig,
     loadAdventureState,
 }: UseSaveLoadProps) {
@@ -34,7 +33,6 @@ export function useSaveLoad({
             characters: characters,
             narrative: narrativeMessages,
             currentLanguage,
-            activeCombat: activeCombat,
             saveFormatVersion: 2.6,
             timestamp: new Date().toISOString(),
             aiConfig: aiConfig,
@@ -52,7 +50,7 @@ export function useSaveLoad({
         React.startTransition(() => {
             toast({ title: "Aventure Sauvegardée", description: "Le fichier JSON a été téléchargé." });
         });
-    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, activeCombat, aiConfig]);
+    }, [narrativeMessages, currentLanguage, toast, adventureSettings, characters, aiConfig]);
 
     const handleLoad = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -141,3 +139,4 @@ export function useSaveLoad({
 
     return { handleSave, handleLoad, handleDownloadStory, handleImportStory };
 }
+

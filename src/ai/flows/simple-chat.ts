@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A simple chat AI agent for interacting with a single character.
@@ -46,7 +47,7 @@ const prompt = ai.definePrompt({
 Your personality and background: {{characterDetails}}.
 
 You are now chatting directly with {{playerName}} outside of any specific ongoing adventure or immediate story. This is a one-on-one conversation.
-Engage naturally as {{characterName}}, keeping your established persona, history, and feelings (if any) towards {{playerName}} in mind.
+Engage naturally as {{characterName}}, keeping your established persona and feelings (if any) towards {{playerName}} in mind.
 Respond to {{playerName}}'s latest message based on the conversation history provided.
 Keep your responses concise and in character.
 

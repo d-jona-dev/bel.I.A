@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, SaveData, AiConfig, PlayerInventoryItem, LootedItem, LocalizedText, Familiar } from "@/types";
+import type { AdventureSettings, Character, Message, SaveData, AiConfig, LocalizedText } from "@/types";
 
 const createInitialState = (): SaveData => ({
     adventureSettings: {
@@ -17,8 +17,6 @@ const createInitialState = (): SaveData => ({
         playerName: "Héros",
         playerClass: "Aventurier", // Conservé pour le contexte
         playerLevel: 1, // Conservé pour le contexte
-        mapPointsOfInterest: [],
-        mapImageUrl: null,
         playerPortraitUrl: null,
         playerDetails: "",
         playerDescription: "",
@@ -105,15 +103,6 @@ export function useAdventureState() {
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
     }, [toast]);
 
-    // Fonctions simplifiées car RPG/Stratégie sont désactivés
-    const handleTakeLoot = () => {};
-    const addCurrencyToPlayer = () => {};
-    const handlePlayerItemAction = () => ({ narrativeAction: "", itemUsed: undefined });
-    const handleEquipItem = () => {};
-    const handleUnequipItem = () => {};
-    const handleSellItem = () => {};
-    const confirmSellMultipleItems = () => {};
-
     return {
         adventureSettings,
         setAdventureSettings,
@@ -131,23 +120,8 @@ export function useAdventureState() {
         setBaseCharacters,
         loadAdventureState,
         createInitialState,
-        handleTakeLoot,
-        addCurrencyToPlayer,
-        handlePlayerItemAction,
-        handleEquipItem,
-        handleUnequipItem,
-        handleSellItem,
-        confirmSellMultipleItems,
-        itemToSellDetails: null,
-        setItemToSellDetails: () => {},
-        sellQuantity: 1,
-        setSellQuantity: () => {},
         getLocalizedText,
-        computedStats: null, // Plus de stats complexes
         characterHistory,
         undoLastCharacterState,
     };
 }
-// La fonction calculateEffectiveStats est retirée car non pertinente
-export const calculateEffectiveStats = () => null;
-

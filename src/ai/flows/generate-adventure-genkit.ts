@@ -23,10 +23,7 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
 
 async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.infer<typeof GenerateAdventureInputSchema>> {
     const processedCharacters: z.infer<typeof CharacterWithContextSummarySchema>[] = input.characters.map(char => {
-        const history = char.history || [];
-        const lastThreeEntries = history.slice(-3);
-        const historySummary = lastThreeEntries.length > 0 ? lastThreeEntries.join(' | ') : (input.currentLanguage === 'fr' ? 'Aucun historique notable.' : 'No notable history.');
-
+        
         let relationsSummaryText = input.currentLanguage === 'fr' ? "Mode relations désactivé." : "Relations mode disabled.";
         if (input.relationsModeActive && char.relations) {
              relationsSummaryText = Object.entries(char.relations)
@@ -46,7 +43,6 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
             biographyNotes: char.biographyNotes || (input.currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
             affinity: input.relationsModeActive ? (char.affinity ?? 50) : 50,
             relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
-            historySummary: historySummary,
             relationsSummary: relationsSummaryText,
             faceSwapEnabled: char.faceSwapEnabled,
             portraitUrl: char.portraitUrl,
@@ -75,7 +71,7 @@ const prompt = ai.definePrompt({
   },
   prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
 
-**Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, history, affinity, and relationships as detailed below. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
+**Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, affinity, and relationships as detailed below. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 
@@ -124,8 +120,7 @@ Player Face Reference: {{media url=playerPortraitUrl}}
   {{else}}
   (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
   {{/if}}
-  History (summary): {{{this.historySummary}}}
-  **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description, Affinity, and recent History. Their style of speech (vocabulary, tone, formality) must also align.**
+  **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description and Affinity. Their style of speech (vocabulary, tone, formality) must also align.**
 {{else}}
 **No other characters are currently present.**
 {{/each}}

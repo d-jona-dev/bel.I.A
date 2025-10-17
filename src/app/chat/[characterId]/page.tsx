@@ -1,4 +1,5 @@
 
+
 // src/app/chat/[characterId]/page.tsx
 "use client";
 
@@ -68,11 +69,8 @@ export default function CharacterChatPage() {
             }]);
 
             // Prepare adventure context summary
-            const historyToShow = foundCharacter.history ? foundCharacter.history.slice(-10) : []; // Last 10 history items
-            const summary = historyToShow.length > 0
-              ? `Souviens-toi de ces interactions clés avec ${playerName} lors d'aventures précédentes :\n- ${historyToShow.join('\n- ')}`
-              : "Vous n'avez pas encore d'historique d'aventure partagé significatif avec ce personnage.";
-            setAdventureContextSummary(summary);
+            const memorySummary = foundCharacter.memory ? `Mémoire du personnage : \n${foundCharacter.memory}` : "Ce personnage n'a pas de souvenirs spécifiques enregistrés.";
+            setAdventureContextSummary(memorySummary);
 
           } else {
             toast({ title: "Personnage non trouvé", description: "Le personnage que vous essayez de contacter n'existe pas.", variant: "destructive" });
