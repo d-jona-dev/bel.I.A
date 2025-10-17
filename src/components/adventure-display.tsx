@@ -184,8 +184,8 @@ export function AdventureDisplay({
 
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
-  const messagesRef = React.useRef(messages);
   const { toast } = useToast();
+
     React.useEffect(() => {
         try {
             const savedStyles = localStorage.getItem("customImageStyles_v1");
@@ -225,7 +225,11 @@ export function AdventureDisplay({
 
     React.useEffect(() => {
         setMessages(initialMessages);
-        messagesRef.current = initialMessages;
+        
+        const lastImageUrl = initialMessages.slice().reverse().find(m => m.imageUrl)?.imageUrl;
+        if (lastImageUrl) {
+            setImageForDisplay(lastImageUrl);
+        }
 
         if (scrollAreaRef.current) {
           const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
@@ -237,28 +241,11 @@ export function AdventureDisplay({
         }
     }, [initialMessages]);
 
-    React.useEffect(() => {
-        messagesRef.current = messages;
-        const lastImageUrl = messages.slice().reverse().find(m => m.imageUrl)?.imageUrl;
-        if (lastImageUrl) {
-            setImageForDisplay(lastImageUrl);
-        }
-         if (scrollAreaRef.current) {
-            const scrollElement = scrollAreaRef.current.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
-            if(scrollElement) {
-                requestAnimationFrame(() => {
-                    scrollElement.scrollTop = scrollElement.scrollHeight;
-                });
-            }
-        }
-    }, [messages]);
-
 
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
     if (!currentTextAction || isLoading) return;
     setUserAction("");
-    setMessages(prev => [...prev, { id: `user-${Date.now()}`, type: 'user', content: currentTextAction, timestamp: Date.now() }]);
     try {
         await generateAdventureAction(currentTextAction);
     } catch (error) { 
@@ -713,11 +700,10 @@ export function AdventureDisplay({
                             className="w-full"
                             onClick={() => {
                                 const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai');
-                                // Toujours ouvrir l'éditeur, même sans message IA
                                 const messageToEdit = lastAiMessage || {
                                     id: 'temp-blank',
                                     type: 'ai',
-                                    content: 'N/A', // Contenu non applicable
+                                    content: 'N/A',
                                     timestamp: Date.now(),
                                 };
                                 setImageToEdit({ url: imageForDisplay, message: messageToEdit });
@@ -915,5 +901,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    

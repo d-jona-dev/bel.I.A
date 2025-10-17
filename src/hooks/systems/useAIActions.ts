@@ -112,16 +112,21 @@ export function useAIActions({
 
     const generateAdventureAction = React.useCallback(async (userActionText: string, timeState: GameClockState, timeTag: string) => {
         setIsLoading(true);
-        onTurnEnd(); // NOUVEAU: On avance le temps immédiatement
-        
-        const contextSituation = narrativeMessages.length > 1 ? [...narrativeMessages, {id: 'temp-user', type: 'user', content: userActionText, timestamp: Date.now()}].slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+        onTurnEnd(); // On avance le temps
 
-        // NOUVEAU: Le prompt pour l'IA est maintenant beaucoup plus simple
+        // Ajouter le message utilisateur à l'état global immédiatement
+        const userMessage: Message = { id: `user-${Date.now()}`, type: 'user', content: userActionText, timestamp: Date.now() };
+        setNarrativeMessages(prev => [...prev, userMessage]);
+
+        const updatedNarrativeMessages = [...narrativeMessages, userMessage];
+        
+        const contextSituation = updatedNarrativeMessages.length > 1 ? updatedNarrativeMessages.slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
+
         const timeInfoForLLM = `[Time] ${timeState.dayName} ${timeState.day} — ${String(timeState.hour).padStart(2, '0')}:${String(timeState.minute).padStart(2, '0')} ${timeTag}`;
 
         const input: GenerateAdventureInput = {
             world: getLocalizedText(adventureSettings.world, currentLanguage),
-            initialSituation: `${timeInfoForLLM}\n${contextSituation}`, // On injecte le temps ici
+            initialSituation: `${timeInfoForLLM}\n${contextSituation}`,
             characters: characters, 
             userAction: userActionText,
             currentLanguage,
@@ -131,7 +136,6 @@ export function useAIActions({
             playerPortraitUrl: adventureSettings.playerPortraitUrl,
             playerFaceSwapEnabled: adventureSettings.playerFaceSwapEnabled,
             aiConfig,
-            // Les champs RPG/Stratégie sont omis
         };
 
         try {
@@ -145,7 +149,6 @@ export function useAIActions({
                     if (result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                     if (result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 }
-                // Il n'y a plus de handleTimeUpdate, le temps est déjà avancé.
             }
         } catch (error) { 
             toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
@@ -157,10 +160,6 @@ export function useAIActions({
         setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd
     ]);
     
-    // ... Le reste des fonctions (regenerate, suggestQuestHook, etc.) reste similaire mais
-    // devra être adapté pour utiliser la nouvelle méthode de gestion du temps si nécessaire.
-    // Pour l'instant, seul le flux principal est modifié pour la correction du bug.
-
     const regenerateLastResponse = React.useCallback(async () => {
         // Cette fonction doit aussi être adaptée pour utiliser le nouvel état du temps
     }, [ /* ... */ ]);
