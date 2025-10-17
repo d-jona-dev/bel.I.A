@@ -447,7 +447,7 @@ export function AdventureDisplay({
                                           <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
                                                   message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
                                               }`}>
-                                                  {adventureSettings.comicModeActive && message.type === 'ai' ? renderFormattedNarrative(message.content) : message.content}
+                                                  {message.type === 'system' ? message.content : renderFormattedNarrative(message.content)}
 
                                                   {message.type !== 'system' && !isFirstMessage && (
                                                       <div className={`absolute top-0 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
