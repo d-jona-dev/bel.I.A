@@ -62,6 +62,7 @@ interface AdventureDisplayProps {
     adventureSettings: AdventureSettings;
     characters: Character[];
     initialMessages: Message[];
+    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     currentLanguage: string;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
@@ -135,6 +136,7 @@ export function AdventureDisplay({
     adventureSettings,
     characters,
     initialMessages,
+    setMessages,
     currentLanguage,
     onEditMessage,
     onRegenerateLastResponse,
@@ -163,7 +165,7 @@ export function AdventureDisplay({
     isLoading,
     timeState, // NOUVEAU
 }: AdventureDisplayProps) {
-  const [messages, setMessages] = React.useState<Message[]>(initialMessages);
+  const [messages, _setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   
@@ -224,7 +226,7 @@ export function AdventureDisplay({
     };
 
     React.useEffect(() => {
-        setMessages(initialMessages);
+        _setMessages(initialMessages);
         
         const lastImageUrl = initialMessages.slice().reverse().find(m => m.imageUrl)?.imageUrl;
         if (lastImageUrl) {

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -118,7 +119,7 @@ export default function Home() {
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
     
-    const onMemorizeEvent = React.useCallback(async (narrativeContext: string) => {
+    const onSummarizeHistory = React.useCallback(async (narrativeContext: string) => {
         if (isLoading) return;
         await memorizeEventAction(narrativeContext);
     }, [isLoading, memorizeEventAction]);
@@ -160,7 +161,6 @@ export default function Home() {
         characters,
         narrativeMessages,
         currentLanguage,
-        activeCombat: undefined, // Le combat est supprimé
         aiConfig,
         loadAdventureState,
     });
@@ -186,7 +186,9 @@ export default function Home() {
         }
         
         const lastUserMessage = narrativeMessages[lastUserMessageIndex];
-        setMessages(narrativeMessages.slice(0, lastUserMessageIndex));
+        const newMessages = narrativeMessages.slice(0, lastUserMessageIndex);
+        setNarrativeMessages(newMessages); // Update parent state
+        setMessages(newMessages); // Update local state in display
         
         const restoredCharacters = undoLastCharacterState();
         if (restoredCharacters) {
@@ -310,9 +312,10 @@ export default function Home() {
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
                 narrativeMessages={narrativeMessages}
+                setMessages={setNarrativeMessages}
                 currentLanguage={currentLanguage}
                 generateAdventureAction={async (text) => {
-                    await generateAdventureAction(text, timeState, gameClock.getTimeTag());
+                    await generateAdventureAction(text);
                 }}
                 handleUndoLastMessage={handleUndoLastMessage}
                 onRestartAdventure={confirmRestartAdventure}
@@ -328,7 +331,7 @@ export default function Home() {
                 handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
                 handleCharacterUpdate={handleCharacterUpdate}
                 onMaterializeCharacter={onMaterializeCharacter}
-                onSummarizeHistory={onMemorizeEvent}
+                onSummarizeHistory={onSummarizeHistory}
                 handleSaveNewCharacter={(char) => {
                   try {
                     const globalChars = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
@@ -357,7 +360,6 @@ export default function Home() {
                 isSuggestingQuest={isSuggestingQuest}
                 useAestheticFont={useAestheticFont}
                 onToggleAestheticFont={() => setUseAestheticFont(v => !v)}
-                currentTurn={0}
                 comicDraft={comicDraft}
                 onDownloadComicDraft={onDownloadComicDraft}
                 onAddComicPage={onAddComicPage}
