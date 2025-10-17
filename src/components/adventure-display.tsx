@@ -708,6 +708,24 @@ export function AdventureDisplay({
                         )}
                     </CardContent>
                     <CardFooter className="p-4 border-t flex flex-col gap-2">
+                         <Button
+                            variant="secondary"
+                            className="w-full"
+                            onClick={() => {
+                                const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai');
+                                // Toujours ouvrir l'éditeur, même sans message IA
+                                const messageToEdit = lastAiMessage || {
+                                    id: 'temp-blank',
+                                    type: 'ai',
+                                    content: 'N/A', // Contenu non applicable
+                                    timestamp: Date.now(),
+                                };
+                                setImageToEdit({ url: imageForDisplay, message: messageToEdit });
+                                setImageEditorOpen(true);
+                            }}
+                        >
+                            <Edit3 className="mr-2 h-4 w-4" /> Éditeur BD
+                        </Button>
                         <div className="flex w-full gap-2">
                             <DropdownMenu>
                                 <TooltipProvider>
@@ -755,33 +773,10 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || !([...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription))}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>Générer Image</span>
+                                            <span>Générer</span>
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                             <TooltipProvider>
-                                <Tooltip>
-                                     <TooltipTrigger asChild>
-                                        <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="flex-shrink-0"
-                                            onClick={() => {
-                                                const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai');
-                                                if (lastAiMessage) {
-                                                    setImageToEdit({ url: imageForDisplay, message: lastAiMessage });
-                                                    setImageEditorOpen(true);
-                                                } else {
-                                                    toast({ title: "Aucune scène à éditer", description: "Il n'y a pas encore de réponse de l'IA à visualiser.", variant: "default" });
-                                                }
-                                            }}
-                                        >
-                                            <Edit3 className="h-4 w-4" />
-                                        </Button>
-                                     </TooltipTrigger>
-                                     <TooltipContent>Ouvrir l'éditeur d'image pour la dernière scène (même sans image).</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
