@@ -60,7 +60,7 @@ export default function Home() {
     
     // UI and loading states
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
-    const [isRegenerating, setIsRegenerating] = React.useState(false);
+    const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
@@ -87,7 +87,6 @@ export default function Home() {
         suggestQuestHookAction,
         materializeCharacterAction,
         summarizeHistory,
-        isSuggestingQuest,
         generateSceneImageActionWrapper,
     } = useAIActions({
         adventureSettings,
@@ -97,8 +96,6 @@ export default function Home() {
         aiConfig,
         isLoading,
         setIsLoading,
-        isRegenerating,
-        setIsRegenerating,
         setNarrativeMessages,
         setCharacters,
         onTurnEnd: advanceTime,
@@ -163,8 +160,8 @@ export default function Home() {
         onAddComicPanel,
         onRemoveLastComicPanel,
         onUploadToComicPanel,
-        handleComicPageChange,
-        handleAddToComicPage,
+        onComicPageChange,
+        onAddToComicPage,
         setIsSaveComicDialogOpen,
         setComicTitle,
         onSaveToLibrary,
@@ -340,13 +337,13 @@ export default function Home() {
                 narrativeMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 generateAdventureAction={async (text) => {
-                    await generateAdventureAction(text);
+                    await generateAdventureAction(text, timeState, gameClock.getTimeTag());
                 }}
                 handleUndoLastMessage={handleUndoLastMessage}
                 onRestartAdventure={confirmRestartAdventure}
                 showRestartConfirm={showRestartConfirm}
                 setShowRestartConfirm={setShowRestartConfirm}
-                isLoading={isLoading || isRegenerating}
+                isLoading={isLoading}
                 aiConfig={aiConfig}
                 onAiConfigChange={handleAiConfigChange}
                 timeState={timeState}
@@ -386,13 +383,13 @@ export default function Home() {
                 currentTurn={0}
                 comicDraft={comicDraft}
                 onDownloadComicDraft={onDownloadComicDraft}
-                onAddComicPage={handleAddComicPage}
-                onAddComicPanel={handleAddComicPanel}
-                onRemoveLastComicPanel={handleRemoveLastComicPanel}
+                onAddComicPage={onAddComicPage}
+                onAddComicPanel={onAddComicPanel}
+                onRemoveLastComicPanel={onRemoveLastComicPanel}
                 onUploadToComicPanel={onUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
-                onComicPageChange={handleComicPageChange}
-                onAddToComicPage={handleAddToComicPage}
+                onComicPageChange={onComicPageChange}
+                onAddToComicPage={onAddToComicPage}
                 isSaveComicDialogOpen={isSaveComicDialogOpen}
                 setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
                 comicTitle={comicTitle}
@@ -404,3 +401,4 @@ export default function Home() {
         </>
     );
 }
+
