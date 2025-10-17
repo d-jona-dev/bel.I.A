@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, ActiveCombat, PlayerInventoryItem, LootedItem, PlayerSkill, Combatant, MapPointOfInterest, GeneratedResource, Familiar, FamiliarPassiveBonus, AiConfig, ImageTransform, PlayerAvatar, TimeManagementSettings, ComicPage, Panel, Bubble, SellingItem, BaseItem, BaseFamiliarComponent, EnemyUnit, LocalizedText } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, AiConfig, LocalizedText } from "@/types";
 import { PageStructure } from "./page.structure";
 import { GameClock } from "@/lib/game-clock"; // NOUVEAU: Import de GameClock
 
@@ -12,7 +12,7 @@ import { useAdventureState, getLocalizedText } from "@/hooks/systems/useAdventur
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
 
-import { AdventureForm, type AdventureFormValues, type AdventureFormHandle, type FormCharacterDefinition } from '@/components/adventure-form';
+import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 
 import {
   AlertDialog,
@@ -60,11 +60,9 @@ export default function Home() {
     
     // UI and loading states
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
-    const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
-
     const playerName = adventureSettings.playerName || "Player";
     
     // NOUVEAU: Logique pour avancer le temps
@@ -86,7 +84,8 @@ export default function Home() {
         regenerateLastResponse,
         suggestQuestHookAction,
         materializeCharacterAction,
-        summarizeHistory,
+        memorizeEventAction,
+        isSuggestingQuest,
         generateSceneImageActionWrapper,
     } = useAIActions({
         adventureSettings,
@@ -101,17 +100,6 @@ export default function Home() {
         onTurnEnd: advanceTime,
     });
     
-    const handleNewCharacters = React.useCallback((newChars: Omit<Character, 'id'>[]) => {
-      setCharacters(prev => [
-          ...prev, 
-          ...newChars.map(char => ({ 
-              ...char, 
-              id: `char-${char.name.toLowerCase().replace(/\s/g, '-')}-${Math.random().toString(36).slice(2, 8)}`,
-              locationId: adventureSettings.playerLocationId,
-          }))
-      ]);
-    }, [adventureSettings.playerLocationId, setCharacters]);
-
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
         if (isLoading) return;
         setIsLoading(true);
@@ -130,22 +118,10 @@ export default function Home() {
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
     
-    const onSummarizeHistory = React.useCallback(async (narrativeContext: string) => {
+    const onMemorizeEvent = React.useCallback(async (narrativeContext: string) => {
         if (isLoading) return;
-        setIsLoading(true);
-        try {
-          await summarizeHistory(narrativeContext);
-        } catch (error) {
-          console.error("Caught error in onSummarizeHistory:", error);
-          toast({
-            title: "Erreur de Mémorisation",
-            description: error instanceof Error ? error.message : "Une erreur inattendue est survenue.",
-            variant: "destructive"
-          });
-        } finally {
-            setIsLoading(false);
-        }
-    }, [isLoading, toast, setIsLoading, summarizeHistory]);
+        await memorizeEventAction(narrativeContext);
+    }, [isLoading, memorizeEventAction]);
 
     const {
         comicDraft,
@@ -199,18 +175,18 @@ export default function Home() {
         }
     }, []);
 
-    const handleUndoLastMessage = (setUserInputAction: (text: string) => void) => {
-        if (narrativeMessages.length < 2) {
-            toast({ title: "Annulation impossible", description: "Il n'y a pas assez de messages à annuler.", variant: "destructive" });
+    const handleUndoLastMessage = (
+        setUserInputAction: (text: string) => void,
+        setMessages: React.Dispatch<React.SetStateAction<Message[]>>
+    ) => {
+        const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
+        if (lastUserMessageIndex === -1) {
+            toast({ title: "Annulation impossible", description: "Aucune action de l'utilisateur à annuler.", variant: "destructive" });
             return;
         }
-
-        const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
-        if (lastUserMessageIndex === -1) return;
         
         const lastUserMessage = narrativeMessages[lastUserMessageIndex];
-        
-        setNarrativeMessages(prev => prev.slice(0, lastUserMessageIndex));
+        setMessages(narrativeMessages.slice(0, lastUserMessageIndex));
         
         const restoredCharacters = undoLastCharacterState();
         if (restoredCharacters) {
@@ -268,7 +244,6 @@ export default function Home() {
             return newLiveSettings;
         });
 
-        // Le reste de la logique de mise à jour des personnages
         setCharacters(prevCharacters => {
             const formCharactersMap = new Map((formData.characters || []).map(fc => [fc.id, fc]));
             let updatedCharacters = prevCharacters.map(char => {
@@ -278,7 +253,7 @@ export default function Home() {
                     return { ...char, ...formCharData };
                 }
                 return char;
-            }).filter(c => !c.isPlaceholder); // On filtre les placeholders au moment de la sauvegarde
+            }).filter(c => !c.isPlaceholder);
             formCharactersMap.forEach(newChar => {
                 if (!newChar.isPlaceholder) {
                     updatedCharacters.push(newChar as Character);
@@ -323,8 +298,8 @@ export default function Home() {
             factionColor: c.factionColor,
             affinity: c.affinity,
             relations: c.relations,
+            memory: c.memory,
         })),
-        // NOUVEAU: S'assurer que timeManagement est toujours un objet
         timeManagement: adventureSettings.timeManagement || createInitialState().adventureSettings.timeManagement,
     }), [adventureSettings, characters]);
     
@@ -353,7 +328,7 @@ export default function Home() {
                 handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
                 handleCharacterUpdate={handleCharacterUpdate}
                 onMaterializeCharacter={onMaterializeCharacter}
-                onSummarizeHistory={onSummarizeHistory}
+                onSummarizeHistory={onMemorizeEvent}
                 handleSaveNewCharacter={(char) => {
                   try {
                     const globalChars = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
@@ -372,7 +347,9 @@ export default function Home() {
                 setCurrentLanguage={handleSetCurrentLanguage}
                 translateTextAction={async () => ({ translatedText: '' })}
                 generateSceneImageAction={generateSceneImageActionWrapper}
-                handleEditMessage={() => {}}
+                handleEditMessage={(messageId, newContent) => {
+                    setNarrativeMessages(prev => prev.map(m => m.id === messageId ? {...m, content: newContent} : m));
+                }}
                 handleRegenerateLastResponse={regenerateLastResponse}
                 playerId={PLAYER_ID}
                 playerName={playerName}
@@ -401,4 +378,3 @@ export default function Home() {
         </>
     );
 }
-

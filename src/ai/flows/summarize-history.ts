@@ -1,79 +1,75 @@
 
 'use server';
 /**
- * @fileOverview Summarizes key events from a narrative context for a character's history.
+ * @fileOverview Summarizes a key event from a narrative context into a single memory entry.
  */
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
-import type { CharacterUpdateSchema } from '@/types';
 
 // Input Schema for the flow
-const SummarizeHistoryInputSchema = z.object({
+const MemorizeEventInputSchema = z.object({
   narrativeContext: z.string().describe("The surrounding text from the adventure where an event occurred. This provides context for the AI."),
   involvedCharacters: z.array(z.string()).describe("A list of names of characters involved in the event."),
   currentLanguage: z.string().describe("The language for the output summary."),
 });
-export type SummarizeHistoryInput = z.infer<typeof SummarizeHistoryInputSchema>;
+export type MemorizeEventInput = z.infer<typeof MemorizeEventInputSchema>;
 
-// The output is an array of history entries
-const SummarizeHistoryOutputSchema = z.array(
-    z.object({
-        characterName: z.string().describe("The name of the character whose history is being updated."),
-        historyEntry: z.string().describe("The summarized event or quote to be added to the character's history log. MUST be in the specified language."),
-    })
-);
-
-export type SummarizeHistoryOutput = z.infer<typeof SummarizeHistoryOutputSchema>;
+// The output is a single summary string
+const MemorizeEventOutputSchema = z.object({
+    memory: z.string().describe("A concise summary of the key event, decision, or quote from the context. This should be a single, self-contained sentence or two. MUST be in the specified language."),
+    involvedCharacterNames: z.array(z.string()).describe("The names of the characters who are primarily involved in this memory.")
+});
+export type MemorizeEventOutput = z.infer<typeof MemorizeEventOutputSchema>;
 
 
 // The prompt definition
-const summarizeHistoryPrompt = ai.definePrompt({
-    name: 'summarizeHistoryPrompt',
-    input: { schema: SummarizeHistoryInputSchema },
-    output: { schema: SummarizeHistoryOutputSchema },
+const memorizeEventPrompt = ai.definePrompt({
+    name: 'memorizeEventPrompt',
+    input: { schema: MemorizeEventInputSchema },
+    output: { schema: MemorizeEventOutputSchema },
     prompt: `You are a meticulous archivist for a text-based adventure game.
-Your task is to read the provided narrative context and identify the most significant actions or quotes for each of the involved characters.
-Create a concise summary for each character to be added to their personal history log.
+Your task is to read the provided narrative context and create ONE single, concise summary of the most significant event.
+This summary will be added to the memory of the involved characters.
 
-- Focus on actions, decisions, or impactful dialogue.
-- The summary should be short and to the point.
-- Each summary MUST be in the language '{{currentLanguage}}'.
-- If a character is mentioned but has no significant action, do not create an entry for them.
+- Focus on the core action, decision, or impactful dialogue.
+- The summary should be short (1-2 sentences) and written in the third person.
+- The summary MUST be in the language '{{currentLanguage}}'.
+- Identify who was primarily involved and list their names in 'involvedCharacterNames'.
 
-Characters involved: {{#each involvedCharacters}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}.
+Characters available: {{#each involvedCharacters}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}.
 
 Here is the narrative context to analyze:
 "{{{narrativeContext}}}"
 
-CRITICAL: Provide ONLY a JSON array of history entries. Do not add any extra text or explanations.
+CRITICAL: Provide ONLY the JSON object for the summarized event. Do not add any extra text or explanations.
 Example output:
-[
-    { "characterName": "Rina", "historyEntry": "A semblé troublée par la question du joueur." },
-    { "characterName": "Kentaro", "historyEntry": "A défendu Rina et a changé de sujet." }
-]`,
+{
+    "memory": "Kentaro a défendu Rina lorsque le joueur l'a confrontée à propos de leur proximité.",
+    "involvedCharacterNames": ["Kentaro", "Rina"]
+}`,
 });
 
 
 // The main flow function
-export const summarizeHistory = ai.defineFlow(
+export const memorizeEvent = ai.defineFlow(
   {
-    name: 'summarizeHistory',
-    inputSchema: SummarizeHistoryInputSchema,
-    outputSchema: SummarizeHistoryOutputSchema,
+    name: 'memorizeEvent',
+    inputSchema: MemorizeEventInputSchema,
+    outputSchema: MemorizeEventOutputSchema,
   },
-  async (input): Promise<SummarizeHistoryOutput> => {
+  async (input): Promise<MemorizeEventOutput> => {
     try {
-      const { output } = await summarizeHistoryPrompt(input);
+      const { output } = await memorizeEventPrompt(input);
 
-      if (!output) {
+      if (!output?.memory) {
          throw new Error(`L'IA n'a pas réussi à résumer l'événement.`);
       }
 
       return output;
       
     } catch (e: any) {
-      console.error("Error in summarizeHistory flow:", e);
+      console.error("Error in memorizeEvent flow:", e);
       const errorMessage = e.message || String(e);
        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
              throw new Error("Le quota de l'API a été dépassé. Veuillez réessayer plus tard.");
@@ -81,10 +77,7 @@ export const summarizeHistory = ai.defineFlow(
         if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
              throw new Error("Le modèle d'IA est actuellement surchargé. Veuillez réessayer.");
         }
-      // Re-throw the error to be caught by the calling function in page.tsx
-      throw new Error(`Erreur lors de la mémorisation de l'historique : ${errorMessage}`);
+      throw new Error(`Erreur lors de la mémorisation de l'événement : ${errorMessage}`);
     }
   }
 );
-
-    

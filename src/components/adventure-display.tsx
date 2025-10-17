@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3 } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -65,7 +65,7 @@ interface AdventureDisplayProps {
     currentLanguage: string;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
-    onUndoLastMessage: (setUserInputAction: (text: string) => void) => void;
+    onUndoLastMessage: (setUserInputAction: (text: string) => void, setMessages: React.Dispatch<React.SetStateAction<Message[]>>) => void;
     onMaterializeCharacter: (narrativeContext: string) => Promise<void>;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
@@ -265,7 +265,7 @@ export function AdventureDisplay({
   };
 
   const handleUndo = () => {
-    onUndoLastMessage(setUserAction);
+    onUndoLastMessage(setUserAction, setMessages);
   };
 
 
@@ -447,7 +447,7 @@ export function AdventureDisplay({
                                           <div className={`relative rounded-lg p-3 max-w-[80%] text-sm whitespace-pre-wrap break-words font-sans ${
                                                   message.type === 'user' ? 'bg-primary text-primary-foreground' : (message.type === 'ai' ? 'bg-muted' : 'bg-transparent border italic text-muted-foreground text-center w-full')
                                               }`}>
-                                                  {message.type === 'system' ? message.content : renderFormattedNarrative(message.content)}
+                                                  {renderFormattedNarrative(message.content)}
 
                                                   {message.type !== 'system' && !isFirstMessage && (
                                                       <div className={`absolute top-0 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
@@ -506,7 +506,7 @@ export function AdventureDisplay({
                                                                     <Tooltip>
                                                                         <TooltipTrigger asChild>
                                                                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleSummarizeHistory(message.content)}>
-                                                                                <BrainCircuit className="h-4 w-4" />
+                                                                                <MemoryStick className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
                                                                         <TooltipContent side="top">Mémoriser cet événement</TooltipContent>

@@ -14,8 +14,8 @@ import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { materializeCharacter } from "@/ai/flows/materialize-character";
 import type { MaterializeCharacterInput } from "@/ai/flows/materialize-character";
-import { summarizeHistory } from "@/ai/flows/summarize-history";
-import type { SummarizeHistoryInput, SummarizeHistoryOutput } from "@/ai/flows/summarize-history";
+import { memorizeEvent } from "@/ai/flows/summarize-history";
+import type { MemorizeEventInput, MemorizeEventOutput } from "@/ai/flows/summarize-history";
 import { getLocalizedText } from "@/hooks/systems/useAdventureState";
 
 const PLAYER_ID = "player";
@@ -48,26 +48,26 @@ export function useAIActions({
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
     
-    const handleCharacterHistoryUpdate = React.useCallback((updates: SummarizeHistoryOutput) => {
-        if (!updates || updates.length === 0) return;
+    const handleMemoryUpdate = React.useCallback((update: MemorizeEventOutput) => {
+        if (!update || !update.memory) return;
         setCharacters(prevChars => {
             let changed = false;
             const updatedChars = prevChars.map(char => {
-                const charUpdates = updates.filter(u => u.characterName.toLowerCase() === char.name.toLowerCase());
-                if (charUpdates.length > 0) {
+                if (update.involvedCharacterNames.includes(char.name)) {
                     changed = true;
-                    const newHistory = charUpdates.map(u => u.historyEntry);
-                    return { ...char, history: [...(char.history || []), ...newHistory].slice(-20) };
+                    const newMemory = `${char.memory || ''}\n- ${update.memory}`.trim();
+                    return { ...char, memory: newMemory };
                 }
                 return char;
             });
             if (changed) {
-                 toast({ title: "Souvenir Enregistré", description: `L'historique de ${updates.map(u => u.characterName).join(', ')} a été mis à jour.` });
+                 toast({ title: "Souvenir Enregistré", description: `La mémoire de ${update.involvedCharacterNames.join(', ')} a été mise à jour.` });
                 return updatedChars;
             }
             return prevChars;
         });
     }, [toast, setCharacters]);
+
 
     const handleAffinityUpdates = React.useCallback((updates: AffinityUpdateSchema[]) => {
         if (!adventureSettings.relationsMode || !updates || updates.length === 0) return;
@@ -177,7 +177,6 @@ export function useAIActions({
             return;
         }
         
-        // Call the generation action with the regeneration flag
         await generateAdventureAction(lastUserMessage.content, undefined, undefined, true);
 
     }, [narrativeMessages, isLoading, generateAdventureAction, toast]);
@@ -212,20 +211,21 @@ export function useAIActions({
         }
     }, [characters, currentLanguage, setCharacters, toast]);
     
-    const summarizeHistory = React.useCallback(async (narrativeContext: string) => {
+    const memorizeEventAction = React.useCallback(async (narrativeContext: string) => {
         setIsLoading(true);
         try {
-            const input: SummarizeHistoryInput = { narrativeContext, involvedCharacters: characters.map(c => c.name), currentLanguage };
-            const historyUpdates = await summarizeHistory(input);
-            if (historyUpdates && historyUpdates.length > 0) {
-                handleCharacterHistoryUpdate(historyUpdates);
+            const input: MemorizeEventInput = { narrativeContext, involvedCharacters: characters.map(c => c.name), currentLanguage };
+            const memoryUpdate = await memorizeEvent(input);
+            if (memoryUpdate?.memory) {
+                handleMemoryUpdate(memoryUpdate);
             }
         } catch (error) {
-            toast({ title: "Erreur de Mémorisation", variant: "destructive" });
+            toast({ title: "Erreur de Mémorisation", variant: "destructive", description: error instanceof Error ? error.message : "Erreur inconnue" });
         } finally {
             setIsLoading(false);
         }
-    }, [characters, currentLanguage, handleCharacterHistoryUpdate, toast, setIsLoading]);
+    }, [characters, currentLanguage, handleMemoryUpdate, toast, setIsLoading]);
+
 
     const generateSceneImageActionWrapper = React.useCallback(async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
         const result = await generateSceneImage(input, aiConfig);
@@ -238,7 +238,7 @@ export function useAIActions({
         regenerateLastResponse,
         suggestQuestHookAction,
         materializeCharacterAction,
-        summarizeHistory,
+        memorizeEventAction,
         isSuggestingQuest,
         generateSceneImageActionWrapper,
     };
