@@ -174,13 +174,17 @@ export function useAIActions({
             toast({ title: "Aucune action à régénérer", variant: "destructive" });
             return;
         }
-
+        
         setIsRegenerating(true);
-        // We don't call onTurnEnd here because we are redoing the same turn.
+        // Supprime la dernière réponse de l'IA avant de régénérer
+        setNarrativeMessages(prev => prev.filter(m => m.id !== narrativeMessages[narrativeMessages.length - 1].id));
+        
+        // Appelle la génération, qui gérera l'état isRegenerating
         await generateAdventureAction(lastUserMessage.content);
+        
         setIsRegenerating(false);
 
-    }, [narrativeMessages, isLoading, isRegenerating, generateAdventureAction, toast]);
+    }, [narrativeMessages, isLoading, isRegenerating, generateAdventureAction, toast, setNarrativeMessages]);
 
     const suggestQuestHookAction = React.useCallback(async () => {
         setIsSuggestingQuest(true);
