@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -19,6 +18,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
@@ -64,7 +64,7 @@ interface AdventureDisplayProps {
     currentLanguage: string;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
-    onUndoLastMessage: (setUserInputAction: (text: string) => void) => void;
+    onUndoLastMessage: () => void;
     onMaterializeCharacter: (narrativeContext: string) => Promise<void>;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
@@ -264,7 +264,11 @@ export function AdventureDisplay({
   };
 
   const handleUndo = () => {
-    onUndoLastMessage(setUserAction);
+    onUndoLastMessage();
+    const lastUserMessage = [...messages].reverse().find(m => m.type === 'user');
+    if (lastUserMessage) {
+        setUserAction(lastUserMessage.content);
+    }
   };
 
 
