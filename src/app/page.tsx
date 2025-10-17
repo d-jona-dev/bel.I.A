@@ -8,7 +8,7 @@ import { PageStructure } from "./page.structure";
 import { GameClock } from "@/lib/game-clock"; // NOUVEAU: Import de GameClock
 
 import { useComic } from "@/hooks/systems/useComic";
-import { useAdventureState, calculateEffectiveStats, getLocalizedText } from "@/hooks/systems/useAdventureState";
+import { useAdventureState, getLocalizedText } from "@/hooks/systems/useAdventureState";
 import { useSaveLoad } from "@/hooks/systems/useSaveLoad"; 
 import { useAIActions } from "@/hooks/systems/useAIActions";
 
@@ -54,6 +54,8 @@ export default function Home() {
         baseCharacters,
         setBaseCharacters,
         loadAdventureState: originalLoadAdventureState,
+        characterHistory,
+        undoLastCharacterState,
     } = useAdventureState();
     
     // UI and loading states
@@ -182,6 +184,30 @@ export default function Home() {
         }
     }, []);
 
+    const handleUndoLastMessage = () => {
+        const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
+        if (lastUserMessageIndex === -1) {
+            toast({ title: "Annulation impossible", description: "Aucune action de joueur à annuler.", variant: "destructive" });
+            return;
+        }
+
+        const lastUserMessage = narrativeMessages[lastUserMessageIndex];
+        const lastAiMessage = narrativeMessages[lastUserMessageIndex + 1];
+
+        // Restore character state from before the last action
+        const restoredCharacters = undoLastCharacterState();
+        if (restoredCharacters) {
+            setCharacters(restoredCharacters);
+        }
+
+        // Remove the last user message and the AI response that followed
+        setNarrativeMessages(prev => prev.slice(0, lastUserMessageIndex));
+
+        // Restore the user input text area
+        setUserAction(lastUserMessage.content);
+
+        toast({ title: "Dernière action annulée", description: "L'état précédent a été restauré." });
+    };
 
     // Le reste de la logique de `page.tsx` est préservé et adapté.
     // Les fonctions comme onRestartAdventure, handleApplyStagedChanges, etc.,
@@ -303,9 +329,9 @@ export default function Home() {
                 narrativeMessages={narrativeMessages}
                 currentLanguage={currentLanguage}
                 generateAdventureAction={async (text) => {
-                    // NOUVEAU: Injecter les infos de temps dans l'action d'IA
-                    await generateAdventureAction(text, gameClock.getState(), gameClock.getTimeTag());
+                    await generateAdventureAction(text);
                 }}
+                handleUndoLastMessage={handleUndoLastMessage}
                 // ...
                 onRestartAdventure={confirmRestartAdventure}
                 showRestartConfirm={showRestartConfirm}
@@ -343,7 +369,6 @@ export default function Home() {
                 generateSceneImageAction={generateSceneImageActionWrapper}
                 handleEditMessage={() => {}}
                 handleRegenerateLastResponse={regenerateLastResponse}
-                handleUndoLastMessage={() => {}}
                 playerId={PLAYER_ID}
                 playerName={playerName}
                 suggestQuestHookAction={suggestQuestHookAction}

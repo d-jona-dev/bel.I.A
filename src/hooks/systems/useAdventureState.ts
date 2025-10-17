@@ -64,6 +64,19 @@ export function useAdventureState() {
     const [baseAdventureSettings, setBaseAdventureSettings] = React.useState<AdventureSettings>(JSON.parse(JSON.stringify(initialState.adventureSettings)));
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(JSON.parse(JSON.stringify(initialState.characters)));
 
+    const [characterHistory, setCharacterHistory] = React.useState<Character[][]>([initialState.characters]);
+
+    React.useEffect(() => {
+        setCharacterHistory(prev => [...prev.slice(-10), characters]);
+    }, [characters]);
+
+    const undoLastCharacterState = (): Character[] | null => {
+        if (characterHistory.length < 2) return null;
+        const previousState = characterHistory[characterHistory.length - 2];
+        setCharacterHistory(prev => prev.slice(0, -1));
+        return previousState;
+    };
+
     const loadAdventureState = React.useCallback((data: SaveData) => {
         // Fusionne les paramètres chargés avec les valeurs par défaut pour éviter les `undefined`
         const settingsWithDefaults: AdventureSettings = {
@@ -79,13 +92,15 @@ export function useAdventureState() {
         };
         
         setAdventureSettings(settingsWithDefaults);
-        setCharacters(data.characters || []);
+        const loadedCharacters = data.characters || [];
+        setCharacters(loadedCharacters);
         setNarrativeMessages(data.narrative || createInitialState().narrative);
         setCurrentLanguage(data.currentLanguage || 'fr');
         setAiConfig(data.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
         
         setBaseAdventureSettings(JSON.parse(JSON.stringify(settingsWithDefaults)));
-        setBaseCharacters(JSON.parse(JSON.stringify(data.characters || [])));
+        setBaseCharacters(JSON.parse(JSON.stringify(loadedCharacters)));
+        setCharacterHistory([loadedCharacters]);
 
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
     }, [toast]);
@@ -129,6 +144,8 @@ export function useAdventureState() {
         setSellQuantity: () => {},
         getLocalizedText,
         computedStats: null, // Plus de stats complexes
+        characterHistory,
+        undoLastCharacterState,
     };
 }
 // La fonction calculateEffectiveStats est retirée car non pertinente
