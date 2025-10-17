@@ -351,21 +351,6 @@ export function PageStructure({
               </SidebarHeader>
               <ScrollArea className="flex-1">
                   <SidebarContent className="p-4 space-y-6">
-                      <Card>
-                          <CardHeader>
-                              <CardTitle className="text-base">Modes de Jeu</CardTitle>
-                              <CardDescription className="text-xs">Activez ou désactivez les systèmes de jeu.</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                              <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                  <div className="space-y-0.5">
-                                      <Label className="flex items-center gap-2 text-sm"><Heart className="h-4 w-4"/> Mode Relations</Label>
-                                  </div>
-                                  <Switch checked={adventureSettings.relationsMode} onCheckedChange={handleToggleRelationsMode} />
-                              </div>
-                          </CardContent>
-                      </Card>
-
 
                       <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
                           <AccordionItem value="adventure-config-accordion">

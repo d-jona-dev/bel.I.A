@@ -211,10 +211,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     
                     <PlayerCharacterConfig 
                         aiConfig={aiConfig} 
-                        initialValues={initialValues} 
                     />
                                         
-                    <NpcCharacterConfig relationsMode={relationsMode} strategyMode={strategyMode} />
+                    <NpcCharacterConfig relationsMode={relationsMode} />
 
                     <TimeConfig />
                 </div>

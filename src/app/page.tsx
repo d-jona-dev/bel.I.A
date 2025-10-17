@@ -173,15 +173,13 @@ export default function Home() {
         }
     }, []);
 
-    const handleUndoLastMessage = (
-    ) => {
+    const handleUndoLastMessage = () => {
         const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
         if (lastUserMessageIndex === -1) {
             toast({ title: "Annulation impossible", description: "Aucune action de l'utilisateur à annuler.", variant: "destructive" });
             return;
         }
         
-        const lastUserMessage = narrativeMessages[lastUserMessageIndex];
         const newMessages = narrativeMessages.slice(0, lastUserMessageIndex);
         setNarrativeMessages(newMessages); // Update parent state
         
@@ -301,7 +299,7 @@ export default function Home() {
     return (
         <>
             <PageStructure
-                adventureSettings={memoizedStagedAdventureSettingsForForm}
+                adventureSettings={adventureSettings}
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
                 narrativeMessages={narrativeMessages}
@@ -320,7 +318,7 @@ export default function Home() {
                 adventureFormRef={adventureFormRef}
                 fileInputRef={fileInputRef}
                 handleApplyStagedChanges={handleApplyStagedChanges}
-                handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
+                handleToggleRelationsMode={() => {}}
                 handleCharacterUpdate={handleCharacterUpdate}
                 onMaterializeCharacter={onMaterializeCharacter}
                 onSummarizeHistory={onSummarizeHistory}

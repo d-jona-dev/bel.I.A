@@ -11,9 +11,9 @@ const createInitialState = (): SaveData => ({
         world: { fr: "" },
         initialSituation: { fr: "" },
         rpgMode: false, // Forcé à false
-        relationsMode: true,
+        relationsMode: true, // Forcé à true
         strategyMode: false, // Forcé à false
-        comicModeActive: false,
+        comicModeActive: true, // Forcé à true
         playerName: "Héros",
         playerClass: "Aventurier", // Conservé pour le contexte
         playerLevel: 1, // Conservé pour le contexte
@@ -82,6 +82,8 @@ export function useAdventureState() {
           ...data.adventureSettings,
           rpgMode: false, // Forcer la désactivation
           strategyMode: false, // Forcer la désactivation
+          relationsMode: true, // Forcer l'activation
+          comicModeActive: true, // Forcer l'activation
           // S'assurer que timeManagement a toutes les clés
           timeManagement: {
             ...createInitialState().adventureSettings.timeManagement!,
