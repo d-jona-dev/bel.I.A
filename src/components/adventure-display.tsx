@@ -19,7 +19,6 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
@@ -62,11 +61,10 @@ interface AdventureDisplayProps {
     adventureSettings: AdventureSettings;
     characters: Character[];
     initialMessages: Message[];
-    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     currentLanguage: string;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
-    onUndoLastMessage: (setUserInputAction: (text: string) => void, setMessages: React.Dispatch<React.SetStateAction<Message[]>>) => void;
+    onUndoLastMessage: (setUserInputAction: (text: string) => void) => void;
     onMaterializeCharacter: (narrativeContext: string) => Promise<void>;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
@@ -136,7 +134,6 @@ export function AdventureDisplay({
     adventureSettings,
     characters,
     initialMessages,
-    setMessages,
     currentLanguage,
     onEditMessage,
     onRegenerateLastResponse,
@@ -165,7 +162,7 @@ export function AdventureDisplay({
     isLoading,
     timeState, // NOUVEAU
 }: AdventureDisplayProps) {
-  const [messages, _setMessages] = React.useState<Message[]>(initialMessages);
+  const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
   const [isImageLoading, setIsImageLoading] = React.useState<boolean>(false);
   
@@ -226,7 +223,7 @@ export function AdventureDisplay({
     };
 
     React.useEffect(() => {
-        _setMessages(initialMessages);
+        setMessages(initialMessages);
         
         const lastImageUrl = initialMessages.slice().reverse().find(m => m.imageUrl)?.imageUrl;
         if (lastImageUrl) {
@@ -267,7 +264,7 @@ export function AdventureDisplay({
   };
 
   const handleUndo = () => {
-    onUndoLastMessage(setUserAction, setMessages);
+    onUndoLastMessage(setUserAction);
   };
 
 

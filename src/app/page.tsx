@@ -129,9 +129,7 @@ export default function Home() {
         isSaveComicDialogOpen,
         comicTitle,
         comicCoverUrl,
-        isGeneratingCover,
         onDownloadComicDraft,
-        onGenerateCover,
         onAddComicPage,
         onAddComicPanel,
         onRemoveLastComicPanel,
@@ -140,6 +138,7 @@ export default function Home() {
         onAddToComicPage,
         setIsSaveComicDialogOpen,
         setComicTitle,
+        onGenerateCover,
         onSaveToLibrary,
     } = useComic({
         narrativeMessages,
@@ -175,8 +174,6 @@ export default function Home() {
     }, []);
 
     const handleUndoLastMessage = (
-        setUserInputAction: (text: string) => void,
-        setMessages: React.Dispatch<React.SetStateAction<Message[]>>
     ) => {
         const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
         if (lastUserMessageIndex === -1) {
@@ -187,15 +184,12 @@ export default function Home() {
         const lastUserMessage = narrativeMessages[lastUserMessageIndex];
         const newMessages = narrativeMessages.slice(0, lastUserMessageIndex);
         setNarrativeMessages(newMessages); // Update parent state
-        setMessages(newMessages); // Update local state in display
         
         const restoredCharacters = undoLastCharacterState();
         if (restoredCharacters) {
             setCharacters(restoredCharacters);
         }
         
-        setUserInputAction(lastUserMessage.content);
-
         toast({ title: "Dernière action annulée", description: "L'état précédent a été restauré." });
     };
 
@@ -311,7 +305,6 @@ export default function Home() {
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
                 narrativeMessages={narrativeMessages}
-                setMessages={setNarrativeMessages}
                 currentLanguage={currentLanguage}
                 generateAdventureAction={async (text) => {
                     await generateAdventureAction(text);
@@ -379,3 +372,5 @@ export default function Home() {
         </>
     );
 }
+
+    
