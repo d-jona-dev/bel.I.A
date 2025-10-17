@@ -7,7 +7,7 @@ import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, Ge
 import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
-import type { GenerateAdventureFlowOutput, AffinityUpdateSchema, RelationUpdateSchema } from "@/ai/flows/generate-adventure";
+import type { GenerateAdventureFlowOutput, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
 import { generateSceneImage } from "@/ai/flows/generate-scene-image";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import { suggestQuestHook } from "@/ai/flows/suggest-quest-hook";
@@ -47,7 +47,6 @@ export function useAIActions({
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
-    const [isRegenerating, setIsRegenerating] = React.useState(false);
     
     const handleCharacterHistoryUpdate = React.useCallback((updates: SummarizeHistoryOutput) => {
         if (!updates || updates.length === 0) return;
@@ -109,17 +108,16 @@ export function useAIActions({
         });
     }, [adventureSettings.relationsMode, adventureSettings.playerName, setCharacters]);
 
-    const generateAdventureAction = React.useCallback(async (userActionText: string, timeState?: GameClockState, timeTag?: string) => {
-        const loadingSetter = isRegenerating ? setIsRegenerating : setIsLoading;
-        loadingSetter(true);
+    const generateAdventureAction = React.useCallback(async (userActionText: string, timeState?: GameClockState, timeTag?: string, isRegeneration = false) => {
+        setIsLoading(true);
         
-        if (!isRegenerating) {
+        if (!isRegeneration) {
             onTurnEnd();
             const userMessage: Message = { id: `user-${Date.now()}`, type: 'user', content: userActionText, timestamp: Date.now() };
             setNarrativeMessages(prev => [...prev, userMessage]);
         }
 
-        const currentMessages = isRegenerating ? narrativeMessages.slice(0, -1) : [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
+        const currentMessages = [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
         
         const contextSituation = currentMessages.length > 1 
             ? currentMessages.slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') 
@@ -148,7 +146,11 @@ export function useAIActions({
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             } else {
                  setNarrativeMessages(prev => {
-                    const newMessages = isRegenerating ? prev.slice(0, -1) : prev;
+                    const newMessages = [...prev];
+                    if (isRegeneration) {
+                        // In regeneration, the last message (the old AI response) should be replaced.
+                        newMessages.pop();
+                    }
                     return [...newMessages, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage, speakingCharacterNames: result.speakingCharacterNames }];
                 });
                 if (adventureSettings.relationsMode) {
@@ -159,15 +161,15 @@ export function useAIActions({
         } catch (error) { 
             toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
         } finally {
-            loadingSetter(false);
+            setIsLoading(false);
         }
     }, [
         adventureSettings, characters, narrativeMessages, currentLanguage, aiConfig,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd, isRegenerating
+        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
-        if (isLoading || isRegenerating) return;
+        if (isLoading) return;
 
         const lastUserMessage = [...narrativeMessages].reverse().find(m => m.type === 'user');
         if (!lastUserMessage) {
@@ -175,16 +177,10 @@ export function useAIActions({
             return;
         }
         
-        setIsRegenerating(true);
-        // Supprime la dernière réponse de l'IA avant de régénérer
-        setNarrativeMessages(prev => prev.filter(m => m.id !== narrativeMessages[narrativeMessages.length - 1].id));
-        
-        // Appelle la génération, qui gérera l'état isRegenerating
-        await generateAdventureAction(lastUserMessage.content);
-        
-        setIsRegenerating(false);
+        // Call the generation action with the regeneration flag
+        await generateAdventureAction(lastUserMessage.content, undefined, undefined, true);
 
-    }, [narrativeMessages, isLoading, isRegenerating, generateAdventureAction, toast, setNarrativeMessages]);
+    }, [narrativeMessages, isLoading, generateAdventureAction, toast]);
 
     const suggestQuestHookAction = React.useCallback(async () => {
         setIsSuggestingQuest(true);
@@ -244,7 +240,6 @@ export function useAIActions({
         materializeCharacterAction,
         summarizeHistory,
         isSuggestingQuest,
-        isRegenerating,
         generateSceneImageActionWrapper,
     };
 }
