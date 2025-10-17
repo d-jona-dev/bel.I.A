@@ -86,7 +86,7 @@ export default function Home() {
         regenerateLastResponse,
         suggestQuestHookAction,
         materializeCharacterAction,
-        summarizeHistoryAction,
+        summarizeHistory,
         isSuggestingQuest,
         generateSceneImageActionWrapper,
     } = useAIActions({
@@ -137,7 +137,7 @@ export default function Home() {
         if (isLoading) return;
         setIsLoading(true);
         try {
-          await summarizeHistoryAction(narrativeContext);
+          await summarizeHistory(narrativeContext);
         } catch (error) {
           console.error("Caught error in onSummarizeHistory:", error);
           toast({
@@ -148,7 +148,7 @@ export default function Home() {
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading, toast, setIsLoading, summarizeHistoryAction]);
+    }, [isLoading, toast, setIsLoading, summarizeHistory]);
 
     const {
         comicDraft,
@@ -156,17 +156,17 @@ export default function Home() {
         isSaveComicDialogOpen,
         comicTitle,
         comicCoverUrl,
+        onDownloadComicDraft,
         isGeneratingCover,
-        handleDownloadComicDraft,
-        handleAddComicPage,
-        handleAddComicPanel,
-        handleRemoveLastComicPanel,
-        handleUploadToComicPanel,
+        onGenerateCover,
+        onAddComicPage,
+        onAddComicPanel,
+        onRemoveLastComicPanel,
+        onUploadToComicPanel,
         handleComicPageChange,
         handleAddToComicPage,
         setIsSaveComicDialogOpen,
         setComicTitle,
-        onGenerateCover,
         onSaveToLibrary,
     } = useComic({
         narrativeMessages,
@@ -308,6 +308,10 @@ export default function Home() {
         setCurrentLanguage(lang);
         localStorage.setItem('adventure_language', lang);
     }
+
+    const handleCharacterUpdate = (updatedCharacter: Character) => {
+        setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
+    };
   
     const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
         ...adventureSettings,
@@ -350,7 +354,7 @@ export default function Home() {
                 fileInputRef={fileInputRef}
                 handleApplyStagedChanges={handleApplyStagedChanges}
                 handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
-                handleCharacterUpdate={(char) => setCharacters(prev => prev.map(c => c.id === char.id ? char : c))}
+                handleCharacterUpdate={handleCharacterUpdate}
                 onMaterializeCharacter={onMaterializeCharacter}
                 onSummarizeHistory={onSummarizeHistory}
                 handleSaveNewCharacter={(char) => {
@@ -379,12 +383,13 @@ export default function Home() {
                 isSuggestingQuest={isSuggestingQuest}
                 useAestheticFont={useAestheticFont}
                 onToggleAestheticFont={() => setUseAestheticFont(v => !v)}
+                currentTurn={0}
                 comicDraft={comicDraft}
-                onDownloadComicDraft={handleDownloadComicDraft}
+                onDownloadComicDraft={onDownloadComicDraft}
                 onAddComicPage={handleAddComicPage}
                 onAddComicPanel={handleAddComicPanel}
                 onRemoveLastComicPanel={handleRemoveLastComicPanel}
-                onUploadToComicPanel={handleUploadToComicPanel}
+                onUploadToComicPanel={onUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={handleComicPageChange}
                 onAddToComicPage={handleAddToComicPage}
