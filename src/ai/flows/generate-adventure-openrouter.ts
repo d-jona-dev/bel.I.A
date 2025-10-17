@@ -43,9 +43,7 @@ function buildOpenRouterPrompt(
     Commence ta narration directement, sans répéter l'action du joueur.
     RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.`;
     
-    if (input.comicModeActive) {
-        mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure. Identifie les personnages qui parlent (jusqu'à 3) dans \`speakingCharacterNames\`.`;
-    }
+    mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
 
     const systemPromptContent = `Tu es un assistant IA qui répond TOUJOURS au format JSON. Ne fournis aucun texte en dehors de l'objet JSON.`;
     
@@ -55,7 +53,6 @@ function buildOpenRouterPrompt(
 \`\`\`json
 {
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "speakingCharacterNames": ["Rina", "Kentaro"],
     "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
     "affinityUpdates": [
         { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
@@ -110,7 +107,7 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         ...input,
         characters: processedCharacters,
         relationsModeActive: input.relationsModeActive ?? true,
-        comicModeActive: input.comicModeActive ?? false,
+        comicModeActive: input.comicModeActive ?? true,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,

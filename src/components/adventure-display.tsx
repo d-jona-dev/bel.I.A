@@ -265,10 +265,6 @@ export function AdventureDisplay({
 
   const handleUndo = () => {
     onUndoLastMessage();
-    const lastUserMessage = [...messages].reverse().find(m => m.type === 'user');
-    if (lastUserMessage) {
-        setUserAction(lastUserMessage.content);
-    }
   };
 
 
@@ -424,12 +420,11 @@ export function AdventureDisplay({
                                   const isLastAiMessage = isLastMessage && message.type === 'ai';
                                   const isFirstMessage = index === 0;
                                   
-                                  const speakers = (message.type === 'ai' && message.speakingCharacterNames)
-                                    ? message.speakingCharacterNames
-                                        .map(name => characters.find(c => c.name === name))
-                                        .filter((c): c is Character => !!c)
-                                        .slice(0, 3)
-                                    : [];
+                                  const speakers = (message.type === 'ai' && message.content)
+                                      ? characters.filter(c => 
+                                            new RegExp(`\\b${c.name}\\b`, 'i').test(message.content)
+                                        ).slice(0,3)
+                                      : [];
 
                                   return (
                                       <div key={message.id} className="group relative flex flex-col">

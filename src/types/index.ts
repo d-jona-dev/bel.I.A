@@ -19,7 +19,6 @@ export interface Message {
   sceneDescription?: string;
   imageUrl?: string | null;
   imageTransform?: ImageTransform;
-  speakingCharacterNames?: string[];
 }
 
 export interface Character {
@@ -192,7 +191,7 @@ export const GenerateAdventureInputSchema = z.object({
   currentLanguage: z.string(),
   playerName: z.string(),
   relationsModeActive: z.boolean().optional().default(true),
-  comicModeActive: z.boolean().optional().default(false),
+  comicModeActive: z.boolean().optional().default(true),
   playerFaceSwapEnabled: z.boolean().optional(),
   playerPortraitUrl: z.string().nullable().optional(),
   aiConfig: z.any().optional(), // Keep it flexible
@@ -227,7 +226,6 @@ export type RelationUpdateSchema = z.infer<typeof RelationUpdateSchema>;
 
 export const GenerateAdventureOutputSchema = z.object({
   narrative: z.string(),
-  speakingCharacterNames: z.array(z.string()).optional(),
   sceneDescriptionForImage: z.string().optional(),
   affinityUpdates: z.array(AffinityUpdateSchema).optional(),
   relationUpdates: z.array(RelationUpdateSchema).optional(),
@@ -245,4 +243,3 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
-

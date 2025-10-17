@@ -14,7 +14,6 @@ export type GenerateAdventureFlowOutput = GenerateAdventureOutput & { error?: st
 const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     narrative: errorMsg ? "" : "An error occurred, narrative could not be generated.",
     sceneDescriptionForImage: undefined,
-    speakingCharacterNames: [],
     affinityUpdates: [],
     relationUpdates: [],
     error: errorMsg,
@@ -53,7 +52,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         ...input,
         characters: processedCharacters,
         relationsModeActive: input.relationsModeActive ?? true,
-        comicModeActive: input.comicModeActive ?? false,
+        comicModeActive: input.comicModeActive ?? true,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
         playerFaceSwapEnabled: input.playerFaceSwapEnabled,
@@ -75,9 +74,7 @@ const prompt = ai.definePrompt({
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 
-{{#if comicModeActive}}
-**COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration. Identify which characters are the main speakers or focus of the scene and put their names in the \`speakingCharacterNames\` field (up to 3 characters).**
-{{/if}}
+**COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.**
 
 World: {{{world}}}
 
@@ -107,7 +104,6 @@ Player Face Reference: {{media url=playerPortraitUrl}}
   {{#if this.biographyNotes}}
   Biographie/Notes (pour contexte interne, ne pas révéler directement): {{{this.biographyNotes}}}
   {{/if}}
-  {{#if ../relationsModeActive}}
   Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
     0-10 (Hate): Actively hostile, insulting.
     11-30 (Hostile): Disdainful, obstructive.
@@ -117,9 +113,6 @@ Player Face Reference: {{media url=playerPortraitUrl}}
     71-90 (Loyal): Trusting, supportive.
     91-100 (Devoted): Self-sacrificing, deep affection.
   Relationship Statuses: {{{this.relationsSummary}}}. These define the *nature* of the bond. If a relation is "Inconnu", try to define it based on current interactions.
-  {{else}}
-  (Relations and affinity mode is disabled. Character behavior based on description and narrative context only.)
-  {{/if}}
   **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description and Affinity. Their style of speech (vocabulary, tone, formality) must also align.**
 {{else}}
 **No other characters are currently present.**
@@ -132,7 +125,6 @@ Tasks:
 2.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe the setting, mood, and characters by appearance, not name.
 3.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 4.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
-5.  **Identify Speakers:** In the \`speakingCharacterNames\` field, provide an array of names (up to 3) of characters who are the primary speakers or focus of the narrative segment.
 
 **CRITICAL RULE: The game engine is the master of time. DO NOT mention the time, the day, or how much time has passed in your narrative. Your ONLY job is to narrate the immediate consequences of the user action.**
 **VERY IMPORTANT: You are NO LONGER responsible for detecting new characters. This is handled by a separate user action.**
@@ -155,7 +147,6 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         const cleanOutput: GenerateAdventureOutput = {
             narrative: output.narrative,
             sceneDescriptionForImage: output.sceneDescriptionForImage,
-            speakingCharacterNames: output.speakingCharacterNames,
             affinityUpdates: output.affinityUpdates,
             relationUpdates: output.relationUpdates,
         };
