@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -130,8 +129,8 @@ export default function Home() {
         isSaveComicDialogOpen,
         comicTitle,
         comicCoverUrl,
-        onDownloadComicDraft,
         isGeneratingCover,
+        onDownloadComicDraft,
         onGenerateCover,
         onAddComicPage,
         onAddComicPanel,
