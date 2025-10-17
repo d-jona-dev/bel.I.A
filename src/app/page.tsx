@@ -204,7 +204,7 @@ export default function Home() {
         toast({ title: "Aventure Recommencée", description: "L'histoire a été réinitialisée." });
         setShowRestartConfirm(false);
     });
-  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages, getLocalizedText]);
+  }, [baseAdventureSettings, baseCharacters, toast, currentLanguage, setAdventureSettings, setCharacters, setNarrativeMessages]);
 
   const onRestartAdventure = React.useCallback(() => {
     setShowRestartConfirm(true);
@@ -317,6 +317,7 @@ export default function Home() {
                 timeState={timeState}
                 // ...
                 adventureFormRef={adventureFormRef}
+                fileInputRef={fileInputRef}
                 handleApplyStagedChanges={handleApplyStagedChanges}
                 handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
                 handleCharacterUpdate={(char) => setCharacters(prev => prev.map(c => c.id === char.id ? char : c))}
