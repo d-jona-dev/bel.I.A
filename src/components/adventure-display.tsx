@@ -65,7 +65,7 @@ interface AdventureDisplayProps {
     currentLanguage: string;
     onEditMessage: (messageId: string, newContent: string, newImageTransform?: ImageTransform, newImageUrl?: string) => void;
     onRegenerateLastResponse: () => Promise<void>;
-    onUndoLastMessage: () => void;
+    onUndoLastMessage: (setUserInputAction: (text: string) => void) => void;
     onMaterializeCharacter: (narrativeContext: string) => Promise<void>;
     onRestartAdventure: () => void;
     isSuggestingQuest: boolean;
@@ -265,11 +265,7 @@ export function AdventureDisplay({
   };
 
   const handleUndo = () => {
-    const lastUserMessage = [...messages].reverse().find(m => m.type === 'user');
-    if (lastUserMessage) {
-        setUserAction(lastUserMessage.content);
-    }
-    onUndoLastMessage();
+    onUndoLastMessage(setUserAction);
   };
 
 
