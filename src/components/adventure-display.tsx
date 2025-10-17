@@ -264,6 +264,14 @@ export function AdventureDisplay({
     }
   };
 
+  const handleUndo = () => {
+    const lastUserMessage = [...messages].reverse().find(m => m.type === 'user');
+    if (lastUserMessage) {
+        setUserAction(lastUserMessage.content);
+    }
+    onUndoLastMessage();
+  };
+
 
   const handleGenerateImage = async (message: Message) => {
      const descriptionForImage = message.sceneDescription;
@@ -556,7 +564,7 @@ export function AdventureDisplay({
                          <TooltipProvider>
                              <Tooltip>
                                  <TooltipTrigger asChild>
-                                     <Button type="button" variant="outline" size="icon" onClick={onUndoLastMessage} disabled={isLoading || !canUndo}>
+                                     <Button type="button" variant="outline" size="icon" onClick={handleUndo} disabled={isLoading || !canUndo}>
                                          <Trash2Icon className="h-5 w-5" />
                                      </Button>
                                  </TooltipTrigger>

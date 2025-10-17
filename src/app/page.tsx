@@ -60,6 +60,7 @@ export default function Home() {
     
     // UI and loading states
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
+    const [isRegenerating, setIsRegenerating] = React.useState(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
@@ -85,9 +86,8 @@ export default function Home() {
         regenerateLastResponse,
         suggestQuestHookAction,
         materializeCharacterAction,
-        summarizeHistory,
+        summarizeHistoryAction,
         isSuggestingQuest,
-        isRegenerating,
         generateSceneImageActionWrapper,
     } = useAIActions({
         adventureSettings,
@@ -97,9 +97,10 @@ export default function Home() {
         aiConfig,
         isLoading,
         setIsLoading,
+        isRegenerating,
+        setIsRegenerating,
         setNarrativeMessages,
         setCharacters,
-        // NOUVEAU: Passer la fonction pour avancer le temps
         onTurnEnd: advanceTime,
     });
     
@@ -131,6 +132,23 @@ export default function Home() {
             setIsLoading(false);
         }
     }, [isLoading, toast, setIsLoading, materializeCharacterAction]);
+    
+    const onSummarizeHistory = React.useCallback(async (narrativeContext: string) => {
+        if (isLoading) return;
+        setIsLoading(true);
+        try {
+          await summarizeHistoryAction(narrativeContext);
+        } catch (error) {
+          console.error("Caught error in onSummarizeHistory:", error);
+          toast({
+            title: "Erreur de Mémorisation",
+            description: error instanceof Error ? error.message : "Une erreur inattendue est survenue.",
+            variant: "destructive"
+          });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [isLoading, toast, setIsLoading, summarizeHistoryAction]);
 
     const {
         comicDraft,
@@ -148,8 +166,8 @@ export default function Home() {
         handleAddToComicPage,
         setIsSaveComicDialogOpen,
         setComicTitle,
-        handleGenerateCover,
-        handleSaveToLibrary,
+        onGenerateCover,
+        onSaveToLibrary,
     } = useComic({
         narrativeMessages,
         generateSceneImageAction: generateSceneImageActionWrapper,
@@ -184,34 +202,29 @@ export default function Home() {
         }
     }, []);
 
-    const handleUndoLastMessage = () => {
-        const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
-        if (lastUserMessageIndex === -1) {
-            toast({ title: "Annulation impossible", description: "Aucune action de joueur à annuler.", variant: "destructive" });
+    const handleUndoLastMessage = (setUserInputAction: (text: string) => void) => {
+        if (narrativeMessages.length < 2) {
+            toast({ title: "Annulation impossible", description: "Il n'y a pas assez de messages à annuler.", variant: "destructive" });
             return;
         }
 
+        const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
+        if (lastUserMessageIndex === -1) return;
+        
         const lastUserMessage = narrativeMessages[lastUserMessageIndex];
-        const lastAiMessage = narrativeMessages[lastUserMessageIndex + 1];
-
-        // Restore character state from before the last action
+        
+        setNarrativeMessages(prev => prev.slice(0, lastUserMessageIndex));
+        
         const restoredCharacters = undoLastCharacterState();
         if (restoredCharacters) {
             setCharacters(restoredCharacters);
         }
-
-        // Remove the last user message and the AI response that followed
-        setNarrativeMessages(prev => prev.slice(0, lastUserMessageIndex));
-
-        // Restore the user input text area
-        setUserAction(lastUserMessage.content);
+        
+        setUserInputAction(lastUserMessage.content);
 
         toast({ title: "Dernière action annulée", description: "L'état précédent a été restauré." });
     };
 
-    // Le reste de la logique de `page.tsx` est préservé et adapté.
-    // Les fonctions comme onRestartAdventure, handleApplyStagedChanges, etc.,
-    // doivent maintenant aussi réinitialiser l'état de l'horloge.
 
   const confirmRestartAdventure = React.useCallback(() => {
     React.startTransition(() => {
@@ -314,15 +327,9 @@ export default function Home() {
         timeManagement: adventureSettings.timeManagement || createInitialState().adventureSettings.timeManagement,
     }), [adventureSettings, characters]);
     
-    // Le reste des props et de la logique
-    // ...
-    // Le reste du composant reste largement inchangé, mais on passe les nouvelles props
-    // à PageStructure, comme `timeState`
-    
     return (
         <>
             <PageStructure
-                // ... autres props
                 adventureSettings={memoizedStagedAdventureSettingsForForm}
                 characters={characters}
                 stagedAdventureSettings={memoizedStagedAdventureSettingsForForm}
@@ -332,23 +339,20 @@ export default function Home() {
                     await generateAdventureAction(text);
                 }}
                 handleUndoLastMessage={handleUndoLastMessage}
-                // ...
                 onRestartAdventure={confirmRestartAdventure}
                 showRestartConfirm={showRestartConfirm}
                 setShowRestartConfirm={setShowRestartConfirm}
                 isLoading={isLoading || isRegenerating}
                 aiConfig={aiConfig}
                 onAiConfigChange={handleAiConfigChange}
-                // NOUVEAU: Passer l'état du temps à l'affichage
                 timeState={timeState}
-                // ...
                 adventureFormRef={adventureFormRef}
                 fileInputRef={fileInputRef}
                 handleApplyStagedChanges={handleApplyStagedChanges}
                 handleToggleRelationsMode={() => setAdventureSettings(p => ({...p, relationsMode: !p.relationsMode}))}
                 handleCharacterUpdate={(char) => setCharacters(prev => prev.map(c => c.id === char.id ? char : c))}
                 onMaterializeCharacter={onMaterializeCharacter}
-                onSummarizeHistory={summarizeHistory}
+                onSummarizeHistory={onSummarizeHistory}
                 handleSaveNewCharacter={(char) => {
                   try {
                     const globalChars = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
@@ -375,13 +379,12 @@ export default function Home() {
                 isSuggestingQuest={isSuggestingQuest}
                 useAestheticFont={useAestheticFont}
                 onToggleAestheticFont={() => setUseAestheticFont(v => !v)}
-                currentTurn={narrativeMessages.length}
                 comicDraft={comicDraft}
                 onDownloadComicDraft={handleDownloadComicDraft}
                 onAddComicPage={handleAddComicPage}
                 onAddComicPanel={handleAddComicPanel}
                 onRemoveLastComicPanel={handleRemoveLastComicPanel}
-                onUploadToComicPanel={()=>{}}
+                onUploadToComicPanel={handleUploadToComicPanel}
                 currentComicPageIndex={currentComicPageIndex}
                 onComicPageChange={handleComicPageChange}
                 onAddToComicPage={handleAddToComicPage}
@@ -390,12 +393,9 @@ export default function Home() {
                 comicTitle={comicTitle}
                 setComicTitle={setComicTitle}
                 comicCoverUrl={comicCoverUrl}
-                onGenerateCover={handleGenerateCover}
-                onSaveToLibrary={handleSaveToLibrary}
+                onGenerateCover={onGenerateCover}
+                onSaveToLibrary={onSaveToLibrary}
             />
         </>
     );
 }
-
-// Les fonctions et hooks supprimés ou modifiés ne sont pas inclus
-// pour garder le code propre à la nouvelle implémentation.

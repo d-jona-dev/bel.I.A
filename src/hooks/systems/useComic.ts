@@ -200,7 +200,7 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
         handleAddToComicPage,
         setIsSaveComicDialogOpen: handleSetIsSaveComicDialogOpen,
         setComicTitle,
-        handleGenerateCover,
-        handleSaveToLibrary,
+        onGenerateCover: handleGenerateCover,
+        onSaveToLibrary: handleSaveToLibrary,
     };
 }
