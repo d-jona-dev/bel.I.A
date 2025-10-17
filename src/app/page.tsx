@@ -310,7 +310,7 @@ export default function Home() {
                 onRestartAdventure={confirmRestartAdventure}
                 showRestartConfirm={showRestartConfirm}
                 setShowRestartConfirm={setShowRestartConfirm}
-                isLoading={isLoading || isRegenerating || isSuggestingQuest}
+                isLoading={isLoading || isRegenerating}
                 aiConfig={aiConfig}
                 onAiConfigChange={handleAiConfigChange}
                 // NOUVEAU: Passer l'état du temps à l'affichage
