@@ -88,6 +88,7 @@ interface AdventureDisplayProps {
     onSaveToLibrary: () => void;
     isLoading: boolean;
     timeState: GameClockState; // NOUVEAU
+    isGeneratingCover: boolean;
 }
 
 interface CustomImageStyle {
@@ -161,6 +162,7 @@ export function AdventureDisplay({
     onSaveToLibrary,
     isLoading,
     timeState, // NOUVEAU
+    isGeneratingCover,
 }: AdventureDisplayProps) {
   const [messages, setMessages] = React.useState<Message[]>(initialMessages);
   const [userAction, setUserAction] = React.useState<string>("");
