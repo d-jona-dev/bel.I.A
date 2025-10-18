@@ -45,8 +45,9 @@ function buildOpenRouterPrompt(
     
     mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
     
-    // NEW INSTRUCTION FOR SCENE DESCRIPTION
-    mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :** Fournis une description MINIMALE en ANGLAIS. Concentre-toi sur "qui fait quoi, où". N'inclus PAS la description physique des personnages (couleur de cheveux, vêtements, etc.).`;
+    mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :** Fournis une description MINIMALE en ANGLAIS. Concentre-toi sur "qui fait quoi, où". N'inclus PAS la description physique des personnages.`;
+    
+    mainInstruction += `\n**Pour \`newEvent\` :** Si la narration implique un changement d'événement (ex: la classe se termine), décris-le brièvement. Sinon, laisse ce champ vide.`;
 
     const systemPromptContent = `Tu es un assistant IA qui répond TOUJOURS au format JSON. Ne fournis aucun texte en dehors de l'objet JSON.`;
     
@@ -56,18 +57,16 @@ function buildOpenRouterPrompt(
 \`\`\`json
 {
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "sceneDescriptionForImage": "Rina and Kentaro are arguing in a classroom.",
-    "affinityUpdates": [
-        { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
-    ],
-    "relationUpdates": []
+    "sceneDescriptionForImage": { "action": "Rina and Kentaro are arguing in a classroom." },
+    "affinityUpdates": [ { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." } ],
+    "relationUpdates": [],
+    "newEvent": "Fin du cours"
 }
 \`\`\`
 
 **Règles importantes pour le JSON :**
-- Remplis chaque champ avec le type de donnée approprié (texte, nombre, tableau d'objets).
-- Si un champ n'a pas de contenu pertinent (par exemple, pas de nouveaux personnages), fournis un tableau vide \`[]\`. NE PAS utiliser \`null\`.
-- Les champs \`narrative\` et \`sceneDescriptionForImage\` doivent toujours contenir du texte.
+- Remplis chaque champ avec le type de donnée approprié.
+- Si un champ n'a pas de contenu pertinent (ex: affinityUpdates), fournis un tableau vide \`[]\` ou une chaîne vide \`""\`. NE PAS utiliser \`null\`.
 - Le jeu gère la logique métier en interne. Ton rôle est de narrer les événements. N'invente pas de récompenses ou de changements de statistiques.`;
 
     promptSections.unshift(mainInstruction);
@@ -184,6 +183,7 @@ export async function generateAdventureWithOpenRouter(
                     change: Math.max(-10, Math.min(10, u.change || 0)), // Clamp affinity change
                 })),
                 relationUpdates: Array.isArray(parsedJson.relationUpdates) ? parsedJson.relationUpdates : [],
+                newEvent: parsedJson.newEvent || "",
             };
 
             const validationResult = GenerateAdventureOutputSchema.safeParse(cleanedJson);
@@ -211,3 +211,5 @@ export async function generateAdventureWithOpenRouter(
         return { error: `Erreur de communication avec OpenRouter: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    

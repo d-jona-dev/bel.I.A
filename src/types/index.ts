@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -223,6 +224,7 @@ export const GenerateAdventureInputSchema = z.object({
   comicModeActive: z.boolean().optional().default(true),
   playerPortraitUrl: z.string().nullable().optional(),
   aiConfig: z.any().optional(), // Keep it flexible
+  timeManagement: z.any().optional(),
 });
 
 // This is the type that the `generateAdventure` flow will actually receive
@@ -262,6 +264,7 @@ export const GenerateAdventureOutputSchema = z.object({
   sceneDescriptionForImage: SceneDescriptionForImageSchema.optional(),
   affinityUpdates: z.array(AffinityUpdateSchema).optional(),
   relationUpdates: z.array(RelationUpdateSchema).optional(),
+  newEvent: z.string().optional().describe("If the narrative implies a change of event (e.g., class ends), describe the new event. Otherwise, leave empty."),
 });
 
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
@@ -276,3 +279,5 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
+
+    

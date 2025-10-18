@@ -30,18 +30,20 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     
     mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.`;
     
-    // NEW INSTRUCTION FOR SCENE DESCRIPTION
     mainInstruction += "\nFor `sceneDescriptionForImage`, provide a MINIMAL description in ENGLISH focusing on 'who is doing what, where'. DO NOT describe character appearances.";
+    
+    mainInstruction += `\nFor \`newEvent\` : Si la narration implique un changement d'événement (ex: la classe se termine), décris-le brièvement. Sinon, laisse ce champ vide.`;
 
     mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
 
     const zodSchemaString = `{
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "sceneDescriptionForImage": "Rina and Kentaro are talking in a modern university hallway.",
+    "sceneDescriptionForImage": { "action": "Rina and Kentaro are talking in a modern university hallway." },
     "affinityUpdates": [
         { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
     ],
-    "relationUpdates": []
+    "relationUpdates": [],
+    "newEvent": "Fin du cours"
 }`;
 
     promptSections.unshift(mainInstruction);
@@ -115,3 +117,5 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
         return { error: `Erreur inattendue lors de l'appel au serveur local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
+    

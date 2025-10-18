@@ -16,6 +16,7 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
     sceneDescriptionForImage: undefined,
     affinityUpdates: [],
     relationUpdates: [],
+    newEvent: "",
     error: errorMsg,
 });
 
@@ -72,12 +73,11 @@ const prompt = ai.definePrompt({
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, affinity, and relationships as detailed below. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
-
 **COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.**
 
 World: {{{world}}}
 
-Current Situation/Recent Narrative (includes time tag from the game engine):
+Current Situation/Recent Narrative (includes current event if any):
 {{{initialSituation}}}
 
 **Characters Present & Their Context:**
@@ -103,17 +103,17 @@ Current Situation/Recent Narrative (includes time tag from the game engine):
 
 User Action (from {{playerName}}): {{{userAction}}}
 
-Tasks:
-1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
+--- YOUR TASKS ---
+1.  **Generate Narrative:** Write the next part of the story in {{currentLanguage}}.
 2.  **Describe Scene for Image (in English):** For \`sceneDescriptionForImage\`, provide a MINIMAL description of the scene. Focus on **"who is doing what, and where"**. Include character NAMES, their key actions, and the environment. **DO NOT describe their physical appearance (hair color, clothes, etc.).** The application will inject these details later. Example: "Rina and Kentaro are arguing in a classroom." or "Héros examines a glowing sword in a dark cave."
 3.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 4.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
+5.  **Suggest New Event:** If the story dictates a change in the current event (e.g., "class ends"), fill the \`newEvent\` field in your JSON response with a short description. Otherwise, leave it as an empty string.
 
 **CRITICAL RULE: The game engine is the master of time. DO NOT mention the time, the day, or how much time has passed in your narrative. Your ONLY job is to narrate the immediate consequences of the user action.**
 **VERY IMPORTANT: You are NO LONGER responsible for detecting new characters. This is handled by a separate user action.**
 
-Narrative Continuation (in {{currentLanguage}}):
-[Generate ONLY the narrative text here. Do NOT include any JSON, code, or non-narrative text.]
+You must respond with a valid JSON object strictly matching the output schema. No explanations, no Markdown, no text outside this structure.
 `,
 });
 
@@ -132,6 +132,7 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
             sceneDescriptionForImage: output.sceneDescriptionForImage,
             affinityUpdates: output.affinityUpdates,
             relationUpdates: output.relationUpdates,
+            newEvent: output.newEvent,
         };
 
         return { ...cleanOutput, error: undefined };
@@ -153,3 +154,5 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
+
+    

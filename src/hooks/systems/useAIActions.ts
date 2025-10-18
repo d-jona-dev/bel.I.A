@@ -31,7 +31,7 @@ interface UseAIActionsProps {
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
     onTurnEnd: () => void;
-    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>; // Ajouté pour la mise à jour de l'événement
+    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
 }
 
 export function useAIActions({
@@ -45,7 +45,7 @@ export function useAIActions({
     setNarrativeMessages,
     setCharacters,
     onTurnEnd,
-    setAdventureSettings, // Ajouté
+    setAdventureSettings,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -125,8 +125,8 @@ export function useAIActions({
             ? currentMessages.slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') 
             : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
         
-        const timeInfo = adventureSettings.timeManagement?.enabled
-            ? `Current Time: ${adventureSettings.timeManagement.currentTime}. Current Event: ${adventureSettings.timeManagement.currentEvent || "None"}.`
+        const timeInfo = (adventureSettings.timeManagement?.enabled && adventureSettings.timeManagement.currentEvent)
+            ? `Current Event: ${adventureSettings.timeManagement.currentEvent}.`
             : "";
 
         const input: GenerateAdventureInput = {
@@ -146,21 +146,6 @@ export function useAIActions({
         try {
             const result: GenerateAdventureFlowOutput = await generateAdventure(input);
             
-            // Convert the raw result to a string for display
-            const rawOutputString = JSON.stringify(result, null, 2);
-
-            // Create a system message to display the raw output
-            const debugMessage: Message = {
-                id: `debug-${Date.now()}`,
-                type: 'system',
-                content: `--- RAW AI OUTPUT ---\n${rawOutputString}`,
-                timestamp: Date.now()
-            };
-
-            setNarrativeMessages(prev => [...prev, debugMessage]);
-            
-            // You can re-enable the following lines later to process the response normally.
-            /*
             if (result.error && !result.narrative) {
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             } else {
@@ -204,7 +189,6 @@ export function useAIActions({
                     }));
                 }
             }
-            */
         } catch (error) { 
             toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
         } finally {
