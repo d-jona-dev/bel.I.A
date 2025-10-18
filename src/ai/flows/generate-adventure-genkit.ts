@@ -53,7 +53,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         characters: processedCharacters,
         relationsModeActive: input.relationsModeActive ?? true,
         comicModeActive: input.comicModeActive ?? true,
-aiConfig: input.aiConfig,
+        aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
     };
     return flowInput;
@@ -80,11 +80,10 @@ World: {{{world}}}
 Current Situation/Recent Narrative (includes time tag from the game engine):
 {{{initialSituation}}}
 
-**Characters Present & Their Appearance:**
+**Characters Present & Their Context:**
 {{#each characters}}
 - **Name:** {{this.name}}
-  - **Description:** {{this.details}}
-  - **Appearance Details (for image generation):** {{this.appearanceDescription}}
+  - **Contextual Details:** {{this.details}}
   {{#if this.biographyNotes}}
   - **Biography/Notes (internal context, do not reveal directly):** {{{this.biographyNotes}}}
   {{/if}}
@@ -105,8 +104,8 @@ Current Situation/Recent Narrative (includes time tag from the game engine):
 User Action (from {{playerName}}): {{{userAction}}}
 
 Tasks:
-1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. 
-2.  **Describe Scene for Image (in English):** For \`sceneDescriptionForImage\`, visually describe the setting, mood, and characters. **CRUCIAL: Use the 'Appearance Details' provided for each character to describe them accurately (hair color, clothing, style, etc.). Do not use their names.**
+1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story.
+2.  **Describe Scene for Image (in English):** For \`sceneDescriptionForImage\`, provide a MINIMAL description of the scene. Focus on **"who is doing what, and where"**. Include character NAMES, their key actions, and the environment. **DO NOT describe their physical appearance (hair color, clothes, etc.).** The application will inject these details later. Example: "Rina and Kentaro are arguing in a classroom." or "Héros examines a glowing sword in a dark cave."
 3.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 4.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 

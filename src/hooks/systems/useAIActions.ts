@@ -136,7 +136,6 @@ export function useAIActions({
             relationsModeActive: adventureSettings.relationsMode ?? true,
             comicModeActive: adventureSettings.comicModeActive ?? false,
             playerPortraitUrl: adventureSettings.playerPortraitUrl,
-            playerFaceSwapEnabled: adventureSettings.playerFaceSwapEnabled,
             aiConfig,
         };
 
@@ -152,7 +151,7 @@ export function useAIActions({
                         // In regeneration, the last message (the old AI response) should be replaced.
                         newMessages.pop();
                     }
-                    return [...newMessages, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage, speakingCharacterNames: result.speakingCharacterNames }];
+                    return [...newMessages, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage }];
                 });
                 if (adventureSettings.relationsMode) {
                     if (result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
@@ -244,4 +243,3 @@ export function useAIActions({
         generateSceneImageActionWrapper,
     };
 }
-
