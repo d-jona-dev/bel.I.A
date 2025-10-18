@@ -6,7 +6,7 @@ import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Character, AdventureSettings, SaveData, Message, AiConfig, LocalizedText } from "@/types";
 import { PageStructure } from "./page.structure";
-import { GameClock } from "@/lib/game-clock"; // NOUVEAU: Import de GameClock
+import { GameClock } from "@/lib/game-clock"; 
 
 import { useComic } from "@/hooks/systems/useComic";
 import { useAdventureState, getLocalizedText } from "@/hooks/systems/useAdventureState";
@@ -35,7 +35,6 @@ export default function Home() {
     const adventureFormRef = React.useRef<AdventureFormHandle>(null);
     const { toast } = useToast();
 
-    // NOUVEAU: Gestion du temps avec GameClock et état local
     const [gameClock, setGameClock] = React.useState<GameClock>(() => new GameClock({}));
     const [timeState, setTimeState] = React.useState(() => gameClock.getState());
     
@@ -59,18 +58,16 @@ export default function Home() {
         undoLastCharacterState,
     } = useAdventureState();
     
-    // UI and loading states
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
     
     const playerName = adventureSettings.playerName || "Player";
     
-    // NOUVEAU: Logique pour avancer le temps
     const advanceTime = React.useCallback(() => {
         if (!adventureSettings.timeManagement?.enabled) return;
         
-        const newClock = new GameClock(gameClock.getState()); // Crée une nouvelle instance pour l'immutabilité
+        const newClock = new GameClock(gameClock.getState()); 
         const timeElapsed = adventureSettings.timeManagement.timeElapsedPerTurn;
         newClock.advanceTime(timeElapsed);
         
@@ -90,6 +87,7 @@ export default function Home() {
         generateSceneImageActionWrapper,
     } = useAIActions({
         adventureSettings,
+        setAdventureSettings, // Pass the function to the hook
         characters,
         narrativeMessages,
         currentLanguage,
@@ -99,7 +97,6 @@ export default function Home() {
         setNarrativeMessages,
         setCharacters,
         onTurnEnd: advanceTime,
-        setAdventureSettings, // Pass the function to the hook
     });
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
@@ -148,10 +145,10 @@ export default function Home() {
         generateSceneImageAction: generateSceneImageActionWrapper,
     });
     
-    // NOUVEAU: Wrapper autour de loadAdventureState pour réinitialiser l'horloge
     const loadAdventureState = React.useCallback((data: SaveData) => {
         originalLoadAdventureState(data);
-        const clock = new GameClock(data.adventureSettings.timeManagement);
+        const clockSettings = data.adventureSettings?.timeManagement || createInitialState().adventureSettings.timeManagement!;
+        const clock = new GameClock(clockSettings);
         setGameClock(clock);
         setTimeState(clock.getState());
         localStorage.setItem('gameClockState_v2', clock.serialize());
@@ -166,7 +163,6 @@ export default function Home() {
         loadAdventureState,
     });
     
-    // NOUVEAU: Charger l'état de l'horloge au montage initial
     React.useEffect(() => {
         const savedClockState = localStorage.getItem('gameClockState_v2');
         if (savedClockState) {
@@ -184,7 +180,7 @@ export default function Home() {
         }
         
         const newMessages = narrativeMessages.slice(0, lastUserMessageIndex);
-        setNarrativeMessages(newMessages); // Update parent state
+        setNarrativeMessages(newMessages); 
         
         const restoredCharacters = undoLastCharacterState();
         if (restoredCharacters) {
@@ -203,7 +199,6 @@ export default function Home() {
         const initialSitText = getLocalizedText(initialSettingsFromBase.initialSituation, currentLanguage);
         setNarrativeMessages([{ id: `msg-${Date.now()}`, type: 'system', content: initialSitText, timestamp: Date.now() }]);
 
-        // NOUVEAU: Réinitialiser l'horloge
         const newClock = new GameClock(initialSettingsFromBase.timeManagement);
         setGameClock(newClock);
         setTimeState(newClock.getState());
@@ -226,17 +221,42 @@ export default function Home() {
 
     React.startTransition(() => {
         let newLiveSettings: AdventureSettings;
+        
         setAdventureSettings(prevSettings => {
-            newLiveSettings = { ...prevSettings, ...formData };
-            setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
+            const prevTimeManagement = prevSettings.timeManagement || createInitialState().adventureSettings.timeManagement!;
+            const formTimeManagement = formData.timeManagement || createInitialState().adventureSettings.timeManagement!;
             
-            // NOUVEAU: Mettre à jour l'horloge si les paramètres ont changé
-            if (JSON.stringify(prevSettings.timeManagement) !== JSON.stringify(newLiveSettings.timeManagement)) {
-                const newClock = new GameClock(newLiveSettings.timeManagement);
-                setGameClock(newClock);
-                setTimeState(newClock.getState());
-                localStorage.setItem('gameClockState_v2', newClock.serialize());
+            // Reconstruct the clock state from the form, keeping current day/time if not changed
+            const clock = new GameClock({
+                ...formTimeManagement,
+                day: timeState.day,
+                hour: timeState.hour,
+                minute: timeState.minute,
+            });
+            // If the form's start time is different, apply it.
+            const [formHour, formMinute] = (formTimeManagement.currentTime || "0:0").split(':').map(Number);
+            if(formHour !== timeState.hour || formMinute !== timeState.minute){
+                clock.setTime({ day: formTimeManagement.day, hour: formHour, minute: formMinute});
             }
+
+            setTimeState(clock.getState());
+            setGameClock(clock);
+            localStorage.setItem('gameClockState_v2', clock.serialize());
+
+            newLiveSettings = {
+                 ...prevSettings,
+                 ...formData,
+                 timeManagement: {
+                     ...prevTimeManagement,
+                     ...formTimeManagement,
+                     // We update the live state, but the clock object holds the canonical time
+                     day: clock.getState().day,
+                     currentTime: `${String(clock.getState().hour).padStart(2, '0')}:${String(clock.getState().minute).padStart(2, '0')}`,
+                     dayName: clock.getState().dayName,
+                 }
+            };
+
+            setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
             return newLiveSettings;
         });
 
@@ -261,7 +281,7 @@ export default function Home() {
 
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-}, [adventureFormRef, toast, setAdventureSettings, setCharacters, setBaseAdventureSettings, setBaseCharacters]);
+}, [adventureFormRef, toast, setAdventureSettings, setCharacters, setBaseAdventureSettings, setBaseCharacters, timeState]);
 
 
     const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
@@ -291,7 +311,6 @@ export default function Home() {
                 globalChars.push(newChar);
                 localStorage.setItem('globalCharacters', JSON.stringify(globalChars));
                 
-                // Also update the character in the current adventure state
                 setCharacters(prev => prev.map(c => c.id === charToSave.id ? newChar : c));
                 
                 toast({title: "Personnage Sauvegardé", description: `${charToSave.name} est maintenant disponible globalement.`});

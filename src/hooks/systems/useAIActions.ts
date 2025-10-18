@@ -21,6 +21,7 @@ const PLAYER_ID = "player";
 
 interface UseAIActionsProps {
     adventureSettings: AdventureSettings;
+    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>; // Added this
     characters: Character[];
     narrativeMessages: Message[];
     currentLanguage: string;
@@ -30,11 +31,11 @@ interface UseAIActionsProps {
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
     onTurnEnd: () => void;
-    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
 }
 
 export function useAIActions({
     adventureSettings,
+    setAdventureSettings, // Added this
     characters,
     narrativeMessages,
     currentLanguage,
@@ -44,7 +45,6 @@ export function useAIActions({
     setNarrativeMessages,
     setCharacters,
     onTurnEnd,
-    setAdventureSettings,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -125,7 +125,7 @@ export function useAIActions({
             : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
         
         const timeInfo = (adventureSettings.timeManagement?.enabled)
-            ? `Current Event: ${adventureSettings.timeManagement.currentEvent || 'None'}.`
+            ? `Contexte Événementiel: ${adventureSettings.timeManagement.currentEvent || 'Aucun'}.`
             : "";
 
         const input: GenerateAdventureInput = {
@@ -273,5 +273,3 @@ export function useAIActions({
         generateSceneImageActionWrapper,
     };
 }
-
-    
