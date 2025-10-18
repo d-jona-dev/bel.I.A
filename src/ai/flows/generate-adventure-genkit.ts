@@ -154,5 +154,3 @@ export async function generateAdventureWithGenkit(input: GenkitFlowInputType): P
         return getDefaultOutput(`Une erreur inattendue est survenue: ${errorMessage}`);
     }
 }
-
-    

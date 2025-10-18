@@ -4,7 +4,6 @@
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage } from "@/types";
-import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureFlowOutput, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
@@ -31,7 +30,7 @@ interface UseAIActionsProps {
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
     onTurnEnd: () => void;
-    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
+    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>; // Ensure this is part of the props
 }
 
 export function useAIActions({
@@ -45,7 +44,7 @@ export function useAIActions({
     setNarrativeMessages,
     setCharacters,
     onTurnEnd,
-    setAdventureSettings,
+    setAdventureSettings, // Receive the function
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -125,8 +124,8 @@ export function useAIActions({
             ? currentMessages.slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') 
             : getLocalizedText(adventureSettings.initialSituation, currentLanguage);
         
-        const timeInfo = (adventureSettings.timeManagement?.enabled && adventureSettings.timeManagement.currentEvent)
-            ? `Current Event: ${adventureSettings.timeManagement.currentEvent}.`
+        const timeInfo = (adventureSettings.timeManagement?.enabled)
+            ? `Current Event: ${adventureSettings.timeManagement.currentEvent || 'None'}.`
             : "";
 
         const input: GenerateAdventureInput = {
@@ -196,7 +195,7 @@ export function useAIActions({
         }
     }, [
         adventureSettings, characters, narrativeMessages, currentLanguage, aiConfig,
-        setIsLoading, setNarrativeMessages, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd, setAdventureSettings
+        setIsLoading, setNarrativeMessages, setCharacters, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd, setAdventureSettings
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {
@@ -274,5 +273,3 @@ export function useAIActions({
         generateSceneImageActionWrapper,
     };
 }
-
-    

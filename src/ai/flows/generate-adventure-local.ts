@@ -32,7 +32,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     
     mainInstruction += "\nFor `sceneDescriptionForImage`, provide a MINIMAL description in ENGLISH focusing on 'who is doing what, where'. DO NOT describe character appearances.";
     
-    mainInstruction += `\nFor \`newEvent\` : Si la narration implique un changement d'événement (ex: la classe se termine), décris-le brièvement. Sinon, laisse ce champ vide.`;
+    mainInstruction += `\nFor \`newEvent\` : If the narrative implies a change of event (e.g., class ends), describe it briefly. Otherwise, leave this field empty.`;
 
     mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
 
@@ -117,5 +117,3 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
         return { error: `Erreur inattendue lors de l'appel au serveur local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-
-    

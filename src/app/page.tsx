@@ -99,6 +99,7 @@ export default function Home() {
         setNarrativeMessages,
         setCharacters,
         onTurnEnd: advanceTime,
+        setAdventureSettings, // Pass the function to the hook
     });
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
