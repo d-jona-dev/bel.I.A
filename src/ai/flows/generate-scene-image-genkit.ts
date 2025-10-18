@@ -63,6 +63,8 @@ const generateSceneImageFlow = ai.defineFlow<
         return getDefaultOutput("La description de la scène est vide, impossible de générer une image.");
     }
     
+    console.log("FINAL PROMPT SENT TO MODEL:\n", finalPrompt);
+
     let fullResponse;
     
     try {
@@ -73,6 +75,8 @@ const generateSceneImageFlow = ai.defineFlow<
           responseModalities: ['TEXT', 'IMAGE'],
         },
       });
+      console.log("FULL RESPONSE FROM MODEL:\n", JSON.stringify(fullResponse, null, 2));
+
     } catch (e: any) {
       console.error("Error during ai.generate call for image:", e);
       const errorMessage = e.message || String(e);
@@ -88,19 +92,29 @@ const generateSceneImageFlow = ai.defineFlow<
       return getDefaultOutput(`Échec de la génération d'image par l'IA: ${errorMessage}`);
     }
     
+    const media = fullResponse?.media ?? fullResponse?.outputs ?? fullResponse?.images ?? null;
+    let imageUrl = "";
 
-    const media = fullResponse?.media;
-
-    if (!media?.url) {
-        console.error(
-          "Image generation failed: media or media.url is missing from the response. Full response from ai.generate:",
-          JSON.stringify(fullResponse, null, 2)
-        );
-        return getDefaultOutput("La génération d'images a échoué ou n'a pas retourné d'URL. Vérifiez la console du serveur pour les détails.");
+    if (Array.isArray(media)) {
+      // try common places
+      imageUrl = media[0]?.url || media[0]?.image || "";
+    } else if (typeof media === 'object' && media !== null) {
+      imageUrl = media.url || (media as any)[0]?.url || (media as any).image || "";
     }
+
+    if (!imageUrl && fullResponse) {
+      // fallback check nested fields
+      imageUrl = (fullResponse as any)?.data?.[0]?.url || (fullResponse as any)?.outputs?.[0]?.image || "";
+    }
+
+    if (!imageUrl) {
+        console.error("No image URL found. Response dump:", JSON.stringify(fullResponse, null, 2));
+        return getDefaultOutput("La génération d'image n'a pas retourné d'URL. Voir logs serveur pour la réponse complète.");
+    }
+
 
     console.log(`Image generated for prompt: "${finalPrompt.substring(0, 100)}..."`);
 
-    return {imageUrl: media.url, error: undefined };
+    return {imageUrl: imageUrl, error: undefined };
   }
 );
