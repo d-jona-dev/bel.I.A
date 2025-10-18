@@ -9,23 +9,6 @@ import { getStyleEnhancedPrompt } from './prompt-styles'; // Reuse the prompt lo
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/images/generations";
 
-
-// Helper function to build the final prompt from the rich description object
-const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
-    let finalDescription = description.action;
-
-    // Inject character appearance descriptions into the action string
-    description.charactersInScene.forEach(char => {
-        if (char.appearanceDescription) {
-            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
-            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
-        }
-    });
-    
-    return getStyleEnhancedPrompt(finalDescription, style);
-};
-
-
 export async function generateSceneImageWithOpenRouter(
   input: GenerateSceneImageInput,
   imageConfig: { model: string; apiKey: string }
@@ -35,7 +18,11 @@ export async function generateSceneImageWithOpenRouter(
     return { imageUrl: "", error: "La clé API et le modèle OpenRouter pour les images sont requis." };
   }
 
-  const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
+  const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+
+  if (!finalPrompt) {
+    return { imageUrl: "", error: "La description de la scène est vide, impossible de générer une image." };
+  }
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {

@@ -25,7 +25,7 @@ const SceneDescriptionForImageSchema = z.object({
 });
 
 const GenerateSceneImageInputSchema = z.object({
-  sceneDescription: SceneDescriptionForImageSchema,
+  sceneDescription: SceneDescriptionForImageSchema.optional(), // Make optional to handle undefined
   style: z.string().optional().describe("The artistic style for the image (e.g., 'Réaliste', 'Manga / Anime', 'Fantaisie Epique', or a custom user prompt)."),
 });
 
@@ -39,21 +39,6 @@ const getDefaultOutput = (errorMsg?: string): GenerateSceneImageFlowOutput => ({
     imageUrl: "", // Default empty or null image URL
     error: errorMsg,
 });
-
-// Helper function to build the final prompt from the rich description object
-const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
-    let finalDescription = description.action;
-
-    // Inject character appearance descriptions into the action string
-    description.charactersInScene.forEach(char => {
-        if (char.appearanceDescription) {
-            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
-            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
-        }
-    });
-    
-    return getStyleEnhancedPrompt(finalDescription, style);
-};
 
 export async function generateSceneImageWithGenkit(input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput>
 {
@@ -71,8 +56,14 @@ const generateSceneImageFlow = ai.defineFlow<
     outputSchema: GenerateSceneImageOutputSchema,
   },
   async (input): Promise<GenerateSceneImageFlowOutput> => {
+    
+    const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+
+    if (!finalPrompt) {
+        return getDefaultOutput("La description de la scène est vide, impossible de générer une image.");
+    }
+    
     let fullResponse;
-    const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
     
     try {
       fullResponse = await ai.generate({
@@ -88,6 +79,9 @@ const generateSceneImageFlow = ai.defineFlow<
        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
             return getDefaultOutput("Le quota de l'API d'images a été dépassé. Veuillez réessayer plus tard.");
         }
+       if (errorMessage.includes("INVALID_ARGUMENT")) {
+            return getDefaultOutput("Argument invalide pour la génération d'image. Le prompt est peut-être vide ou malformé.");
+       }
       if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
           return getDefaultOutput("Le modèle d'IA pour la génération d'images est actuellement surchargé. Veuillez réessayer.");
       }
