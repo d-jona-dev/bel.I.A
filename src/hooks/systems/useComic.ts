@@ -16,7 +16,7 @@ interface UseComicProps {
 
 export function useComic({ narrativeMessages, generateSceneImageAction }: UseComicProps) {
     const { toast } = useToast();
-    const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([]);
+    const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([createNewComicPageUtil()]);
     const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
     const [isSaveComicDialogOpen, setIsSaveComicDialogOpen] = React.useState(false);
     const [comicTitle, setComicTitle] = React.useState("");
@@ -43,14 +43,17 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
     }, []);
 
     const handleAddComicPanel = React.useCallback(() => {
-        if (comicDraft.length === 0) {
-            handleAddComicPage();
-        } else {
-            setComicDraft(prev => prev.map((page, index) =>
+        setComicDraft(prev => {
+            if (prev.length === 0) {
+              return [
+                { ...createNewComicPageUtil(), panels: [{ id: uid(), imageUrl: null, bubbles: [] }] }
+              ];
+            }
+            return prev.map((page, index) =>
                 index === currentComicPageIndex ? { ...page, panels: [...page.panels, { id: uid(), imageUrl: null, bubbles: [] }] } : page
-            ));
-        }
-    }, [comicDraft, currentComicPageIndex, handleAddComicPage]);
+            );
+        });
+    }, [currentComicPageIndex]);
 
     const handleRemoveLastComicPanel = React.useCallback(() => {
         if (comicDraft[currentComicPageIndex]?.panels.length > 0) {
