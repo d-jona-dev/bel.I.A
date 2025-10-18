@@ -1,3 +1,4 @@
+
 import type { SceneDescriptionForImage } from "@/types";
 
 // This file is not a server module and can export helper functions safely.
@@ -9,35 +10,40 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
 
     const { action, charactersInScene } = descriptionObject;
 
-    // Build a compact, detailed character block
-    let charactersSection = "";
+    // Build a structured XML-like block for each character
+    let charactersBlock = "";
     if (charactersInScene && charactersInScene.length > 0) {
-        const characterLines = charactersInScene.map((char, idx) => {
+        charactersBlock = charactersInScene.map((char) => {
             const appearance = char.appearanceDescription
-                ? `${char.appearanceDescription.trim()}`
+                ? char.appearanceDescription.trim()
                 : "No visual details provided";
-            // Add explicit role/placement hints to help composition
-            return `Character ${idx + 1}: ${char.name}. Visual: ${appearance}.`;
-        });
-        charactersSection = characterLines.join(" ");
+            return `
+<character>
+  <name>${char.name}</name>
+  <visual_description>${appearance}</visual_description>
+</character>`;
+        }).join("");
     }
 
-    // Strong directives: composition + portraits + camera + lighting + interactions
-    const fullDescription = [
-        "Detailed scene description for image generation.",
-        `Scene action: ${action.trim()}.`,
-        charactersSection ? `Characters: ${charactersSection}` : "",
-        // Force portrait integration + inset portraits
-        "Composition instructions: Render the main scene as described, with all listed characters present and interacting naturally.",
-        "Include a clear visual focus on characters: provide both a medium shot of the full scene and inset close-up bust portraits (shoulder-up/headshots) of each character, arranged naturally or as subtle insets within the image.",
-        "Camera & framing: one medium-wide view of the scene, plus individual bust close-ups for each character. Ensure faces are clearly visible and match the described appearances.",
-        "Expressions & posture: match expressions/body language to the action. Show clothing details, textures and accessories described.",
-        "Lighting & atmosphere: cinematic lighting consistent across scene and portrait insets. Ensure color grading and shadows match the environment.",
-        "Stylistic constraint: unify the art direction so characters and background look coherent (same lighting, rendering, and perspective).",
-        "Output constraints: image only, no text or UI. High detail on faces, skin, hair, fabrics and small props."
-    ].filter(Boolean).join(" ");
+    // Use a structured, instruction-based prompt
+    const fullDescription = `
+<prompt_instructions>
+  <system_task>
+    Your task is to generate an image based on the scene and character descriptions provided below.
+    - The <scene> block describes the environment and the action.
+    - Each <character> block describes a person who must appear in the scene.
+    - You MUST adhere strictly to the visual description provided for each character. Do not mix their appearances.
+    - Render the scene as described, with all listed characters present and interacting naturally.
+    - Ensure faces are clearly visible and match the provided visual descriptions.
+  </system_task>
+</prompt_instructions>
+${charactersBlock}
+<scene>
+  ${action.trim()}
+</scene>
+`;
 
-    return fullDescription;
+    return fullDescription.trim();
 };
 
 
