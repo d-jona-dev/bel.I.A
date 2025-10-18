@@ -194,7 +194,7 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
 export function CharacterSidebar({
     characters: initialCharacters,
     onCharacterUpdate,
-    onSaveNewCharacter,
+    onSaveNewCharacter: onSaveNewCharacterProp,
     onAddStagedCharacter,
     onRelationUpdate,
     generateImageAction,
@@ -220,32 +220,60 @@ export function CharacterSidebar({
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
 
+  const loadGlobalChars = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+        try {
+            const storedGlobalChars = localStorage.getItem('globalCharacters');
+            if (storedGlobalChars) {
+                setGlobalCharactersList(JSON.parse(storedGlobalChars));
+            }
+        } catch (error) {
+            console.error("Failed to load global characters from localStorage:", error);
+            toast({
+                title: "Erreur de chargement",
+                description: "Impossible de charger les personnages globaux.",
+                variant: "destructive",
+            });
+        }
+    }
+  }, [toast]);
+
   React.useEffect(() => {
     setIsClient(true);
-    const loadGlobalChars = () => {
-      if (typeof window !== 'undefined') {
-          try {
-              const storedGlobalChars = localStorage.getItem('globalCharacters');
-              if (storedGlobalChars) {
-                  setGlobalCharactersList(JSON.parse(storedGlobalChars));
-              }
-          } catch (error) {
-              console.error("Failed to load global characters from localStorage:", error);
-              toast({
-                  title: "Erreur de chargement",
-                  description: "Impossible de charger les personnages globaux.",
-                  variant: "destructive",
-              });
-          }
-      }
-    };
     loadGlobalChars();
-    // Listen for storage changes from other components/tabs
     window.addEventListener('storage', loadGlobalChars);
     return () => {
       window.removeEventListener('storage', loadGlobalChars);
     }
-  }, [toast]);
+  }, [loadGlobalChars]);
+
+  const onSaveOrUpdateCharacter = (charToSave: Character) => {
+    try {
+        const globalChars: Character[] = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
+        const charIndex = globalChars.findIndex((c: Character) => c.id === charToSave.id);
+        const newChar = { ...charToSave, _lastSaved: Date.now() };
+
+        let updatedGlobalChars;
+        if (charIndex > -1) {
+            // Update existing character
+            updatedGlobalChars = [...globalChars];
+            updatedGlobalChars[charIndex] = newChar;
+            toast({ title: "Personnage Mis à Jour", description: `Les informations globales de ${charToSave.name} ont été synchronisées.` });
+        } else {
+            // Add new character
+            updatedGlobalChars = [...globalChars, newChar];
+            toast({ title: "Personnage Sauvegardé", description: `${charToSave.name} est maintenant disponible globalement.` });
+        }
+        
+        localStorage.setItem('globalCharacters', JSON.stringify(updatedGlobalChars));
+        setGlobalCharactersList(updatedGlobalChars); // Update local state to reflect change
+        onCharacterUpdate(newChar); // Update the character in the current adventure
+        
+    } catch (e) {
+        toast({ title: "Erreur de Sauvegarde", variant: "destructive" });
+    }
+  };
+
 
   const availableGlobalChars = React.useMemo(() => {
     if (!isClient) return [];
@@ -317,20 +345,6 @@ export function CharacterSidebar({
              if (field === 'relations') {
                  onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
              }
-        }
-    };
-
-    const handleUpdateGlobalCharacter = (charToUpdate: Character) => {
-        try {
-            const updatedGlobalChars = globalCharactersList.map(gc => 
-                gc.id === charToUpdate.id ? { ...gc, ...charToUpdate, _lastSaved: Date.now() } : gc
-            );
-            localStorage.setItem('globalCharacters', JSON.stringify(updatedGlobalChars));
-            setGlobalCharactersList(updatedGlobalChars); // Update local state to reflect change
-            onCharacterUpdate({ ...charToUpdate, _lastSaved: Date.now() }); // Update the character in the current adventure
-            toast({ title: "Personnage Mis à Jour", description: `Les informations globales de ${charToUpdate.name} ont été synchronisées.` });
-        } catch (e) {
-            toast({ title: "Erreur", description: "Impossible de mettre à jour le personnage global.", variant: "destructive" });
         }
     };
 
@@ -419,8 +433,7 @@ export function CharacterSidebar({
                         setImageLoadingStates={setImageLoadingStates}
                         describingAppearanceStates={describingAppearanceStates}
                         setDescribingAppearanceStates={setDescribingAppearanceStates}
-                        onSaveNewCharacter={onSaveNewCharacter}
-                        onUpdateGlobalCharacter={handleUpdateGlobalCharacter}
+                        onSaveOrUpdateCharacter={onSaveOrUpdateCharacter}
                         generateImageAction={generateImageAction}
                         handleUploadPortrait={handleUploadPortrait}
                         handleFieldChange={handleFieldChange}
@@ -450,8 +463,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     setImageLoadingStates,
     describingAppearanceStates,
     setDescribingAppearanceStates,
-    onSaveNewCharacter,
-    onUpdateGlobalCharacter,
+    onSaveOrUpdateCharacter,
     generateImageAction,
     handleUploadPortrait,
     handleFieldChange,
@@ -472,8 +484,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     describingAppearanceStates: Record<string, boolean>;
     setDescribingAppearanceStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-    onSaveNewCharacter: (character: Character) => void;
-    onUpdateGlobalCharacter: (character: Character) => void;
+    onSaveOrUpdateCharacter: (character: Character) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
     handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
     handleFieldChange: (charId: string, field: keyof Character, value: any) => void;
@@ -626,13 +637,13 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             )}
                         </Avatar>
                         <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
-                        {!isGloballySaved && (
+                        {isGloballySaved && (
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <span><Star className="h-3 w-3 text-yellow-500 ml-1 flex-shrink-0" /></span>
+                                        <span><Save className="h-3 w-3 text-primary ml-1 flex-shrink-0" /></span>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top">{currentLanguage === 'fr' ? "Nouveau personnage non sauvegardé globalement." : "New character not saved globally."}</TooltipContent>
+                                    <TooltipContent side="top">{currentLanguage === 'fr' ? "Personnage sauvegardé globalement." : "Character saved globally."}</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
@@ -640,31 +651,23 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
                     <div className="flex gap-2">
-                        {!isGloballySaved ? (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveNewCharacter(char)}>
-                                            <Save className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Sauvegarder" : "Save"}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures."}</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        ) : (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => onUpdateGlobalCharacter(char)}>
-                                            <RefreshCcw className="h-4 w-4 mr-1" /> {currentLanguage === 'fr' ? "Mettre à jour" : "Update"}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom">{currentLanguage === 'fr' ? "Mettre à jour la fiche globale avec les informations actuelles." : "Update the global character sheet with current info."}</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        )}
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(char)}>
+                                        {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                                        {isGloballySaved ? (currentLanguage === 'fr' ? "Mettre à jour" : "Update") : (currentLanguage === 'fr' ? "Sauvegarder" : "Save")}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                    {isGloballySaved
+                                        ? (currentLanguage === 'fr' ? "Mettre à jour la fiche globale avec les informations actuelles." : "Update the global character sheet with current info.")
+                                        : (currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures.")
+                                    }
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
-
 
                 <div className="flex flex-col items-center gap-2">
                         <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
@@ -907,3 +910,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </FormProvider>
     );
 });
+
+    
