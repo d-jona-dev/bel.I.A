@@ -178,14 +178,19 @@ export function useAIActions({
                     if (result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);
                     if (result.relationUpdates) handleRelationUpdatesFromAI(result.relationUpdates);
                 }
-                 if (result.newEvent && adventureSettings.timeManagement?.enabled) {
-                    setAdventureSettings(prev => ({
-                        ...prev,
-                        timeManagement: {
-                            ...prev.timeManagement!,
-                            currentEvent: result.newEvent!,
-                        }
-                    }));
+                if (result.newEvent?.trim() && adventureSettings.timeManagement?.enabled) {
+                    setAdventureSettings(prev => {
+                        const oldEvent = prev.timeManagement?.currentEvent || "";
+                        if (oldEvent === result.newEvent) return prev; // évite les updates inutiles
+
+                        return {
+                            ...prev,
+                            timeManagement: {
+                                ...JSON.parse(JSON.stringify(prev.timeManagement)), // force nouvelle ref
+                                currentEvent: result.newEvent!,
+                            },
+                        };
+                    });
                 }
             }
         } catch (error) { 
