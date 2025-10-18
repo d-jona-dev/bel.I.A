@@ -40,10 +40,10 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
             name: char.name,
             details: char.details || (input.currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
             biographyNotes: char.biographyNotes || (input.currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
+            appearanceDescription: char.appearanceDescription || (input.currentLanguage === 'fr' ? 'Aucune description d\'apparence.' : 'No appearance description.'),
             affinity: input.relationsModeActive ? (char.affinity ?? 50) : 50,
             relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
             relationsSummary: relationsSummaryText,
-            faceSwapEnabled: char.faceSwapEnabled,
             portraitUrl: char.portraitUrl,
         };
     });
@@ -53,9 +53,8 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         characters: processedCharacters,
         relationsModeActive: input.relationsModeActive ?? true,
         comicModeActive: input.comicModeActive ?? true,
-        aiConfig: input.aiConfig,
+aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
-        playerFaceSwapEnabled: input.playerFaceSwapEnabled,
     };
     return flowInput;
 }
@@ -81,30 +80,15 @@ World: {{{world}}}
 Current Situation/Recent Narrative (includes time tag from the game engine):
 {{{initialSituation}}}
 
-{{#if playerFaceSwapEnabled}}
---- FACESWAP CONTEXT ---
-**IMPORTANT RULE FOR FACESWAP: The player's face is provided as a reference. You MUST use this face for the player character, {{playerName}}, in the generated scene. Faithfully reproduce the face shape, hair color, hair style, and eye color from the reference image, but seamlessly adapt it to the scene's artistic style, lighting, and character pose.**
-Player Face Reference: {{media url=playerPortraitUrl}}
----
-{{/if}}
-
+**Characters Present & Their Appearance:**
 {{#each characters}}
-{{#if this.faceSwapEnabled}}
---- FACESWAP CONTEXT for {{this.name}} ---
-**IMPORTANT RULE FOR FACESWAP: The face for {{this.name}} is provided as a reference. You MUST use this face for this character in the generated scene. Faithfully reproduce the face shape, hair color, hair style, and eye color from the reference image, but seamlessly adapt it to the scene's artistic style, lighting, and character pose.**
-{{this.name}}'s Face Reference: {{media url=this.portraitUrl}}
----
-{{/if}}
-{{/each}}
-
-**Characters Present:**
-{{#each characters}}
-- Name: {{this.name}}
-  Description: {{this.details}}
+- **Name:** {{this.name}}
+  - **Description:** {{this.details}}
+  - **Appearance Details (for image generation):** {{this.appearanceDescription}}
   {{#if this.biographyNotes}}
-  Biographie/Notes (pour contexte interne, ne pas révéler directement): {{{this.biographyNotes}}}
+  - **Biography/Notes (internal context, do not reveal directly):** {{{this.biographyNotes}}}
   {{/if}}
-  Current Affinity towards {{../playerName}}: **{{this.affinity}}/100**. Behavior Guide:
+  - **Current Affinity towards {{../playerName}}:** **{{this.affinity}}/100**. Behavior Guide:
     0-10 (Hate): Actively hostile, insulting.
     11-30 (Hostile): Disdainful, obstructive.
     31-45 (Wary): Suspicious, uncooperative.
@@ -112,8 +96,8 @@ Player Face Reference: {{media url=playerPortraitUrl}}
     56-70 (Friendly): Helpful, agreeable.
     71-90 (Loyal): Trusting, supportive.
     91-100 (Devoted): Self-sacrificing, deep affection.
-  Relationship Statuses: {{{this.relationsSummary}}}. These define the *nature* of the bond. If a relation is "Inconnu", try to define it based on current interactions.
-  **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description and Affinity. Their style of speech (vocabulary, tone, formality) must also align.**
+  - **Relationship Statuses:** {{{this.relationsSummary}}}. These define the *nature* of the bond. If a relation is "Inconnu", try to define it based on current interactions.
+  - **IMPORTANT: When this character speaks or acts, their words, tone, and decisions MUST be consistent with their Description and Affinity. Their style of speech (vocabulary, tone, formality) must also align.**
 {{else}}
 **No other characters are currently present.**
 {{/each}}
@@ -122,7 +106,7 @@ User Action (from {{playerName}}): {{{userAction}}}
 
 Tasks:
 1.  **Generate the "Narrative Continuation" (in {{currentLanguage}}):** Write the next part of the story. 
-2.  **Describe Scene for Image (English):** For \`sceneDescriptionForImage\`, visually describe the setting, mood, and characters by appearance, not name.
+2.  **Describe Scene for Image (in English):** For \`sceneDescriptionForImage\`, visually describe the setting, mood, and characters. **CRUCIAL: Use the 'Appearance Details' provided for each character to describe them accurately (hair color, clothing, style, etc.). Do not use their names.**
 3.  **Affinity Updates:** Analyze interactions with KNOWN characters. Update \`affinityUpdates\` for changes towards {{playerName}}. Small changes (+/- 1-2) usually, larger (+/- 3-5, max +/-10 for extreme events). Justify with 'reason'.
 4.  **Relation Status Updates (in {{currentLanguage}}):** Analyze the narrative for significant shifts in how characters view each other. If affinity crosses a major threshold or a significant event occurs, update \`relationUpdates\` with \`characterName\`, \`targetName\`, \`newRelation\`, and \`reason\`. If an existing relation is 'Inconnu', define it if possible.
 

@@ -32,7 +32,6 @@ export interface Character {
   lastAppearanceUpdate?: number;
   memory?: string;
   portraitUrl?: string | null;
-  faceSwapEnabled?: boolean;
   affinity?: number;
   relations?: Record<string, string>;
   isAlly?: boolean;
@@ -78,7 +77,6 @@ export interface AdventureSettings {
   playerDetails?: string;
   playerDescription?: string;
   playerOrientation?: string;
-  playerFaceSwapEnabled?: boolean;
   playerClass?: string;
   playerLevel?: number;
   playerLocationId?: string;
@@ -175,10 +173,10 @@ const CharacterWithContextSummarySchema = z.object({
   name: z.string(),
   details: z.string(),
   biographyNotes: z.string().optional().describe("Detailed biography or private notes about the character."),
+  appearanceDescription: z.string().optional().describe("A detailed physical description of the character, to be used for image generation."),
   affinity: z.number().optional().default(50).describe("Affinity score (0-100) indicating the character's feeling towards the player."),
   relations: z.record(z.string(), z.string()).optional().describe("Relationship status towards other characters/player."),
   relationsSummary: z.string().optional().describe('A pre-processed summary of the character\'s relationship statuses.'),
-  faceSwapEnabled: z.boolean().optional(),
   portraitUrl: z.string().nullable().optional(),
 });
 
@@ -192,7 +190,6 @@ export const GenerateAdventureInputSchema = z.object({
   playerName: z.string(),
   relationsModeActive: z.boolean().optional().default(true),
   comicModeActive: z.boolean().optional().default(true),
-  playerFaceSwapEnabled: z.boolean().optional(),
   playerPortraitUrl: z.string().nullable().optional(),
   aiConfig: z.any().optional(), // Keep it flexible
 });

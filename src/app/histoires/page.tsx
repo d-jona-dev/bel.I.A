@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -84,7 +85,6 @@ const createNewAdventureState = (): SaveData => ({
         playerDetails: "",
         playerDescription: "",
         playerOrientation: "",
-        playerFaceSwapEnabled: false,
         timeManagement: {
             enabled: false,
             day: 1,
@@ -427,7 +427,6 @@ export default function HistoiresPage() {
               isPlaceholder: c.isPlaceholder,
               roleInStory: c.roleInStory,
               portraitUrl: c.portraitUrl || null,
-              faceSwapEnabled: c.faceSwapEnabled,
               factionColor: c.factionColor,
               affinity: c.affinity,
               relations: c.relations,
@@ -442,7 +441,6 @@ export default function HistoiresPage() {
           playerDescription: settings.playerDescription,
           playerOrientation: settings.playerOrientation,
           playerPortraitUrl: settings.playerPortraitUrl,
-          playerFaceSwapEnabled: settings.playerFaceSwapEnabled,
           mapPointsOfInterest: settings.mapPointsOfInterest,
           timeManagement: settings.timeManagement,
       }

@@ -673,7 +673,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait(char)} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait()} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
                                     </TooltipTrigger>
                                     <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
                                 </Tooltip>
@@ -733,32 +733,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </div>
 
                     <Separator />
-                     <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/30">
-                        <div className="space-y-0.5">
-                            <Label htmlFor={`${char.id}-faceSwap`} className="flex items-center gap-2"><Replace className="h-4 w-4"/> Activer FaceSwap</Label>
-                            <UICardDescription className="text-xs">
-                            Tente d'utiliser ce portrait dans les scènes générées.
-                            </UICardDescription>
-                        </div>
-                        <FormField
-                            control={formMethods.control}
-                            name="faceSwapEnabled"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={(checked) => {
-                                        field.onChange(checked);
-                                        handleFieldChange(char.id, 'faceSwapEnabled', checked);
-                                    }}
-                                    id={`${char.id}-faceSwap`}
-                                    />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </div>
                      <div className="space-y-2">
                         <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
                          <FormField

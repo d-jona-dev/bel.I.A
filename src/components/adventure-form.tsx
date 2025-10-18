@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -26,7 +27,6 @@ export type FormCharacterDefinition = {
   name: string;
   details: string;
   portraitUrl?: string | null;
-  faceSwapEnabled?: boolean;
   appearanceDescription?: string;
   isPlaceholder?: boolean;
   factionColor?: string;
@@ -63,7 +63,6 @@ const characterSchema = z.object({
   details: z.string(),
   isPlaceholder: z.boolean().optional(),
   portraitUrl: z.string().url().or(z.literal("")).optional().nullable(),
-  faceSwapEnabled: z.boolean().optional(),
   appearanceDescription: z.string().optional(),
   factionColor: z.string().optional(),
   affinity: z.number().min(0).max(100).optional(),
@@ -111,7 +110,6 @@ const adventureFormSchema = z.object({
   comicModeActive: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerPortraitUrl: z.string().url().optional().or(z.literal("")).nullable(),
-  playerFaceSwapEnabled: z.boolean().optional(),
   playerAppearanceDescription: z.string().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
@@ -180,8 +178,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 en: "User is walking down the halls of 'hight scoole of futur' and discovers his girlfriend talking with his best friend, they seem very close, too close..."
             },
             characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" }, roleInStory: "Petite amie" },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, faceSwapEnabled: false, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
+                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" }, roleInStory: "Petite amie" },
+                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
             ],
             rpgMode: false,
             relationsMode: true,
