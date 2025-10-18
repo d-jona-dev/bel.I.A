@@ -277,6 +277,28 @@ export default function Home() {
     const handleCharacterUpdate = (updatedCharacter: Character) => {
         setCharacters(prev => prev.map(c => c.id === updatedCharacter.id ? updatedCharacter : c));
     };
+
+    const handleSaveNewCharacter = (charToSave: Character) => {
+        try {
+            const globalChars = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
+            const charExists = globalChars.some((c: Character) => c.id === charToSave.id);
+            
+            if (!charExists) {
+                const newChar = { ...charToSave, _lastSaved: Date.now() };
+                globalChars.push(newChar);
+                localStorage.setItem('globalCharacters', JSON.stringify(globalChars));
+                
+                // Also update the character in the current adventure state
+                setCharacters(prev => prev.map(c => c.id === charToSave.id ? newChar : c));
+                
+                toast({title: "Personnage Sauvegardé", description: `${charToSave.name} est maintenant disponible globalement.`});
+            } else {
+                 toast({title: "Déjà Sauvegardé", description: `${charToSave.name} existe déjà dans les personnages globaux.`, variant: "default"});
+            }
+        } catch (e) {
+            toast({title: "Erreur de Sauvegarde", variant: "destructive"});
+        }
+    };
   
     const memoizedStagedAdventureSettingsForForm = React.useMemo<AdventureFormValues>(() => ({
         ...adventureSettings,
@@ -322,18 +344,7 @@ export default function Home() {
                 handleCharacterUpdate={handleCharacterUpdate}
                 onMaterializeCharacter={onMaterializeCharacter}
                 onSummarizeHistory={onSummarizeHistory}
-                handleSaveNewCharacter={(char) => {
-                  try {
-                    const globalChars = JSON.parse(localStorage.getItem('globalCharacters') || '[]');
-                    if (!globalChars.some((c: Character) => c.id === char.id)) {
-                      globalChars.push({...char, _lastSaved: Date.now()});
-                      localStorage.setItem('globalCharacters', JSON.stringify(globalChars));
-                      toast({title: "Personnage Sauvegardé", description: `${char.name} est maintenant disponible globalement.`});
-                    }
-                  } catch (e) {
-                    toast({title: "Erreur", variant: "destructive"});
-                  }
-                }}
+                handleSaveNewCharacter={handleSaveNewCharacter}
                 onAddStagedCharacter={(char) => setCharacters(p => [...p, char])}
                 handleSave={handleSave}
                 handleLoad={handleLoad}
@@ -370,5 +381,3 @@ export default function Home() {
         </>
     );
 }
-
-    

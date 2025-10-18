@@ -245,7 +245,7 @@ export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSche
 
 // Types for Image Generation flows
 export interface GenerateSceneImageInput {
-  sceneDescription: SceneDescriptionForImage; // Use the rich type
+  sceneDescription: string;
   style?: string;
 }
 
