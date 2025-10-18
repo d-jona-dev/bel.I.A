@@ -30,7 +30,7 @@ interface UseAIActionsProps {
     setNarrativeMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
     onTurnEnd: () => void;
-    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>; // Ensure this is part of the props
+    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
 }
 
 export function useAIActions({
@@ -44,7 +44,7 @@ export function useAIActions({
     setNarrativeMessages,
     setCharacters,
     onTurnEnd,
-    setAdventureSettings, // Receive the function
+    setAdventureSettings,
 }: UseAIActionsProps) {
     const { toast } = useToast();
     const [isSuggestingQuest, setIsSuggestingQuest] = React.useState(false);
@@ -145,6 +145,26 @@ export function useAIActions({
         try {
             const result: GenerateAdventureFlowOutput = await generateAdventure(input);
             
+            // DEBUG: Display raw output directly in chat
+            const rawOutputMessage: Message = {
+                id: `raw-ai-${Date.now()}`,
+                type: 'system',
+                content: `--- RAW AI OUTPUT ---\n${JSON.stringify(result, null, 2)}`,
+                timestamp: Date.now()
+            };
+
+             setNarrativeMessages(prev => {
+                const newMessages = [...prev];
+                if (isRegeneration) {
+                    newMessages.pop(); // Remove the last AI message before adding the new one
+                }
+                newMessages.push(rawOutputMessage);
+                return newMessages;
+            });
+
+
+            // Original logic is commented out for debugging
+            /*
             if (result.error && !result.narrative) {
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             } else {
@@ -188,6 +208,8 @@ export function useAIActions({
                     }));
                 }
             }
+            */
+
         } catch (error) { 
             toast({ title: "Erreur Critique de l'IA", description: `Une erreur inattendue est survenue: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
         } finally {
