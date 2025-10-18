@@ -20,7 +20,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
+import type { GenerateAdventureInput, CharacterUpdateSchema, AffinityUpdateSchema, RelationUpdateSchema, SceneDescriptionForImage } from "@/types";
 import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image"; // Updated import
 import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { useToast } from "@/hooks/use-toast";
@@ -269,7 +269,7 @@ export function AdventureDisplay({
 
 
   const handleGenerateImage = async (message: Message) => {
-     const descriptionForImage = message.sceneDescription;
+     const descriptionForImage = message.sceneDescriptionForImage;
 
      if (isImageLoading || !descriptionForImage || isLoading) {
          if (!descriptionForImage) {
@@ -365,6 +365,8 @@ export function AdventureDisplay({
   };
 
   const canUndo = messages.length > 1 && !(messages.length === 1 && messages[0].type === 'system');
+  
+  const lastAiMessageWithScene = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescriptionForImage?.action);
 
   const renderFormattedNarrative = (text: string) => {
     const parts = text.split(/(\*.*?\*)|(".*?")/g).filter(Boolean);
@@ -753,13 +755,12 @@ export function AdventureDisplay({
                                 <Tooltip>
                                      <TooltipTrigger asChild>
                                         <Button className="w-full" onClick={() => {
-                                            const lastAiMessage = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription);
-                                            if (lastAiMessage) {
-                                                handleGenerateImage(lastAiMessage);
+                                            if (lastAiMessageWithScene) {
+                                                handleGenerateImage(lastAiMessageWithScene);
                                             } else {
                                                 toast({title: "Description Manquante", description: "Impossible de trouver une description de scène à générer.", variant: "destructive"});
                                             }
-                                        }} disabled={isImageLoading || isLoading || !([...messages].reverse().find(m => m.type === 'ai' && m.sceneDescription))}>
+                                        }} disabled={isImageLoading || isLoading || !lastAiMessageWithScene}>
                                             <Wand2 className="mr-2 h-4 w-4" />
                                             <span>Générer</span>
                                         </Button>
@@ -903,3 +904,5 @@ export function AdventureDisplay({
     </div>
   );
 }
+
+    
