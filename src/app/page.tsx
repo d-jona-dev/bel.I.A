@@ -129,6 +129,7 @@ export default function Home() {
         isSaveComicDialogOpen,
         comicTitle,
         comicCoverUrl,
+        isGeneratingCover,
         onDownloadComicDraft,
         onAddComicPage,
         onAddComicPanel,
@@ -379,6 +380,7 @@ export default function Home() {
                 comicCoverUrl={comicCoverUrl}
                 onGenerateCover={onGenerateCover}
                 onSaveToLibrary={onSaveToLibrary}
+                isGeneratingCover={isGeneratingCover}
             />
         </>
     );

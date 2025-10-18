@@ -38,8 +38,11 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
 
     const handleAddComicPage = React.useCallback(() => {
         const newPage = createNewComicPageUtil();
-        setComicDraft(prev => [...prev, newPage]);
-        setCurrentComicPageIndex(prev => prev.length);
+        setComicDraft(prev => {
+            const newDraft = [...prev, newPage];
+            setCurrentComicPageIndex(newDraft.length - 1); // Correctly set the index to the new last page
+            return newDraft;
+        });
     }, []);
 
     const handleAddComicPanel = React.useCallback(() => {

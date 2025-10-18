@@ -90,7 +90,7 @@ interface PageStructureProps {
   setComicTitle: (title: string) => void;
   comicCoverUrl: string | null;
   onGenerateCover: () => void;
-  onSaveToLibrary: () => void;
+  isGeneratingCover: boolean;
   isLoading: boolean;
   timeState: GameClockState; // NOUVEAU
 }
@@ -141,13 +141,13 @@ export function PageStructure({
   currentComicPageIndex,
   onComicPageChange,
   onAddToComicPage,
-  isSaveComicDialogOpen,
+isSaveComicDialogOpen,
   setIsSaveComicDialogOpen,
   comicTitle,
   setComicTitle,
   comicCoverUrl,
   onGenerateCover,
-  onSaveToLibrary,
+  isGeneratingCover,
   timeState, // NOUVEAU
 }: PageStructureProps) {
 
@@ -337,6 +337,7 @@ export function PageStructure({
                     setComicTitle={setComicTitle}
                     comicCoverUrl={comicCoverUrl}
                     onGenerateCover={onGenerateCover}
+                    isGeneratingCover={isGeneratingCover}
                     onSaveToLibrary={onSaveToLibrary}
                     isLoading={isLoading}
                     timeState={timeState} // NOUVEAU

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -797,11 +797,11 @@ export function AdventureDisplay({
                     <CardContent className="p-3 pt-0">
                          <div className="flex items-center justify-center gap-2 mb-2">
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
-                                <X className="h-4 w-4 transform rotate-90"/> {/* Left Arrow */}
+                                <ArrowLeft className="h-4 w-4"/>
                             </Button>
                             <span className="text-xs font-medium">Page {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
-                                <X className="h-4 w-4 transform -rotate-90"/> {/* Right Arrow */}
+                                <ArrowRight className="h-4 w-4"/>
                             </Button>
                          </div>
                          <ScrollArea className="h-48 w-full">
@@ -883,12 +883,12 @@ export function AdventureDisplay({
                              <div className="space-y-2">
                                 <Label>Couverture</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
-                                    {isLoading ? <Loader2 className="h-8 w-8 animate-spin"/> :
+                                    {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
                                      isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" fill style={{objectFit: 'cover'}} className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
-                                <Button onClick={onGenerateCover} disabled={isLoading} className="w-full mt-2">
-                                    <Wand2 className="mr-2 h-4 w-4"/> {isLoading ? "Génération..." : "Générer une couverture"}
+                                <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
+                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? "Génération..." : "Générer une couverture"}
                                 </Button>
                             </div>
                         </div>
@@ -904,5 +904,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    
