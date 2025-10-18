@@ -4,25 +4,34 @@ import type { SceneDescriptionForImage } from "@/types";
 // This file is not a server module and can export helper functions safely.
 
 const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): string => {
-    if (!descriptionObject?.action) {
-        return "";
-    }
+    if (!descriptionObject?.action) return "";
 
-    let finalDescription = descriptionObject.action;
+    const { action, charactersInScene } = descriptionObject;
 
-    // Inject character appearance descriptions into the action string
-    if (descriptionObject.charactersInScene) {
-        descriptionObject.charactersInScene.forEach(char => {
-            if (char.appearanceDescription) {
-                // Use a regular expression with word boundaries (\b) to replace only whole words
-                const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
-                finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
-            }
+    let charactersSection = "";
+
+    if (charactersInScene && charactersInScene.length > 0) {
+        const characterLines = charactersInScene.map((char) => {
+            const appearance = char.appearanceDescription
+                ? `Appearance: ${char.appearanceDescription}.`
+                : "";
+            return `Character: ${char.name}. ${appearance}`;
         });
+        charactersSection = characterLines.join(" ");
     }
-    
-    return finalDescription;
-}
+
+    // ✅ Combine les sections pour un contexte complet
+    const fullDescription = `
+A detailed scene depiction.
+Scene context: ${action}.
+${charactersSection}
+Make sure all described characters are present in the scene, interacting naturally.
+Show their facial expressions and body posture consistent with the action described.
+Cinematic lighting and cohesive art direction.
+`;
+
+    return fullDescription.trim();
+};
 
 
 export const getStyleEnhancedPrompt = (descriptionObject?: SceneDescriptionForImage, style?: string): string => {
