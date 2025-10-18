@@ -72,7 +72,7 @@ interface PageStructureProps {
   setShowRestartConfirm: (open: boolean) => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
-  currentTurn: number;
+  currentTurn?: number;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
   comicDraft: ComicPage[];

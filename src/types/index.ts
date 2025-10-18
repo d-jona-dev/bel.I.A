@@ -36,6 +36,7 @@ export interface Character {
   factionColor?: string;
   locationId?: string | null;
   _lastSaved?: number;
+  faceSwapEnabled?: boolean;
   // Champs RPG conservés pour la structure mais non utilisés activement
   characterClass?: string;
   level?: number;
@@ -78,8 +79,30 @@ export interface AdventureSettings {
   playerClass?: string;
   playerLevel?: number;
   playerLocationId?: string;
+  playerFaceSwapEnabled?: boolean;
   timeManagement?: TimeManagementSettings;
+  mapPointsOfInterest?: MapPointOfInterest[]; // Gardé pour la structure, non utilisé
 }
+
+export interface MapPointOfInterest {
+    id: string;
+    name: string;
+    description?: string;
+    icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Shield' | 'Landmark';
+    position?: { x: number; y: number };
+    ownerId?: string;
+    level?: number;
+    buildings?: string[];
+    resources?: GeneratedResource[];
+    lastCollected?: number;
+}
+
+export interface GeneratedResource {
+    type: 'currency' | 'item';
+    name: string;
+    quantity: number;
+}
+
 
 export interface ModelDefinition {
     id: string;
@@ -245,7 +268,7 @@ export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSche
 
 // Types for Image Generation flows
 export interface GenerateSceneImageInput {
-  sceneDescription: string;
+  sceneDescription?: SceneDescriptionForImage; // Make optional
   style?: string;
 }
 

@@ -306,6 +306,8 @@ export default function Home() {
             id: c.id, 
             name: c.name, 
             details: c.details, 
+            biographyNotes: c.biographyNotes,
+            appearanceDescription: c.appearanceDescription,
             isPlaceholder: c.isPlaceholder, 
             roleInStory: c.roleInStory,
             portraitUrl: c.portraitUrl,

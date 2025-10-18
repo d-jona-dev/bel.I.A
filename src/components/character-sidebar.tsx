@@ -48,8 +48,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { Checkbox } from "@/components/ui/checkbox";
 import { i18n, type Language } from "@/lib/i18n";
-import { useForm, FormProvider, Controller } from "react-hook-form";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -87,16 +85,31 @@ interface CharacterSidebarProps {
 
 // Helper Components (defined outside CharacterSidebar)
 
-const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string, disabled?: boolean }) => (
-    <div className="space-y-1">
-          <Label htmlFor={id}>{label}</Label>
-          {rows ? (
-              <Textarea id={id} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
-          ) : (
-              <Input id={id} type={type} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
-          )}
-      </div>
-);
+const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: string, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string, disabled?: boolean }) => {
+    const [internalValue, setInternalValue] = React.useState(value);
+
+    React.useEffect(() => {
+        setInternalValue(value);
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setInternalValue(e.target.value);
+        if (onChange) {
+            onChange(e);
+        }
+    };
+    
+    return (
+        <div className="space-y-1">
+            <Label htmlFor={id}>{label}</Label>
+            {rows ? (
+                <Textarea id={id} value={internalValue ?? ""} onChange={handleChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
+            ) : (
+                <Input id={id} type={type} value={internalValue ?? ""} onChange={handleChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
+            )}
+        </div>
+    );
+};
 
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
   const otherCharacters = characters.filter(c => c.id !== charId);
@@ -506,19 +519,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
 
-    const formMethods = useForm({
-        defaultValues: char,
-    });
-    
-    React.useEffect(() => {
-        formMethods.reset(char);
-    }, [char, formMethods]);
-    
-    const handleBlur = (field: keyof Character) => () => {
-        const value = formMethods.getValues(field);
-        handleFieldChange(char.id, field, value);
-    };
-
     const isPlaceholder = char.isPlaceholder ?? false;
 
     const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n['en'].visionConsent;
@@ -543,7 +543,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
         try {
             const result = await describeAppearance({ portraitUrl: char.portraitUrl });
-            formMethods.setValue('appearanceDescription', result.description);
             onCharacterUpdate({
                 ...char,
                 appearanceDescription: result.description,
@@ -623,292 +622,261 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     };
 
     return (
-        <FormProvider {...formMethods}>
-            <AccordionItem value={char.id}>
-            <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                            {imageLoadingStates[char.id] ? (
-                                <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
-                            ) : isValidUrl(char.portraitUrl) ? (
-                                <AvatarImage src={char.portraitUrl} alt={char.name} />
-                            ) : (
-                                <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            )}
-                        </Avatar>
-                        <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
-                        {isGloballySaved && (
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <span><Save className="h-3 w-3 text-primary ml-1 flex-shrink-0" /></span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">{currentLanguage === 'fr' ? "Personnage sauvegardé globalement." : "Character saved globally."}</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+        <AccordionItem value={char.id}>
+        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                        {imageLoadingStates[char.id] ? (
+                            <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
+                        ) : isValidUrl(char.portraitUrl) ? (
+                            <AvatarImage src={char.portraitUrl} alt={char.name} />
+                        ) : (
+                            <AvatarFallback>{char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         )}
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                    <div className="flex gap-2">
+                    </Avatar>
+                    <span className="font-medium truncate">{char.name.split(' ')[0]}</span>
+                    {isGloballySaved && (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(char)}>
-                                        {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                                        {isGloballySaved ? (currentLanguage === 'fr' ? "Mettre à jour" : "Update") : (currentLanguage === 'fr' ? "Sauvegarder" : "Save")}
-                                    </Button>
+                                    <span><Save className="h-3 w-3 text-primary ml-1 flex-shrink-0" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    {isGloballySaved
-                                        ? (currentLanguage === 'fr' ? "Mettre à jour la fiche globale avec les informations actuelles." : "Update the global character sheet with current info.")
-                                        : (currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures.")
-                                    }
+                                <TooltipContent side="top">{currentLanguage === 'fr' ? "Personnage sauvegardé globalement." : "Character saved globally."}</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
+                <div className="flex gap-2">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(char)}>
+                                    {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                                    {isGloballySaved ? (currentLanguage === 'fr' ? "Mettre à jour" : "Update") : (currentLanguage === 'fr' ? "Sauvegarder" : "Save")}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                {isGloballySaved
+                                    ? (currentLanguage === 'fr' ? "Mettre à jour la fiche globale avec les informations actuelles." : "Update the global character sheet with current info.")
+                                    : (currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures.")
+                                }
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+            <div className="flex flex-col items-center gap-2">
+                    <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
+                        {imageLoadingStates[char.id] ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
+                        ) : isValidUrl(char.portraitUrl) ? (
+                            <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
+                        ) : (
+                            <User className="h-10 w-10 text-muted-foreground"/>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8">
+                                                <Palette className="h-4 w-4"/>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent>
+                                {defaultImageStyles.map((style) => (
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                ))}
+                                {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                {customStyles.map((style) => (
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait()} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            id={`upload-portrait-${char.id}`}
+                            className="hidden"
+                            onChange={(e) => handleUploadPortrait(char.id, e)}
+                        />
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8">
+                                                <LinkIcon className="h-4 w-4"/>
+                                            </Button>
+                                        </DialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
+                                    <DialogDescription>
+                                        Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {char.name}.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4">
+                                    <Label htmlFor="portrait-url">URL de l'image</Label>
+                                    <Input
+                                        id="portrait-url"
+                                        value={portraitUrl}
+                                        onChange={(e) => setPortraitUrl(e.target.value)}
+                                        placeholder="https://example.com/portrait.jpg"
+                                        className="mt-1"
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
+                                    <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+            </div>
+
+                <Separator />
+                 <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
+                    <EditableField
+                        label=""
+                        id={`${char.id}-appearanceDescription`}
+                        value={char.appearanceDescription}
+                        onChange={(e) => handleFieldChange(char.id, 'appearanceDescription', e.target.value)}
+                        placeholder="Générez ou écrivez une description physique détaillée..."
+                        rows={4}
+                    />
+                    <div className="flex items-center gap-2 mt-2">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => handleDescribeAppearance(char)}
+                                    disabled={!isValidUrl(char.portraitUrl) || describingAppearanceStates[char.id] || !visionConsentChecked}
+                                >
+                                    {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
+                                </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                    </div>
-
-                <div className="flex flex-col items-center gap-2">
-                        <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center">
-                            {imageLoadingStates[char.id] ? (
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
-                            ) : isValidUrl(char.portraitUrl) ? (
-                                <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
-                            ) : (
-                                <User className="h-10 w-10 text-muted-foreground"/>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <DropdownMenu>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" size="icon" className="h-8 w-8">
-                                                    <Palette className="h-4 w-4"/>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                <DropdownMenuContent>
-                                    {defaultImageStyles.map((style) => (
-                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
-                                    ))}
-                                    {customStyles.length > 0 && <DropdownMenuSeparator />}
-                                    {customStyles.map((style) => (
-                                        <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGeneratePortrait()} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
+                                        <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
+                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        </Label>
                                     </TooltipTrigger>
-                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                id={`upload-portrait-${char.id}`}
-                                className="hidden"
-                                onChange={(e) => handleUploadPortrait(char.id, e)}
-                            />
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <DialogTrigger asChild>
-                                                <Button variant="outline" size="icon" className="h-8 w-8">
-                                                    <LinkIcon className="h-4 w-4"/>
-                                                </Button>
-                                            </DialogTrigger>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
-                                        <DialogDescription>
-                                            Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {char.name}.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="py-4">
-                                        <Label htmlFor="portrait-url">URL de l'image</Label>
-                                        <Input
-                                            id="portrait-url"
-                                            value={portraitUrl}
-                                            onChange={(e) => setPortraitUrl(e.target.value)}
-                                            placeholder="https://example.com/portrait.jpg"
-                                            className="mt-1"
-                                        />
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
-                                        <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                </div>
-
-                    <Separator />
-                     <div className="space-y-2">
-                        <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
-                         <FormField
-                            control={formMethods.control}
-                            name="appearanceDescription"
-                            render={({ field }) => (
-                                <FormControl>
-                                <Textarea
-                                    {...field}
-                                    onBlur={handleBlur("appearanceDescription")}
-                                    placeholder="Générez ou écrivez une description physique détaillée..."
-                                    rows={4}
-                                    className="text-xs text-muted-foreground bg-background border"
-                                />
-                                </FormControl>
-                            )}
-                        />
-                        <div className="flex items-center gap-2 mt-2">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => handleDescribeAppearance(char)}
-                                        disabled={!isValidUrl(char.portraitUrl) || describingAppearanceStates[char.id] || !visionConsentChecked}
-                                    >
-                                        {describingAppearanceStates[char.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
-                                    </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                        <p>{disclaimerText}</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
-                                                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                            </Label>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom" className="max-w-xs">
-                                            <p>{disclaimerText}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <Separator />
-                    <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
+                <Separator />
+                <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
+                <EditableField
+                    label="Nom"
+                    id={`${char.id}-name`}
+                    value={char.name}
+                    onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                />
+                <EditableField
+                    label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
+                    id={`${char.id}-details`}
+                    value={char.details}
+                    onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
+                    rows={4}
+                />
+                <EditableField
+                    label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
+                    id={`${char.id}-biographyNotes`}
+                    value={char.biographyNotes}
+                    onChange={(e) => handleFieldChange(char.id, 'biographyNotes', e.target.value)}
+                    placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
+                    rows={5}
+                />
+                
+                <div className="space-y-2">
+                    <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
                     <EditableField
-                        label="Nom"
-                        id={`${char.id}-name`}
-                        value={char.name}
-                        onChange={(e) => handleFieldChange(char.id, 'name', e.target.value)}
-                        onBlur={(e) => handleFieldChange(char.id, 'name', e.target.value)}
+                        label=""
+                        id={`${char.id}-memory`}
+                        value={char.memory}
+                        onChange={(e) => handleFieldChange(char.id, 'memory', e.target.value)}
+                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
+                        rows={5}
                     />
-                    <EditableField
-                        label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
-                        id={`${char.id}-details`}
-                        value={char.details}
-                        onChange={(e) => handleFieldChange(char.id, 'details', e.target.value)}
-                        onBlur={(e) => handleFieldChange(char.id, 'details', e.target.value)}
-                        rows={4}
-                    />
-                    <FormField
-                        control={formMethods.control}
-                        name="biographyNotes"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>{currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        onBlur={handleBlur("biographyNotes")}
-                                        placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
-                                        rows={5}
-                                        className="text-sm bg-background border"
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
-                        <FormField
-                            control={formMethods.control}
-                            name="memory"
-                            render={({ field }) => (
-                                <FormControl>
-                                    <Textarea
-                                        {...field}
-                                        onBlur={handleBlur("memory")}
-                                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
-                                        rows={5}
-                                        className="text-sm bg-background border"
-                                    />
-                                </FormControl>
-                            )}
-                        />
-                    </div>
-                    
-                    {relationsMode && (
-                        <>
-                            <div className="space-y-2">
-                                <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        id={`${char.id}-affinity`}
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        defaultValue={currentAffinity}
-                                        onBlur={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
-                                        className="h-8 text-sm w-20 flex-none bg-background border"
-                                    />
-                                    <Progress value={currentAffinity} className="flex-1 h-2" />
-                                    <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
-                                </div>
+                </div>
+                
+                {relationsMode && (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    id={`${char.id}-affinity`}
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    defaultValue={currentAffinity}
+                                    onBlur={(e) => handleFieldChange(char.id, 'affinity', e.target.value)}
+                                    className="h-8 text-sm w-20 flex-none bg-background border"
+                                />
+                                <Progress value={currentAffinity} className="flex-1 h-2" />
+                                <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
                             </div>
-                            <RelationsEditableCard
-                                charId={char.id}
-                                data={char.relations}
-                                characters={allCharacters}
-                                playerId={playerId}
-                                playerName={playerName}
-                                currentLanguage={currentLanguage}
-                                onUpdate={handleNestedFieldChange}
-                                onRemove={removeNestedField}
-                            />
-                        </>
-                    )}
-                </AccordionContent>
-            </AccordionItem>
-        </FormProvider>
+                        </div>
+                        <RelationsEditableCard
+                            charId={char.id}
+                            data={char.relations}
+                            characters={allCharacters}
+                            playerId={playerId}
+                            playerName={playerName}
+                            currentLanguage={currentLanguage}
+                            onUpdate={handleNestedFieldChange}
+                            onRemove={removeNestedField}
+                        />
+                    </>
+                )}
+            </AccordionContent>
+        </AccordionItem>
     );
 });
-
-    
