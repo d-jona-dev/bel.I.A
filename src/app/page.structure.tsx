@@ -91,6 +91,7 @@ interface PageStructureProps {
   comicCoverUrl: string | null;
   onGenerateCover: () => void;
   isGeneratingCover: boolean;
+  onSaveToLibrary: () => void;
   isLoading: boolean;
   timeState: GameClockState; // NOUVEAU
 }
@@ -148,6 +149,7 @@ isSaveComicDialogOpen,
   comicCoverUrl,
   onGenerateCover,
   isGeneratingCover,
+  onSaveToLibrary,
   timeState, // NOUVEAU
 }: PageStructureProps) {
 
