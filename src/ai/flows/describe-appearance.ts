@@ -22,7 +22,7 @@ const DescribeAppearanceInputSchema = z.object({
 export type DescribeAppearanceInput = z.infer<typeof DescribeAppearanceInputSchema>;
 
 const DescribeAppearanceOutputSchema = z.object({
-  description: z.string().describe("A detailed physical description of the character in the image, focusing on facial features, hair, clothing, and any distinguishing marks. This description should be suitable for use in an image generation prompt to recreate the character."),
+  description: z.string().describe("A detailed physical description of the character in the image, focusing on facial features, hair, and any distinguishing marks. This description should be suitable for use in an image generation prompt to recreate the character."),
 });
 export type DescribeAppearanceOutput = z.infer<typeof DescribeAppearanceOutputSchema>;
 
@@ -32,17 +32,19 @@ const describeAppearancePrompt = ai.definePrompt({
   input: { schema: DescribeAppearanceInputSchema },
   output: { schema: DescribeAppearanceOutputSchema },
   prompt: `You are an expert character artist and writer, specializing in creating vivid descriptions for game development.
-Your task is to analyze the provided character portrait and generate a detailed, objective physical description.
+Your task is to analyze the provided character portrait and generate a detailed, objective physical description focusing *only* on permanent physical traits.
 
-Focus exclusively on visual details that would be crucial for another artist (or an AI) to reproduce the character's likeness.
+**CRITICAL RULES:**
+1.  **DO NOT** describe clothing, accessories, armor, or any wearable items.
+2.  **DO NOT** describe the background, setting, or any lighting effects.
+3.  **DO NOT** invent personality, backstory, or names. Stick strictly to what is visually present in the image.
+4.  The output must be a single block of descriptive text, suitable for an image generation prompt.
 
-- **Face:** Describe the face shape (oval, square, heart-shaped), jawline, skin tone, and any notable features like scars, tattoos, or wrinkles.
-- **Eyes:** Detail the eye color, shape (almond, round), and expression (piercing, gentle, tired). Mention eyebrow shape and color.
-- **Hair:** Describe the hair color, style (long, short, braided, messy), texture, and any accessories.
-- **Clothing & Accessories:** Detail the character's attire, including type of clothing, colors, materials (leather, silk, metal), and any visible accessories like jewelry, armor pieces, or headwear.
+**FOCUS EXCLUSIVELY ON THESE PHYSICAL TRAITS:**
+- **Face:** Describe the face shape (oval, square, heart-shaped), jawline, skin tone, and any notable permanent features like scars, tattoos, or wrinkles.
+- **Eyes:** Detail the eye color, shape (almond, round), and their general appearance (piercing, gentle, tired). Mention eyebrow shape and color.
+- **Hair:** Describe the hair color, style (long, short, braided, messy), and texture. Do not mention hair accessories.
 - **Overall Build:** Briefly mention the character's apparent build (slender, muscular, stocky) if discernible.
-
-**CRITICAL RULE:** Do NOT invent any personality traits, backstory, or names. Stick strictly to what is visually present in the image. The output should be a single block of descriptive text.
 
 Portrait to describe: {{media url=portraitUrl}}
 `,
