@@ -30,11 +30,14 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     
     mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.`;
     
+    // NEW INSTRUCTION FOR SCENE DESCRIPTION
+    mainInstruction += "\nFor `sceneDescriptionForImage`, provide a MINIMAL description in ENGLISH focusing on 'who is doing what, where'. DO NOT describe character appearances.";
+
     mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
 
     const zodSchemaString = `{
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "sceneDescriptionForImage": "A young woman with brown hair stands in a modern university hallway, looking worried. A blond man approaches her with a concerned expression. Epic fantasy painting style.",
+    "sceneDescriptionForImage": "Rina and Kentaro are talking in a modern university hallway.",
     "affinityUpdates": [
         { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." }
     ],
