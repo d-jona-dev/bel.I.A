@@ -4,8 +4,24 @@
 /**
  * @fileOverview Generates an image using a local Stable Diffusion WebUI (like Automatic1111) API.
  */
-import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from '@/types';
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, SceneDescriptionForImage } from '@/types';
 import { getStyleEnhancedPrompt } from './prompt-styles';
+
+// Helper function to build the final prompt from the rich description object
+const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
+    let finalDescription = description.action;
+
+    // Inject character appearance descriptions into the action string
+    description.charactersInScene.forEach(char => {
+        if (char.appearanceDescription) {
+            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
+            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
+        }
+    });
+    
+    return getStyleEnhancedPrompt(finalDescription, style);
+};
+
 
 export async function generateSceneImageWithLocalSd(
   input: GenerateSceneImageInput,
@@ -16,7 +32,7 @@ export async function generateSceneImageWithLocalSd(
     return { imageUrl: "", error: "L'URL de l'API Stable Diffusion locale est requise." };
   }
 
-  const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+  const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
   // Default to /sdapi/v1/txt2img which is common for Automatic1111
   const fullApiUrl = new URL('/sdapi/v1/txt2img', localSdConfig.apiUrl).toString();
 

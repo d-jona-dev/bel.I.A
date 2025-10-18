@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput } from "@/types";
+import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage } from "@/types";
 import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
@@ -151,7 +151,26 @@ export function useAIActions({
                         // In regeneration, the last message (the old AI response) should be replaced.
                         newMessages.pop();
                     }
-                    return [...newMessages, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescription: result.sceneDescriptionForImage }];
+                    
+                    let richSceneDescription: SceneDescriptionForImage | undefined = undefined;
+                    if (result.sceneDescriptionForImage?.action) {
+                        const characterRegex = new RegExp(characters.map(c => c.name).join('|'), 'gi');
+                        const mentionedCharacters = result.sceneDescriptionForImage.action.match(characterRegex) || [];
+                        const uniqueCharacterNames = [...new Set(mentionedCharacters)];
+
+                        richSceneDescription = {
+                            action: result.sceneDescriptionForImage.action,
+                            charactersInScene: uniqueCharacterNames.map(name => {
+                                const character = characters.find(c => c.name.toLowerCase() === name.toLowerCase());
+                                return {
+                                    name: character?.name || name,
+                                    appearanceDescription: character?.appearanceDescription,
+                                };
+                            })
+                        };
+                    }
+
+                    return [...newMessages, { id: `ai-${Date.now()}`, type: 'ai', content: result.narrative || "", timestamp: Date.now(), sceneDescriptionForImage: richSceneDescription }];
                 });
                 if (adventureSettings.relationsMode) {
                     if (result.affinityUpdates) handleAffinityUpdates(result.affinityUpdates);

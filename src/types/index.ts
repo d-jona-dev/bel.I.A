@@ -1,5 +1,3 @@
-
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -16,7 +14,7 @@ export interface Message {
   type: 'user' | 'ai' | 'system';
   content: string;
   timestamp: number;
-  sceneDescription?: string;
+  sceneDescriptionForImage?: SceneDescriptionForImage; // Changed to new type
   imageUrl?: string | null;
   imageTransform?: ImageTransform;
 }
@@ -167,6 +165,16 @@ export interface SaveData {
     aiConfig?: AiConfig;
 }
 
+// NEW type for richer image description
+export interface SceneDescriptionForImage {
+    action: string; // "who is doing what, and where"
+    charactersInScene: Array<{
+        name: string;
+        appearanceDescription?: string;
+    }>;
+}
+
+
 // ZOD SCHEMAS FOR GENKIT FLOW (Simplified for relationship-only)
 const CharacterWithContextSummarySchema = z.object({
   id: z.string(),
@@ -221,9 +229,14 @@ export const RelationUpdateSchema = z.object({
 });
 export type RelationUpdateSchema = z.infer<typeof RelationUpdateSchema>;
 
+// New Schema for the scene description object
+export const SceneDescriptionForImageSchema = z.object({
+    action: z.string().describe("Minimalist description (in ENGLISH) of the scene: who is doing what, where. Example: 'Rina and Kentaro are arguing in a classroom.'"),
+});
+
 export const GenerateAdventureOutputSchema = z.object({
   narrative: z.string(),
-  sceneDescriptionForImage: z.string().optional(),
+  sceneDescriptionForImage: SceneDescriptionForImageSchema.optional(),
   affinityUpdates: z.array(AffinityUpdateSchema).optional(),
   relationUpdates: z.array(RelationUpdateSchema).optional(),
 });
@@ -232,7 +245,7 @@ export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSche
 
 // Types for Image Generation flows
 export interface GenerateSceneImageInput {
-  sceneDescription: string;
+  sceneDescription: SceneDescriptionForImage; // Use the rich type
   style?: string;
 }
 

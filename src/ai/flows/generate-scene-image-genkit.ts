@@ -12,14 +12,20 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from '@/types';
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, SceneDescriptionForImage } from '@/types';
 import { getStyleEnhancedPrompt } from './prompt-styles';
 
 
+const SceneDescriptionForImageSchema = z.object({
+    action: z.string(),
+    charactersInScene: z.array(z.object({
+        name: z.string(),
+        appearanceDescription: z.string().optional(),
+    })),
+});
+
 const GenerateSceneImageInputSchema = z.object({
-  sceneDescription: z
-    .string()
-    .describe('A visual description of the scene to generate an image for. Should prioritize physical descriptions of characters over names.'),
+  sceneDescription: SceneDescriptionForImageSchema,
   style: z.string().optional().describe("The artistic style for the image (e.g., 'Réaliste', 'Manga / Anime', 'Fantaisie Epique', or a custom user prompt)."),
 });
 
@@ -33,6 +39,21 @@ const getDefaultOutput = (errorMsg?: string): GenerateSceneImageFlowOutput => ({
     imageUrl: "", // Default empty or null image URL
     error: errorMsg,
 });
+
+// Helper function to build the final prompt from the rich description object
+const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
+    let finalDescription = description.action;
+
+    // Inject character appearance descriptions into the action string
+    description.charactersInScene.forEach(char => {
+        if (char.appearanceDescription) {
+            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
+            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
+        }
+    });
+    
+    return getStyleEnhancedPrompt(finalDescription, style);
+};
 
 export async function generateSceneImageWithGenkit(input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput>
 {
@@ -51,7 +72,7 @@ const generateSceneImageFlow = ai.defineFlow<
   },
   async (input): Promise<GenerateSceneImageFlowOutput> => {
     let fullResponse;
-    const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+    const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
     
     try {
       fullResponse = await ai.generate({

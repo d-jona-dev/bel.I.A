@@ -4,8 +4,24 @@
 /**
  * @fileOverview Generates an image using the Hugging Face Inference API.
  */
-import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from '@/types';
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, SceneDescriptionForImage } from '@/types';
 import { getStyleEnhancedPrompt } from './prompt-styles';
+
+// Helper function to build the final prompt from the rich description object
+const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
+    let finalDescription = description.action;
+
+    // Inject character appearance descriptions into the action string
+    description.charactersInScene.forEach(char => {
+        if (char.appearanceDescription) {
+            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
+            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
+        }
+    });
+    
+    return getStyleEnhancedPrompt(finalDescription, style);
+};
+
 
 export async function generateSceneImageWithHuggingFace(
   input: GenerateSceneImageInput,
@@ -16,7 +32,7 @@ export async function generateSceneImageWithHuggingFace(
     return { imageUrl: "", error: "L'identifiant du modèle Hugging Face est requis." };
   }
 
-  const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+  const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
   const apiUrl = `https://api-inference.huggingface.co/models/${imageConfig.model}`;
 
   try {

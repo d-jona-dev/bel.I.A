@@ -4,10 +4,27 @@
 /**
  * @fileOverview Generates an image using the OpenRouter API.
  */
-import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from '@/types';
+import type { GenerateSceneImageInput, GenerateSceneImageFlowOutput, SceneDescriptionForImage } from '@/types';
 import { getStyleEnhancedPrompt } from './prompt-styles'; // Reuse the prompt logic
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/images/generations";
+
+
+// Helper function to build the final prompt from the rich description object
+const buildImagePrompt = (description: SceneDescriptionForImage, style?: string): string => {
+    let finalDescription = description.action;
+
+    // Inject character appearance descriptions into the action string
+    description.charactersInScene.forEach(char => {
+        if (char.appearanceDescription) {
+            const regex = new RegExp(`\\b${char.name}\\b`, 'gi');
+            finalDescription = finalDescription.replace(regex, `${char.name} (${char.appearanceDescription})`);
+        }
+    });
+    
+    return getStyleEnhancedPrompt(finalDescription, style);
+};
+
 
 export async function generateSceneImageWithOpenRouter(
   input: GenerateSceneImageInput,
@@ -18,7 +35,7 @@ export async function generateSceneImageWithOpenRouter(
     return { imageUrl: "", error: "La clé API et le modèle OpenRouter pour les images sont requis." };
   }
 
-  const finalPrompt = getStyleEnhancedPrompt(input.sceneDescription, input.style);
+  const finalPrompt = buildImagePrompt(input.sceneDescription, input.style);
 
   try {
     const response = await fetch(OPENROUTER_API_URL, {
