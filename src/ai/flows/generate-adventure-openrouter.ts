@@ -45,7 +45,9 @@ function buildOpenRouterPrompt(
     
     mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
     
-    mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :** Fournis une description MINIMALE en ANGLAIS. Concentre-toi sur "qui fait quoi, où". N'inclus PAS la description physique des personnages.`;
+    mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :**
+- \`action\`: Fournis une description MINIMALE en ANGLAIS. Concentre-toi sur "qui fait quoi, où". N'inclus PAS la description physique des personnages.
+- \`cameraAngle\`: Suggère un angle de caméra créatif et dynamique en ANGLAIS (ex: "dynamic low-angle shot", "aerial view").`;
     
     mainInstruction += `\n**Pour \`newEvent\` :** Si la narration implique un changement d'événement (ex: la classe se termine), décris-le brièvement. Sinon, laisse ce champ vide.`;
 
@@ -57,7 +59,7 @@ function buildOpenRouterPrompt(
 \`\`\`json
 {
     "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "sceneDescriptionForImage": { "action": "Rina and Kentaro are arguing in a classroom." },
+    "sceneDescriptionForImage": { "action": "Rina and Kentaro are arguing in a classroom.", "cameraAngle": "dramatic close-up on Rina's face" },
     "affinityUpdates": [ { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." } ],
     "relationUpdates": [],
     "newEvent": "Fin du cours"
