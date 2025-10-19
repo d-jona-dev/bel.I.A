@@ -35,6 +35,7 @@ import { describeAppearance } from '@/ai/flows/describe-appearance';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { i18n } from '@/lib/i18n';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const WARDROBE_STORAGE_KEY = 'wardrobe_items_v1';
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
