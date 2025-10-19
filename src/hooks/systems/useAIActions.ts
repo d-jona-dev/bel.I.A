@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage } from "@/types";
+import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage, ClothingItem } from "@/types";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureFlowOutput, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
@@ -21,7 +21,7 @@ const PLAYER_ID = "player";
 
 interface UseAIActionsProps {
     adventureSettings: AdventureSettings;
-    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>; // Added this
+    setAdventureSettings: React.Dispatch<React.SetStateAction<AdventureSettings>>;
     characters: Character[];
     narrativeMessages: Message[];
     currentLanguage: string;
@@ -35,7 +35,7 @@ interface UseAIActionsProps {
 
 export function useAIActions({
     adventureSettings,
-    setAdventureSettings, // Added this
+    setAdventureSettings,
     characters,
     narrativeMessages,
     currentLanguage,
@@ -149,24 +149,25 @@ export function useAIActions({
                 toast({ title: "Erreur de l'IA", description: result.error, variant: "destructive" });
             } else {
                  setNarrativeMessages(prev => {
-                    const newMessages = [...prev];
-                    if (isRegeneration) {
-                        newMessages.pop();
-                    }
+                    const newMessages = isRegeneration ? prev.slice(0, -1) : [...prev];
                     
                     let richSceneDescription: SceneDescriptionForImage | undefined = undefined;
                     if (result.sceneDescriptionForImage?.action) {
                         const characterRegex = new RegExp(characters.map(c => c.name).join('|'), 'gi');
                         const mentionedCharacters = result.sceneDescriptionForImage.action.match(characterRegex) || [];
                         const uniqueCharacterNames = [...new Set(mentionedCharacters)];
+                        
+                        const wardrobe: ClothingItem[] = JSON.parse(localStorage.getItem('wardrobe_items_v1') || '[]');
 
                         richSceneDescription = {
                             action: result.sceneDescriptionForImage.action,
                             charactersInScene: uniqueCharacterNames.map(name => {
                                 const character = characters.find(c => c.name.toLowerCase() === name.toLowerCase());
+                                const clothingDescription = character?.clothingItemIds?.map(id => wardrobe.find(item => item.id === id)?.description).filter(Boolean).join('. ') || undefined;
                                 return {
                                     name: character?.name || name,
                                     appearanceDescription: character?.appearanceDescription,
+                                    clothingDescription,
                                 };
                             })
                         };
@@ -181,12 +182,12 @@ export function useAIActions({
                 if (result.newEvent?.trim() && adventureSettings.timeManagement?.enabled) {
                     setAdventureSettings(prev => {
                         const oldEvent = prev.timeManagement?.currentEvent || "";
-                        if (oldEvent === result.newEvent) return prev; // évite les updates inutiles
+                        if (oldEvent === result.newEvent) return prev; 
 
                         return {
                             ...prev,
                             timeManagement: {
-                                ...JSON.parse(JSON.stringify(prev.timeManagement)), // force nouvelle ref
+                                ...JSON.parse(JSON.stringify(prev.timeManagement)),
                                 currentEvent: result.newEvent!,
                             },
                         };

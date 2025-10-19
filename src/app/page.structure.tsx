@@ -2,7 +2,6 @@
 
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
-// It uses the Sidebar components and places the AdventureDisplay and configuration panels.
 
 import * as React from 'react';
 import Link from 'next/link';
@@ -13,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, AiConfig, ComicPage } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
@@ -203,6 +202,19 @@ isSaveComicDialogOpen,
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right" align="center">Éditeur de BD</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/penderie">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Penderie">
+                                <Shirt className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Penderie</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Gérer les Vêtements</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                 <TooltipProvider>

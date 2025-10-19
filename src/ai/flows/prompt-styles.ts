@@ -17,10 +17,15 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
             const appearance = char.appearanceDescription
                 ? char.appearanceDescription.trim()
                 : "No visual details provided";
+            
+            const clothing = char.clothingDescription
+                ? ` Wearing: ${char.clothingDescription.trim()}`
+                : "";
+
             return `
 <character>
   <name>${char.name}</name>
-  <visual_description>${appearance}</visual_description>
+  <visual_description>${appearance}${clothing}</visual_description>
 </character>`;
         }).join("");
     }
@@ -32,7 +37,7 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
     Your task is to generate an image based on the scene and character descriptions provided below.
     - The <scene> block describes the environment and the action.
     - Each <character> block describes a person who must appear in the scene.
-    - You MUST adhere strictly to the visual description provided for each character. Do not mix their appearances.
+    - You MUST adhere strictly to the visual description provided for each character, including their clothing. Do not mix their appearances.
     - Render the scene as described, with all listed characters present and interacting naturally.
     - Ensure faces are clearly visible and match the provided visual descriptions.
   </system_task>
@@ -59,7 +64,7 @@ export const getStyleEnhancedPrompt = (descriptionObject?: SceneDescriptionForIm
 
   const isPortrait = finalDescription.toLowerCase().includes('portrait of');
 
-  // Compose the final prompt: negative prompt first (short), then style directive, then scene
+  // Compose the final prompt: negative prompt first, then style directive, then scene
   if (isPortrait) {
       const base = style && style !== "Par Défaut"
           ? `${style}. ${finalDescription}`

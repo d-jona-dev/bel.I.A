@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye, AlertTriangle, UserCog, MemoryStick, RefreshCcw } from "lucide-react";
+import { Wand2, Loader2, User, ScrollText, BarChartHorizontal, Brain, History, Star, Dices, Shield, Swords, Zap, PlusCircle, Trash2, Save, Heart, Link as LinkIcon, UserPlus, UploadCloud, Users, FilePenLine, BarChart2 as ExpIcon, MapPin, Palette, Replace, Eye, AlertTriangle, UserCog, MemoryStick, RefreshCcw, Shirt } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character } from "@/types";
+import type { Character, ClothingItem } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -48,6 +48,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { describeAppearance } from "@/ai/flows/describe-appearance";
 import { Checkbox } from "@/components/ui/checkbox";
 import { i18n, type Language } from "@/lib/i18n";
+import { Badge } from "./ui/badge";
 
 
 const BASE_ATTRIBUTE_VALUE_FORM = 8;
@@ -319,7 +320,7 @@ export function CharacterSidebar({
   };
 
 
-   const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null) => {
+   const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null | string[]) => {
         const character = initialCharacters.find(c => c.id === charId);
         if (character) {
             if (field === 'locationId' && value === '__traveling__') {
@@ -518,20 +519,23 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
+    const [wardrobe, setWardrobe] = React.useState<ClothingItem[]>([]);
 
     const isPlaceholder = char.isPlaceholder ?? false;
 
-    const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n['en'].visionConsent;
-    const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n['en'].memory;
+    const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n.en.visionConsent;
+    const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n.en.memory;
 
     React.useEffect(() => {
         try {
             const savedStyles = localStorage.getItem("customImageStyles_v1");
-            if (savedStyles) {
-                setCustomStyles(JSON.parse(savedStyles));
-            }
+            if (savedStyles) setCustomStyles(JSON.parse(savedStyles));
+
+            const savedWardrobe = localStorage.getItem("wardrobe_items_v1");
+            if(savedWardrobe) setWardrobe(JSON.parse(savedWardrobe));
+
         } catch (error) {
-            console.error("Failed to load custom styles:", error);
+            console.error("Failed to load custom styles or wardrobe:", error);
         }
     }, []);
 
@@ -586,6 +590,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         handleFieldChange(char.id, 'portraitUrl', portraitUrl);
         setIsUrlDialogOpen(false);
         toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
+    };
+
+    const handleClothingChange = (clothingId: string) => {
+        const currentClothing = char.clothingItemIds || [];
+        const isSelected = currentClothing.includes(clothingId);
+        const newClothing = isSelected
+            ? currentClothing.filter(id => id !== clothingId)
+            : [...currentClothing, clothingId];
+        handleFieldChange(char.id, 'clothingItemIds', newClothing);
     };
 
     const isGloballySaved = isClient && char._lastSaved;
@@ -764,6 +777,40 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             </div>
 
                 <Separator />
+                <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Shirt className="h-4 w-4" /> Penderie</Label>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                {char.clothingItemIds && char.clothingItemIds.length > 0 
+                                    ? `${char.clothingItemIds.length} vêtement(s) équipé(s)`
+                                    : "Aucun vêtement"}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64">
+                            {wardrobe.length > 0 ? wardrobe.map(item => (
+                                <DropdownMenuItem key={item.id} onSelect={(e) => e.preventDefault()}>
+                                    <Checkbox
+                                        id={`clothing-${char.id}-${item.id}`}
+                                        checked={char.clothingItemIds?.includes(item.id)}
+                                        onCheckedChange={() => handleClothingChange(item.id)}
+                                        className="mr-2"
+                                    />
+                                    <Label htmlFor={`clothing-${char.id}-${item.id}`} className="cursor-pointer">{item.name}</Label>
+                                </DropdownMenuItem>
+                            )) : <DropdownMenuItem disabled>Penderie vide</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {char.clothingItemIds && char.clothingItemIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {char.clothingItemIds.map(id => {
+                                const item = wardrobe.find(i => i.id === id);
+                                return item ? <Badge key={id} variant="secondary">{item.name}</Badge> : null;
+                            })}
+                        </div>
+                    )}
+                </div>
+
                  <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
                     <EditableField

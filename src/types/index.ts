@@ -20,6 +20,14 @@ export interface Message {
   imageTransform?: ImageTransform;
 }
 
+// Nouveau : Structure pour un vêtement
+export interface ClothingItem {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -38,6 +46,7 @@ export interface Character {
   locationId?: string | null;
   _lastSaved?: number;
   faceSwapEnabled?: boolean;
+  clothingItemIds?: string[]; // Nouveau: ID des vêtements portés
   // Champs RPG conservés pour la structure mais non utilisés activement
   characterClass?: string;
   level?: number;
@@ -195,6 +204,7 @@ export interface SceneDescriptionForImage {
     charactersInScene: Array<{
         name: string;
         appearanceDescription?: string;
+        clothingDescription?: string; // Nouveau
     }>;
 }
 
@@ -279,5 +289,3 @@ export interface GenerateSceneImageFlowOutput {
   imageUrl: string;
   error?: string;
 }
-
-    
