@@ -8,7 +8,7 @@ import type { SceneDescriptionForImage } from "@/types";
 const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): string => {
     if (!descriptionObject?.action) return "";
 
-    const { action, charactersInScene } = descriptionObject;
+    const { action, charactersInScene, cameraAngle } = descriptionObject;
 
     // Build a structured XML-like block for each character
     let charactersBlock = "";
@@ -30,12 +30,15 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
         }).join("");
     }
 
+    // Add the camera angle to the scene description if provided
+    const sceneAction = cameraAngle ? `${cameraAngle}. ${action.trim()}` : action.trim();
+
     // Use a structured, instruction-based prompt
     const fullDescription = `
 <prompt_instructions>
   <system_task>
     Your task is to generate an image based on the scene and character descriptions provided below.
-    - The <scene> block describes the environment and the action.
+    - The <scene> block describes the environment, action, and desired camera perspective. You MUST respect the camera angle.
     - Each <character> block describes a person who must appear in the scene.
     - You MUST adhere strictly to the visual description provided for each character, including their clothing. Do not mix their appearances.
     - Render the scene as described, with all listed characters present and interacting naturally.
@@ -44,7 +47,7 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
 </prompt_instructions>
 ${charactersBlock}
 <scene>
-  ${action.trim()}
+  ${sceneAction}
 </scene>
 `;
 

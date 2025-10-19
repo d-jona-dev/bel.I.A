@@ -46,7 +46,9 @@ export interface Character {
   locationId?: string | null;
   _lastSaved?: number;
   faceSwapEnabled?: boolean;
-  clothingItemIds?: string[]; // Nouveau: ID des vêtements portés
+  clothingItemIds?: string[];
+  clothingDescription?: string;
+  
   // Champs RPG conservés pour la structure mais non utilisés activement
   characterClass?: string;
   level?: number;
@@ -201,6 +203,7 @@ export interface SaveData {
 // NEW type for richer image description
 export interface SceneDescriptionForImage {
     action: string; // "who is doing what, and where"
+    cameraAngle?: string; // NOUVEAU: Angle de caméra suggéré
     charactersInScene: Array<{
         name: string;
         appearanceDescription?: string;
@@ -267,6 +270,7 @@ export type RelationUpdateSchema = z.infer<typeof RelationUpdateSchema>;
 // New Schema for the scene description object
 export const SceneDescriptionForImageSchema = z.object({
     action: z.string().describe("Minimalist description (in ENGLISH) of the scene: who is doing what, where. Example: 'Rina and Kentaro are arguing in a classroom.'"),
+    cameraAngle: z.string().optional().describe("A dynamic camera angle in English. Examples: 'dynamic low-angle shot', 'aerial view', 'first-person perspective', 'cinematic wide shot', 'over-the-shoulder shot'. Be creative."),
 });
 
 export const GenerateAdventureOutputSchema = z.object({
