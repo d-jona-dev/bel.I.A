@@ -28,6 +28,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
 
     let mainInstruction = `You are an interactive fiction engine. Your task is to generate the continuation of the story based on the provided context. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object that adheres to the following Zod schema. Do NOT provide any text outside the JSON object. Do not wrap the JSON in quotes or markdown backticks. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
     
+    mainInstruction += `\n**NEW RULE: To avoid ambiguity, when an NPC performs an action, start the sentence with their name (e.g., "Rina takes a deep breath...").**`;
     mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.`;
     
     mainInstruction += "\nFor `sceneDescriptionForImage`, provide a MINIMAL description in ENGLISH focusing on 'who is doing what, where'. Also suggest a `cameraAngle` (e.g., 'dynamic low-angle shot'). DO NOT describe character appearances.";

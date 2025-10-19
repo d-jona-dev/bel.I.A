@@ -73,6 +73,7 @@ const prompt = ai.definePrompt({
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, affinity, and relationships as detailed below. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
+**NEW RULE: To avoid ambiguity, when an NPC performs an action, start the sentence with their name (e.g., "Rina takes a deep breath..."). You can use pronouns for subsequent actions in the same paragraph.**
 **COMIC MODE ACTIVE: Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.**
 
 World: {{{world}}}

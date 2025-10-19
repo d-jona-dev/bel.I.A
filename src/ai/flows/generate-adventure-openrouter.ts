@@ -43,6 +43,7 @@ function buildOpenRouterPrompt(
     Commence ta narration directement, sans répéter l'action du joueur.
     RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.`;
     
+    mainInstruction += `\n**NOUVELLE RÈGLE : Pour éviter toute ambiguïté, lorsqu'un PNJ effectue une action, commence la phrase par son nom (par exemple, "Rina prend une profonde inspiration...").**`;
     mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
     
     mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :**
