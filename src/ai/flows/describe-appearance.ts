@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview Describes a character's appearance based on a portrait image.
+ * @fileOverview Describes a character's appearance or clothing based on an image.
  *
  * - describeAppearance - A function that takes an image and returns a detailed description.
  * - DescribeAppearanceInput - The input type for the describeAppearance function.
@@ -16,13 +16,13 @@ const DescribeAppearanceInputSchema = z.object({
   portraitUrl: z
     .string()
     .describe(
-      "A portrait image of a character, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "An image of a character or a piece of clothing, as a data URI. Format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type DescribeAppearanceInput = z.infer<typeof DescribeAppearanceInputSchema>;
 
 const DescribeAppearanceOutputSchema = z.object({
-  description: z.string().describe("A detailed physical description of the character in the image, focusing on facial features, hair, and any distinguishing marks. This description should be suitable for use in an image generation prompt to recreate the character."),
+  description: z.string().describe("A detailed, objective description suitable for an image generation prompt."),
 });
 export type DescribeAppearanceOutput = z.infer<typeof DescribeAppearanceOutputSchema>;
 
@@ -31,22 +31,17 @@ const describeAppearancePrompt = ai.definePrompt({
   name: 'describeAppearancePrompt',
   input: { schema: DescribeAppearanceInputSchema },
   output: { schema: DescribeAppearanceOutputSchema },
-  prompt: `You are an expert character artist and writer, specializing in creating vivid descriptions for game development.
-Your task is to analyze the provided character portrait and generate a detailed, objective physical description focusing *only* on permanent physical traits.
+  prompt: `You are an expert fashion and character artist, specializing in creating vivid descriptions for game development.
+Your task is to analyze the provided image and generate a detailed, objective description focusing *only* on what is visible.
 
 **CRITICAL RULES:**
-1.  **DO NOT** describe clothing, accessories, armor, or any wearable items.
-2.  **DO NOT** describe the background, setting, or any lighting effects.
-3.  **DO NOT** invent personality, backstory, or names. Stick strictly to what is visually present in the image.
-4.  The output must be a single block of descriptive text, suitable for an image generation prompt.
+1.  **Analyze the image content:** Determine if the primary subject is a PERSON or an ITEM OF CLOTHING.
+2.  **If it's a person:** Describe their permanent physical traits (face, hair, build). DO NOT describe clothing, accessories, armor, background, or lighting.
+3.  **If it's an item of clothing:** Describe the clothing exclusively. Detail its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns or notable details. DO NOT describe the person wearing it (if any) or the background.
+4.  **DO NOT** invent personality, backstory, or names. Stick strictly to what is visually present.
+5.  The output must be a single block of descriptive text, suitable for an image generation prompt.
 
-**FOCUS EXCLUSIVELY ON THESE PHYSICAL TRAITS:**
-- **Face:** Describe the face shape (oval, square, heart-shaped), jawline, skin tone, and any notable permanent features like scars, tattoos, or wrinkles.
-- **Eyes:** Detail the eye color, shape (almond, round), and their general appearance (piercing, gentle, tired). Mention eyebrow shape and color.
-- **Hair:** Describe the hair color, style (long, short, braided, messy), and texture. Do not mention hair accessories.
-- **Overall Build:** Briefly mention the character's apparent build (slender, muscular, stocky) if discernible.
-
-Portrait to describe: {{media url=portraitUrl}}
+Image to describe: {{media url=portraitUrl}}
 `,
 });
 

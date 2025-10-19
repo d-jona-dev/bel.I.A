@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, Download, Save, Wand2, Link as LinkIcon, UploadCloud, X, Shirt, Eye, AlertTriangle } from 'lucide-react';
+import { Upload, Trash2, Edit, Download, Save, Wand2, Link as LinkIcon, UploadCloud, X, Shirt, Eye, AlertTriangle, BrainCircuit } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -25,17 +25,19 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import type { ClothingItem } from '@/types';
+import type { ClothingItem, AiConfig } from '@/types';
 import { describeAppearance } from '@/ai/flows/describe-appearance';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { i18n } from '@/lib/i18n';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ModelManager } from '@/components/model-manager';
 
 const WARDROBE_STORAGE_KEY = 'wardrobe_items_v1';
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
@@ -56,11 +58,21 @@ export default function PenderiePage() {
   const importFileRef = React.useRef<HTMLInputElement>(null);
   const uploadFileRef = React.useRef<HTMLInputElement>(null);
 
+  const [aiConfig, setAiConfig] = React.useState<AiConfig>({
+      llm: { source: 'gemini' },
+      image: { source: 'gemini' }
+  });
+  const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
+
   React.useEffect(() => {
     try {
       const savedItems = localStorage.getItem(WARDROBE_STORAGE_KEY);
       if (savedItems) {
         setItems(JSON.parse(savedItems));
+      }
+      const aiConfigFromStorage = localStorage.getItem('globalAiConfig');
+      if (aiConfigFromStorage) {
+        setAiConfig(JSON.parse(aiConfigFromStorage));
       }
     } catch (error) {
       console.error("Failed to load wardrobe items from localStorage:", error);
@@ -68,6 +80,12 @@ export default function PenderiePage() {
     }
     setIsLoading(false);
   }, [toast]);
+  
+  const handleAiConfigChange = (newConfig: AiConfig) => {
+    setAiConfig(newConfig);
+    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+    toast({ title: "Configuration IA mise à jour."});
+  }
 
   const saveItems = (updatedItems: ClothingItem[]) => {
     setItems(updatedItems);
@@ -157,6 +175,7 @@ export default function PenderiePage() {
     }
     setIsProcessing(true);
     try {
+        // Note: The `describeAppearance` flow is used here. We've updated it to handle clothing.
         const result = await describeAppearance({ portraitUrl: itemData.imageUrl });
         setItemData(prev => ({...prev, description: result.description }));
         toast({ title: "Scan Réussi", description: "La description a été générée par l'IA." });
@@ -246,6 +265,20 @@ export default function PenderiePage() {
             <Button variant="outline" onClick={() => importFileRef.current?.click()}>
                 <Upload className="mr-2 h-4 w-4" /> Importer
             </Button>
+            <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogDescription>
+                            Configurez les modèles d'IA utilisés pour la génération de texte et d'images. Ces paramètres s'appliquent à toute l'application.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                </DialogContent>
+            </Dialog>
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                 <DialogTrigger asChild>
                     <Button>
