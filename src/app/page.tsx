@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -56,6 +55,7 @@ export default function Home() {
         loadAdventureState: originalLoadAdventureState,
         characterHistory,
         undoLastCharacterState,
+        createInitialState,
     } = useAdventureState();
     
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -152,7 +152,7 @@ export default function Home() {
         setGameClock(clock);
         setTimeState(clock.getState());
         localStorage.setItem('gameClockState_v2', clock.serialize());
-    }, [originalLoadAdventureState]);
+    }, [originalLoadAdventureState, createInitialState]);
 
     const { handleSave, handleLoad } = useSaveLoad({
         adventureSettings: { ...adventureSettings, timeManagement: { ...adventureSettings.timeManagement, ...timeState } },
@@ -164,13 +164,54 @@ export default function Home() {
     });
     
     React.useEffect(() => {
+        // Handle loading a story from the 'Histoires' page
+        const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
+        if (storyIdToLoad) {
+            const storiesFromStorage = localStorage.getItem('adventureStories');
+            if (storiesFromStorage) {
+                const savedStories = JSON.parse(storiesFromStorage);
+                const story = savedStories.find((s: any) => s.id === storyIdToLoad);
+                if (story && story.adventureState) {
+                    loadAdventureState(story.adventureState);
+                } else {
+                    toast({
+                        title: "Erreur de chargement",
+                        description: `Impossible de trouver l'histoire avec l'ID ${storyIdToLoad}.`,
+                        variant: "destructive"
+                    });
+                }
+            }
+            localStorage.removeItem('loadStoryIdOnMount');
+        }
+
+        // Handle loading a temporary state (e.g., from character slot assignment)
+        const tempStateJSON = localStorage.getItem('tempAdventureState');
+        if (tempStateJSON) {
+            try {
+                const tempState = JSON.parse(tempStateJSON);
+                loadAdventureState(tempState);
+            } catch (error) {
+                console.error("Failed to load temporary adventure state:", error);
+                 toast({ title: "Erreur de chargement de l'état temporaire", variant: "destructive" });
+            } finally {
+                localStorage.removeItem('tempAdventureState');
+            }
+        }
+        
+        // Load clock state on mount
         const savedClockState = localStorage.getItem('gameClockState_v2');
         if (savedClockState) {
-            const clock = GameClock.deserialize(savedClockState);
-            setGameClock(clock);
-            setTimeState(clock.getState());
+            try {
+                const clock = GameClock.deserialize(savedClockState);
+                setGameClock(clock);
+                setTimeState(clock.getState());
+            } catch (error) {
+                 console.error("Failed to load clock state:", error);
+            }
         }
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run only once on initial mount
+
 
     const handleUndoLastMessage = () => {
         const lastUserMessageIndex = narrativeMessages.findLastIndex(m => m.type === 'user');
@@ -281,7 +322,7 @@ export default function Home() {
 
         toast({ title: "Modifications Enregistrées", description: "Les paramètres de l'aventure ont été mis à jour." });
     });
-}, [adventureFormRef, toast, setAdventureSettings, setCharacters, setBaseAdventureSettings, setBaseCharacters, timeState]);
+}, [adventureFormRef, toast, setAdventureSettings, setCharacters, setBaseAdventureSettings, setBaseCharacters, timeState, createInitialState]);
 
 
     const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
@@ -340,7 +381,7 @@ export default function Home() {
             memory: c.memory,
         })),
         timeManagement: adventureSettings.timeManagement || createInitialState().adventureSettings.timeManagement,
-    }), [adventureSettings, characters]);
+    }), [adventureSettings, characters, createInitialState]);
     
     return (
         <>
