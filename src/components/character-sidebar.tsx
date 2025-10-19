@@ -503,19 +503,18 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const { toast } = useToast();
     
     const [localChar, setLocalChar] = React.useState(char);
+    const [localClothingDescription, setLocalClothingDescription] = React.useState(char.clothingDescription || '');
     const [imageStyle, setImageStyle] = React.useState<string>("");
     const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
     const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
     const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
     const [wardrobe, setWardrobe] = React.useState<ClothingItem[]>([]);
-    const [localClothingDescription, setLocalClothingDescription] = React.useState(char.clothingDescription || '');
-
 
     React.useEffect(() => {
         setLocalChar(char);
     }, [char]);
-    
+
     React.useEffect(() => {
         setLocalClothingDescription(char.clothingDescription || '');
     }, [char.clothingDescription]);
@@ -525,14 +524,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         setLocalChar(updated);
         onCharacterUpdate(updated);
     };
-    
+
     const handleClothingDescriptionChange = (value: string) => {
         setLocalClothingDescription(value);
         handleFieldChange(char.id, 'clothingDescription', value);
     };
 
     const handleLoadFromWardrobe = (itemDescription: string) => {
-        handleClothingDescriptionChange(itemDescription);
+        setLocalClothingDescription(itemDescription);
+        handleFieldChange(char.id, 'clothingDescription', itemDescription);
         toast({
             title: "Vêtement chargé",
             description: `La description de ${char.name} a été mise à jour.`
@@ -545,23 +545,21 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n.en.memory;
 
     React.useEffect(() => {
-        try {
-            const savedStyles = localStorage.getItem("customImageStyles_v1");
-            if (savedStyles) setCustomStyles(JSON.parse(savedStyles));
+        const loadData = () => {
+             try {
+                const savedStyles = localStorage.getItem("customImageStyles_v1");
+                if (savedStyles) setCustomStyles(JSON.parse(savedStyles));
 
-            const loadWardrobe = () => {
                 const savedWardrobe = localStorage.getItem("wardrobe_items_v1");
-                if (savedWardrobe) {
-                    setWardrobe(JSON.parse(savedWardrobe));
-                }
-            };
-            loadWardrobe();
-            window.addEventListener('storage', loadWardrobe);
-            return () => window.removeEventListener('storage', loadWardrobe);
-
-        } catch (error) {
-            console.error("Failed to load custom styles or wardrobe:", error);
-        }
+                if (savedWardrobe) setWardrobe(JSON.parse(savedWardrobe));
+                
+            } catch (error) {
+                console.error("Failed to load data:", error);
+            }
+        };
+        loadData();
+        window.addEventListener('storage', loadData);
+        return () => window.removeEventListener('storage', loadData);
     }, []);
 
     const handleDescribeAppearance = async () => {
@@ -791,18 +789,27 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             </div>
 
                 <Separator />
-                
-                 <div className="space-y-1">
+
+                <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                        <Label htmlFor={`${char.id}-clothingDescription`} className="flex items-center gap-2">
+                         <Label htmlFor={`${char.id}-clothingDescription`} className="flex items-center gap-2">
                             <Shirt className="h-4 w-4" /> Vêtements (Description)
                         </Label>
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="xs">
-                                    Charger depuis la penderie
-                                </Button>
-                            </DropdownMenuTrigger>
+                           <TooltipProvider>
+                               <Tooltip>
+                                   <TooltipTrigger asChild>
+                                       <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                                                <Library className="h-4 w-4" />
+                                            </Button>
+                                       </DropdownMenuTrigger>
+                                   </TooltipTrigger>
+                                   <TooltipContent>
+                                       <p>Charger depuis la penderie</p>
+                                   </TooltipContent>
+                               </Tooltip>
+                           </TooltipProvider>
                             <DropdownMenuContent>
                                 {wardrobe.length > 0 ? (
                                     wardrobe.map(item => (
@@ -830,7 +837,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                    
                     <Textarea
                         id={`${char.id}-clothingDescription`}
                         value={localClothingDescription}
@@ -960,3 +966,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+    
