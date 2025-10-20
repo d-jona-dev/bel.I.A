@@ -10,14 +10,16 @@ const LOCAL_LLM_API_URL = "http://localhost:9000/api/local-llm/generate";
 function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     const promptSections: string[] = [];
 
-    const addSection = (title: string, content: string | undefined | null) => {
-        if (content) {
-            promptSections.push(`## ${title}\n${content}`);
+    const addSection = (title: string, content: string | undefined | null | string[]) => {
+        if (content && (typeof content !== 'string' || content.trim() !== '') && (!Array.isArray(content) || content.length > 0)) {
+            const contentString = Array.isArray(content) ? content.join('\n- ') : content;
+            promptSections.push(`## ${title}\n- ${contentString}`);
         }
     };
     
     addSection("WORLD CONTEXT", input.world);
     addSection("CURRENT SITUATION / RECENT EVENTS", input.initialSituation);
+    addSection("ACTIVE CONDITIONS TO CONSIDER", input.activeConditions);
 
     if (input.characters.length > 0) {
         const charactersDesc = input.characters.map(char => `Name: ${char.name}, Description: ${char.details}, Affinity: ${char.affinity}/100`).join('\n');

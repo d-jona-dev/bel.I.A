@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage, ClothingItem } from "@/types";
+import type { AdventureSettings, Character, Message, AiConfig, LocalizedText, GenerateAdventureInput, SceneDescriptionForImage, ClothingItem, AdventureCondition } from "@/types";
 
 import { generateAdventure } from "@/ai/flows/generate-adventure";
 import type { GenerateAdventureFlowOutput, AffinityUpdateSchema, RelationUpdateSchema } from "@/types";
@@ -108,6 +108,59 @@ export function useAIActions({
             return prevChars;
         });
     }, [adventureSettings.relationsMode, adventureSettings.playerName, setCharacters]);
+    
+    // NOUVEAU: Logique de vérification des conditions
+    const checkAndGetActiveConditions = React.useCallback((): { activeEffects: string[], updatedConditions: AdventureCondition[] } => {
+        const conditions = adventureSettings.conditions || [];
+        if (conditions.length === 0) {
+            return { activeEffects: [], updatedConditions: [] };
+        }
+
+        const activeEffects: string[] = [];
+        const updatedConditions = JSON.parse(JSON.stringify(conditions)) as AdventureCondition[];
+
+        updatedConditions.forEach(condition => {
+            if (condition.hasTriggered) return;
+
+            let isTriggered = false;
+            const targetChar = characters.find(c => c.id === condition.targetCharacterId);
+
+            switch (condition.triggerType) {
+                case 'relation':
+                    if (targetChar?.affinity !== undefined) {
+                        if (condition.triggerOperator === 'greater_than' && targetChar.affinity > condition.triggerValue) {
+                            isTriggered = true;
+                        } else if (condition.triggerOperator === 'less_than' && targetChar.affinity < condition.triggerValue) {
+                            isTriggered = true;
+                        }
+                    }
+                    break;
+                case 'day':
+                    if (adventureSettings.timeManagement?.enabled) {
+                        const currentDay = adventureSettings.timeManagement.day;
+                         if (condition.triggerOperator === 'greater_than' && currentDay > condition.triggerValue) {
+                            isTriggered = true;
+                        } else if (condition.triggerOperator === 'less_than' && currentDay < condition.triggerValue) {
+                            isTriggered = true;
+                        }
+                    }
+                    break;
+                case 'end':
+                     if (condition.triggerOperator === 'greater_than' && (narrativeMessages.length > condition.triggerValue)) {
+                        isTriggered = true;
+                    }
+                    break;
+            }
+
+            if (isTriggered) {
+                condition.hasTriggered = true;
+                activeEffects.push(condition.effect);
+                toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
+            }
+        });
+        
+        return { activeEffects, updatedConditions };
+    }, [adventureSettings.conditions, adventureSettings.timeManagement, characters, narrativeMessages.length, toast]);
 
     const generateAdventureAction = React.useCallback(async (userActionText: string, isRegeneration = false) => {
         setIsLoading(true);
@@ -119,6 +172,14 @@ export function useAIActions({
         }
 
         const currentMessages = [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
+        
+        const { activeEffects, updatedConditions } = checkAndGetActiveConditions();
+        if (activeEffects.length > 0) {
+            setAdventureSettings(prev => ({
+                ...prev,
+                conditions: updatedConditions
+            }));
+        }
         
         const contextSituation = currentMessages.length > 1 
             ? currentMessages.slice(-5).map(msg => msg.type === 'user' ? `${adventureSettings.playerName || 'Player'}: ${msg.content}` : msg.content).join('\n\n') 
@@ -140,6 +201,7 @@ export function useAIActions({
             playerPortraitUrl: adventureSettings.playerPortraitUrl,
             aiConfig,
             timeManagement: adventureSettings.timeManagement,
+            activeConditions: activeEffects,
         };
 
         try {
@@ -161,6 +223,7 @@ export function useAIActions({
 
                         richSceneDescription = {
                             action: result.sceneDescriptionForImage.action,
+                            cameraAngle: result.sceneDescriptionForImage.cameraAngle,
                             charactersInScene: uniqueCharacterNames.map(name => {
                                 const character = characters.find(c => c.name.toLowerCase() === name.toLowerCase());
                                 const clothingDescription = character?.clothingItemIds?.map(id => wardrobe.find(item => item.id === id)?.description).filter(Boolean).join('. ') || undefined;
@@ -201,7 +264,7 @@ export function useAIActions({
         }
     }, [
         adventureSettings, characters, narrativeMessages, currentLanguage, aiConfig,
-        setIsLoading, setNarrativeMessages, setCharacters, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd, setAdventureSettings
+        setIsLoading, setNarrativeMessages, setCharacters, handleAffinityUpdates, handleRelationUpdatesFromAI, toast, getLocalizedText, onTurnEnd, setAdventureSettings, checkAndGetActiveConditions
     ]);
     
     const regenerateLastResponse = React.useCallback(async () => {

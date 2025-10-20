@@ -7,7 +7,7 @@ import { useForm, FormProvider, useFieldArray, type UseFieldArrayAppend } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import type { AdventureSettings, AiConfig, LocalizedText } from '@/types';
+import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition } from '@/types';
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config'
 import { TimeConfig } from './adventure-form-parts/time-config';
 import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
+import { ConditionsConfig } from "./adventure-form-parts/conditions-config"; // NOUVEAU
 
 // Schemas are kept here as they define the shape for the entire form,
 // which is still managed by this parent component.
@@ -39,6 +40,7 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     world: LocalizedText;
     initialSituation: LocalizedText;
     characters: FormCharacterDefinition[];
+    conditions?: AdventureCondition[]; // NOUVEAU
 };
 
 export interface AdventureFormHandle {
@@ -99,6 +101,17 @@ const timeManagementSchema = z.object({
     timeElapsedPerTurn: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format HH:MM requis").default("00:15"),
 }).optional();
 
+// NOUVEAU: Schéma pour les conditions
+const adventureConditionSchema = z.object({
+    id: z.string(),
+    targetCharacterId: z.string().min(1, "Un personnage cible est requis."),
+    triggerType: z.enum(['relation', 'day', 'end']),
+    triggerOperator: z.enum(['greater_than', 'less_than']),
+    triggerValue: z.number(),
+    effect: z.string().min(1, "L'effet de la condition est requis."),
+    hasTriggered: z.boolean().default(false),
+});
+
 
 const adventureFormSchema = z.object({
   world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
@@ -118,6 +131,7 @@ const adventureFormSchema = z.object({
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
   timeManagement: timeManagementSchema.optional(),
+  conditions: z.array(adventureConditionSchema).optional(), // NOUVEAU
 });
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
@@ -213,6 +227,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         
                     <NpcCharacterConfig relationsMode={relationsMode} />
 
+                    <ConditionsConfig />
+                    
                     <TimeConfig />
                 </div>
             </form>

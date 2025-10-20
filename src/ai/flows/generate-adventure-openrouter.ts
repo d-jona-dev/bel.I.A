@@ -19,14 +19,16 @@ function buildOpenRouterPrompt(
     // --- Narrative (Non-Combat) Prompt ---
     const promptSections: string[] = [];
 
-    const addSection = (title: string, content: string | undefined | null) => {
-        if (content) {
-            promptSections.push(`## ${title}\n${content}`);
+    const addSection = (title: string, content: string | undefined | null | string[]) => {
+        if (content && (typeof content !== 'string' || content.trim() !== '') && (!Array.isArray(content) || content.length > 0)) {
+            const contentString = Array.isArray(content) ? content.join('\n- ') : content;
+            promptSections.push(`## ${title}\n- ${contentString}`);
         }
     };
     
     addSection("CONTEXTE DU MONDE", input.world);
     addSection("SITUATION ACTUELLE", input.initialSituation);
+    addSection("CONDITIONS ACTIVES", input.activeConditions);
 
     if (input.characters.length > 0) {
         const charactersDesc = input.characters.map(char => 

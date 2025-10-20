@@ -81,6 +81,13 @@ World: {{{world}}}
 Current Situation/Recent Narrative (includes current event if any):
 {{{initialSituation}}}
 
+{{#if activeConditions}}
+**Active Game Conditions to consider:**
+{{#each activeConditions}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+
 **Characters Present & Their Context:**
 {{#each characters}}
 - **Name:** {{this.name}}

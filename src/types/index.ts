@@ -76,6 +76,18 @@ export interface TimeManagementSettings {
     timeElapsedPerTurn: string;
 }
 
+// NOUVEAU: Interface pour les conditions
+export interface AdventureCondition {
+  id: string;
+  targetCharacterId: string; // ID of the character or placeholder
+  triggerType: 'relation' | 'day' | 'end';
+  triggerOperator: 'greater_than' | 'less_than';
+  triggerValue: number;
+  effect: string; // The prompt text to inject
+  hasTriggered: boolean; // Flag to prevent re-triggering
+}
+
+
 export interface AdventureSettings {
   world: LocalizedText;
   initialSituation: LocalizedText;
@@ -94,6 +106,7 @@ export interface AdventureSettings {
   playerFaceSwapEnabled?: boolean;
   timeManagement?: TimeManagementSettings;
   mapPointsOfInterest?: MapPointOfInterest[]; // Gardé pour la structure, non utilisé
+  conditions?: AdventureCondition[]; // NOUVEAU
 }
 
 export interface MapPointOfInterest {
@@ -238,6 +251,7 @@ export const GenerateAdventureInputSchema = z.object({
   playerPortraitUrl: z.string().nullable().optional(),
   aiConfig: z.any().optional(), // Keep it flexible
   timeManagement: z.any().optional(),
+  activeConditions: z.array(z.string()).optional().describe("A list of active condition effects to apply to the narrative."), // NOUVEAU
 });
 
 // This is the type that the `generateAdventure` flow will actually receive
