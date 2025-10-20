@@ -33,6 +33,8 @@ interface NpcCharacterConfigProps {
     relationsMode: boolean;
 }
 
+const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
+
 export function NpcCharacterConfig({ relationsMode }: NpcCharacterConfigProps) {
     const { control, watch } = useFormContext<AdventureFormValues>();
     const { fields, append, remove } = useFieldArray({
@@ -42,8 +44,8 @@ export function NpcCharacterConfig({ relationsMode }: NpcCharacterConfigProps) {
     const currentLanguage = watch("currentLanguage", "fr");
     const playerName = watch("playerName", "Héros");
 
-    const addCharacter = () => append({ name: "", details: "" });
-    const addPlaceholder = () => append({ name: "", details: "placeholder", isPlaceholder: true });
+    const addCharacter = () => append({ id: uid(), name: "", details: "" });
+    const addPlaceholder = () => append({ id: uid(), name: "", details: "placeholder", isPlaceholder: true });
 
     return (
         <Accordion type="single" collapsible className="w-full">
