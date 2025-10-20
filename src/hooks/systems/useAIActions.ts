@@ -171,7 +171,9 @@ export function useAIActions({
             setNarrativeMessages(prev => [...prev, userMessage]);
         }
 
-        const currentMessages = [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
+        const currentMessages = isRegeneration 
+            ? [...narrativeMessages] 
+            : [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
         
         const { activeEffects, updatedConditions } = checkAndGetActiveConditions();
         if (activeEffects.length > 0) {
@@ -342,3 +344,5 @@ export function useAIActions({
         generateSceneImageActionWrapper,
     };
 }
+
+    

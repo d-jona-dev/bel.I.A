@@ -152,7 +152,12 @@ export default function Home() {
         setGameClock(clock);
         setTimeState(clock.getState());
         localStorage.setItem('gameClockState_v2', clock.serialize());
-    }, [originalLoadAdventureState, createInitialState]);
+
+        // Force-reset the form in the sidebar with the new values
+        if (adventureFormRef.current) {
+            adventureFormRef.current.reset(data.adventureSettings);
+        }
+    }, [originalLoadAdventureState, createInitialState, adventureFormRef]);
 
     const { handleSave, handleLoad } = useSaveLoad({
         adventureSettings: { ...adventureSettings, timeManagement: { ...adventureSettings.timeManagement, ...timeState } },
@@ -447,3 +452,5 @@ export default function Home() {
         </>
     );
 }
+
+    

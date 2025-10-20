@@ -50,25 +50,10 @@ export function WorldConfig() {
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={control}
-                        name="initialSituation.fr"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Situation Initiale</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="Décrivez la scène d'introduction et l'objectif de départ du joueur."
-                                        className="resize-y"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
     );
 }
+
+    

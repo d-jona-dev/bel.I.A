@@ -47,6 +47,7 @@ export interface AdventureFormHandle {
     getValues: (name?: keyof AdventureFormValues | (keyof AdventureFormValues)[]) => any;
     setValue: (name: any, value: any, options?: { shouldValidate?: boolean, shouldDirty?: boolean }) => void;
     append: UseFieldArrayAppend<AdventureFormValues, "characters">;
+    reset: (values: Partial<AdventureFormValues>) => void;
 }
 
 interface AdventureFormProps {
@@ -173,6 +174,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         getValues: form.getValues,
         setValue: form.setValue,
         append: append,
+        reset: (values) => form.reset(values),
     }));
 
     React.useEffect(() => {
@@ -198,3 +200,5 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
+
+    
