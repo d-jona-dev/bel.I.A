@@ -45,7 +45,7 @@ function buildOpenRouterPrompt(
     Commence ta narration directement, sans répéter l'action du joueur.
     RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.`;
     
-    mainInstruction += `\n**NOUVELLE RÈGLE : Pour éviter toute ambiguïté, lorsqu'un PNJ effectue une action, commence la phrase par son nom (par exemple, "Rina prend une profonde inspiration...").**`;
+    mainInstruction += `\n**NOUVELLE RÈGLE : Pour éviter toute ambiguïté, lorsqu'un PNJ effectue une action, commence la phrase par son nom (par exemple, "L'espionne prend une profonde inspiration...").**`;
     mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
     
     mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :**
@@ -61,9 +61,9 @@ function buildOpenRouterPrompt(
 ### EXEMPLE DE JSON ATTENDU :
 \`\`\`json
 {
-    "narrative": "Le vent glacial balayait les couloirs de l'université. Rina se frotta les bras. *Il est en retard, comme d'habitude...* pensa-t-elle, avant de voir Kentaro s'approcher. \\"Tu as l'air soucieuse, Rina. Tout va bien ?\\"",
-    "sceneDescriptionForImage": { "action": "Rina and Kentaro are arguing in a classroom.", "cameraAngle": "dramatic close-up on Rina's face" },
-    "affinityUpdates": [ { "characterName": "Rina", "change": -1, "reason": "Inquiétude due au retard du joueur." } ],
+    "narrative": "Le vent glacial balayait les couloirs. L'espionne se frotta les bras. *Il est en retard...* pensa-t-elle, avant de voir le guerrier s'approcher. \\"Tu as l'air soucieuse. Tout va bien ?\\"",
+    "sceneDescriptionForImage": { "action": "A spy and a warrior are arguing in a tavern.", "cameraAngle": "dramatic close-up on the spy's face" },
+    "affinityUpdates": [ { "characterName": "L'espionne", "change": -1, "reason": "Inquiétude due au retard du joueur." } ],
     "relationUpdates": [],
     "newEvent": "Fin du cours"
 }

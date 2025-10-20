@@ -78,7 +78,7 @@ export default function PersonnagesPage() {
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
 
 
-  const loadCharactersFromStorage = () => {
+  const loadCharactersFromStorage = React.useCallback(() => {
      try {
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
@@ -97,11 +97,11 @@ export default function PersonnagesPage() {
       });
     }
     setIsLoading(false);
-  }
+  }, [toast]);
 
   React.useEffect(() => {
     loadCharactersFromStorage();
-  }, []);
+  }, [loadCharactersFromStorage]);
 
   const saveCharactersToStorage = (characters: Character[]) => {
     localStorage.setItem('globalCharacters', JSON.stringify(characters));
@@ -256,11 +256,11 @@ export default function PersonnagesPage() {
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="new-char-name">Nom</Label>
-                        <Input id="new-char-name" value={newCharacterData.name} onChange={e => setNewCharacterData({...newCharacterData, name: e.target.value})} placeholder="Ex: Rina, Kentaro..."/>
+                        <Input id="new-char-name" value={newCharacterData.name || ''} onChange={e => setNewCharacterData({...newCharacterData, name: e.target.value})} placeholder="Ex: Un garde, une espionne..."/>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="new-char-details">Détails (Description)</Label>
-                        <Textarea id="new-char-details" value={newCharacterData.details} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder="Description physique, personnalité, rôle..."/>
+                        <Textarea id="new-char-details" value={newCharacterData.details || ''} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder="Description physique, personnalité, rôle..."/>
                     </div>
                 </div>
                 <DialogFooter>
@@ -447,5 +447,3 @@ export default function PersonnagesPage() {
     </div>
   );
 }
-
-    

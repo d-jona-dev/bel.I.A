@@ -45,8 +45,8 @@ Here is the narrative context to analyze:
 CRITICAL: Provide ONLY the JSON object for the summarized event. Do not add any extra text or explanations.
 Example output:
 {
-    "memory": "Kentaro a défendu Rina lorsque le joueur l'a confrontée à propos de leur proximité.",
-    "involvedCharacterNames": ["Kentaro", "Rina"]
+    "memory": "Le guerrier a défendu l'espionne lorsque le joueur l'a confrontée à propos de leur proximité.",
+    "involvedCharacterNames": ["Le guerrier", "L'espionne"]
 }`,
 });
 
