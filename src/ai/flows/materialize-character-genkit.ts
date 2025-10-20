@@ -5,7 +5,7 @@
  */
 
 import { ai } from '@/ai/ai-instance';
-import { z } from 'zod';
+import { z } from 'genkit';
 import type { Character } from '@/types';
 import { NewCharacterSchema } from '@/types';
 
@@ -42,17 +42,6 @@ Based on this context, identify the new character and generate the following det
 2.  **details**: A brief but descriptive summary of the character's appearance, demeanor, and perceived role (e.g., 'A gruff-looking blacksmith', 'A cheerful elven merchant').
 3.  **biographyNotes**: Any inferred background, motivations, or secrets. If none, state that.
 4.  **initialHistoryEntry**: A log of how they were first encountered. E.g., 'Met at the Prancing Pony inn.'
-
-{{#if rpgMode}}
-5.  **RPG Stats**:
-    -   **isHostile**: Determine if they are initially hostile based on the context. Default to false.
-    -   **characterClass**: Infer a class (e.g., 'Merchant', 'Thug', 'Guard', 'Wizard').
-    -   **level**: Infer a plausible starting level (usually 1).
-    -   **hitPoints / maxHitPoints**: Assign a reasonable starting HP (e.g., 10-15 for non-fighters).
-    -   **armorClass**: Assign a base AC (e.g., 10-12 for unarmored).
-    -   **attackBonus**: Assign a base attack bonus (e.g., 0-1).
-    -   **damageBonus**: Assign base damage (e.g., '1d4').
-{{/if}}
 
 CRITICAL: Provide ONLY the JSON object for the new character. Do not add any extra text or explanations. If you cannot identify a new, unlisted character, your output must trigger an error.`,
 });
