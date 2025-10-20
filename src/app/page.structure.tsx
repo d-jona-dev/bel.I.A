@@ -1,5 +1,4 @@
 
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 
@@ -382,19 +381,6 @@ isSaveComicDialogOpen,
                                     relationsMode={adventureSettings.relationsMode}
                                     strategyMode={false}
                                 />
-                              </AccordionContent>
-                          </AccordionItem>
-                      </Accordion>
-
-                      <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="player-character-accordion">
-                              <AccordionTrigger>
-                                  <div className="flex items-center gap-2">
-                                      <UserCircle className="h-5 w-5" /> {playerName || "Mon Personnage"}
-                                  </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2 space-y-3">
-                                  <p className="text-xs text-muted-foreground p-2">Les détails du personnage joueur sont gérés dans l'onglet "Avatars".</p>
                               </AccordionContent>
                           </AccordionItem>
                       </Accordion>

@@ -157,10 +157,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         name: "characters",
     });
     
-    React.useEffect(() => {
-        form.reset(initialValues);
-    }, [initialValues, form]);
-
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
             const isValid = await form.trigger();
@@ -194,15 +190,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                 <div className="space-y-4">
                     <WorldConfig />
                     <GameModesConfig />
-                    
-                    <PlayerCharacterConfig 
-                        aiConfig={aiConfig} 
-                    />
-                                        
-                    <NpcCharacterConfig relationsMode={relationsMode} />
-
                     <ConditionsConfig />
-                    
                     <TimeConfig />
                 </div>
             </form>
