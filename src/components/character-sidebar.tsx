@@ -390,12 +390,18 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [describingAppearance, setDescribingAppearance] = React.useState(false);
 
     React.useEffect(() => {
-        setLocalChar(char);
-    }, [char]);
+        // This effect now only runs if the character prop from the parent is different.
+        // This prevents re-renders from overwriting local edits.
+        if (char.id !== localChar.id) {
+            setLocalChar(char);
+        }
+    }, [char, localChar.id]);
 
     const handleLocalFieldChange = (field: keyof Character, value: any) => {
+        // Update the local state first
         const updated = { ...localChar, [field]: value };
         setLocalChar(updated);
+        // Then propagate the change to the parent
         onCharacterUpdate(updated);
     };
 
@@ -452,11 +458,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
         try {
             const result = await describeAppearance({ portraitUrl: localChar.portraitUrl });
-            setLocalChar(prev => {
-                const updated = {...prev, appearanceDescription: result.description};
-                onCharacterUpdate(updated);
-                return updated;
-            });
+            handleLocalFieldChange('appearanceDescription', result.description);
             toast({ title: "Description Réussie!", description: `L'apparence de ${localChar.name} a été détaillée.` });
         } catch (error) {
             console.error("Error describing appearance:", error);
@@ -522,7 +524,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             if (value <= 10) return "Haine profonde";
             if (value <= 30) return "Hostile";
             if (value <= 45) return "Méfiant";
-            if (value <= 55) return "Neutre";
             if (value <= 70) return "Amical";
             if (value <= 90) return "Loyal";
             return "Dévoué / Amour";
