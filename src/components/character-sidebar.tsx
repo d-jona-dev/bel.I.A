@@ -853,3 +853,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+    
