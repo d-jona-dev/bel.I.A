@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -106,10 +105,18 @@ const adventureConditionSchema = z.object({
     id: z.string(),
     targetCharacterId: z.string().min(1, "Un personnage cible est requis."),
     triggerType: z.enum(['relation', 'day', 'end']),
-    triggerOperator: z.enum(['greater_than', 'less_than']),
-    triggerValue: z.number(),
+    triggerOperator: z.enum(['greater_than', 'less_than']).optional(),
+    triggerValue: z.number().optional(),
     effect: z.string().min(1, "L'effet de la condition est requis."),
     hasTriggered: z.boolean().default(false),
+}).refine(data => {
+    if (data.triggerType !== 'end') {
+        return data.triggerOperator !== undefined && data.triggerValue !== undefined;
+    }
+    return true;
+}, {
+    message: "L'opérateur et la valeur sont requis pour ce type de déclencheur.",
+    path: ["triggerValue"],
 });
 
 
