@@ -452,7 +452,11 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
         try {
             const result = await describeAppearance({ portraitUrl: localChar.portraitUrl });
-            handleLocalFieldChange('appearanceDescription', result.description);
+            setLocalChar(prev => {
+                const updated = {...prev, appearanceDescription: result.description};
+                onCharacterUpdate(updated);
+                return updated;
+            });
             toast({ title: "Description Réussie!", description: `L'apparence de ${localChar.name} a été détaillée.` });
         } catch (error) {
             console.error("Error describing appearance:", error);
@@ -504,6 +508,14 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
     };
 
+    const handleLoadFromWardrobe = (itemId: string) => {
+        const item = wardrobe.find(w => w.id === itemId);
+        if (item) {
+            handleLocalFieldChange('clothingDescription', item.description);
+            toast({ title: "Vêtement Appliqué", description: `La description de "${item.name}" a été chargée.` });
+        }
+    };
+
     const getAffinityLabel = (affinity: number | undefined): string => {
         const value = affinity ?? 50;
         if (currentLanguage === 'fr') {
@@ -541,8 +553,6 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
                      <Textarea
-                        label="Rôle du personnage (Emplacement)"
-                        id={`${localChar.id}-roleInStory`}
                         value={localChar.roleInStory || ''}
                         onChange={(e) => handleLocalFieldChange('roleInStory', e.target.value)}
                         placeholder="Ex: Le/la partenaire romantique, rival..."
@@ -700,7 +710,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             </div>
 
                 <Separator />
-                
+
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (pour IA)</Label>
                      <Textarea
@@ -743,6 +753,42 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
+                    </div>
+                </div>
+                
+                 <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Shirt className="h-4 w-4" /> Vêtements (Description pour IA)</Label>
+                    <div className="flex items-center gap-2">
+                         <Textarea
+                            value={localChar.clothingDescription || ''}
+                            onChange={(e) => handleLocalFieldChange('clothingDescription', e.target.value)}
+                            placeholder="Décrivez ici les vêtements du personnage..."
+                            rows={3}
+                            className="text-sm bg-background border flex-1"
+                        />
+                        <DropdownMenu>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="icon" className="flex-shrink-0"><Library className="h-4 w-4"/></Button>
+                                        </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Charger depuis la penderie</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <DropdownMenuContent>
+                                {wardrobe.length > 0 ? (
+                                    wardrobe.map(item => (
+                                        <DropdownMenuItem key={item.id} onSelect={() => handleLoadFromWardrobe(item.id)}>
+                                            {item.name}
+                                        </DropdownMenuItem>
+                                    ))
+                                ) : (
+                                    <DropdownMenuItem disabled>Penderie vide</DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
