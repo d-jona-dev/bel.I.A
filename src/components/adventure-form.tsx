@@ -188,43 +188,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         }
     }, [form, onFormValidityChange]);
 
-    const handleLoadPrompt = () => {
-        const loadedData: AdventureFormValues = {
-            world: {
-                fr: "Grande université populaire nommée 'hight scoole of futur'.",
-                en: "Large popular university named 'hight scoole of futur'."
-            },
-            initialSituation: {
-                fr: "Utilisateur marche dans les couloirs de hight scoole of futur et découvre sa petite amie discuter avec son meilleur ami, ils ont l'air très proches, trop proches ...",
-                en: "User is walking down the halls of 'hight scoole of futur' and discovers his girlfriend talking with his best friend, they seem very close, too close..."
-            },
-            characters: [
-                { id: 'rina-prompt-1', name: "Rina", details: "jeune femme de 19 ans, petite amie de Utilisateur , se rapproche du meilleur ami de Utilisateur, étudiante à hight scoole of futur, calme, aimante, parfois un peu secrète, fille populaire de l'école, 165 cm, yeux marron, cheveux mi-long brun, traits fin, corpulence athlétique.", portraitUrl: null, factionColor: '#FF69B4', affinity: 95, relations: { 'player': "Petite amie", "kentaro-prompt-1": "Ami d'enfance" }, roleInStory: "Petite amie" },
-                { id: 'kentaro-prompt-1', name: "Kentaro", details: "Jeune homme de 20, meilleur ami de utilisateur, étudiant à hight scoole of futur, garçon populaire, charmant, 185 cm, athlétique voir costaud, yeux bleu, cheveux court blond, calculateur, impulsif, aime dragué les filles, se rapproche de la petite amie de Utilisateur, aime voir son meilleur ami souffrir.", portraitUrl: null, factionColor: '#4682B4', affinity: 30, relations: { 'player': "Meilleur ami (en apparence)", "rina-prompt-1": "Intérêt amoureux secret" } }
-            ],
-            rpgMode: false,
-            relationsMode: true,
-            strategyMode: false,
-            comicModeActive: true,
-            playerName: "Héros",
-            playerClass: "Étudiant",
-            playerLevel: 1,
-            mapPointsOfInterest: [],
-        };
-        form.reset(loadedData);
-        toast({ title: "Prompt Exemple Chargé", description: "La configuration a été mise à jour." });
-    };
-
     return (
         <FormProvider {...form}>
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
-                    <div className="flex justify-end">
-                        <Button type="button" variant="outline" size="sm" onClick={handleLoadPrompt}>
-                            <Upload className="mr-2 h-4 w-4" /> Charger Prompt Exemple
-                        </Button>
-                    </div>
-                    
                     <WorldConfig />
                     <GameModesConfig />
                     
