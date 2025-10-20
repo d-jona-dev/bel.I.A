@@ -84,22 +84,6 @@ interface CharacterSidebarProps {
     currentLanguage: string;
 }
 
-// Helper Components (defined outside CharacterSidebar)
-
-const EditableField = ({ label, id, value, onChange, onBlur, type = "text", placeholder, rows, min, max, disabled = false }: { label: React.ReactNode, id: string, value: string | number | undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void, onBlur?: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void, type?: string, placeholder?: string, rows?: number, min?: string | number, max?: string, disabled?: boolean }) => {
-    
-    return (
-        <div className="space-y-1">
-            <Label htmlFor={id}>{label}</Label>
-            {rows ? (
-                <Textarea id={id} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} className="text-sm bg-background border" disabled={disabled}/>
-            ) : (
-                <Input id={id} type={type} value={value ?? ""} onChange={onChange} onBlur={onBlur} placeholder={placeholder} className="h-8 text-sm bg-background border" min={min} max={max} disabled={disabled}/>
-            )}
-        </div>
-    );
-};
-
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
   const otherCharacters = characters.filter(c => c.id !== charId);
   const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
@@ -217,7 +201,6 @@ export function CharacterSidebar({
     currentLanguage: string;
 }) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
-  const [describingAppearanceStates, setDescribingAppearanceStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
@@ -292,84 +275,6 @@ export function CharacterSidebar({
     }
   };
 
-  const handleUploadPortrait = (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-        const character = initialCharacters.find(c => c.id === characterId);
-        if (character) {
-            onCharacterUpdate({ ...character, portraitUrl: reader.result as string });
-            toast({ title: "Portrait Téléchargé", description: `Le portrait de ${character.name} a été mis à jour.` });
-        }
-    };
-    reader.readAsDataURL(file);
-    if(event.target) event.target.value = '';
-  };
-
-
-   const handleFieldChange = (charId: string, field: keyof Character, value: string | number | boolean | null | string[]) => {
-        const character = initialCharacters.find(c => c.id === charId);
-        if (character) {
-            if (field === 'locationId' && value === '__traveling__') {
-                value = null; // Convert special value to null
-            }
-            const numberFields: (keyof Character)[] = ['level', 'affinity'];
-            let processedValue = value;
-            if (numberFields.includes(field) && typeof value === 'string') {
-                 let numValue = parseInt(value, 10);
-                 if (field === 'affinity') {
-                    numValue = Math.max(0, Math.min(100, isNaN(numValue) ? 50 : numValue));
-                 }
-                 processedValue = isNaN(numValue) ? (field === 'affinity' ? 50 : 1) : numValue;
-            } else if (field === 'affinity' && typeof processedValue === 'number') {
-                processedValue = Math.max(0, Math.min(100, processedValue));
-            }
-            onCharacterUpdate({ ...character, [field]: processedValue });
-        }
-   };
-
-    const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
-        const character = initialCharacters.find(c => c.id === charId);
-        if (character) {
-             const currentFieldData = character[field] || {};
-             let finalValue = value;
-
-             if (field === 'relations') {
-                 onRelationUpdate(charId, key, String(finalValue));
-             }
-        }
-    };
-
-     const removeNestedField = (charId: string, field: 'relations', key: string) => {
-        const character = initialCharacters.find(c => c.id === charId);
-        if (character && character[field]) {
-             if (field === 'relations') {
-                 onRelationUpdate(charId, key, currentLanguage === 'fr' ? "Inconnu" : "Unknown");
-             }
-        }
-    };
-
-    const getAffinityLabel = (affinity: number | undefined): string => {
-        const value = affinity ?? 50;
-        if (currentLanguage === 'fr') {
-            if (value <= 10) return "Haine profonde";
-            if (value <= 30) return "Hostile";
-            if (value <= 45) return "Méfiant";
-            if (value <= 55) return "Neutre";
-            if (value <= 70) return "Amical";
-            if (value <= 90) return "Loyal";
-            return "Dévoué / Amour";
-        }
-        if (value <= 10) return "Deep Hate";
-        if (value <= 30) return "Hostile";
-        if (value <= 45) return "Wary";
-        if (value <= 55) return "Neutral";
-        if (value <= 70) return "Friendly";
-        if (value <= 90) return "Loyal";
-        return "Devoted / Love";
-    };
-
   return (
     <div className="w-full">
         {isClient && (
@@ -433,16 +338,9 @@ export function CharacterSidebar({
                         isClient={isClient}
                         imageLoadingStates={imageLoadingStates}
                         setImageLoadingStates={setImageLoadingStates}
-                        describingAppearanceStates={describingAppearanceStates}
-                        setDescribingAppearanceStates={setDescribingAppearanceStates}
                         onSaveOrUpdateCharacter={onSaveOrUpdateCharacter}
                         generateImageAction={generateImageAction}
-                        handleUploadPortrait={handleUploadPortrait}
-                        handleFieldChange={handleFieldChange}
-                        handleNestedFieldChange={handleNestedFieldChange}
-                        removeNestedField={removeNestedField}
                         onCharacterUpdate={onCharacterUpdate}
-                        getAffinityLabel={getAffinityLabel}
                         relationsMode={relationsMode}
                         playerId={playerId}
                         playerName={playerName}
@@ -463,16 +361,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     isClient,
     imageLoadingStates,
     setImageLoadingStates,
-    describingAppearanceStates,
-    setDescribingAppearanceStates,
     onSaveOrUpdateCharacter,
     generateImageAction,
-    handleUploadPortrait,
-    handleFieldChange,
-    handleNestedFieldChange,
-    removeNestedField,
     onCharacterUpdate,
-    getAffinityLabel,
     relationsMode,
     playerId,
     playerName,
@@ -484,16 +375,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     isClient: boolean;
     imageLoadingStates: Record<string, boolean>;
     setImageLoadingStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-    describingAppearanceStates: Record<string, boolean>;
-    setDescribingAppearanceStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     onSaveOrUpdateCharacter: (character: Character) => void;
     generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    handleUploadPortrait: (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => void;
-    handleFieldChange: (charId: string, field: keyof Character, value: any) => void;
-    handleNestedFieldChange: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void;
-    removeNestedField: (charId: string, field: 'relations', key: string) => void;
     onCharacterUpdate: (updatedCharacter: Character) => void;
-    getAffinityLabel: (affinity: number | undefined) => string;
     relationsMode: boolean;
     playerId: string;
     playerName: string;
@@ -503,21 +387,11 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const { toast } = useToast();
     
     const [localChar, setLocalChar] = React.useState(char);
-    const [localClothingDescription, setLocalClothingDescription] = React.useState(char.clothingDescription || '');
-    const [imageStyle, setImageStyle] = React.useState<string>("");
-    const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
-    const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
-    const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
-    const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
-    const [wardrobe, setWardrobe] = React.useState<ClothingItem[]>([]);
+    const [describingAppearance, setDescribingAppearance] = React.useState(false);
 
     React.useEffect(() => {
         setLocalChar(char);
     }, [char]);
-
-    React.useEffect(() => {
-        setLocalClothingDescription(char.clothingDescription || '');
-    }, [char.clothingDescription]);
 
     const handleLocalFieldChange = (field: keyof Character, value: any) => {
         const updated = { ...localChar, [field]: value };
@@ -525,22 +399,30 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         onCharacterUpdate(updated);
     };
 
-    const handleClothingDescriptionChange = (value: string) => {
-        setLocalClothingDescription(value);
-        handleFieldChange(char.id, 'clothingDescription', value);
+    const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
+        const character = allCharacters.find(c => c.id === charId);
+        if (character) {
+             const currentFieldData = character[field] || {};
+             const updated = {...character, [field]: {...currentFieldData, [key]: value}};
+             onCharacterUpdate(updated);
+        }
     };
 
-    const handleLoadFromWardrobe = (itemDescription: string) => {
-        setLocalClothingDescription(itemDescription);
-        handleFieldChange(char.id, 'clothingDescription', itemDescription);
-        toast({
-            title: "Vêtement chargé",
-            description: `La description de ${char.name} a été mise à jour.`
-        });
+     const removeNestedField = (charId: string, field: 'relations', key: string) => {
+        const character = allCharacters.find(c => c.id === charId);
+        if (character && character[field]) {
+            const updated = {...character, [field]: {...character[field], [key]: currentLanguage === 'fr' ? "Inconnu" : "Unknown"}};
+            onCharacterUpdate(updated);
+        }
     };
-
-    const isPlaceholder = localChar.isPlaceholder ?? false;
-
+    
+    const [imageStyle, setImageStyle] = React.useState<string>("");
+    const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
+    const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+    const [portraitUrl, setPortraitUrl] = React.useState(char.portraitUrl || "");
+    const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
+    const [wardrobe, setWardrobe] = React.useState<ClothingItem[]>([]);
+    
     const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n.en.visionConsent;
     const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n.en.memory;
 
@@ -561,24 +443,22 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         window.addEventListener('storage', loadData);
         return () => window.removeEventListener('storage', loadData);
     }, []);
-
+    
     const handleDescribeAppearance = async () => {
-        if (!localChar.portraitUrl || describingAppearanceStates[localChar.id]) return;
+        if (!localChar.portraitUrl || describingAppearance) return;
 
-        setDescribingAppearanceStates(prev => ({ ...prev, [localChar.id]: true }));
+        setDescribingAppearance(true);
         toast({ title: "Analyse de l'image...", description: `L'IA décrit l'apparence de ${localChar.name}.`});
 
         try {
             const result = await describeAppearance({ portraitUrl: localChar.portraitUrl });
             handleLocalFieldChange('appearanceDescription', result.description);
-            handleLocalFieldChange('lastAppearanceUpdate', Date.now());
-            
             toast({ title: "Description Réussie!", description: `L'apparence de ${localChar.name} a été détaillée.` });
         } catch (error) {
             console.error("Error describing appearance:", error);
             toast({ title: "Erreur de Vision", description: `Impossible de décrire l'apparence. ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
         } finally {
-            setDescribingAppearanceStates(prev => ({ ...prev, [localChar.id]: false }));
+            setDescribingAppearance(false);
         }
     };
     
@@ -588,7 +468,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
         try {
           const prompt = `portrait of ${localChar.name}, ${localChar.characterClass}. Description: ${localChar.details}.`;
-          const result = await generateImageAction({ sceneDescription: prompt, style: imageStyle });
+          const result = await generateImageAction({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
           handleLocalFieldChange('portraitUrl', result.imageUrl);
           toast({
             title: "Portrait Généré",
@@ -606,6 +486,17 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         }
       };
 
+    const handleUploadPortrait = (characterId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            handleLocalFieldChange('portraitUrl', reader.result as string);
+            toast({ title: "Portrait Téléchargé", description: `Le portrait de ${localChar.name} a été mis à jour.` });
+        };
+        reader.readAsDataURL(file);
+        if(event.target) event.target.value = '';
+    };
 
     const handleSaveUrl = () => {
         handleLocalFieldChange('portraitUrl', portraitUrl);
@@ -613,10 +504,30 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
     };
 
+    const getAffinityLabel = (affinity: number | undefined): string => {
+        const value = affinity ?? 50;
+        if (currentLanguage === 'fr') {
+            if (value <= 10) return "Haine profonde";
+            if (value <= 30) return "Hostile";
+            if (value <= 45) return "Méfiant";
+            if (value <= 55) return "Neutre";
+            if (value <= 70) return "Amical";
+            if (value <= 90) return "Loyal";
+            return "Dévoué / Amour";
+        }
+        if (value <= 10) return "Deep Hate";
+        if (value <= 30) return "Hostile";
+        if (value <= 45) return "Wary";
+        if (value <= 55) return "Neutral";
+        if (value <= 70) return "Friendly";
+        if (value <= 90) return "Loyal";
+        return "Devoted / Love";
+    };
+
     const isGloballySaved = isClient && localChar._lastSaved;
     const currentAffinity = localChar.affinity ?? 50;
     
-    if (isPlaceholder) {
+    if (localChar.isPlaceholder) {
         return (
             <AccordionItem value={localChar.id}>
                 <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
@@ -629,10 +540,10 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                     <EditableField
+                     <Textarea
                         label="Rôle du personnage (Emplacement)"
                         id={`${localChar.id}-roleInStory`}
-                        value={localChar.roleInStory}
+                        value={localChar.roleInStory || ''}
                         onChange={(e) => handleLocalFieldChange('roleInStory', e.target.value)}
                         placeholder="Ex: Le/la partenaire romantique, rival..."
                     />
@@ -789,76 +700,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
             </div>
 
                 <Separator />
-
-                <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                         <Label htmlFor={`${char.id}-clothingDescription`} className="flex items-center gap-2">
-                            <Shirt className="h-4 w-4" /> Vêtements (Description)
-                        </Label>
-                        <DropdownMenu>
-                           <TooltipProvider>
-                               <Tooltip>
-                                   <TooltipTrigger asChild>
-                                       <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                                                <Library className="h-4 w-4" />
-                                            </Button>
-                                       </DropdownMenuTrigger>
-                                   </TooltipTrigger>
-                                   <TooltipContent>
-                                       <p>Charger depuis la penderie</p>
-                                   </TooltipContent>
-                               </Tooltip>
-                           </TooltipProvider>
-                            <DropdownMenuContent>
-                                {wardrobe.length > 0 ? (
-                                    wardrobe.map(item => (
-                                        <DropdownMenuItem 
-                                            key={item.id} 
-                                            onSelect={() => handleLoadFromWardrobe(item.description)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                {item.imageUrl && (
-                                                    <img 
-                                                        src={item.imageUrl} 
-                                                        alt={item.name}
-                                                        className="w-6 h-6 object-cover rounded"
-                                                    />
-                                                )}
-                                                <span>{item.name}</span>
-                                            </div>
-                                        </DropdownMenuItem>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem disabled>
-                                        Penderie vide
-                                    </DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                    <Textarea
-                        id={`${char.id}-clothingDescription`}
-                        value={localClothingDescription}
-                        onChange={(e) => handleClothingDescriptionChange(e.target.value)}
-                        placeholder={currentLanguage === 'fr' 
-                            ? "Décrivez les vêtements du personnage..." 
-                            : "Describe the character's clothing..."
-                        }
-                        rows={3}
-                        className="text-sm bg-background border"
-                    />
-                </div>
                 
-                 <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (par IA)</Label>
-                     <EditableField
-                        label=""
-                        id={`${localChar.id}-appearanceDescription`}
-                        value={localChar.appearanceDescription}
+                <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (pour IA)</Label>
+                     <Textarea
+                        value={localChar.appearanceDescription || ''}
                         onChange={(e) => handleLocalFieldChange('appearanceDescription', e.target.value)}
                         placeholder="Générez ou écrivez une description physique détaillée..."
                         rows={4}
+                        className="text-sm bg-background border"
                     />
                     <div className="flex items-center gap-2 mt-2">
                         <TooltipProvider>
@@ -868,9 +718,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     variant="outline"
                                     size="icon"
                                     onClick={handleDescribeAppearance}
-                                    disabled={!isValidUrl(localChar.portraitUrl) || describingAppearanceStates[localChar.id] || !visionConsentChecked}
+                                    disabled={!isValidUrl(localChar.portraitUrl) || describingAppearance || !visionConsentChecked}
                                 >
-                                    {describingAppearanceStates[localChar.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
+                                    {describingAppearance ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
                                 </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -898,37 +748,28 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
                 <Separator />
                 <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
-                <EditableField
-                    label="Nom"
-                    id={`${localChar.id}-name`}
-                    value={localChar.name}
-                    onChange={(e) => handleLocalFieldChange('name', e.target.value)}
-                />
-                <EditableField
-                    label={currentLanguage === 'fr' ? "Description Publique" : "Public Description"}
-                    id={`${localChar.id}-details`}
-                    value={localChar.details}
-                    onChange={(e) => handleLocalFieldChange('details', e.target.value)}
-                    rows={4}
-                />
-                <EditableField
-                    label={currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}
-                    id={`${localChar.id}-biographyNotes`}
-                    value={localChar.biographyNotes}
-                    onChange={(e) => handleLocalFieldChange('biographyNotes', e.target.value)}
-                    placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"}
-                    rows={5}
-                />
+                <div className="space-y-1">
+                    <Label>Nom</Label>
+                    <Input value={localChar.name} onChange={(e) => handleLocalFieldChange('name', e.target.value)} className="h-8 text-sm bg-background border"/>
+                </div>
+                <div className="space-y-1">
+                    <Label>{currentLanguage === 'fr' ? "Description Publique" : "Public Description"}</Label>
+                    <Textarea value={localChar.details} onChange={(e) => handleLocalFieldChange('details', e.target.value)} rows={4} className="text-sm bg-background border"/>
+                </div>
+                 <div className="space-y-1">
+                    <Label>{currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}</Label>
+                    <Textarea value={localChar.biographyNotes || ''} onChange={(e) => handleLocalFieldChange('biographyNotes', e.target.value)} placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"} rows={5} className="text-sm bg-background border"/>
+                </div>
                 
                 <div className="space-y-2">
                     <Label htmlFor={`${localChar.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
-                    <EditableField
-                        label=""
+                    <Textarea
                         id={`${localChar.id}-memory`}
-                        value={localChar.memory}
+                        value={localChar.memory || ''}
                         onChange={(e) => handleLocalFieldChange('memory', e.target.value)}
                         placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
                         rows={5}
+                        className="text-sm bg-background border"
                     />
                 </div>
                 
@@ -943,7 +784,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     min="0"
                                     max="100"
                                     value={currentAffinity}
-                                    onChange={(e) => handleLocalFieldChange('affinity', e.target.value)}
+                                    onChange={(e) => handleLocalFieldChange('affinity', parseInt(e.target.value,10))}
                                     className="h-8 text-sm w-20 flex-none bg-background border"
                                 />
                                 <Progress value={currentAffinity} className="flex-1 h-2" />
@@ -966,5 +807,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
-
-    
