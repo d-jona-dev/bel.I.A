@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -217,16 +218,21 @@ export function useAIActions({
                     
                     let richSceneDescription: SceneDescriptionForImage | undefined = undefined;
                     if (result.sceneDescriptionForImage?.action) {
-                        const characterRegex = new RegExp(characters.map(c => c.name).join('|'), 'gi');
-                        const mentionedCharacters = result.sceneDescriptionForImage.action.match(characterRegex) || [];
-                        const uniqueCharacterNames = [...new Set(mentionedCharacters)];
+                        const characterRegex = new RegExp([...characters.map(c => c.name), adventureSettings.playerName].filter(Boolean).join('|'), 'gi');
+                        const mentionedCharacterNames = Array.from(new Set(result.sceneDescriptionForImage.action.match(characterRegex) || []));
                         
                         const wardrobe: ClothingItem[] = JSON.parse(localStorage.getItem('wardrobe_items_v1') || '[]');
 
                         richSceneDescription = {
                             action: result.sceneDescriptionForImage.action,
                             cameraAngle: result.sceneDescriptionForImage.cameraAngle,
-                            charactersInScene: uniqueCharacterNames.map(name => {
+                            charactersInScene: mentionedCharacterNames.map(name => {
+                                if (name.toLowerCase() === adventureSettings.playerName?.toLowerCase()) {
+                                    return {
+                                        name: adventureSettings.playerName!,
+                                        appearanceDescription: adventureSettings.playerDetails, // Vision AI scan result
+                                    };
+                                }
                                 const character = characters.find(c => c.name.toLowerCase() === name.toLowerCase());
                                 const clothingDescription = character?.clothingItemIds?.map(id => wardrobe.find(item => item.id === id)?.description).filter(Boolean).join('. ') || undefined;
                                 return {
@@ -344,5 +350,3 @@ export function useAIActions({
         generateSceneImageActionWrapper,
     };
 }
-
-    

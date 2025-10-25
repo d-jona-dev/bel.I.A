@@ -14,18 +14,17 @@ const buildFullDescription = (descriptionObject?: SceneDescriptionForImage): str
     let charactersBlock = "";
     if (charactersInScene && charactersInScene.length > 0) {
         charactersBlock = charactersInScene.map((char) => {
-            const appearance = char.appearanceDescription
-                ? char.appearanceDescription.trim()
-                : "No visual details provided";
+            // Combine appearance and clothing into one description if both exist.
+            const visualDetails = [char.appearanceDescription, char.clothingDescription]
+                .filter(Boolean) // Remove any empty/null/undefined strings
+                .join('. '); 
             
-            const clothing = char.clothingDescription
-                ? ` Wearing: ${char.clothingDescription.trim()}`
-                : "";
+            const finalDescription = visualDetails || "No visual details provided";
 
             return `
 <character>
   <name>${char.name}</name>
-  <visual_description>${appearance}${clothing}</visual_description>
+  <visual_description>${finalDescription}</visual_description>
 </character>`;
         }).join("");
     }
