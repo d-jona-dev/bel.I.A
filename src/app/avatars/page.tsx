@@ -55,8 +55,6 @@ interface PlayerAvatar {
   details: string; // physique, age
   description: string; // background
   orientation: string;
-  class: string;
-  level: number;
 }
 
 interface CustomImageStyle {
@@ -88,7 +86,7 @@ export default function AvatarsPage() {
   const [avatarToDelete, setAvatarToDelete] = React.useState<PlayerAvatar | null>(null);
   const [editingAvatar, setEditingAvatar] = React.useState<PlayerAvatar | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
-  const [newAvatarData, setNewAvatarData] = React.useState<Omit<PlayerAvatar, 'id' | 'portraitUrl'>>({ name: '', details: '', description: '', orientation: '', class: 'Aventurier', level: 1 });
+  const [newAvatarData, setNewAvatarData] = React.useState<Omit<PlayerAvatar, 'id' | 'portraitUrl'>>({ name: '', details: '', description: '', orientation: '' });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
   const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
   const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
@@ -115,8 +113,8 @@ export default function AvatarsPage() {
       } else {
         // Set default avatars if none are saved
         const defaultAvatars: PlayerAvatar[] = [
-          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, class: 'Guerrier', level: 5, description: "Vient d'une longue lignée de protecteurs.", orientation: "Hétérosexuel" },
-          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, class: 'Mage', level: 3, description: "A quitté sa tour pour découvrir le monde.", orientation: "Bisexuelle" },
+          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, description: "Vient d'une longue lignée de protecteurs.", orientation: "Hétérosexuel" },
+          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, description: "A quitté sa tour pour découvrir le monde.", orientation: "Bisexuelle" },
         ];
         setAvatars(defaultAvatars);
         localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(defaultAvatars));
@@ -177,7 +175,7 @@ export default function AvatarsPage() {
             const jsonString = e.target?.result as string;
             const newAvatar = JSON.parse(jsonString) as PlayerAvatar;
 
-            if (!newAvatar.id || !newAvatar.name || !newAvatar.class || !newAvatar.level) {
+            if (!newAvatar.id || !newAvatar.name) {
                 throw new Error("Fichier JSON invalide ou manquant de champs obligatoires.");
             }
             
@@ -242,7 +240,7 @@ export default function AvatarsPage() {
     }
     toast({ title: "Avatar Créé!", description: `Bienvenue à ${newAvatar.name}.` });
     setIsCreateModalOpen(false);
-    setNewAvatarData({ name: '', details: '', description: '', orientation: '', class: 'Aventurier', level: 1 });
+    setNewAvatarData({ name: '', details: '', description: '', orientation: '' });
   };
 
   const handleUpdateAvatar = () => {
@@ -264,7 +262,7 @@ export default function AvatarsPage() {
   const handleGeneratePortraitForEditor = async () => {
       if (!editingAvatar) return;
       setIsGeneratingPortrait(true);
-      const prompt = `portrait of a hero named ${editingAvatar.name}, ${editingAvatar.class}. Description: ${editingAvatar.details}.`;
+      const prompt = `portrait of a hero named ${editingAvatar.name}. Description: ${editingAvatar.details}.`;
       try {
           const result = await generateSceneImage({ sceneDescription: {action: prompt, charactersInScene: []}, style: imageStyle }, aiConfig);
           if (result.imageUrl) {
@@ -375,16 +373,6 @@ export default function AvatarsPage() {
                         <Label htmlFor="new-avatar-orientation">Orientation Amoureuse</Label>
                         <Input id="new-avatar-orientation" value={newAvatarData.orientation} onChange={e => setNewAvatarData({...newAvatarData, orientation: e.target.value})} placeholder="Ex: Hétérosexuel, ..."/>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="new-avatar-class">Classe</Label>
-                            <Input id="new-avatar-class" value={newAvatarData.class} onChange={e => setNewAvatarData({...newAvatarData, class: e.target.value})} placeholder="Ex: Guerrier, Mage..."/>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="new-avatar-level">Niveau</Label>
-                            <Input id="new-avatar-level" type="number" value={newAvatarData.level} onChange={e => setNewAvatarData({...newAvatarData, level: Number(e.target.value) || 1})} />
-                        </div>
-                    </div>
                  </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
@@ -407,7 +395,7 @@ export default function AvatarsPage() {
                 <CardHeader className="flex flex-row items-start gap-4">
                    <Avatar className="h-20 w-20">
                       {avatar.portraitUrl ? (
-                        <AvatarImage src={avatar.portraitUrl} alt={avatar.name} data-ai-hint={`${avatar.class} portrait`} />
+                        <AvatarImage src={avatar.portraitUrl} alt={avatar.name} data-ai-hint={`hero portrait`} />
                       ) : (
                         <AvatarFallback>{avatar.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                       )}
@@ -415,7 +403,7 @@ export default function AvatarsPage() {
                    <div className="flex-1">
                     <CardTitle>{avatar.name}</CardTitle>
                      <CardDescription>
-                       {avatar.class} - Niveau {avatar.level}
+                       {avatar.details}
                      </CardDescription>
                   </div>
                    {avatar.id === currentAvatarId && (
@@ -430,7 +418,7 @@ export default function AvatarsPage() {
                    )}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{avatar.details}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{avatar.description}</p>
                 </CardContent>
                 <CardFooter className="flex flex-wrap justify-end gap-2">
                     <Dialog open={editingAvatar?.id === avatar.id} onOpenChange={(open) => !open && setEditingAvatar(null)}>
@@ -534,16 +522,6 @@ export default function AvatarsPage() {
                                       <div className="space-y-2">
                                         <Label>Orientation Amoureuse</Label>
                                         <Input value={editingAvatar.orientation} onChange={e => setEditingAvatar({...editingAvatar!, orientation: e.target.value})}/>
-                                     </div>
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Classe</Label>
-                                            <Input value={editingAvatar.class} onChange={e => setEditingAvatar({...editingAvatar!, class: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Niveau</Label>
-                                            <Input type="number" value={editingAvatar.level} onChange={e => setEditingAvatar({...editingAvatar!, level: Number(e.target.value) || 1})} />
-                                        </div>
                                      </div>
                                 </div>
                                <DialogFooter>

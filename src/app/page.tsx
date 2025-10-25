@@ -183,8 +183,6 @@ export default function Home() {
                         return {
                             ...settings,
                             playerName: activeAvatar.name,
-                            playerClass: activeAvatar.class,
-                            playerLevel: activeAvatar.level,
                             playerDetails: activeAvatar.details,
                             playerDescription: activeAvatar.description,
                             playerOrientation: activeAvatar.orientation,

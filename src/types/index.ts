@@ -61,8 +61,6 @@ export interface PlayerAvatar {
   details: string;
   description: string;
   orientation: string;
-  class: string;
-  level: number;
 }
 
 export interface TimeManagementSettings {
@@ -249,6 +247,9 @@ export const GenerateAdventureInputSchema = z.object({
   relationsModeActive: z.boolean().optional().default(true),
   comicModeActive: z.boolean().optional().default(true),
   playerPortraitUrl: z.string().nullable().optional(),
+  playerDetails: z.string().optional(),
+  playerDescription: z.string().optional(),
+  playerOrientation: z.string().optional(),
   aiConfig: z.any().optional(), // Keep it flexible
   timeManagement: z.any().optional(),
   activeConditions: z.array(z.string()).optional().describe("A list of active condition effects to apply to the narrative."), // NOUVEAU

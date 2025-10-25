@@ -68,7 +68,13 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema,
   },
-  prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The player character's name is **{{playerName}}**. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
+  prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
+
+**Player Character:**
+- **Name:** {{playerName}}
+{{#if playerDetails}}- **Physical Description:** {{playerDetails}}{{/if}}
+{{#if playerDescription}}- **Background/Personality:** {{playerDescription}}{{/if}}
+{{#if playerOrientation}}- **Romantic Orientation:** {{playerOrientation}}{{/if}}
 
 **Overall Goal: Maintain strict character consistency. Characters' dialogues, actions, and reactions MUST reflect their established personality, affinity, and relationships as detailed below. Their style of speech (vocabulary, tone, formality) MUST also be consistent with their persona.**
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
