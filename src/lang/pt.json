@@ -1,0 +1,16 @@
+
+{
+    "addCharacterTooltip": "Adicionar Personagem",
+    "addPlaceholderTooltip": "Adicionar Espaço para Personagem",
+    "visionConsent": "Eu entendo que a imagem será enviada para um modelo de IA para análise e pode não permanecer privada. Não use imagens pessoais ou sensíveis.",
+    "memory": "Memória",
+    "addMemory": "Adicionar memória",
+    "secondaryCharactersLabel": "Personagens Secundários (NPCs)",
+    "placeholderLabel": "Espaço reservado?",
+    "placeholderNameLabel": "Nome do espaço reservado",
+    "npcNameLabel": "Nome do NPC",
+    "placeholderNamePlaceholder": "Ex: O Guerreiro, O Mercador...",
+    "npcNamePlaceholder": "Ex: Roric, Elara...",
+    "npcDetailsLabel": "Detalhes do NPC",
+    "npcDetailsPlaceholder": "Descrição, personalidade, papel..."
+}

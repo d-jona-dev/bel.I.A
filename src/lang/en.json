@@ -4,5 +4,13 @@
     "addPlaceholderTooltip": "Add Character Placeholder",
     "visionConsent": "I understand that the image will be sent to an AI model for analysis and may not remain private. Do not use personal or sensitive images.",
     "memory": "Memory",
-    "addMemory": "Add memory"
+    "addMemory": "Add memory",
+    "secondaryCharactersLabel": "Secondary Characters (NPCs)",
+    "placeholderLabel": "Placeholder?",
+    "placeholderNameLabel": "Placeholder Name",
+    "npcNameLabel": "NPC Name",
+    "placeholderNamePlaceholder": "E.g.: The Warrior, The Merchant...",
+    "npcNamePlaceholder": "E.g.: Roric, Elara...",
+    "npcDetailsLabel": "NPC Details",
+    "npcDetailsPlaceholder": "Description, personality, role..."
 }

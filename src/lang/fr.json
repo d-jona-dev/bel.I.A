@@ -4,5 +4,13 @@
     "addPlaceholderTooltip": "Ajouter un emplacement de personnage",
     "visionConsent": "Je comprends que l'image sera envoyée à un modèle d'IA pour analyse et pourrait ne pas rester privée. N'utilisez pas d'images personnelles ou sensibles.",
     "memory": "Mémoire",
-    "addMemory": "Ajouter un souvenir"
+    "addMemory": "Ajouter un souvenir",
+    "secondaryCharactersLabel": "Personnages Secondaires (PNJ)",
+    "placeholderLabel": "Emplacement ?",
+    "placeholderNameLabel": "Nom de l'emplacement",
+    "npcNameLabel": "Nom du PNJ",
+    "placeholderNamePlaceholder": "Ex: Le Guerrier, Le Marchand...",
+    "npcNamePlaceholder": "Ex: Roric, Elara...",
+    "npcDetailsLabel": "Détails du PNJ",
+    "npcDetailsPlaceholder": "Description, personnalité, rôle..."
 }

@@ -19,7 +19,6 @@ import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
 import { ConditionsConfig } from "./adventure-form-parts/conditions-config";
 import { i18n, type Language } from "@/lib/i18n";
-import { CharacterSidebar } from "./character-sidebar";
 
 
 // Schemas are kept here as they define the shape for the entire form,
@@ -189,13 +188,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             return () => subscription.unsubscribe();
         }
     }, [form, onFormValidityChange]);
-    
-    const handleCharacterUpdate = (updatedCharacter: FormCharacterDefinition) => {
-      const index = fields.findIndex(f => f.id === updatedCharacter.id);
-      if (index > -1) {
-          update(index, updatedCharacter);
-      }
-    };
     
     const handleAddCharacter = (isPlaceholder = false) => {
         const lang = 'fr';

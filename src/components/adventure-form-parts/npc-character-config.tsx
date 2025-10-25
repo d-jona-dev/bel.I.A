@@ -43,7 +43,7 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
             <AccordionItem value="npc-config">
                 <AccordionTrigger>
                     <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5" /> Personnages Secondaires (PNJ)
+                        <Users className="h-5 w-5" /> {i18n[lang as Language]?.secondaryCharactersLabel || "Personnages Secondaires (PNJ)"}
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 space-y-4">
@@ -61,7 +61,7 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                         render={({ field }) => (
                                             <FormItem className="flex items-center gap-2 space-y-0">
                                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                <FormLabel className="text-xs">Emplacement ?</FormLabel>
+                                                <FormLabel className="text-xs">{i18n[lang as Language]?.placeholderLabel || "Emplacement ?"}</FormLabel>
                                             </FormItem>
                                         )}
                                     />
@@ -71,8 +71,8 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                     name={`characters.${index}.name`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>{isPlaceholder ? "Nom de l'emplacement" : "Nom du PNJ"}</FormLabel>
-                                            <FormControl><Input {...field} placeholder={isPlaceholder ? "Ex: Le Guerrier, Le Marchand..." : "Ex: Roric, Elara..."} /></FormControl>
+                                            <FormLabel>{isPlaceholder ? i18n[lang as Language]?.placeholderNameLabel || "Nom de l'emplacement" : i18n[lang as Language]?.npcNameLabel || "Nom du PNJ"}</FormLabel>
+                                            <FormControl><Input {...field} placeholder={isPlaceholder ? i18n[lang as Language]?.placeholderNamePlaceholder || "Ex: Le Guerrier, Le Marchand..." : i18n[lang as Language]?.npcNamePlaceholder || "Ex: Roric, Elara..."} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -83,8 +83,8 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                         name={`characters.${index}.details`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Détails du PNJ</FormLabel>
-                                                <FormControl><Textarea {...field} placeholder="Description, personnalité, rôle..." rows={3} /></FormControl>
+                                                <FormLabel>{i18n[lang as Language]?.npcDetailsLabel || "Détails du PNJ"}</FormLabel>
+                                                <FormControl><Textarea {...field} placeholder={i18n[lang as Language]?.npcDetailsPlaceholder || "Description, personnalité, rôle..."} rows={3} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
