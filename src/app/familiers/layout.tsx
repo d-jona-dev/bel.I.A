@@ -8,7 +8,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard } from 'lucide-react';
+import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard, Shirt } from 'lucide-react';
 
 export default function FamiliersLayout({
   children,
@@ -70,6 +70,19 @@ export default function FamiliersLayout({
                         <TooltipContent side="right" align="center">Éditeur de BD</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/penderie">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Penderie">
+                                <Shirt className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Penderie</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">Gérer les Vêtements</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
                  <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
@@ -94,17 +107,6 @@ export default function FamiliersLayout({
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
-                     </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                     <Tooltip>
-                       <TooltipTrigger asChild>
-                          <Button variant="destructive" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Familiers">
-                              <PawPrint className="h-5 w-5" />
-                              <span className="ml-2 group-data-[collapsible=icon]:hidden">Familiers</span>
-                          </Button>
-                       </TooltipTrigger>
-                       <TooltipContent side="right" align="center">Fonctionnalité désactivée</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                </nav>
