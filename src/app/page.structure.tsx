@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, AiConfig, ComicPage } from "@/types";
+import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -38,6 +38,8 @@ import { Label } from '@/components/ui/label';
 import type { GameClockState } from '@/lib/game-clock';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
@@ -72,6 +74,7 @@ interface PageStructureProps {
   setShowRestartConfirm: (open: boolean) => void;
   useAestheticFont: boolean;
   onToggleAestheticFont: () => void;
+  onAvatarChange: (avatarId: string) => void; // NOUVEAU
   currentTurn?: number;
   aiConfig: AiConfig;
   onAiConfigChange: (newConfig: AiConfig) => void;
@@ -93,8 +96,79 @@ interface PageStructureProps {
   isGeneratingCover: boolean;
   onSaveToLibrary: () => void;
   isLoading: boolean;
-  timeState: GameClockState; // NOUVEAU
+  timeState: GameClockState;
 }
+
+const HeroCard = ({
+  adventureSettings,
+  onAvatarChange
+}: {
+  adventureSettings: AdventureSettings;
+  onAvatarChange: (avatarId: string) => void;
+}) => {
+    const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([]);
+    const [currentAvatarId, setCurrentAvatarId] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        try {
+            const savedAvatars = localStorage.getItem('playerAvatars_v2');
+            if (savedAvatars) {
+                setAvatars(JSON.parse(savedAvatars));
+            }
+            const savedCurrentId = localStorage.getItem('currentAvatarId');
+             if (savedCurrentId) {
+                const parsedId = JSON.parse(savedCurrentId);
+                setCurrentAvatarId(parsedId);
+             }
+        } catch (e) {
+            console.error("Failed to load avatars from local storage.", e);
+        }
+    }, []);
+
+    const activeAvatar = avatars.find(a => a.id === currentAvatarId);
+
+    return (
+         <Card>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />Héros Actuel</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-16 w-16">
+                        <AvatarImage src={adventureSettings.playerPortraitUrl || undefined} alt={adventureSettings.playerName} />
+                        <AvatarFallback>{adventureSettings.playerName?.substring(0,2) || 'H'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <h3 className="font-semibold">{adventureSettings.playerName}</h3>
+                        <p className="text-xs text-muted-foreground">{adventureSettings.playerClass}</p>
+                    </div>
+                </div>
+                <p className="text-sm text-muted-foreground pt-2 line-clamp-3">
+                    {adventureSettings.playerDetails || "Aucun détail sur le héros."}
+                </p>
+                {avatars.length > 0 ? (
+                     <Select onValueChange={onAvatarChange} value={currentAvatarId || ''}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Changer l'avatar..."/>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {avatars.map(avatar => (
+                                <SelectItem key={avatar.id} value={avatar.id}>
+                                    {avatar.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                     <Link href="/avatars" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}>
+                      Gérer les Avatars
+                    </Link>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function PageStructure({
   adventureSettings,
@@ -129,6 +203,7 @@ export function PageStructure({
   setShowRestartConfirm,
   useAestheticFont,
   onToggleAestheticFont,
+  onAvatarChange,
   isLoading,
   currentTurn,
   aiConfig,
@@ -150,7 +225,7 @@ isSaveComicDialogOpen,
   onGenerateCover,
   isGeneratingCover,
   onSaveToLibrary,
-  timeState, // NOUVEAU
+  timeState,
 }: PageStructureProps) {
 
   const stagedCharacters = stagedAdventureSettings?.characters || [];
@@ -355,7 +430,7 @@ isSaveComicDialogOpen,
                     isGeneratingCover={isGeneratingCover}
                     onSaveToLibrary={onSaveToLibrary}
                     isLoading={isLoading}
-                    timeState={timeState} // NOUVEAU
+                    timeState={timeState}
                 />
             </main>
         </SidebarInset>
@@ -382,34 +457,13 @@ isSaveComicDialogOpen,
                                     relationsMode={adventureSettings.relationsMode}
                                     strategyMode={false} // Caché
                                     isLiveAdventure={true} // NOUVELLE PROP
+                                    adventureSettings={adventureSettings}
                                 />
                               </AccordionContent>
                           </AccordionItem>
                       </Accordion>
-
-                       <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />Héros Actuel</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            <div className="flex items-center gap-3">
-                               <Avatar className="h-16 w-16">
-                                  <AvatarImage src={adventureSettings.playerPortraitUrl || undefined} alt={adventureSettings.playerName} />
-                                  <AvatarFallback>{adventureSettings.playerName?.substring(0,2) || 'H'}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <h3 className="font-semibold">{adventureSettings.playerName}</h3>
-                                <p className="text-xs text-muted-foreground">{adventureSettings.playerClass}</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground pt-2 line-clamp-3">
-                              {adventureSettings.playerDetails || "Aucun détail sur le héros."}
-                            </p>
-                             <Link href="/avatars" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}>
-                              Changer l'Avatar
-                            </Link>
-                          </CardContent>
-                        </Card>
+                      
+                       <HeroCard adventureSettings={adventureSettings} onAvatarChange={onAvatarChange} />
 
                         <Separator/>
 

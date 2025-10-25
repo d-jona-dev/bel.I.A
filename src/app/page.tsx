@@ -168,65 +168,81 @@ export default function Home() {
         loadAdventureState,
     });
     
-    React.useEffect(() => {
-        const applyAvatarToSettings = (settings: AdventureSettings): AdventureSettings => {
-            const currentAvatarId = localStorage.getItem('currentAvatarId');
-            const playerAvatarsJson = localStorage.getItem('playerAvatars_v2');
+    const applyAvatarToSettings = React.useCallback((avatarId: string, settings: AdventureSettings): AdventureSettings => {
+        const playerAvatarsJson = localStorage.getItem('playerAvatars_v2');
 
-            if (currentAvatarId && playerAvatarsJson) {
-                try {
-                    const avatarId = JSON.parse(currentAvatarId);
-                    const avatars: PlayerAvatar[] = JSON.parse(playerAvatarsJson);
-                    const activeAvatar = avatars.find(a => a.id === avatarId);
+        if (avatarId && playerAvatarsJson) {
+            try {
+                const avatars: PlayerAvatar[] = JSON.parse(playerAvatarsJson);
+                const activeAvatar = avatars.find(a => a.id === avatarId);
 
-                    if (activeAvatar) {
-                        return {
-                            ...settings,
-                            playerName: activeAvatar.name,
-                            playerDetails: activeAvatar.details,
-                            playerDescription: activeAvatar.description,
-                            playerOrientation: activeAvatar.orientation,
-                            playerPortraitUrl: activeAvatar.portraitUrl,
-                        };
-                    }
-                } catch (e) {
-                    console.error("Failed to apply active avatar", e);
+                if (activeAvatar) {
+                    localStorage.setItem('currentAvatarId', JSON.stringify(avatarId));
+                    return {
+                        ...settings,
+                        playerName: activeAvatar.name,
+                        playerDetails: activeAvatar.details,
+                        playerDescription: activeAvatar.description,
+                        playerOrientation: activeAvatar.orientation,
+                        playerPortraitUrl: activeAvatar.portraitUrl,
+                    };
                 }
+            } catch (e) {
+                console.error("Failed to apply active avatar", e);
             }
-            return settings;
-        };
+        }
+        return settings;
+    }, []);
 
+    const handleAvatarChange = (avatarId: string) => {
+        setAdventureSettings(prev => applyAvatarToSettings(avatarId, prev));
+        toast({
+            title: "Avatar changé!",
+            description: "Le héros de l'aventure a été mis à jour."
+        });
+    };
+
+    React.useEffect(() => {
         const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
+        const currentAvatarId = localStorage.getItem('currentAvatarId');
+
         if (storyIdToLoad) {
             const storiesFromStorage = localStorage.getItem('adventureStories');
             if (storiesFromStorage) {
                 const savedStories = JSON.parse(storiesFromStorage);
                 const story = savedStories.find((s: any) => s.id === storyIdToLoad);
                 if (story && story.adventureState) {
-                    const stateWithAvatar = {
+                    const stateWithAvatar = applyAvatarToSettings(
+                        currentAvatarId ? JSON.parse(currentAvatarId) : '', 
+                        story.adventureState.adventureSettings
+                    );
+                    loadAdventureState({
                         ...story.adventureState,
-                        adventureSettings: applyAvatarToSettings(story.adventureState.adventureSettings)
-                    };
-                    loadAdventureState(stateWithAvatar);
+                        adventureSettings: stateWithAvatar,
+                    });
                 } else {
                      toast({ title: "Erreur", description: `Histoire ${storyIdToLoad} non trouvée.`, variant: "destructive" });
                 }
             }
             localStorage.removeItem('loadStoryIdOnMount');
         } else {
-             // If not loading a story, still apply the avatar to the current state
-             setAdventureSettings(prev => applyAvatarToSettings(prev));
+             if (currentAvatarId) {
+                setAdventureSettings(prev => applyAvatarToSettings(JSON.parse(currentAvatarId), prev));
+             }
         }
 
         const tempStateJSON = localStorage.getItem('tempAdventureState');
         if (tempStateJSON) {
             try {
                 const tempState = JSON.parse(tempStateJSON);
-                 const stateWithAvatar = {
+                 const stateWithAvatar = applyAvatarToSettings(
+                     currentAvatarId ? JSON.parse(currentAvatarId) : '',
+                     tempState.adventureSettings
+                 );
+                loadAdventureState({
                     ...tempState,
-                    adventureSettings: applyAvatarToSettings(tempState.adventureSettings)
-                };
-                loadAdventureState(stateWithAvatar);
+                    adventureSettings: stateWithAvatar,
+                });
             } catch (error) {
                 console.error("Failed to load temporary adventure state:", error);
                  toast({ title: "Erreur de chargement", variant: "destructive" });
@@ -459,6 +475,7 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
                 isSuggestingQuest={isSuggestingQuest}
                 useAestheticFont={useAestheticFont}
                 onToggleAestheticFont={() => setUseAestheticFont(v => !v)}
+                onAvatarChange={handleAvatarChange}
                 comicDraft={comicDraft}
                 onDownloadComicDraft={onDownloadComicDraft}
                 onAddComicPage={onAddComicPage}
@@ -480,5 +497,3 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
         </>
     );
 }
-
-    
