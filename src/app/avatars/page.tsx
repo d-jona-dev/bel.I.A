@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download, Palette, Link as LinkIcon } from 'lucide-react';
+import { Upload, Trash2, Edit, UserPlus, CheckCircle, UploadCloud, Wand2, Save, Loader2, Download, Palette, Link as LinkIcon, Eye, AlertTriangle, BrainCircuit } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -38,8 +38,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { generateSceneImage } from '@/ai/flows/generate-scene-image';
+import { describeAppearance } from '@/ai/flows/describe-appearance';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { AiConfig } from '@/types';
+import { ModelManager } from '@/components/model-manager';
+import { Checkbox } from '@/components/ui/checkbox';
+import { i18n } from '@/lib/i18n';
+import { generateSceneImage } from '@/ai/flows/generate-scene-image';
 
 
 // Define a type for your avatar data
@@ -92,6 +97,14 @@ export default function AvatarsPage() {
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
+  const [aiConfig, setAiConfig] = React.useState<AiConfig>({
+    llm: { source: 'gemini' },
+    image: { source: 'gemini' }
+  });
+  const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
+  const [isProcessingVision, setIsProcessingVision] = React.useState(false);
+  const [visionConsent, setVisionConsent] = React.useState(false);
+
 
   React.useEffect(() => {
     try {
@@ -118,6 +131,10 @@ export default function AvatarsPage() {
       if (savedStyles) {
           setCustomStyles(JSON.parse(savedStyles));
       }
+       const savedAiConfig = localStorage.getItem('globalAiConfig');
+      if (savedAiConfig) {
+        setAiConfig(JSON.parse(savedAiConfig));
+      }
 
     } catch (error) {
       console.error("Failed to load avatars from localStorage:", error);
@@ -125,6 +142,12 @@ export default function AvatarsPage() {
     }
     setIsLoading(false);
   }, [toast]);
+  
+  const handleAiConfigChange = (newConfig: AiConfig) => {
+    setAiConfig(newConfig);
+    localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+    toast({ title: "Configuration IA mise à jour."});
+  };
 
   const saveAvatars = (updatedAvatars: PlayerAvatar[]) => {
     setAvatars(updatedAvatars);
@@ -243,7 +266,7 @@ export default function AvatarsPage() {
       setIsGeneratingPortrait(true);
       const prompt = `portrait of a hero named ${editingAvatar.name}, ${editingAvatar.class}. Description: ${editingAvatar.details}.`;
       try {
-          const result = await generateSceneImage({ sceneDescription: prompt, style: imageStyle });
+          const result = await generateSceneImage({ sceneDescription: {action: prompt, charactersInScene: []}, style: imageStyle }, aiConfig);
           if (result.imageUrl) {
               setEditingAvatar(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
               toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
@@ -254,6 +277,27 @@ export default function AvatarsPage() {
            toast({ title: "Erreur de Génération", description: `Impossible de générer le portrait : ${error instanceof Error ? error.message : 'Erreur inconnue'}.`, variant: "destructive" });
       } finally {
           setIsGeneratingPortrait(false);
+      }
+  };
+
+  const handleVisionScan = async (
+      avatarData: PlayerAvatar | Omit<PlayerAvatar, 'id' | 'portraitUrl'>,
+      setter: React.Dispatch<React.SetStateAction<any>>
+  ) => {
+      const imageUrl = 'portraitUrl' in avatarData ? avatarData.portraitUrl : null;
+      if (!imageUrl) {
+          toast({ title: "Image requise", description: "Veuillez fournir une image (URL ou téléversée) avant d'utiliser Vision.", variant: "destructive" });
+          return;
+      }
+      setIsProcessingVision(true);
+      try {
+          const result = await describeAppearance({ portraitUrl: imageUrl });
+          setter((prev: any) => ({ ...prev, details: result.description }));
+          toast({ title: "Scan Réussi", description: "La description a été générée par l'IA." });
+      } catch (error) {
+          toast({ title: "Erreur de Vision", description: `Impossible de scanner l'image. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+      } finally {
+          setIsProcessingVision(false);
       }
   };
 
@@ -271,6 +315,20 @@ export default function AvatarsPage() {
            <Button variant="outline" onClick={() => importFileRef.current?.click()}>
             <Upload className="mr-2 h-4 w-4" /> Importer un Avatar
           </Button>
+            <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogDescription>
+                            Configurez les modèles d'IA utilisés pour la génération de texte et d'images.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                </DialogContent>
+            </Dialog>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
                 <Button>
@@ -289,6 +347,25 @@ export default function AvatarsPage() {
                     <div className="space-y-2">
                         <Label htmlFor="new-avatar-details">Détails (Physique, Âge)</Label>
                         <Textarea id="new-avatar-details" value={newAvatarData.details} onChange={e => setNewAvatarData({...newAvatarData, details: e.target.value})} placeholder="Décrivez votre personnage..."/>
+                        <div className="flex items-center gap-2 pt-1">
+                            <Button size="sm" onClick={() => handleVisionScan(newAvatarData as any, setNewAvatarData)} disabled={isProcessingVision || !visionConsent} className="w-full">
+                                {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
+                                Scanner avec Vision
+                            </Button>
+                            <Checkbox id="vision-consent-create" checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label htmlFor="vision-consent-create" className="cursor-pointer">
+                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        </Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                        <p>{i18n.fr.visionConsent}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="new-avatar-desc">Description (Background)</Label>
@@ -430,6 +507,25 @@ export default function AvatarsPage() {
                                      <div className="space-y-2">
                                         <Label>Détails (Physique, Âge)</Label>
                                         <Textarea value={editingAvatar.details} onChange={e => setEditingAvatar({...editingAvatar!, details: e.target.value})} rows={2}/>
+                                        <div className="flex items-center gap-2 pt-1">
+                                            <Button size="sm" onClick={() => handleVisionScan(editingAvatar, setEditingAvatar)} disabled={isProcessingVision || !editingAvatar.portraitUrl || !visionConsent} className="w-full">
+                                                {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
+                                                Scanner avec Vision
+                                            </Button>
+                                            <Checkbox id="vision-consent-edit" checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Label htmlFor="vision-consent-edit" className="cursor-pointer">
+                                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                                        </Label>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" className="max-w-xs">
+                                                        <p>{i18n.fr.visionConsent}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
                                      </div>
                                      <div className="space-y-2">
                                         <Label>Description (Background)</Label>
