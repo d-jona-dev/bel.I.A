@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, AdventureSettings, SaveData, Message, AiConfig, LocalizedText } from "@/types";
+import type { Character, AdventureSettings, SaveData, Message, AiConfig, LocalizedText, PlayerAvatar } from "@/types";
 import { PageStructure } from "./page.structure";
 import { GameClock } from "@/lib/game-clock"; 
 
@@ -169,7 +169,35 @@ export default function Home() {
     });
     
     React.useEffect(() => {
-        // Handle loading a story from the 'Histoires' page
+        const applyAvatarToSettings = (settings: AdventureSettings): AdventureSettings => {
+            const currentAvatarId = localStorage.getItem('currentAvatarId');
+            const playerAvatarsJson = localStorage.getItem('playerAvatars_v2');
+
+            if (currentAvatarId && playerAvatarsJson) {
+                try {
+                    const avatarId = JSON.parse(currentAvatarId);
+                    const avatars: PlayerAvatar[] = JSON.parse(playerAvatarsJson);
+                    const activeAvatar = avatars.find(a => a.id === avatarId);
+
+                    if (activeAvatar) {
+                        return {
+                            ...settings,
+                            playerName: activeAvatar.name,
+                            playerClass: activeAvatar.class,
+                            playerLevel: activeAvatar.level,
+                            playerDetails: activeAvatar.details,
+                            playerDescription: activeAvatar.description,
+                            playerOrientation: activeAvatar.orientation,
+                            playerPortraitUrl: activeAvatar.portraitUrl,
+                        };
+                    }
+                } catch (e) {
+                    console.error("Failed to apply active avatar", e);
+                }
+            }
+            return settings;
+        };
+
         const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
         if (storyIdToLoad) {
             const storiesFromStorage = localStorage.getItem('adventureStories');
@@ -177,33 +205,38 @@ export default function Home() {
                 const savedStories = JSON.parse(storiesFromStorage);
                 const story = savedStories.find((s: any) => s.id === storyIdToLoad);
                 if (story && story.adventureState) {
-                    loadAdventureState(story.adventureState);
+                    const stateWithAvatar = {
+                        ...story.adventureState,
+                        adventureSettings: applyAvatarToSettings(story.adventureState.adventureSettings)
+                    };
+                    loadAdventureState(stateWithAvatar);
                 } else {
-                    toast({
-                        title: "Erreur de chargement",
-                        description: `Impossible de trouver l'histoire avec l'ID ${storyIdToLoad}.`,
-                        variant: "destructive"
-                    });
+                     toast({ title: "Erreur", description: `Histoire ${storyIdToLoad} non trouvée.`, variant: "destructive" });
                 }
             }
             localStorage.removeItem('loadStoryIdOnMount');
+        } else {
+             // If not loading a story, still apply the avatar to the current state
+             setAdventureSettings(prev => applyAvatarToSettings(prev));
         }
 
-        // Handle loading a temporary state (e.g., from character slot assignment)
         const tempStateJSON = localStorage.getItem('tempAdventureState');
         if (tempStateJSON) {
             try {
                 const tempState = JSON.parse(tempStateJSON);
-                loadAdventureState(tempState);
+                 const stateWithAvatar = {
+                    ...tempState,
+                    adventureSettings: applyAvatarToSettings(tempState.adventureSettings)
+                };
+                loadAdventureState(stateWithAvatar);
             } catch (error) {
                 console.error("Failed to load temporary adventure state:", error);
-                 toast({ title: "Erreur de chargement de l'état temporaire", variant: "destructive" });
+                 toast({ title: "Erreur de chargement", variant: "destructive" });
             } finally {
                 localStorage.removeItem('tempAdventureState');
             }
         }
         
-        // Load clock state on mount
         const savedClockState = localStorage.getItem('gameClockState_v2');
         if (savedClockState) {
             try {
@@ -272,14 +305,12 @@ export default function Home() {
             const prevTimeManagement = prevSettings.timeManagement || createInitialState().adventureSettings.timeManagement!;
             const formTimeManagement = formData.timeManagement || createInitialState().adventureSettings.timeManagement!;
             
-            // Reconstruct the clock state from the form, keeping current day/time if not changed
             const clock = new GameClock({
                 ...formTimeManagement,
                 day: timeState.day,
                 hour: timeState.hour,
                 minute: timeState.minute,
             });
-            // If the form's start time is different, apply it.
             const [formHour, formMinute] = (formTimeManagement.currentTime || "0:0").split(':').map(Number);
             if(formHour !== timeState.hour || formMinute !== timeState.minute){
                 clock.setTime({ day: formTimeManagement.day, hour: formHour, minute: formMinute});
@@ -295,7 +326,6 @@ export default function Home() {
                  timeManagement: {
                      ...prevTimeManagement,
                      ...formTimeManagement,
-                     // We update the live state, but the clock object holds the canonical time
                      day: clock.getState().day,
                      currentTime: `${String(clock.getState().hour).padStart(2, '0')}:${String(clock.getState().minute).padStart(2, '0')}`,
                      dayName: clock.getState().dayName,
@@ -332,7 +362,7 @@ export default function Home() {
 
     const handleAiConfigChange = React.useCallback((newConfig: AiConfig) => {
         setAiConfig(newConfig);
-        localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
+localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
         React.startTransition(() => {
             toast({ title: "Configuration IA mise à jour" });
         });

@@ -60,6 +60,7 @@ interface AdventureFormProps {
     relationsMode: boolean;
     strategyMode: boolean;
     aiConfig?: AiConfig;
+    isLiveAdventure?: boolean;
 }
 
 const characterSchema = z.object({
@@ -146,7 +147,7 @@ const adventureFormSchema = z.object({
 });
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig }, ref) => {
+    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false }, ref) => {
     
     const { toast } = useToast();
 
@@ -217,13 +218,17 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
                     <WorldConfig />
-                    <NpcCharacterConfig 
-                        fields={fields} 
-                        remove={remove} 
-                        onAddCharacter={handleAddCharacter}
-                    />
+                     {!isLiveAdventure && (
+                        <>
+                            <NpcCharacterConfig 
+                                fields={fields} 
+                                remove={remove} 
+                                onAddCharacter={handleAddCharacter}
+                            />
+                            <ConditionsConfig />
+                        </>
+                    )}
                     <GameModesConfig />
-                    <ConditionsConfig />
                     <TimeConfig />
                 </div>
             </form>

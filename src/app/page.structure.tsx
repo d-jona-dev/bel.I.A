@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, AiConfig, ComicPage } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
@@ -35,7 +35,9 @@ import { Dialog } from '../components/ui/dialog';
 import type { NewCharacterSchema } from '@/ai/flows/materialize-character';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import type { GameClockState } from '@/lib/game-clock'; // NOUVEAU
+import type { GameClockState } from '@/lib/game-clock';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Separator } from '../components/ui/separator';
 
 interface PageStructureProps {
   adventureSettings: AdventureSettings;
@@ -365,7 +367,6 @@ isSaveComicDialogOpen,
               </SidebarHeader>
               <ScrollArea className="flex-1">
                   <SidebarContent className="p-4 space-y-6">
-
                       <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
                           <AccordionItem value="adventure-config-accordion">
                               <AccordionTrigger>
@@ -377,19 +378,46 @@ isSaveComicDialogOpen,
                                 <AdventureForm
                                     ref={adventureFormRef}
                                     initialValues={stagedAdventureSettings}
-                                    rpgMode={false}
+                                    rpgMode={false} // Caché
                                     relationsMode={adventureSettings.relationsMode}
-                                    strategyMode={false}
+                                    strategyMode={false} // Caché
+                                    isLiveAdventure={true} // NOUVELLE PROP
                                 />
                               </AccordionContent>
                           </AccordionItem>
                       </Accordion>
 
-                      <Accordion type="single" collapsible className="w-full">
+                       <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />Héros Actuel</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className="flex items-center gap-3">
+                               <Avatar className="h-16 w-16">
+                                  <AvatarImage src={adventureSettings.playerPortraitUrl || undefined} alt={adventureSettings.playerName} />
+                                  <AvatarFallback>{adventureSettings.playerName?.substring(0,2) || 'H'}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h3 className="font-semibold">{adventureSettings.playerName}</h3>
+                                <p className="text-xs text-muted-foreground">{adventureSettings.playerClass}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground pt-2 line-clamp-3">
+                              {adventureSettings.playerDetails || "Aucun détail sur le héros."}
+                            </p>
+                             <Link href="/avatars" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}>
+                              Changer l'Avatar
+                            </Link>
+                          </CardContent>
+                        </Card>
+
+                        <Separator/>
+
+                      <Accordion type="single" collapsible className="w-full" defaultValue='characters-accordion'>
                           <AccordionItem value="characters-accordion">
                               <AccordionTrigger>
                                   <div className="flex items-center gap-2">
-                                      <UsersIcon className="h-5 w-5" /> Personnages Secondaires
+                                      <UsersIcon className="h-5 w-5" /> Personnages Présents
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pt-2">
@@ -404,6 +432,7 @@ isSaveComicDialogOpen,
                                       playerId={playerId}
                                       playerName={stagedAdventureSettings.playerName || "Player"}
                                       currentLanguage={currentLanguage}
+                                      adventureSettings={adventureSettings}
                                   />
                               </AccordionContent>
                           </AccordionItem>
