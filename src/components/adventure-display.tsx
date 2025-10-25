@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart, Gem, HeartCrack, HeartHandshake } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -127,6 +127,16 @@ const isValidUrl = (url: string | null | undefined): url is string => {
     return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
 };
 
+const getAffinityIcon = (affinity: number) => {
+    const value = affinity ?? 50;
+    if (value <= 10) return <HeartCrack className="h-4 w-4 text-black" />;
+    if (value <= 45) return <Heart className="h-4 w-4 text-gray-500" />;
+    if (value <= 70) return <HeartHandshake className="h-4 w-4 text-red-500/80" />;
+    if (value <= 90) return <Heart className="h-4 w-4 text-red-500/80" fill="currentColor" />;
+    return <Gem className="h-4 w-4 text-pink-400" />;
+};
+
+
 const CharacterStatusDisplay = ({ heroSettings, characters }: { heroSettings: AdventureSettings, characters: Character[]}) => {
     if (!heroSettings && characters.length === 0) return null;
     
@@ -174,7 +184,7 @@ const CharacterStatusDisplay = ({ heroSettings, characters }: { heroSettings: Ad
                                     <span className="text-sm font-medium">{char.name}</span>
                                     <div className="flex items-center gap-1.5">
                                         <Progress value={char.affinity ?? 50} className="h-2 w-full"/>
-                                        <Heart className="h-4 w-4 text-red-500/80" fill={char.affinity && char.affinity > 50 ? "currentColor" : "none"}/>
+                                        {getAffinityIcon(char.affinity ?? 50)}
                                     </div>
                                 </div>
                             </div>
