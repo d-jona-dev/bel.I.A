@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -51,6 +51,7 @@ import ImageEditor from "./ImageEditor";
 import { Input } from "./ui/input";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "./ComicPageEditor";
 import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
+import { Progress } from "@/components/ui/progress";
 
 interface AdventureDisplayProps {
     playerId: string;
@@ -125,6 +126,65 @@ const isValidUrl = (url: string | null | undefined): url is string => {
     if (!url) return false;
     return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
 };
+
+const CharacterStatusDisplay = ({ heroSettings, characters }: { heroSettings: AdventureSettings, characters: Character[]}) => {
+    if (!heroSettings && characters.length === 0) return null;
+    
+    return (
+        <Card>
+            <CardHeader className="p-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                    <UserIcon className="h-5 w-5"/>
+                    Personnages
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-4">
+                 {/* Hero Display */}
+                 {heroSettings.playerName && (
+                    <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Héros</Label>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                                {isValidUrl(heroSettings.playerPortraitUrl) ? (
+                                    <AvatarImage src={heroSettings.playerPortraitUrl} alt={heroSettings.playerName} />
+                                ) : (
+                                    <AvatarFallback>{heroSettings.playerName.substring(0,2)}</AvatarFallback>
+                                )}
+                            </Avatar>
+                            <span className="font-semibold">{heroSettings.playerName}</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* NPC Display */}
+                {characters.length > 0 && heroSettings.playerName && <Separator />}
+                {characters.length > 0 && (
+                     <div className="space-y-3">
+                        <Label className="text-xs text-muted-foreground">Personnages Présents</Label>
+                         {characters.filter(c => !c.isPlaceholder).map(char => (
+                            <div key={char.id} className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                    {isValidUrl(char.portraitUrl) ? (
+                                        <AvatarImage src={char.portraitUrl} alt={char.name} />
+                                    ) : (
+                                        <AvatarFallback className="text-xs">{char.name.substring(0,2)}</AvatarFallback>
+                                    )}
+                                </Avatar>
+                                <div className="flex-1 space-y-1">
+                                    <span className="text-sm font-medium">{char.name}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <Progress value={char.affinity ?? 50} className="h-2 w-full"/>
+                                        <Heart className="h-4 w-4 text-red-500/80" fill={char.affinity && char.affinity > 50 ? "currentColor" : "none"}/>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
 
 export function AdventureDisplay({
     playerId,
@@ -838,6 +898,8 @@ export function AdventureDisplay({
                         <Button variant="destructive" size="icon" onClick={onRemoveLastComicPanel}><Trash2Icon className="h-4 w-4"/></Button>
                     </CardFooter>
                 </Card>
+
+                <CharacterStatusDisplay heroSettings={adventureSettings} characters={characters} />
 
 
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
