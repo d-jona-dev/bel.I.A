@@ -25,6 +25,13 @@ function buildOpenRouterPrompt(
             promptSections.push(`## ${title}\n- ${contentString}`);
         }
     };
+
+    // Add player info
+    let playerInfo = `- Name: ${input.playerName}`;
+    if (input.playerDetails) playerInfo += `\n- Physical Description: ${input.playerDetails}`;
+    if (input.playerDescription) playerInfo += `\n- Background/Personality: ${input.playerDescription}`;
+    if (input.playerOrientation) playerInfo += `\n- Romantic Orientation: ${input.playerOrientation}`;
+    promptSections.push(`## PLAYER CHARACTER\n${playerInfo}`);
     
     addSection("CONTEXTE DU MONDE", input.world);
     addSection("SITUATION ACTUELLE", input.initialSituation);

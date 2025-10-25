@@ -86,7 +86,7 @@ export default function AvatarsPage() {
   const [avatarToDelete, setAvatarToDelete] = React.useState<PlayerAvatar | null>(null);
   const [editingAvatar, setEditingAvatar] = React.useState<PlayerAvatar | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
-  const [newAvatarData, setNewAvatarData] = React.useState<Omit<PlayerAvatar, 'id' | 'portraitUrl'>>({ name: '', details: '', description: '', orientation: '' });
+  const [newAvatarData, setNewAvatarData] = React.useState<Partial<PlayerAvatar>>({ name: '', details: '', description: '', orientation: '', portraitUrl: null });
   const [isGeneratingPortrait, setIsGeneratingPortrait] = React.useState(false);
   const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
   const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
@@ -224,14 +224,17 @@ export default function AvatarsPage() {
   };
   
   const handleCreateAvatar = () => {
-    if (!newAvatarData.name.trim() || !newAvatarData.details.trim()) {
+    if (!newAvatarData.name?.trim() || !newAvatarData.details?.trim()) {
         toast({ title: "Champs requis manquants", description: "Le nom et les détails sont obligatoires.", variant: "destructive" });
         return;
     }
     const newAvatar: PlayerAvatar = {
         id: uid(),
-        portraitUrl: null,
-        ...newAvatarData
+        portraitUrl: newAvatarData.portraitUrl || null,
+        name: newAvatarData.name,
+        details: newAvatarData.details,
+        description: newAvatarData.description || '',
+        orientation: newAvatarData.orientation || '',
     };
     const updatedAvatars = [...avatars, newAvatar];
     saveAvatars(updatedAvatars);
@@ -240,7 +243,7 @@ export default function AvatarsPage() {
     }
     toast({ title: "Avatar Créé!", description: `Bienvenue à ${newAvatar.name}.` });
     setIsCreateModalOpen(false);
-    setNewAvatarData({ name: '', details: '', description: '', orientation: '' });
+    setNewAvatarData({ name: '', details: '', description: '', orientation: '', portraitUrl: null });
   };
 
   const handleUpdateAvatar = () => {
@@ -252,21 +255,24 @@ export default function AvatarsPage() {
   };
 
   const handleSaveUrl = () => {
-    if (!editingAvatar) return;
-    setEditingAvatar(prev => prev ? { ...prev, portraitUrl: portraitUrlInput } : null);
+    const targetStateSetter = editingAvatar ? setEditingAvatar : setNewAvatarData;
+    targetStateSetter(prev => prev ? { ...prev, portraitUrl: portraitUrlInput } : null);
     setIsUrlDialogOpen(false);
     setPortraitUrlInput("");
     toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
   };
   
-  const handleGeneratePortraitForEditor = async () => {
-      if (!editingAvatar) return;
+  const handleGeneratePortrait = async () => {
+      const targetAvatar = editingAvatar || newAvatarData;
+      if (!targetAvatar) return;
+      
       setIsGeneratingPortrait(true);
-      const prompt = `portrait of a hero named ${editingAvatar.name}. Description: ${editingAvatar.details}.`;
+      const prompt = `portrait of a hero named ${targetAvatar.name}. Description: ${targetAvatar.details}.`;
       try {
           const result = await generateSceneImage({ sceneDescription: {action: prompt, charactersInScene: []}, style: imageStyle }, aiConfig);
           if (result.imageUrl) {
-              setEditingAvatar(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
+              const targetStateSetter = editingAvatar ? setEditingAvatar : setNewAvatarData;
+              targetStateSetter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
               toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
           } else {
               throw new Error(result.error || "La génération d'image a échoué.");
@@ -279,10 +285,10 @@ export default function AvatarsPage() {
   };
 
   const handleVisionScan = async (
-      avatarData: PlayerAvatar | Omit<PlayerAvatar, 'id' | 'portraitUrl'>,
+      avatarData: Partial<PlayerAvatar>,
       setter: React.Dispatch<React.SetStateAction<any>>
   ) => {
-      const imageUrl = 'portraitUrl' in avatarData ? avatarData.portraitUrl : null;
+      const imageUrl = avatarData.portraitUrl;
       if (!imageUrl) {
           toast({ title: "Image requise", description: "Veuillez fournir une image (URL ou téléversée) avant d'utiliser Vision.", variant: "destructive" });
           return;
@@ -303,6 +309,102 @@ export default function AvatarsPage() {
   if (isLoading) {
     return <div className="text-center p-10">Chargement des avatars...</div>;
   }
+  
+  const renderAvatarEditor = (avatarData: Partial<PlayerAvatar>, setData: React.Dispatch<React.SetStateAction<any>>, isEditing: boolean) => (
+    <div className="max-h-[70vh] overflow-y-auto p-1 space-y-4">
+        <div className="flex items-center gap-4">
+            <Avatar className="h-24 w-24">
+                {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div> :
+                avatarData.portraitUrl ? <AvatarImage src={avatarData.portraitUrl} /> : <AvatarFallback className="text-3xl">{avatarData.name?.substring(0,2)}</AvatarFallback>}
+            </Avatar>
+            <div className="flex-1 space-y-2">
+                <div className="flex gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <Palette className="h-4 w-4"/>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {defaultImageStyles.map(style => (
+                                <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                            ))}
+                            {customStyles.length > 0 && <DropdownMenuSeparator />}
+                            {customStyles.map(style => (
+                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button onClick={handleGeneratePortrait} disabled={isGeneratingPortrait} className="w-full">
+                        <Wand2 className="mr-2 h-4 w-4" /> Générer
+                    </Button>
+                </div>
+                    <input type="file" accept="image/*" id={`upload-portrait-${isEditing ? 'edit' : 'create'}`} className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setData((p: any) => p ? {...p, portraitUrl: reader.result as string} : null);
+                        reader.readAsDataURL(file);
+                    }
+                    }}/>
+                    <div className="flex gap-2">
+                    <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-portrait-${isEditing ? 'edit' : 'create'}`)?.click()}>
+                        <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
+                    </Button>
+                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
+                            <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
+                                <Button onClick={handleSaveUrl}>Enregistrer</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                        </Dialog>
+                    </div>
+            </div>
+        </div>
+        <div className="space-y-2">
+            <Label>Nom</Label>
+            <Input value={avatarData.name || ''} onChange={e => setData((p: any) => ({...p, name: e.target.value}))} />
+        </div>
+        <div className="space-y-2">
+            <Label>Détails (Physique, Âge)</Label>
+            <Textarea value={avatarData.details || ''} onChange={e => setData((p: any) => ({...p, details: e.target.value}))} rows={2}/>
+            <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" onClick={() => handleVisionScan(avatarData, setData)} disabled={isProcessingVision || !avatarData.portraitUrl || !visionConsent} className="w-full">
+                    {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
+                    Scanner avec Vision
+                </Button>
+                <Checkbox id={`vision-consent-${isEditing ? 'edit' : 'create'}`} checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Label htmlFor={`vision-consent-${isEditing ? 'edit' : 'create'}`} className="cursor-pointer">
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            </Label>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                            <p>{i18n.fr.visionConsent}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+        </div>
+        <div className="space-y-2">
+            <Label>Description (Background)</Label>
+            <Textarea value={avatarData.description || ''} onChange={e => setData((p: any) => ({...p, description: e.target.value}))} rows={3}/>
+        </div>
+            <div className="space-y-2">
+            <Label>Orientation Amoureuse</Label>
+            <Input value={avatarData.orientation || ''} onChange={e => setData((p: any) => ({...p, orientation: e.target.value}))}/>
+        </div>
+    </div>
+);
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -337,43 +439,7 @@ export default function AvatarsPage() {
                 <DialogHeader>
                     <DialogTitle>Créer un nouvel Avatar</DialogTitle>
                 </DialogHeader>
-                 <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="new-avatar-name">Nom</Label>
-                        <Input id="new-avatar-name" value={newAvatarData.name} onChange={e => setNewAvatarData({...newAvatarData, name: e.target.value})} placeholder="Nom de votre héros"/>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="new-avatar-details">Détails (Physique, Âge)</Label>
-                        <Textarea id="new-avatar-details" value={newAvatarData.details} onChange={e => setNewAvatarData({...newAvatarData, details: e.target.value})} placeholder="Décrivez votre personnage..."/>
-                        <div className="flex items-center gap-2 pt-1">
-                            <Button size="sm" onClick={() => handleVisionScan(newAvatarData as any, setNewAvatarData)} disabled={isProcessingVision || !visionConsent} className="w-full">
-                                {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
-                                Scanner avec Vision
-                            </Button>
-                            <Checkbox id="vision-consent-create" checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Label htmlFor="vision-consent-create" className="cursor-pointer">
-                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                        </Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-xs">
-                                        <p>{i18n.fr.visionConsent}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="new-avatar-desc">Description (Background)</Label>
-                        <Textarea id="new-avatar-desc" value={newAvatarData.description} onChange={e => setNewAvatarData({...newAvatarData, description: e.target.value})} placeholder="Histoire, capacités spéciales..."/>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="new-avatar-orientation">Orientation Amoureuse</Label>
-                        <Input id="new-avatar-orientation" value={newAvatarData.orientation} onChange={e => setNewAvatarData({...newAvatarData, orientation: e.target.value})} placeholder="Ex: Hétérosexuel, ..."/>
-                    </div>
-                 </div>
+                 {renderAvatarEditor(newAvatarData, setNewAvatarData, false)}
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
                     <Button onClick={handleCreateAvatar}>Créer l'Avatar</Button>
@@ -432,98 +498,7 @@ export default function AvatarsPage() {
                                 <DialogHeader>
                                     <DialogTitle>Modifier {editingAvatar.name}</DialogTitle>
                                 </DialogHeader>
-                                <div className="max-h-[70vh] overflow-y-auto p-1 space-y-4">
-                                     <div className="flex items-center gap-4">
-                                        <Avatar className="h-24 w-24">
-                                            {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div> :
-                                            editingAvatar.portraitUrl ? <AvatarImage src={editingAvatar.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingAvatar.name.substring(0,2)}</AvatarFallback>}
-                                        </Avatar>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="flex gap-2">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" size="icon">
-                                                            <Palette className="h-4 w-4"/>
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent>
-                                                        {defaultImageStyles.map(style => (
-                                                            <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
-                                                        ))}
-                                                        {customStyles.length > 0 && <DropdownMenuSeparator />}
-                                                        {customStyles.map(style => (
-                                                             <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
-                                                        ))}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                                <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
-                                                    <Wand2 className="mr-2 h-4 w-4" /> Générer
-                                                </Button>
-                                            </div>
-                                             <input type="file" accept="image/*" id={`upload-edit-portrait-${avatar.id}`} className="hidden" onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = () => setEditingAvatar(p => p ? {...p, portraitUrl: reader.result as string} : null);
-                                                    reader.readAsDataURL(file);
-                                                }
-                                             }}/>
-                                             <div className="flex gap-2">
-                                                <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-edit-portrait-${avatar.id}`)?.click()}>
-                                                    <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
-                                                </Button>
-                                                 <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent>
-                                                        <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
-                                                        <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
-                                                        <DialogFooter>
-                                                            <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
-                                                            <Button onClick={handleSaveUrl}>Enregistrer</Button>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                 </Dialog>
-                                             </div>
-                                        </div>
-                                     </div>
-                                     <div className="space-y-2">
-                                        <Label>Nom</Label>
-                                        <Input value={editingAvatar.name} onChange={e => setEditingAvatar({...editingAvatar!, name: e.target.value})} />
-                                     </div>
-                                     <div className="space-y-2">
-                                        <Label>Détails (Physique, Âge)</Label>
-                                        <Textarea value={editingAvatar.details} onChange={e => setEditingAvatar({...editingAvatar!, details: e.target.value})} rows={2}/>
-                                        <div className="flex items-center gap-2 pt-1">
-                                            <Button size="sm" onClick={() => handleVisionScan(editingAvatar, setEditingAvatar)} disabled={isProcessingVision || !editingAvatar.portraitUrl || !visionConsent} className="w-full">
-                                                {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
-                                                Scanner avec Vision
-                                            </Button>
-                                            <Checkbox id="vision-consent-edit" checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Label htmlFor="vision-consent-edit" className="cursor-pointer">
-                                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                                        </Label>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="bottom" className="max-w-xs">
-                                                        <p>{i18n.fr.visionConsent}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
-                                     </div>
-                                     <div className="space-y-2">
-                                        <Label>Description (Background)</Label>
-                                        <Textarea value={editingAvatar.description} onChange={e => setEditingAvatar({...editingAvatar!, description: e.target.value})} rows={3}/>
-                                     </div>
-                                      <div className="space-y-2">
-                                        <Label>Orientation Amoureuse</Label>
-                                        <Input value={editingAvatar.orientation} onChange={e => setEditingAvatar({...editingAvatar!, orientation: e.target.value})}/>
-                                     </div>
-                                </div>
+                                {renderAvatarEditor(editingAvatar, setEditingAvatar, true)}
                                <DialogFooter>
                                   <Button variant="outline" onClick={() => setEditingAvatar(null)}>Annuler</Button>
                                   <Button onClick={handleUpdateAvatar}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
