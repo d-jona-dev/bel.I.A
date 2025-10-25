@@ -10,14 +10,17 @@ import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition } f
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react";
+import { Upload, User, UserPlus } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
 import { TimeConfig } from './adventure-form-parts/time-config';
 import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
-import { ConditionsConfig } from "./adventure-form-parts/conditions-config"; // NOUVEAU
+import { ConditionsConfig } from "./adventure-form-parts/conditions-config";
+import { i18n, type Language } from "@/lib/i18n";
+import { CharacterSidebar } from "./character-sidebar";
+
 
 // Schemas are kept here as they define the shape for the entire form,
 // which is still managed by this parent component.
@@ -139,7 +142,7 @@ const adventureFormSchema = z.object({
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
   mapPointsOfInterest: z.array(mapPointOfInterestSchema).optional(),
   timeManagement: timeManagementSchema.optional(),
-  conditions: z.array(adventureConditionSchema).optional(), // NOUVEAU
+  conditions: z.array(adventureConditionSchema).optional(),
 });
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
@@ -153,7 +156,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         mode: "onChange",
     });
 
-    const { append } = useFieldArray({
+    const { append, fields, remove, update } = useFieldArray({
         control: form.control,
         name: "characters",
     });
@@ -185,12 +188,40 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             return () => subscription.unsubscribe();
         }
     }, [form, onFormValidityChange]);
+    
+    const handleCharacterUpdate = (updatedCharacter: FormCharacterDefinition) => {
+      const index = fields.findIndex(f => f.id === updatedCharacter.id);
+      if (index > -1) {
+          update(index, updatedCharacter);
+      }
+    };
+    
+    const handleAddCharacter = (isPlaceholder = false) => {
+        const lang = 'fr';
+        const addCharacterTooltip = i18n[lang as Language]?.addCharacterTooltip || 'Ajouter un personnage';
+        const addPlaceholderTooltip = i18n[lang as Language]?.addPlaceholderTooltip || 'Ajouter un emplacement de personnage';
+
+        append({
+            id: `char-new-${Date.now()}`,
+            name: isPlaceholder ? 'Emplacement PNJ' : '',
+            details: '',
+            isPlaceholder: isPlaceholder,
+            affinity: 50,
+            relations: { player: 'Inconnu' }
+        });
+         toast({ title: isPlaceholder ? addPlaceholderTooltip : addCharacterTooltip });
+    };
 
     return (
         <FormProvider {...form}>
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
                     <WorldConfig />
+                    <NpcCharacterConfig 
+                        fields={fields} 
+                        remove={remove} 
+                        onAddCharacter={handleAddCharacter}
+                    />
                     <GameModesConfig />
                     <ConditionsConfig />
                     <TimeConfig />
@@ -200,5 +231,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    

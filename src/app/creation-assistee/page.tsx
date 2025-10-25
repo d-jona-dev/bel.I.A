@@ -115,7 +115,7 @@ export default function CreationAssisteePage() {
             comicModeActive: formValues.comicModeActive ?? false,
             mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
         };
-        newAdventureState.characters = (formValues.characters || []).filter(c => c.name && c.details).map(c => ({...c, id: c.id || uid()} as Character));
+        newAdventureState.characters = (formValues.characters || []).filter(c => c.name && (c.details || c.isPlaceholder)).map(c => ({...c, id: c.id || uid()} as Character));
         newAdventureState.narrative = [{ id: `msg-${Date.now()}`, type: 'system', content: newAdventureState.adventureSettings.initialSituation.fr, timestamp: Date.now() }];
         newAdventureState.aiConfig = aiConfig;
         

@@ -168,7 +168,6 @@ export default function HistoiresPage() {
     characters: [],
     narrativeMessages: [],
     currentLanguage: 'fr',
-    activeCombat: undefined,
     aiConfig: aiConfig,
     loadAdventureState: () => {}, // Not used here
   });
@@ -363,7 +362,7 @@ export default function HistoiresPage() {
         mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
     };
 
-    newAdventureState.characters = (formValues.characters || []).filter(c => c.name).map(c => ({
+    newAdventureState.characters = (formValues.characters || []).filter(c => c.name && (c.details || c.isPlaceholder)).map(c => ({
         ...c,
         id: c.id || uid(),
     } as Character));
