@@ -107,25 +107,21 @@ const HeroCard = ({
   onAvatarChange: (avatarId: string) => void;
 }) => {
     const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([]);
-    const [currentAvatarId, setCurrentAvatarId] = React.useState<string | null>(null);
-
+    
     React.useEffect(() => {
         try {
             const savedAvatars = localStorage.getItem('playerAvatars_v2');
             if (savedAvatars) {
                 setAvatars(JSON.parse(savedAvatars));
             }
-            const savedCurrentId = localStorage.getItem('currentAvatarId');
-             if (savedCurrentId) {
-                const parsedId = JSON.parse(savedCurrentId);
-                setCurrentAvatarId(parsedId);
-             }
         } catch (e) {
             console.error("Failed to load avatars from local storage.", e);
         }
     }, []);
 
-    const activeAvatar = avatars.find(a => a.id === currentAvatarId);
+    // Find the current avatar based on the name from adventureSettings
+    const currentAvatar = avatars.find(a => a.name === adventureSettings.playerName);
+    const currentAvatarId = currentAvatar?.id || null;
 
     return (
          <Card>
@@ -536,3 +532,5 @@ isSaveComicDialogOpen,
     </div>
   );
 }
+
+    
