@@ -522,7 +522,7 @@ export function AdventureDisplay({
                                                   {renderFormattedNarrative(message.content)}
 
                                                   {message.type !== 'system' && !isFirstMessage && (
-                                                      <div className={`absolute top-0 flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                      <div className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 p-1 bg-background/50 backdrop-blur-sm border rounded-md shadow-lg grid grid-cols-3 gap-0.5 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
                                                         <Dialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <TooltipProvider>
                                                               <Tooltip>
@@ -584,20 +584,20 @@ export function AdventureDisplay({
                                                                         <TooltipContent side="top">Mémoriser cet événement</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
+                                                                {isLastAiMessage && (
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading}>
+                                                                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent side="top">Régénérer</TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                )}
                                                                 </>
                                                             )}
-                                                          {isLastAiMessage && (
-                                                              <TooltipProvider>
-                                                                  <Tooltip>
-                                                                      <TooltipTrigger asChild>
-                                                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleRegenerate} disabled={isLoading}>
-                                                                              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                                                          </Button>
-                                                                      </TooltipTrigger>
-                                                                      <TooltipContent side="top">Régénérer</TooltipContent>
-                                                                  </Tooltip>
-                                                              </TooltipProvider>
-                                                          )}
                                                       </div>
                                                   )}
                                               </div>
