@@ -38,6 +38,7 @@
     "pensée": "Gedanke",
     "cri": "Schrei",
     "chuchotement": "Flüstern",
+
     "comicDraftTitle": "Comic-Entwurf",
     "downloadPage": "Seite herunterladen (JPEG)",
     "saveToLibrary": "In Bibliothek speichern",
@@ -53,6 +54,7 @@
     "generateCover": "Ein Cover generieren",
     "cancel": "Abbrechen",
     "save": "Speichern",
+
     "currentHeroTitle": "Aktueller Held",
     "noHeroDetails": "Keine Details zum Helden.",
     "changeAvatarPlaceholder": "Avatar ändern...",
@@ -63,7 +65,28 @@
     "detailsAndConfigTitle": "Details & Konfiguration",
     "adventureConfigTitle": "Abenteuerkonfiguration",
     "worldConfigTitle": "Weltkonfiguration",
-    "worldDescriptionLabel": "Weltbeschreibung"
-}
+    "worldDescriptionLabel": "Weltbeschreibung",
+    "secondaryCharactersLabel": "Nebencharaktere (NSCs)",
+    "placeholderLabel": "Platzhalter?",
+    "placeholderNameLabel": "Platzhaltername",
+    "npcNameLabel": "NSC-Name",
+    "placeholderNamePlaceholder": "Z.B.: Der Krieger, Der Händler...",
+    "npcNamePlaceholder": "Z.B.: Roric, Elara...",
+    "npcDetailsLabel": "NSC-Details",
+    "npcDetailsPlaceholder": "Beschreibung, Persönlichkeit, Rolle...",
 
-    
+    "timeManagementTitle": "Zeitmanagement",
+    "enableTimeManagementLabel": "Zeitmanagement aktivieren",
+    "enableTimeManagementDescription": "Die KI wird die Zeit bei jeder Runde vorrücken.",
+    "startDayLabel": "Starttag",
+    "startTimeLabel": "Startzeit (HH:MM)",
+    "timePerTurnLabel": "Zeit pro Runde (HH:MM)",
+    "dayNamesLabel": "Namen der Tage (durch Komma getrennt)",
+    "timeFormatLabel": "Zeitformat",
+    "timeFormat24h": "24 Stunden",
+    "timeFormat12h": "12 Stunden (AM/PM)",
+    "dayLabel": "Tag",
+    "hourLabel": "Stunde",
+    "eventLabel": "Ereignis",
+    "noneLabel": "Keine"
+}

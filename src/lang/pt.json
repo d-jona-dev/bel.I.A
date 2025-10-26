@@ -46,6 +46,7 @@
     "pensée": "Pensamento",
     "cri": "Grito",
     "chuchotement": "Sussurro",
+
     "comicDraftTitle": "Rascunho da HQ",
     "downloadPage": "Baixar Página (JPEG)",
     "saveToLibrary": "Salvar na Biblioteca",
@@ -61,6 +62,7 @@
     "generateCover": "Gerar uma Capa",
     "cancel": "Cancelar",
     "save": "Salvar",
+
     "currentHeroTitle": "Herói Atual",
     "noHeroDetails": "Sem detalhes sobre o herói.",
     "changeAvatarPlaceholder": "Mudar avatar...",
@@ -71,7 +73,20 @@
     "detailsAndConfigTitle": "Detalhes e Configuração",
     "adventureConfigTitle": "Configuração da Aventura",
     "worldConfigTitle": "Configuração do Mundo",
-    "worldDescriptionLabel": "Descrição do Mundo"
-}
+    "worldDescriptionLabel": "Descrição do Mundo",
 
-    
+    "timeManagementTitle": "Gerenciamento de Tempo",
+    "enableTimeManagementLabel": "Habilitar gerenciamento de tempo",
+    "enableTimeManagementDescription": "A IA avançará o tempo a cada turno.",
+    "startDayLabel": "Dia de início",
+    "startTimeLabel": "Hora de início (HH:MM)",
+    "timePerTurnLabel": "Tempo por turno (HH:MM)",
+    "dayNamesLabel": "Nomes dos dias (separados por vírgula)",
+    "timeFormatLabel": "Formato da hora",
+    "timeFormat24h": "24 Horas",
+    "timeFormat12h": "12 Horas (AM/PM)",
+    "dayLabel": "Dia",
+    "hourLabel": "Hora",
+    "eventLabel": "Evento",
+    "noneLabel": "Nenhum"
+}

@@ -470,20 +470,20 @@ export function AdventureDisplay({
                <CardContent className="p-2 text-xs flex justify-around items-center">
                    <div className="flex items-center gap-2">
                        <CalendarDays className="h-4 w-4 text-muted-foreground"/>
-                       <span className="font-semibold">Jour {timeState.day}:</span>
+                       <span className="font-semibold">{lang.dayLabel} {timeState.day}:</span>
                        <span>{timeState.dayName}</span>
                    </div>
                    <Separator orientation="vertical" className="h-4"/>
                    <div className="flex items-center gap-2">
                        <Clock className="h-4 w-4 text-muted-foreground"/>
-                       <span className="font-semibold">Heure:</span>
+                       <span className="font-semibold">{lang.hourLabel}:</span>
                        <span>{formatTimeToDisplay(timeState.hour, timeState.minute, adventureSettings.timeManagement.timeFormat)}</span>
                    </div>
                     <Separator orientation="vertical" className="h-4"/>
                    <div className="flex items-center gap-2">
                        <Drama className="h-4 w-4 text-muted-foreground"/>
-                       <span className="font-semibold">Événement:</span>
-                       <span className="truncate">{adventureSettings.timeManagement.currentEvent || "Aucun"}</span>
+                       <span className="font-semibold">{lang.eventLabel}:</span>
+                       <span className="truncate">{adventureSettings.timeManagement.currentEvent || lang.noneLabel}</span>
                    </div>
                </CardContent>
            </Card>

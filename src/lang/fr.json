@@ -46,6 +46,7 @@
     "pensée": "Pensée",
     "cri": "Cri",
     "chuchotement": "Chuchotement",
+
     "comicDraftTitle": "Brouillon de la BD",
     "downloadPage": "Télécharger la planche (JPEG)",
     "saveToLibrary": "Sauvegarder dans la bibliothèque",
@@ -61,6 +62,7 @@
     "generateCover": "Générer une couverture",
     "cancel": "Annuler",
     "save": "Sauvegarder",
+
     "currentHeroTitle": "Héros Actuel",
     "noHeroDetails": "Aucun détail sur le héros.",
     "changeAvatarPlaceholder": "Changer l'avatar...",
@@ -71,7 +73,20 @@
     "detailsAndConfigTitle": "Détails & Configuration",
     "adventureConfigTitle": "Configuration de l'Aventure",
     "worldConfigTitle": "Configuration du Monde",
-    "worldDescriptionLabel": "Description du Monde"
-}
+    "worldDescriptionLabel": "Description du Monde",
 
-    
+    "timeManagementTitle": "Gestion du Temps",
+    "enableTimeManagementLabel": "Activer la gestion du temps",
+    "enableTimeManagementDescription": "L'IA fera avancer le temps à chaque tour.",
+    "startDayLabel": "Jour de départ",
+    "startTimeLabel": "Heure de départ (HH:MM)",
+    "timePerTurnLabel": "Temps par tour (HH:MM)",
+    "dayNamesLabel": "Noms des jours (séparés par virgule)",
+    "timeFormatLabel": "Format de l'heure",
+    "timeFormat24h": "24 Heures",
+    "timeFormat12h": "12 Heures (AM/PM)",
+    "dayLabel": "Jour",
+    "hourLabel": "Heure",
+    "eventLabel": "Événement",
+    "noneLabel": "Aucun"
+}

@@ -225,7 +225,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         </>
                     )}
                     <GameModesConfig />
-                    <TimeConfig />
+                    <TimeConfig currentLanguage={currentLanguage} />
                 </div>
             </form>
         </FormProvider>

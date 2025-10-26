@@ -38,6 +38,7 @@
     "pensée": "思考",
     "cri": "叫び",
     "chuchotement": "ささやき",
+
     "comicDraftTitle": "コミックの下書き",
     "downloadPage": "ページをダウンロード (JPEG)",
     "saveToLibrary": "ライブラリに保存",
@@ -53,6 +54,7 @@
     "generateCover": "表紙を生成",
     "cancel": "キャンセル",
     "save": "保存",
+
     "currentHeroTitle": "現在のヒーロー",
     "noHeroDetails": "ヒーローに関する詳細はありません。",
     "changeAvatarPlaceholder": "アバターを変更...",
@@ -63,7 +65,28 @@
     "detailsAndConfigTitle": "詳細と設定",
     "adventureConfigTitle": "冒険の設定",
     "worldConfigTitle": "世界設定",
-    "worldDescriptionLabel": "世界の説明"
-}
+    "worldDescriptionLabel": "世界の説明",
+    "secondaryCharactersLabel": "サブキャラクター（NPC）",
+    "placeholderLabel": "プレースホルダー？",
+    "placeholderNameLabel": "プレースホルダー名",
+    "npcNameLabel": "NPC名",
+    "placeholderNamePlaceholder": "例：戦士、商人...",
+    "npcNamePlaceholder": "例：ローリック、エララ...",
+    "npcDetailsLabel": "NPC詳細",
+    "npcDetailsPlaceholder": "説明、性格、役割...",
 
-    
+    "timeManagementTitle": "時間管理",
+    "enableTimeManagementLabel": "時間管理を有効にする",
+    "enableTimeManagementDescription": "AIは各ターンで時間を進めます。",
+    "startDayLabel": "開始日",
+    "startTimeLabel": "開始時刻 (HH:MM)",
+    "timePerTurnLabel": "ターンごとの時間 (HH:MM)",
+    "dayNamesLabel": "曜日名（カンマ区切り）",
+    "timeFormatLabel": "時刻形式",
+    "timeFormat24h": "24時間",
+    "timeFormat12h": "12時間 (AM/PM)",
+    "dayLabel": "日",
+    "hourLabel": "時",
+    "eventLabel": "イベント",
+    "noneLabel": "なし"
+}

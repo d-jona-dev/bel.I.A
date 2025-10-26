@@ -38,6 +38,7 @@
     "pensée": "思想",
     "cri": "呼喊",
     "chuchotement": "耳语",
+
     "comicDraftTitle": "漫画草稿",
     "downloadPage": "下载页面 (JPEG)",
     "saveToLibrary": "保存到库",
@@ -53,6 +54,7 @@
     "generateCover": "生成封面",
     "cancel": "取消",
     "save": "保存",
+
     "currentHeroTitle": "当前英雄",
     "noHeroDetails": "没有关于英雄的详细信息。",
     "changeAvatarPlaceholder": "更换头像...",
@@ -63,7 +65,28 @@
     "detailsAndConfigTitle": "详细信息和配置",
     "adventureConfigTitle": "冒险配置",
     "worldConfigTitle": "世界配置",
-    "worldDescriptionLabel": "世界描述"
-}
+    "worldDescriptionLabel": "世界描述",
+    "secondaryCharactersLabel": "次要角色 (NPC)",
+    "placeholderLabel": "占位符？",
+    "placeholderNameLabel": "占位符名称",
+    "npcNameLabel": "NPC 名称",
+    "placeholderNamePlaceholder": "例如：战士、商人...",
+    "npcNamePlaceholder": "例如：罗里克、埃拉拉...",
+    "npcDetailsLabel": "NPC 详细信息",
+    "npcDetailsPlaceholder": "描述、个性、角色...",
 
-    
+    "timeManagementTitle": "时间管理",
+    "enableTimeManagementLabel": "启用时间管理",
+    "enableTimeManagementDescription": "AI 将在每个回合推进时间。",
+    "startDayLabel": "开始日",
+    "startTimeLabel": "开始时间 (HH:MM)",
+    "timePerTurnLabel": "每回合时间 (HH:MM)",
+    "dayNamesLabel": "日期名称（逗号分隔）",
+    "timeFormatLabel": "时间格式",
+    "timeFormat24h": "24 小时",
+    "timeFormat12h": "12 小时 (AM/PM)",
+    "dayLabel": "天",
+    "hourLabel": "小时",
+    "eventLabel": "事件",
+    "noneLabel": "无"
+}

@@ -46,6 +46,7 @@
     "pensée": "Thought",
     "cri": "Shout",
     "chuchotement": "Whisper",
+
     "comicDraftTitle": "Comic Draft",
     "downloadPage": "Download Page (JPEG)",
     "saveToLibrary": "Save to Library",
@@ -61,6 +62,7 @@
     "generateCover": "Generate a Cover",
     "cancel": "Cancel",
     "save": "Save",
+
     "currentHeroTitle": "Current Hero",
     "noHeroDetails": "No details about the hero.",
     "changeAvatarPlaceholder": "Change avatar...",
@@ -71,7 +73,20 @@
     "detailsAndConfigTitle": "Details & Configuration",
     "adventureConfigTitle": "Adventure Configuration",
     "worldConfigTitle": "World Configuration",
-    "worldDescriptionLabel": "World Description"
-}
+    "worldDescriptionLabel": "World Description",
 
-    
+    "timeManagementTitle": "Time Management",
+    "enableTimeManagementLabel": "Enable time management",
+    "enableTimeManagementDescription": "The AI will advance the time on each turn.",
+    "startDayLabel": "Start Day",
+    "startTimeLabel": "Start Time (HH:MM)",
+    "timePerTurnLabel": "Time per turn (HH:MM)",
+    "dayNamesLabel": "Day names (comma separated)",
+    "timeFormatLabel": "Time format",
+    "timeFormat24h": "24 Hours",
+    "timeFormat12h": "12 Hours (AM/PM)",
+    "dayLabel": "Day",
+    "hourLabel": "Hour",
+    "eventLabel": "Event",
+    "noneLabel": "None"
+}

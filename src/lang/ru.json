@@ -38,6 +38,7 @@
     "pensée": "Мысль",
     "cri": "Крик",
     "chuchotement": "Шепот",
+
     "comicDraftTitle": "Черновик комикса",
     "downloadPage": "Скачать страницу (JPEG)",
     "saveToLibrary": "Сохранить в библиотеку",
@@ -53,6 +54,7 @@
     "generateCover": "Сгенерировать обложку",
     "cancel": "Отмена",
     "save": "Сохранить",
+
     "currentHeroTitle": "Текущий герой",
     "noHeroDetails": "Нет сведений о герое.",
     "changeAvatarPlaceholder": "Сменить аватар...",
@@ -63,7 +65,28 @@
     "detailsAndConfigTitle": "Детали и конфигурация",
     "adventureConfigTitle": "Конфигурация приключения",
     "worldConfigTitle": "Конфигурация мира",
-    "worldDescriptionLabel": "Описание мира"
-}
+    "worldDescriptionLabel": "Описание мира",
+    "secondaryCharactersLabel": "Второстепенные персонажи (NPC)",
+    "placeholderLabel": "Заполнитель?",
+    "placeholderNameLabel": "Имя заполнителя",
+    "npcNameLabel": "Имя NPC",
+    "placeholderNamePlaceholder": "Например: Воин, Торговец...",
+    "npcNamePlaceholder": "Например: Рорик, Элара...",
+    "npcDetailsLabel": "Детали NPC",
+    "npcDetailsPlaceholder": "Описание, личность, роль...",
 
-    
+    "timeManagementTitle": "Управление временем",
+    "enableTimeManagementLabel": "Включить управление временем",
+    "enableTimeManagementDescription": "ИИ будет продвигать время каждый ход.",
+    "startDayLabel": "Начальный день",
+    "startTimeLabel": "Начальное время (ЧЧ:ММ)",
+    "timePerTurnLabel": "Время за ход (ЧЧ:ММ)",
+    "dayNamesLabel": "Названия дней (через запятую)",
+    "timeFormatLabel": "Формат времени",
+    "timeFormat24h": "24 часа",
+    "timeFormat12h": "12 часов (AM/PM)",
+    "dayLabel": "День",
+    "hourLabel": "Час",
+    "eventLabel": "Событие",
+    "noneLabel": "Нет"
+}

@@ -38,6 +38,7 @@
     "pensée": "Pensamiento",
     "cri": "Grito",
     "chuchotement": "Susurro",
+
     "comicDraftTitle": "Borrador del Cómic",
     "downloadPage": "Descargar Página (JPEG)",
     "saveToLibrary": "Guardar en la Biblioteca",
@@ -53,6 +54,7 @@
     "generateCover": "Generar una Portada",
     "cancel": "Cancelar",
     "save": "Guardar",
+
     "currentHeroTitle": "Héroe Actual",
     "noHeroDetails": "Sin detalles sobre el héroe.",
     "changeAvatarPlaceholder": "Cambiar avatar...",
@@ -63,7 +65,28 @@
     "detailsAndConfigTitle": "Detalles y Configuración",
     "adventureConfigTitle": "Configuración de Aventura",
     "worldConfigTitle": "Configuración del Mundo",
-    "worldDescriptionLabel": "Descripción del Mundo"
-}
+    "worldDescriptionLabel": "Descripción del Mundo",
+    "secondaryCharactersLabel": "Personajes Secundarios (PNJ)",
+    "placeholderLabel": "¿Marcador de posición?",
+    "placeholderNameLabel": "Nombre del marcador de posición",
+    "npcNameLabel": "Nombre del PNJ",
+    "placeholderNamePlaceholder": "Ej: El Guerrero, El Mercader...",
+    "npcNamePlaceholder": "Ej: Roric, Elara...",
+    "npcDetailsLabel": "Detalles del PNJ",
+    "npcDetailsPlaceholder": "Descripción, personalidad, rol...",
 
-    
+    "timeManagementTitle": "Gestión del Tiempo",
+    "enableTimeManagementLabel": "Activar gestión del tiempo",
+    "enableTimeManagementDescription": "La IA avanzará el tiempo en cada turno.",
+    "startDayLabel": "Día de inicio",
+    "startTimeLabel": "Hora de inicio (HH:MM)",
+    "timePerTurnLabel": "Tiempo por turno (HH:MM)",
+    "dayNamesLabel": "Nombres de los días (separados por comas)",
+    "timeFormatLabel": "Formato de hora",
+    "timeFormat24h": "24 Horas",
+    "timeFormat12h": "12 Horas (AM/PM)",
+    "dayLabel": "Día",
+    "hourLabel": "Hora",
+    "eventLabel": "Evento",
+    "noneLabel": "Ninguno"
+}

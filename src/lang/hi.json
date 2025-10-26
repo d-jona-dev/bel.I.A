@@ -46,6 +46,7 @@
     "pensée": "विचार",
     "cri": "चिल्लाना",
     "chuchotement": "कानाफूसी",
+
     "comicDraftTitle": "कॉमिक ड्राफ्ट",
     "downloadPage": "पृष्ठ डाउनलोड करें (JPEG)",
     "saveToLibrary": "लाइब्रेरी में सहेजें",
@@ -61,6 +62,7 @@
     "generateCover": "एक कवर उत्पन्न करें",
     "cancel": "रद्द करें",
     "save": "सहेजें",
+
     "currentHeroTitle": "वर्तमान हीरो",
     "noHeroDetails": "हीरो के बारे में कोई विवरण नहीं।",
     "changeAvatarPlaceholder": "अवतार बदलें...",
@@ -72,5 +74,20 @@
     "adventureConfigTitle": "साहसिक कॉन्फ़िगरेशन",
     "worldConfigTitle": "विश्व कॉन्फ़िगरेशन",
     "worldDescriptionLabel": "विश्व विवरण",
-    "describeAppearanceTooltip": "छवि का विश्लेषण करने और चरित्र की उपस्थिति का वर्णन करने के लिए AI का उपयोग करें।"
+    "describeAppearanceTooltip": "छवि का विश्लेषण करने और चरित्र की उपस्थिति का वर्णन करने के लिए AI का उपयोग करें।",
+
+    "timeManagementTitle": "समय प्रबंधन",
+    "enableTimeManagementLabel": "समय प्रबंधन सक्षम करें",
+    "enableTimeManagementDescription": "एआई प्रत्येक मोड़ पर समय आगे बढ़ाएगा।",
+    "startDayLabel": "प्रारंभ दिन",
+    "startTimeLabel": "प्रारंभ समय (HH:MM)",
+    "timePerTurnLabel": "प्रति मोड़ समय (HH:MM)",
+    "dayNamesLabel": "दिन के नाम (अल्पविराम से अलग)",
+    "timeFormatLabel": "समय प्रारूप",
+    "timeFormat24h": "24 घंटे",
+    "timeFormat12h": "12 घंटे (AM/PM)",
+    "dayLabel": "दिन",
+    "hourLabel": "घंटा",
+    "eventLabel": "घटना",
+    "noneLabel": "कोई नहीं"
 }
