@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Añadir Personaje",
     "addPlaceholderTooltip": "Añadir Marcador de Posición de Personaje",
@@ -206,5 +207,34 @@
     "huggingFaceApiKeyPlaceholder": "Clave API de Hugging Face (recomendado)",
     "localSdConfig": "Configuración Local de Stable Diffusion",
     "localSdApiUrlPlaceholder": "URL de la API (ej: http://127.0.0.1:7860)",
-    "localSdApiUrlDesc": "Ingrese la URL base de su API local (por ejemplo, la de su interfaz web de Automatic1111)."
+    "localSdApiUrlDesc": "Ingrese la URL base de su API local (por ejemplo, la de su interfaz web de Automatic1111).",
+    "languageChangeToastTitle": "Cambiando idioma...",
+    "languageChangeToastDescription": "Cambiando a {languageName}.",
+    "languageChangedTitle": "Idioma Cambiado",
+    "languageChangedDescription": "La visualización está ahora en {languageName}.",
+    "copied": "Copiado",
+    "copiedToClipboard": "Mensaje copiado al portapapeles.",
+    "copyError": "No se pudo copiar el mensaje.",
+    "editButton": "Editar",
+    "copyButton": "Copiar",
+    "materializeNpcTooltip": "Materializar un PNJ",
+    "memorizeEventTooltip": "Memorizar este evento",
+    "regenerateButton": "Regenerar",
+    "editMessage": "Editar Mensaje",
+    "writingInProgress": "Escribiendo en progreso...",
+    "undoLastActionTooltip": "Deshacer última acción/respuesta",
+    "restartAdventureTooltip": "Reiniciar Aventura desde el principio",
+    "suggestQuestTooltip": "Sugerir una misión u objetivo",
+    "userActionPlaceholder": "¿Qué haces? Describe tu acción...",
+    "sendButton": "Enviar",
+    "manageStyles": "Gestionar estilos...",
+    "generateImageTooltip": "Usa la IA para generar una imagen basada en la descripción visual actual (si está disponible).",
+    "manageCustomStyles": "Gestionar Estilos Personalizados",
+    "addOrEditCustomStyle": "Añade un nuevo estilo personalizado o edita los existentes.",
+    "styleName": "Nombre del estilo",
+    "styleNamePlaceholder": "Ej: Mi Estilo Cyberpunk",
+    "styleDescription": "Descripción del estilo (prompt)",
+    "styleDescriptionPlaceholder": "Ej: cyberpunk, neón, futurista, colores vivos, por Katsuhiro Otomo...",
+    "saveAndApply": "Guardar y Aplicar",
+    "noNPCsForAdventure": "No hay personajes secundarios definidos para la aventura actual."
 }

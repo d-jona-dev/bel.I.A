@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Add Character",
     "addPlaceholderTooltip": "Add Character Placeholder",
@@ -206,5 +207,34 @@
     "huggingFaceApiKeyPlaceholder": "Hugging Face API Key (recommended)",
     "localSdConfig": "Local Stable Diffusion Configuration",
     "localSdApiUrlPlaceholder": "API URL (e.g., http://127.0.0.1:7860)",
-    "localSdApiUrlDesc": "Enter the base URL of your local API (e.g., your Automatic1111 web UI)."
+    "localSdApiUrlDesc": "Enter the base URL of your local API (e.g., your Automatic1111 web UI).",
+    "languageChangeToastTitle": "Changing language...",
+    "languageChangeToastDescription": "Switching to {languageName}.",
+    "languageChangedTitle": "Language Changed",
+    "languageChangedDescription": "Display is now in {languageName}.",
+    "copied": "Copied",
+    "copiedToClipboard": "Message copied to clipboard.",
+    "copyError": "Could not copy message.",
+    "editButton": "Edit",
+    "copyButton": "Copy",
+    "materializeNpcTooltip": "Materialize an NPC",
+    "memorizeEventTooltip": "Memorize this event",
+    "regenerateButton": "Regenerate",
+    "editMessage": "Edit Message",
+    "writingInProgress": "Writing in progress...",
+    "undoLastActionTooltip": "Undo last action/response",
+    "restartAdventureTooltip": "Restart Adventure from the beginning",
+    "suggestQuestTooltip": "Suggest a quest or objective",
+    "userActionPlaceholder": "What do you do? Describe your action...",
+    "sendButton": "Send",
+    "manageStyles": "Manage styles...",
+    "generateImageTooltip": "Use AI to generate an image based on the current visual description (if available).",
+    "manageCustomStyles": "Manage Custom Styles",
+    "addOrEditCustomStyle": "Add a new custom style or edit existing ones.",
+    "styleName": "Style Name",
+    "styleNamePlaceholder": "E.g., My Cyberpunk Style",
+    "styleDescription": "Style Description (prompt)",
+    "styleDescriptionPlaceholder": "E.g., cyberpunk, neon, futuristic, vibrant colors, by Katsuhiro Otomo...",
+    "saveAndApply": "Save and Apply",
+    "noNPCsForAdventure": "No secondary characters defined for the current adventure."
 }

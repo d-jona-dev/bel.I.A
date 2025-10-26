@@ -406,10 +406,10 @@ export function AdventureDisplay({
 
    const handleCopyMessage = (content: string) => {
         navigator.clipboard.writeText(content).then(() => {
-            React.startTransition(() => { toast({ title: "Copié", description: "Message copié dans le presse-papiers." }); });
+            React.startTransition(() => { toast({ title: lang.copied, description: lang.copiedToClipboard }); });
         }).catch(err => {
             console.error('Failed to copy text: ', err);
-            React.startTransition(() => { toast({ title: "Erreur", description: "Impossible de copier le message.", variant: "destructive" }); });
+            React.startTransition(() => { toast({ title: lang.errorTitle, description: lang.copyError, variant: "destructive" }); });
         });
    };
 
@@ -426,12 +426,12 @@ export function AdventureDisplay({
     };
     
   const handleMaterializeCharacter = async (context: string) => {
-    toast({ title: `Matérialisation en cours...`, description: "L'IA crée la fiche du personnage." });
+    toast({ title: lang.materializationInProgress, description: lang.aiCreatingCharacter });
     await onMaterializeCharacter(context);
   };
   
     const handleSummarizeHistory = async (context: string) => {
-        toast({ title: `Mémorisation de l'événement...`, description: "L'IA résume les faits marquants." });
+        toast({ title: lang.memorizationInProgress, description: lang.aiSummarizingEvent });
         await onSummarizeHistory(context);
     };
 
@@ -539,12 +539,12 @@ export function AdventureDisplay({
                                                                       </Button>
                                                                     </DialogTrigger>
                                                                   </TooltipTrigger>
-                                                                  <TooltipContent side="top">Modifier</TooltipContent>
+                                                                  <TooltipContent side="top">{lang.editButton}</TooltipContent>
                                                               </Tooltip>
                                                             </TooltipProvider>
                                                               <DialogContent>
                                                               <DialogHeader>
-                                                                  <DialogTitle>Modifier le Message</DialogTitle>
+                                                                  <DialogTitle>{lang.editMessage}</DialogTitle>
                                                               </DialogHeader>
                                                               <Textarea
                                                                       value={editContent}
@@ -553,8 +553,8 @@ export function AdventureDisplay({
                                                                       className="my-4"
                                                                   />
                                                               <DialogFooter>
-                                                                  <Button variant="outline" onClick={() => setEditingMessage(null)}>Annuler</Button>
-                                                                  <Button onClick={handleSaveChanges}>Enregistrer</Button>
+                                                                  <Button variant="outline" onClick={() => setEditingMessage(null)}>{lang.cancelButton}</Button>
+                                                                  <Button onClick={handleSaveChanges}>{lang.saveButton}</Button>
                                                               </DialogFooter>
                                                               </DialogContent>
                                                           </Dialog>
@@ -565,7 +565,7 @@ export function AdventureDisplay({
                                                                           <Copy className="h-4 w-4" />
                                                                       </Button>
                                                                   </TooltipTrigger>
-                                                                  <TooltipContent side="top">Copier</TooltipContent>
+                                                                  <TooltipContent side="top">{lang.copyButton}</TooltipContent>
                                                               </Tooltip>
                                                           </TooltipProvider>
                                                             {message.type === 'ai' && (
@@ -577,7 +577,7 @@ export function AdventureDisplay({
                                                                                 <UserPlus className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
-                                                                        <TooltipContent side="top">Matérialiser un PNJ</TooltipContent>
+                                                                        <TooltipContent side="top">{lang.materializeNpcTooltip}</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
                                                                 <TooltipProvider>
@@ -587,7 +587,7 @@ export function AdventureDisplay({
                                                                                 <MemoryStick className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
-                                                                        <TooltipContent side="top">Mémoriser cet événement</TooltipContent>
+                                                                        <TooltipContent side="top">{lang.memorizeEventTooltip}</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
                                                                 {isLastAiMessage && (
@@ -598,7 +598,7 @@ export function AdventureDisplay({
                                                                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                                                 </Button>
                                                                             </TooltipTrigger>
-                                                                            <TooltipContent side="top">Régénérer</TooltipContent>
+                                                                            <TooltipContent side="top">{lang.regenerateButton}</TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
                                                                 )}
@@ -626,7 +626,7 @@ export function AdventureDisplay({
                                            <AvatarFallback><Bot className="h-5 w-5 text-muted-foreground"/></AvatarFallback>
                                        </Avatar>
                                        <span className="flex items-center text-muted-foreground italic p-3">
-                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Écriture en cours...
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {lang.writingInProgress}
                                       </span>
                                   </div>
                               )}
@@ -642,7 +642,7 @@ export function AdventureDisplay({
                                          <Trash2Icon className="h-5 w-5" />
                                      </Button>
                                  </TooltipTrigger>
-                                 <TooltipContent>Annuler la dernière action/réponse</TooltipContent>
+                                 <TooltipContent>{lang.undoLastActionTooltip}</TooltipContent>
                              </Tooltip>
                          </TooltipProvider>
                           <TooltipProvider>
@@ -656,19 +656,19 @@ export function AdventureDisplay({
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                                                <AlertDialogTitle>{lang.restartAdventureTitle}</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                Toute la progression narrative sera perdue et l'aventure recommencera depuis la situation initiale. Les paramètres de l'aventure (monde, personnages initiaux, etc.) ne seront pas modifiés.
+                                                {lang.restartAdventureDescription}
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                <AlertDialogAction onClick={onRestartAdventure}>Recommencer</AlertDialogAction>
+                                                <AlertDialogCancel>{lang.cancelButton}</AlertDialogCancel>
+                                                <AlertDialogAction onClick={onRestartAdventure}>{lang.restartButton}</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
                                   </TooltipTrigger>
-                                  <TooltipContent>Recommencer l'Aventure depuis le début</TooltipContent>
+                                  <TooltipContent>{lang.restartAdventureTooltip}</TooltipContent>
                               </Tooltip>
                           </TooltipProvider>
                           <TooltipProvider>
@@ -684,12 +684,12 @@ export function AdventureDisplay({
                                         {isSuggestingQuest ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lightbulb className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Suggérer un objectif ou une quête</TooltipContent>
+                                <TooltipContent>{lang.suggestQuestTooltip}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
 
                         <Textarea
-                            placeholder={"Que faites-vous ? Décrivez votre action..."}
+                            placeholder={lang.userActionPlaceholder}
                             value={userAction}
                             onChange={(e) => setUserAction(e.target.value)}
                             onKeyPress={handleKeyPress}
@@ -704,7 +704,7 @@ export function AdventureDisplay({
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Envoyer</TooltipContent>
+                                <TooltipContent>{lang.sendButton}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
@@ -807,7 +807,7 @@ export function AdventureDisplay({
                                             </DropdownMenuTrigger>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Choisir un style d'image</p>
+                                            <p>{lang.chooseImageStyleTooltip}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -826,7 +826,7 @@ export function AdventureDisplay({
                                     ))}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => setIsCustomStyleDialogOpen(true)}>
-                                        Gérer les styles...
+                                        {lang.manageStyles}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -844,7 +844,7 @@ export function AdventureDisplay({
                                             <span>{lang.generateButton}</span>
                                         </Button>
                                      </TooltipTrigger>
-                                     <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
+                                     <TooltipContent>{lang.generateImageTooltip}</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
@@ -922,30 +922,30 @@ export function AdventureDisplay({
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Gérer les Styles Personnalisés</DialogTitle>
+                            <DialogTitle>{lang.manageCustomStyles}</DialogTitle>
                             <DialogDescription>
-                                Ajoutez un nouveau style personnalisé ou modifiez les existants.
+                                {lang.addOrEditCustomStyle}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="custom-style-name">Nom du style</Label>
-                                <Input id="custom-style-name" value={customStyleName} onChange={(e) => setCustomStyleName(e.target.value)} placeholder="Ex: Mon style Cyberpunk"/>
+                                <Label htmlFor="custom-style-name">{lang.styleName}</Label>
+                                <Input id="custom-style-name" value={customStyleName} onChange={(e) => setCustomStyleName(e.target.value)} placeholder={lang.styleNamePlaceholder}/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="custom-style-prompt">Description du style (prompt)</Label>
+                                <Label htmlFor="custom-style-prompt">{lang.styleDescription}</Label>
                                 <Textarea
                                     id="custom-style-prompt"
                                     value={customStylePrompt}
                                     onChange={(e) => setCustomStylePrompt(e.target.value)}
-                                    placeholder="Ex: cyberpunk, néon, futuriste, couleurs vives, par Katsuhiro Otomo..."
+                                    placeholder={lang.styleDescriptionPlaceholder}
                                     rows={3}
                                 />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>Annuler</Button>
-                            <Button onClick={handleSaveCustomStyle}>Enregistrer et Appliquer</Button>
+                            <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>{lang.cancelButton}</Button>
+                            <Button onClick={handleSaveCustomStyle}>{lang.saveAndApply}</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

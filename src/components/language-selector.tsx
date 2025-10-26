@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -12,6 +13,8 @@ import {
 import { Languages, Loader2 } from "lucide-react"; // Added Loader2
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text"; // Import types only
 import { useToast } from "@/hooks/use-toast";
+import { i18n, type Language } from "@/lib/i18n";
+
 
 // Example: Fetch available languages from an API or define statically
 const availableLanguages = [
@@ -50,12 +53,14 @@ export function LanguageSelector({
 
     setIsLoading(true);
     const targetLanguageName = availableLanguages.find(l => l.code === newLangCode)?.name || newLangCode;
+    const lang = i18n[newLangCode as Language] || i18n.en;
+
 
     // Show initial toast immediately
     setTimeout(() => {
       toast({
-        title: "Changement de langue...",
-        description: `Passage à ${targetLanguageName}.`,
+        title: lang.languageChangeToastTitle,
+        description: lang.languageChangeToastDescription.replace('{languageName}', targetLanguageName),
       });
     }, 0);
 
@@ -65,8 +70,8 @@ export function LanguageSelector({
 
     setTimeout(() => {
       toast({
-          title: "Langue Changée",
-          description: `L'affichage est maintenant en ${targetLanguageName}.`,
+          title: lang.languageChangedTitle,
+          description: lang.languageChangedDescription.replace('{languageName}', targetLanguageName),
       });
     }, 0);
 
