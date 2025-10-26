@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -49,6 +48,8 @@ export const getLocalizedText = (field: LocalizedText, lang: string): string => 
     return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
 };
 
+const CURRENT_ADVENTURE_STATE_KEY = 'currentAdventureState_v2.7';
+
 export function useAdventureState() {
     const { toast } = useToast();
     const initialState = React.useMemo(() => createInitialState(), []);
@@ -63,28 +64,35 @@ export function useAdventureState() {
     const [baseCharacters, setBaseCharacters] = React.useState<Character[]>(JSON.parse(JSON.stringify(initialState.characters)));
 
     const [characterHistory, setCharacterHistory] = React.useState<Character[][]>([initialState.characters]);
+    const [isLoaded, setIsLoaded] = React.useState(false);
 
+    // Auto-save to localStorage whenever state changes
     React.useEffect(() => {
-        setCharacterHistory(prev => [...prev.slice(-10), characters]);
-    }, [characters]);
-
-    const undoLastCharacterState = (): Character[] | null => {
-        if (characterHistory.length < 2) return null;
-        const previousState = characterHistory[characterHistory.length - 2];
-        setCharacterHistory(prev => prev.slice(0, -1));
-        return previousState;
-    };
+        if (!isLoaded) return; // Don't save before initial load is complete
+        try {
+            const currentSaveData: SaveData = {
+                adventureSettings,
+                characters,
+                narrative: narrativeMessages,
+                currentLanguage,
+                aiConfig,
+                saveFormatVersion: 2.7,
+                timestamp: new Date().toISOString(),
+            };
+            localStorage.setItem(CURRENT_ADVENTURE_STATE_KEY, JSON.stringify(currentSaveData));
+        } catch (error) {
+            console.error("Failed to save current adventure state to localStorage:", error);
+        }
+    }, [adventureSettings, characters, narrativeMessages, currentLanguage, aiConfig, isLoaded]);
 
     const loadAdventureState = React.useCallback((data: SaveData) => {
-        // Fusionne les paramètres chargés avec les valeurs par défaut pour éviter les `undefined`
         const settingsWithDefaults: AdventureSettings = {
           ...createInitialState().adventureSettings,
           ...data.adventureSettings,
-          rpgMode: false, // Forcer la désactivation
-          strategyMode: false, // Forcer la désactivation
-          relationsMode: true, // Forcer l'activation
-          comicModeActive: true, // Forcer l'activation
-          // S'assurer que timeManagement a toutes les clés
+          rpgMode: false,
+          strategyMode: false,
+          relationsMode: true,
+          comicModeActive: data.adventureSettings.comicModeActive ?? true,
           timeManagement: {
             ...createInitialState().adventureSettings.timeManagement!,
             ...(data.adventureSettings.timeManagement || {}),
@@ -103,7 +111,46 @@ export function useAdventureState() {
         setCharacterHistory([loadedCharacters]);
 
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
+        setIsLoaded(true); // Mark as loaded after setting state
     }, [toast]);
+    
+    // Auto-load from localStorage on initial mount
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedStateJSON = localStorage.getItem(CURRENT_ADVENTURE_STATE_KEY);
+            if (savedStateJSON) {
+                try {
+                    const savedState: SaveData = JSON.parse(savedStateJSON);
+                    // Basic validation
+                    if (savedState.adventureSettings && savedState.characters && savedState.narrative) {
+                       loadAdventureState(savedState);
+                       console.log("Session d'aventure précédente chargée automatiquement.");
+                    } else {
+                       setIsLoaded(true); // Nothing to load, but we can start saving now
+                    }
+                } catch (error) {
+                    console.error("Failed to parse saved adventure state:", error);
+                    setIsLoaded(true);
+                }
+            } else {
+                setIsLoaded(true); // No saved state found, ready to start fresh and save.
+            }
+        }
+    }, [loadAdventureState]);
+
+
+    React.useEffect(() => {
+        if (!isLoaded) return;
+        setCharacterHistory(prev => [...prev.slice(-10), characters]);
+    }, [characters, isLoaded]);
+
+    const undoLastCharacterState = (): Character[] | null => {
+        if (characterHistory.length < 2) return null;
+        const previousState = characterHistory[characterHistory.length - 2];
+        setCharacterHistory(prev => prev.slice(0, -1));
+        return previousState;
+    };
+
 
     return {
         adventureSettings,

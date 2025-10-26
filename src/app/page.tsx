@@ -146,14 +146,16 @@ export default function Home() {
     });
     
     const loadAdventureState = React.useCallback((data: SaveData) => {
+        // Clear the flag that might load a story from the library, as we're loading a specific state now.
+        localStorage.removeItem('loadStoryIdOnMount');
         originalLoadAdventureState(data);
+
         const clockSettings = data.adventureSettings?.timeManagement || createInitialState().adventureSettings.timeManagement!;
         const clock = new GameClock(clockSettings);
         setGameClock(clock);
         setTimeState(clock.getState());
         localStorage.setItem('gameClockState_v2', clock.serialize());
 
-        // Force-reset the form in the sidebar with the new values
         if (adventureFormRef.current) {
             adventureFormRef.current.reset(data.adventureSettings);
         }
@@ -205,8 +207,33 @@ export default function Home() {
     React.useEffect(() => {
         const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
         const currentAvatarId = localStorage.getItem('currentAvatarId');
+        const tempStateJSON = localStorage.getItem('tempAdventureState');
 
-        if (storyIdToLoad) {
+        // Priority order:
+        // 1. Temporary state from slot assignment.
+        // 2. Story ID from library.
+        // 3. Current adventure state (already handled by useAdventureState).
+        
+        if (tempStateJSON) {
+            try {
+                const tempState = JSON.parse(tempStateJSON);
+                 const stateWithAvatar = applyAvatarToSettings(
+                     currentAvatarId ? JSON.parse(currentAvatarId) : '',
+                     tempState.adventureSettings
+                 );
+                loadAdventureState({
+                    ...tempState,
+                    adventureSettings: stateWithAvatar,
+                });
+            } catch (error) {
+                console.error("Failed to load temporary adventure state:", error);
+                 toast({ title: "Erreur de chargement", variant: "destructive" });
+            } finally {
+                localStorage.removeItem('tempAdventureState');
+                 // Critical: clear storyIdToLoad to prevent it from overwriting the temp state
+                localStorage.removeItem('loadStoryIdOnMount');
+            }
+        } else if (storyIdToLoad) {
             const storiesFromStorage = localStorage.getItem('adventureStories');
             if (storiesFromStorage) {
                 const savedStories = JSON.parse(storiesFromStorage);
@@ -226,29 +253,11 @@ export default function Home() {
             }
             localStorage.removeItem('loadStoryIdOnMount');
         } else {
+             // This case is handled by the auto-loader in useAdventureState.
+             // We only apply avatar if no story is being loaded from the library.
              if (currentAvatarId) {
                 setAdventureSettings(prev => applyAvatarToSettings(JSON.parse(currentAvatarId), prev));
              }
-        }
-
-        const tempStateJSON = localStorage.getItem('tempAdventureState');
-        if (tempStateJSON) {
-            try {
-                const tempState = JSON.parse(tempStateJSON);
-                 const stateWithAvatar = applyAvatarToSettings(
-                     currentAvatarId ? JSON.parse(currentAvatarId) : '',
-                     tempState.adventureSettings
-                 );
-                loadAdventureState({
-                    ...tempState,
-                    adventureSettings: stateWithAvatar,
-                });
-            } catch (error) {
-                console.error("Failed to load temporary adventure state:", error);
-                 toast({ title: "Erreur de chargement", variant: "destructive" });
-            } finally {
-                localStorage.removeItem('tempAdventureState');
-            }
         }
         
         const savedClockState = localStorage.getItem('gameClockState_v2');
