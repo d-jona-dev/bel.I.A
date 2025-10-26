@@ -526,7 +526,7 @@ export function AdventureDisplay({
                                                   {renderFormattedNarrative(message.content)}
 
                                                   {message.type !== 'system' && !isFirstMessage && (
-                                                      <div className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 p-1 bg-background/50 backdrop-blur-sm border rounded-md shadow-lg grid grid-cols-3 gap-0.5 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
+                                                      <div className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 p-1 bg-background/50 backdrop-blur-sm border rounded-md shadow-lg grid grid-cols-2 gap-0.5 ${message.type === 'user' ? 'left-0 -translate-x-full mr-1' : 'right-0 translate-x-full ml-1'}`}>
                                                         <Dialog open={editingMessage?.id === message.id} onOpenChange={(open) => !open && setEditingMessage(null)}>
                                                             <TooltipProvider>
                                                               <Tooltip>
@@ -713,9 +713,9 @@ export function AdventureDisplay({
                  <Dialog open={imageEditorOpen} onOpenChange={setImageEditorOpen}>
                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                         <DialogHeader>
-                            <DialogTitle>Éditeur d'Image</DialogTitle>
+                            <DialogTitle>{lang.imageEditorTitle}</DialogTitle>
                             <DialogDescription>
-                                Ajoutez des bulles de dialogue à votre image et ajoutez-la à la BD.
+                                {lang.imageEditorDescription}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
@@ -727,6 +727,7 @@ export function AdventureDisplay({
                              onSave={onAddToComicPage}
                              playerName={adventureSettings.playerName || "Héros"}
                              playerId={playerId}
+                             currentLanguage={currentLanguage}
                              />}
                         </div>
                     </DialogContent>

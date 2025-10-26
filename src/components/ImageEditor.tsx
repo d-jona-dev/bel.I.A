@@ -17,6 +17,7 @@ import {
 import { Slider } from "./ui/slider";
 import { Label } from "./ui/label";
 import { Card } from "./ui/card";
+import { i18n, type Language } from "@/lib/i18n";
 
 
 const bubbleTypes = {
@@ -108,6 +109,7 @@ export default function ImageEditor({
     onClose,
     playerName,
     playerId,
+    currentLanguage,
  }: {
     imageUrl: string | null; // Can now be null
     message: Message;
@@ -116,6 +118,7 @@ export default function ImageEditor({
     onClose: () => void;
     playerName: string;
     playerId: string;
+    currentLanguage: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -126,6 +129,8 @@ export default function ImageEditor({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentBubbleType, setCurrentBubbleType] = useState<BubbleType>("parole");
   const { toast } = useToast();
+  const lang = i18n[currentLanguage as Language] || i18n.en;
+
 
   useEffect(() => {
     if (imageUrl) {
@@ -156,7 +161,7 @@ export default function ImageEditor({
       ctx.fillStyle = '#a0a0a0';
       ctx.font = "30px sans-serif";
       ctx.textAlign = 'center';
-      ctx.fillText("Aucune image. Téléchargez-en une.", canvas.width / 2, canvas.height / 2);
+      ctx.fillText(lang.noImageToEdit, canvas.width / 2, canvas.height / 2);
     }
 
     bubbles.forEach((bubble) => {
@@ -169,7 +174,7 @@ export default function ImageEditor({
         ctx.setLineDash([]);
       }
     });
-  }, [img, bubbles, selectedBubbleId, characters]);
+  }, [img, bubbles, selectedBubbleId, characters, lang.noImageToEdit]);
 
   const addBubble = (characterId: string) => {
     const character = characters.find(c => c.id === characterId) || (characterId === playerId ? { id: playerId, name: playerName } : null);
@@ -181,7 +186,7 @@ export default function ImageEditor({
       y: 50,
       width: 300,
       height: 120,
-      text: "Nouveau texte...",
+      text: lang.newBubbleText,
       type: currentBubbleType,
       characterId: character.id,
       fontSize: 32,
@@ -243,9 +248,9 @@ export default function ImageEditor({
 
       if (newBubbles.length > 0) {
         setBubbles(prev => [...prev, ...newBubbles]);
-        toast({ title: `${newBubbles.length} bulle(s) insérée(s) automatiquement.`});
+        toast({ title: `${newBubbles.length} ${lang.bubblesInserted}`});
       } else {
-        toast({ title: "Aucun dialogue ou pensée trouvé", description: "Le texte ne contient pas de dialogues (\") ou de pensées (*).", variant: "default" });
+        toast({ title: lang.noDialogueFound, description: lang.noDialogueFoundDesc, variant: "default" });
       }
   };
 
@@ -298,8 +303,8 @@ export default function ImageEditor({
     const handleSave = async () => {
         if (!canvasRef.current || !img) {
             toast({
-                title: "Aucune image à sauvegarder",
-                description: "Veuillez d'abord télécharger une image.",
+                title: lang.noImageToSave,
+                description: lang.pleaseUploadImage,
                 variant: "destructive"
             });
             return;
@@ -309,14 +314,14 @@ export default function ImageEditor({
             const compressedUrl = await compressImage(canvasRef.current.toDataURL('image/png'), 0.85);
             onSave(compressedUrl);
             toast({
-                title: "Image Sauvegardée",
-                description: "Votre image modifiée a été ajoutée à la BD."
+                title: lang.imageSaved,
+                description: lang.imageAddedToComic
             })
             onClose();
         } catch(error) {
             toast({
-                title: "Erreur de compression",
-                description: "Impossible de compresser l'image.",
+                title: lang.compressionError,
+                description: lang.couldNotCompress,
                 variant: "destructive"
             });
             console.error(error);
@@ -360,9 +365,9 @@ export default function ImageEditor({
         {!img && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-200/50 backdrop-blur-sm">
             <UploadCloud className="h-16 w-16 text-gray-500 mb-4" />
-            <p className="text-gray-600 font-semibold mb-2">Aucune image sélectionnée</p>
+            <p className="text-gray-600 font-semibold mb-2">{lang.noImageSelected}</p>
             <Button onClick={() => uploadInputRef.current?.click()}>
-              Télécharger une image
+              {lang.uploadImage}
             </Button>
             <input
               type="file"
@@ -378,50 +383,50 @@ export default function ImageEditor({
         <div className="flex-1 space-y-3">
              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Style de bulle :</span>
+                    <span className="text-sm font-medium">{lang.bubbleStyle}:</span>
                     <Select value={currentBubbleType} onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}>
                         <SelectTrigger className="w-[180px] bg-background">
                             <SelectValue placeholder="Style" />
                         </SelectTrigger>
                         <SelectContent>
                             {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                                <SelectItem key={key} value={key}>{lang[key as keyof typeof i18n.en] || label}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Ajouter bulle</Button>
+                    <Button size="sm"><PlusCircle className="mr-2 h-4 w-4"/> {lang.addBubble}</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                       <DropdownMenuItem onSelect={() => addBubble(playerId)}>
-                         <User className="mr-2 h-4 w-4"/> Pour {playerName} (Héros)
+                         <User className="mr-2 h-4 w-4"/> {lang.forHero.replace('{playerName}', playerName)}
                       </DropdownMenuItem>
                        {speakingCharacters.length > 0 && <DropdownMenuSeparator />}
                       {speakingCharacters.map(char => (
                           <DropdownMenuItem key={char.id} onSelect={() => addBubble(char.id)}>
-                              <Mic className="mr-2 h-4 w-4" style={{color: char.factionColor}}/> Pour {char.name}
+                              <Mic className="mr-2 h-4 w-4" style={{color: char.factionColor}}/> {lang.forSpeaker.replace('{charName}', char.name)}
                           </DropdownMenuItem>
                       ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button onClick={handleAutoInsertBubbles} size="sm" variant="outline">
-                    <MessageSquarePlus className="mr-2 h-4 w-4" /> Insérer Bulles Auto
+                    <MessageSquarePlus className="mr-2 h-4 w-4" /> {lang.insertBubblesAuto}
                 </Button>
             </div>
             {selectedBubble && (
                 <Card className="p-3 border rounded-md bg-background space-y-3">
-                    <h3 className="font-semibold">Éditer la bulle sélectionnée ({bubbleTypes[selectedBubble.type].label})</h3>
+                    <h3 className="font-semibold">{lang.editBubble} ({lang[selectedBubble.type as keyof typeof i18n.en] || selectedBubble.type})</h3>
                     <Textarea
                     value={selectedBubble.text}
                     onChange={(e) => updateBubble(selectedBubbleId!, { text: e.target.value })}
-                    placeholder="Écrivez votre dialogue ici..."
+                    placeholder={lang.bubbleTextPlaceholder}
                     rows={3}
                     />
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                          <Label>Style</Label>
+                          <Label>{lang.style}</Label>
                           <Select
                               value={selectedBubble.type}
                               onValueChange={(value) => updateBubble(selectedBubbleId!, { type: value as BubbleType })}
@@ -429,13 +434,13 @@ export default function ImageEditor({
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
                                   {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                                      <SelectItem key={key} value={key}>{lang[key as keyof typeof i18n.en] || label}</SelectItem>
                                   ))}
                               </SelectContent>
                           </Select>
                       </div>
                       <div className="space-y-1">
-                          <Label>Taille du Texte: {selectedBubble.fontSize || 32}</Label>
+                          <Label>{lang.textSize}: {selectedBubble.fontSize || 32}</Label>
                           <Slider
                             value={[selectedBubble.fontSize || 32]}
                             min={12}
@@ -446,14 +451,14 @@ export default function ImageEditor({
                       </div>
                     </div>
                     <Button onClick={deleteBubble} variant="destructive" size="sm" className="w-full">
-                        <Trash2 className="mr-2 h-4 w-4"/>Supprimer la bulle
+                        <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
                     </Button>
                 </Card>
             )}
         </div>
         <div className="flex flex-col gap-2 md:w-40">
-             <Button onClick={handleSave} variant="default" size="lg" disabled={!img}>💾 Sauvegarder dans la BD</Button>
-             <Button onClick={onClose} variant="outline" size="lg">Fermer</Button>
+             <Button onClick={handleSave} variant="default" size="lg" disabled={!img}>💾 {lang.saveToComic}</Button>
+             <Button onClick={onClose} variant="outline" size="lg">{lang.close}</Button>
         </div>
       </div>
     </div>
