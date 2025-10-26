@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, ClothingItem } from "@/types";
+import type { Character, ClothingItem, AdventureSettings } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -82,58 +82,59 @@ interface CharacterSidebarProps {
     playerId: string;
     playerName: string;
     currentLanguage: string;
+    adventureSettings: AdventureSettings; // Added
 }
 
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
-  const otherCharacters = characters.filter(c => c.id !== charId);
-  const unknownRelation = currentLanguage === 'fr' ? "Inconnu" : "Unknown";
+  const lang = i18n[currentLanguage as Language] || i18n.fr;
 
   return (
       <div className="space-y-2">
-          <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Relations</Label>
+          <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> {lang.relationsLabel}</Label>
           <Card className="bg-muted/30 border">
               <CardContent className="p-3 space-y-2">
                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`${charId}-relations-${playerId}`} className="truncate text-sm shrink-0">{playerName} (Joueur)</Label>
+                      <Label htmlFor={`${charId}-relations-${playerId}`} className="truncate text-sm shrink-0">{playerName} ({lang.playerLabel})</Label>
                       <Input
                           id={`${charId}-relations-${playerId}`}
                           type="text"
-                          defaultValue={data?.[playerId] || unknownRelation}
+                          defaultValue={data?.[playerId] || lang.unknownLabel}
                           onBlur={(e) => onUpdate(charId, 'relations', playerId, e.target.value)}
                           className="h-8 text-sm flex-1 bg-background border"
-                          placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                          placeholder={lang.relationPlaceholder}
                           disabled={disabled}
                       />
                    </div>
 
-                  {otherCharacters.map(otherChar => (
+                  {characters.filter(c => c.id !== charId).map(otherChar => (
                       <div key={otherChar.id} className="flex items-center gap-2">
                           <Label htmlFor={`${charId}-relations-${otherChar.id}`} className="truncate text-sm shrink-0">{otherChar.name}</Label>
                           <Input
                               id={`${charId}-relations-${otherChar.id}`}
                               type="text"
-                              defaultValue={data?.[otherChar.id] || unknownRelation}
+                              defaultValue={data?.[otherChar.id] || lang.unknownLabel}
                               onBlur={(e) => onUpdate(charId, 'relations', otherChar.id, e.target.value)}
                               className="h-8 text-sm flex-1 bg-background border"
-                              placeholder={currentLanguage === 'fr' ? "Ami, Ennemi, Parent..." : "Friend, Enemy, Parent..."}
+                              placeholder={lang.relationPlaceholder}
                               disabled={disabled}
                           />
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={currentLanguage === 'fr' ? "Réinitialiser la relation à Inconnu" : "Reset relation to Unknown"} disabled={disabled}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemove(charId, 'relations', otherChar.id)} title={lang.resetRelationTooltip} disabled={disabled}>
                               <Trash2 className="h-4 w-4" />
                            </Button>
                       </div>
                   ))}
-                  {otherCharacters.length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && (
-                       <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? "Aucune autre relation PNJ définie." : "No other NPC relations defined."}</p>
+                  {characters.filter(c => c.id !== charId).length === 0 && (!data || !data[playerId] || Object.keys(data).length <= (data[playerId] ? 1:0) ) && (
+                       <p className="text-muted-foreground italic text-sm">{lang.noOtherNpcRelations}</p>
                   )}
-                   <p className="text-xs text-muted-foreground pt-1">{currentLanguage === 'fr' ? "Décrivez la relation de ce personnage envers les autres." : "Describe this character's relationship towards others."}</p>
+                   <p className="text-xs text-muted-foreground pt-1">{lang.describeRelationHelpText}</p>
               </CardContent>
           </Card>
       </div>
   );
 };
 
-const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'spells', index: number, value: string) => void, onRemove: (charId: string, field: 'spells', index: number) => void, onAdd: (charId: string, field: 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'spells' | 'memory', index: number, value: string) => void, onRemove: (charId: string, field: 'spells' | 'memory', index: number) => void, onAdd: (charId: string, field: 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
+    const lang = i18n[currentLanguage as Language] || i18n.fr;
 
     const handleAddItem = () => {
         onAdd(charId, field);
@@ -150,20 +151,20 @@ const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, o
                           <div key={index} className="flex items-center gap-2 mb-1">
                               <Textarea
                                   defaultValue={item}
-                                  onBlur={(e) => onUpdate(charId, field, index, e.target.value)}
+                                  onBlur={(e) => onUpdate(charId, field as 'spells', index, e.target.value)}
                                   className="text-sm flex-1 bg-background border"
-                                  placeholder={`${currentLanguage === 'fr' ? 'Entrée' : 'Entry'} ${index + 1}`}
+                                  placeholder={`${lang.entryLabel} ${index + 1}`}
                                   rows={1}
                                   disabled={disabled}
                               />
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field, index)} disabled={disabled}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive self-start" onClick={() => onRemove(charId, field as 'spells', index)} disabled={disabled}>
                                   <Trash2 className="h-4 w-4" />
                               </Button>
                           </div>
                       ))}
                    </ScrollArea>
                ) : (
-                   <p className="text-muted-foreground italic text-sm">{currentLanguage === 'fr' ? `Aucun(e) ${title.toLowerCase()} ajouté(e).` : `No ${title.toLowerCase()} added.`}</p>
+                   <p className="text-muted-foreground italic text-sm">{lang.noItemsAdded.replace('{items}', title.toLowerCase())}</p>
                )}
                 {addDialog || (
                      <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddItem} disabled={disabled}>
@@ -188,22 +189,13 @@ export function CharacterSidebar({
     playerId,
     playerName,
     currentLanguage,
-}: {
-    characters: Character[];
-    onCharacterUpdate: (updatedCharacter: Character) => void;
-    onSaveNewCharacter: (character: Character) => void;
-    onAddStagedCharacter: (character: Character) => void;
-    onRelationUpdate: (charId: string, targetId: string, newRelation: string) => void;
-    generateImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageOutput>;
-    relationsMode: boolean;
-    playerId: string;
-    playerName: string;
-    currentLanguage: string;
-}) {
+    adventureSettings,
+}: CharacterSidebarProps) {
   const [imageLoadingStates, setImageLoadingStates] = React.useState<Record<string, boolean>>({});
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
+  const lang = i18n[currentLanguage as Language] || i18n.fr;
 
   const loadGlobalChars = React.useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -215,13 +207,13 @@ export function CharacterSidebar({
         } catch (error) {
             console.error("Failed to load global characters from localStorage:", error);
             toast({
-                title: "Erreur de chargement",
-                description: "Impossible de charger les personnages globaux.",
+                title: lang.loadingErrorTitle,
+                description: lang.loadingErrorDescription,
                 variant: "destructive",
             });
         }
     }
-  }, [toast]);
+  }, [toast, lang]);
 
   React.useEffect(() => {
     setIsClient(true);
@@ -240,14 +232,12 @@ export function CharacterSidebar({
 
         let updatedGlobalChars;
         if (charIndex > -1) {
-            // Update existing character
             updatedGlobalChars = [...globalChars];
             updatedGlobalChars[charIndex] = newChar;
-            toast({ title: "Personnage Mis à Jour", description: `Les informations globales de ${charToSave.name} ont été synchronisées.` });
+            toast({ title: lang.characterUpdatedTitle, description: lang.characterUpdatedDesc.replace('{charName}', charToSave.name) });
         } else {
-            // Add new character
             updatedGlobalChars = [...globalChars, newChar];
-            toast({ title: "Personnage Sauvegardé", description: `${charToSave.name} est maintenant disponible globalement.` });
+            toast({ title: lang.characterSavedTitle, description: lang.characterSavedDesc.replace('{charName}', charToSave.name) });
         }
         
         localStorage.setItem('globalCharacters', JSON.stringify(updatedGlobalChars));
@@ -255,7 +245,7 @@ export function CharacterSidebar({
         onCharacterUpdate(newChar); // Update the character in the current adventure
         
     } catch (e) {
-        toast({ title: "Erreur de Sauvegarde", variant: "destructive" });
+        toast({ title: lang.saveErrorTitle, variant: "destructive" });
     }
   };
 
@@ -283,7 +273,7 @@ export function CharacterSidebar({
                     <CardTitle className="text-base flex items-center justify-between">
                          <span className="flex items-center gap-2">
                            <UserPlus className="h-5 w-5" />
-                           Personnages Globaux
+                           {lang.globalCharactersTitle}
                          </span>
                          <TooltipProvider>
                             <Tooltip>
@@ -293,7 +283,7 @@ export function CharacterSidebar({
                                      </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Nombre de personnages sauvegardés globalement.</p>
+                                    <p>{lang.globalCharactersCountTooltip}</p>
                                 </TooltipContent>
                             </Tooltip>
                          </TooltipProvider>
@@ -302,12 +292,12 @@ export function CharacterSidebar({
                 <CardContent>
                     {globalCharactersList.length === 0 ? (
                          <p className="text-sm text-muted-foreground mt-1">
-                           {currentLanguage === 'fr' ? 'Aucun personnage global sauvegardé pour l\'instant.' : 'No global characters saved yet.'}
+                           {lang.noGlobalCharacters}
                          </p>
                     ) : availableGlobalChars.length > 0 ? (
                         <Select onValueChange={handleAddGlobalCharToAdventure}>
                             <SelectTrigger>
-                                <SelectValue placeholder={currentLanguage === 'fr' ? 'Ajouter un personnage existant...' : 'Add existing character...'} />
+                                <SelectValue placeholder={lang.addExistingCharacterPlaceholder} />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableGlobalChars.map(gc => (
@@ -319,7 +309,7 @@ export function CharacterSidebar({
                         </Select>
                     ) : (
                          <p className="text-sm text-muted-foreground mt-1">
-                           {currentLanguage === 'fr' ? 'Tous les personnages sauvegardés sont déjà dans cette aventure.' : 'All saved characters are already in this adventure.'}
+                           {lang.allCharactersInAdventure}
                          </p>
                     )}
                 </CardContent>
@@ -327,7 +317,7 @@ export function CharacterSidebar({
         )}
 
         {initialCharacters.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">{currentLanguage === 'fr' ? "Aucun personnage secondaire défini pour l'aventure en cours." : "No secondary characters defined for the current adventure."}</p>
+            <p className="p-4 text-sm text-muted-foreground">{lang.noNPCsForAdventure}</p>
         ) : (
             <Accordion type="multiple" className="w-full">
                 {initialCharacters.map((char, index) => (
@@ -385,23 +375,20 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     allCharacters: Character[];
 }) {
     const { toast } = useToast();
+    const lang = i18n[currentLanguage as Language] || i18n.fr;
     
     const [localChar, setLocalChar] = React.useState(char);
     const [describingAppearance, setDescribingAppearance] = React.useState(false);
 
     React.useEffect(() => {
-        // This effect now only runs if the character prop from the parent is different.
-        // This prevents re-renders from overwriting local edits.
-        if (char.id !== localChar.id) {
+        if (char.id !== localChar.id || JSON.stringify(char) !== JSON.stringify(localChar)) {
             setLocalChar(char);
         }
-    }, [char, localChar.id]);
+    }, [char, localChar]);
 
     const handleLocalFieldChange = (field: keyof Character, value: any) => {
-        // Update the local state first
         const updated = { ...localChar, [field]: value };
         setLocalChar(updated);
-        // Then propagate the change to the parent
         onCharacterUpdate(updated);
     };
 
@@ -417,7 +404,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
      const removeNestedField = (charId: string, field: 'relations', key: string) => {
         const character = allCharacters.find(c => c.id === charId);
         if (character && character[field]) {
-            const updated = {...character, [field]: {...character[field], [key]: currentLanguage === 'fr' ? "Inconnu" : "Unknown"}};
+            const updated = {...character, [field]: {...character[field], [key]: lang.unknownLabel}};
             onCharacterUpdate(updated);
         }
     };
@@ -429,8 +416,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const [visionConsentChecked, setVisionConsentChecked] = React.useState(false);
     const [wardrobe, setWardrobe] = React.useState<ClothingItem[]>([]);
     
-    const disclaimerText = i18n[currentLanguage as Language]?.visionConsent || i18n.en.visionConsent;
-    const memoryLabel = i18n[currentLanguage as Language]?.memory || i18n.en.memory;
+    const disclaimerText = lang.visionConsent;
+    const memoryLabel = lang.memory;
 
     React.useEffect(() => {
         const loadData = () => {
@@ -454,15 +441,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         if (!localChar.portraitUrl || describingAppearance) return;
 
         setDescribingAppearance(true);
-        toast({ title: "Analyse de l'image...", description: `L'IA décrit l'apparence de ${localChar.name}.`});
+        toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', localChar.name)});
 
         try {
             const result = await describeAppearance({ portraitUrl: localChar.portraitUrl });
             handleLocalFieldChange('appearanceDescription', result.description);
-            toast({ title: "Description Réussie!", description: `L'apparence de ${localChar.name} a été détaillée.` });
+            toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', localChar.name) });
         } catch (error) {
             console.error("Error describing appearance:", error);
-            toast({ title: "Erreur de Vision", description: `Impossible de décrire l'apparence. ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
+            toast({ title: lang.visionErrorTitle, description: `${lang.describeAppearanceError} ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
         } finally {
             setDescribingAppearance(false);
         }
@@ -475,16 +462,20 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         try {
           const prompt = `portrait of ${localChar.name}, ${localChar.characterClass}. Description: ${localChar.details}.`;
           const result = await generateImageAction({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
-          handleLocalFieldChange('portraitUrl', result.imageUrl);
-          toast({
-            title: "Portrait Généré",
-            description: `Le portrait de ${localChar.name} a été généré.`,
-          });
+          if(result.imageUrl){
+            handleLocalFieldChange('portraitUrl', result.imageUrl);
+            toast({
+              title: lang.portraitGeneratedTitle,
+              description: lang.portraitGeneratedDesc.replace('{charName}', localChar.name),
+            });
+          } else {
+            throw new Error(result.error || lang.imageGenerationFailed);
+          }
         } catch (error) {
           console.error(`Error generating portrait for ${localChar.name}:`, error);
           toast({
-            title: "Erreur de Génération",
-            description: `Impossible de générer le portrait de ${localChar.name}.`,
+            title: lang.generationErrorTitle,
+            description: `${lang.portraitGenerationError.replace('{charName}', localChar.name)}`,
             variant: "destructive",
           });
         } finally {
@@ -498,7 +489,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         const reader = new FileReader();
         reader.onloadend = () => {
             handleLocalFieldChange('portraitUrl', reader.result as string);
-            toast({ title: "Portrait Téléchargé", description: `Le portrait de ${localChar.name} a été mis à jour.` });
+            toast({ title: lang.portraitUploadedTitle, description: lang.portraitUploadedDesc.replace('{charName}', localChar.name) });
         };
         reader.readAsDataURL(file);
         if(event.target) event.target.value = '';
@@ -507,61 +498,29 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const handleSaveUrl = () => {
         handleLocalFieldChange('portraitUrl', portraitUrl);
         setIsUrlDialogOpen(false);
-        toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
+        toast({ title: lang.portraitUpdatedTitle, description: lang.portraitUrlSaved });
     };
 
     const handleLoadFromWardrobe = (itemId: string) => {
         const item = wardrobe.find(w => w.id === itemId);
         if (item) {
             handleLocalFieldChange('clothingDescription', item.description);
-            toast({ title: "Vêtement Appliqué", description: `La description de "${item.name}" a été chargée.` });
+            toast({ title: lang.clothingAppliedTitle, description: lang.clothingDescLoaded.replace('{itemName}', item.name) });
         }
     };
 
-    const getAffinityLabel = (affinity: number | undefined): string => {
+    const getAffinityLabel = (affinity?: number): string => {
         const value = affinity ?? 50;
-        if (currentLanguage === 'fr') {
-            if (value <= 10) return "Haine profonde";
-            if (value <= 30) return "Hostile";
-            if (value <= 45) return "Méfiant";
-            if (value <= 70) return "Amical";
-            if (value <= 90) return "Loyal";
-            return "Dévoué / Amour";
-        }
-        if (value <= 10) return "Deep Hate";
-        if (value <= 30) return "Hostile";
-        if (value <= 45) return "Wary";
-        if (value <= 55) return "Neutral";
-        if (value <= 70) return "Friendly";
-        if (value <= 90) return "Loyal";
-        return "Devoted / Love";
+        if (value <= 10) return lang.affinityHate;
+        if (value <= 30) return lang.affinityHostile;
+        if (value <= 45) return lang.affinityWary;
+        if (value <= 70) return lang.affinityFriendly;
+        if (value <= 90) return lang.affinityLoyal;
+        return lang.affinityDevoted;
     };
 
     const isGloballySaved = isClient && localChar._lastSaved;
     const currentAffinity = localChar.affinity ?? 50;
-    
-    if (localChar.isPlaceholder) {
-        return (
-            <AccordionItem value={localChar.id}>
-                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarFallback><UserCog /></AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium truncate">{localChar.roleInStory || `Emplacement Vide ${characterIndex + 1}`}</span>
-                        <span className="text-xs text-muted-foreground italic">(Emplacement)</span>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                     <Textarea
-                        value={localChar.roleInStory || ''}
-                        onChange={(e) => handleLocalFieldChange('roleInStory', e.target.value)}
-                        placeholder="Ex: Le/la partenaire romantique, rival..."
-                    />
-                </AccordionContent>
-            </AccordionItem>
-        );
-    }
     
     const isValidUrl = (url: string | null | undefined): url is string => {
         if (!url) return false;
@@ -570,7 +529,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
     return (
         <AccordionItem value={localChar.id}>
-        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-8 w-8 flex-shrink-0">
                         {imageLoadingStates[localChar.id] ? (
@@ -578,281 +537,287 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         ) : isValidUrl(localChar.portraitUrl) ? (
                             <AvatarImage src={localChar.portraitUrl} alt={localChar.name} />
                         ) : (
-                            <AvatarFallback>{localChar.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                <AvatarFallback>{localChar.isPlaceholder ? <UserCog/> : localChar.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         )}
                     </Avatar>
-                    <span className="font-medium truncate">{localChar.name.split(' ')[0]}</span>
-                    {isGloballySaved && (
+                    <span className="font-medium truncate">{localChar.isPlaceholder ? (localChar.roleInStory || `${lang.emptyPlaceholderLabel} ${characterIndex + 1}`) : localChar.name}</span>
+                        {localChar.isPlaceholder && (<span className="text-xs text-muted-foreground italic">({lang.placeholderLabelShort})</span>)}
+                    {isGloballySaved && !localChar.isPlaceholder && (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <span><Save className="h-3 w-3 text-primary ml-1 flex-shrink-0" /></span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top">{currentLanguage === 'fr' ? "Personnage sauvegardé globalement." : "Character saved globally."}</TooltipContent>
+                                <TooltipContent side="top"><p>{lang.characterSavedGlobally}</p></TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     )}
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                <div className="flex gap-2">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(localChar)}>
-                                    {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                                    {isGloballySaved ? (currentLanguage === 'fr' ? "Mettre à jour" : "Update") : (currentLanguage === 'fr' ? "Sauvegarder" : "Save")}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                {isGloballySaved
-                                    ? (currentLanguage === 'fr' ? "Mettre à jour la fiche globale avec les informations actuelles." : "Update the global character sheet with current info.")
-                                    : (currentLanguage === 'fr' ? "Sauvegarder ce personnage pour le réutiliser dans d'autres aventures." : "Save this character for reuse in other adventures.")
-                                }
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-
-            <div className="flex items-start gap-4">
-                    <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center flex-shrink-0">
-                        {imageLoadingStates[localChar.id] ? (
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
-                        ) : isValidUrl(localChar.portraitUrl) ? (
-                            <Image src={localChar.portraitUrl} alt={`${localChar.name} portrait`} layout="fill" objectFit="cover" />
-                        ) : (
-                            <User className="h-10 w-10 text-muted-foreground"/>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-2 flex-1">
-                        <DropdownMenu>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8">
-                                                <Palette className="h-4 w-4"/>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{currentLanguage === 'fr' ? "Choisir un style d'image" : "Choose an image style"}</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <DropdownMenuContent>
-                                {defaultImageStyles.map((style) => (
-                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
-                                ))}
-                                {customStyles.length > 0 && <DropdownMenuSeparator />}
-                                {customStyles.map((style) => (
-                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[localChar.id]}><Wand2 className="h-4 w-4"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{currentLanguage === 'fr' ? "Générer un portrait avec l'IA." : "Generate an AI portrait."}</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            id={`upload-portrait-${localChar.id}`}
-                            className="hidden"
-                            onChange={(e) => handleUploadPortrait(localChar.id, e)}
-                        />
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${localChar.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{currentLanguage === 'fr' ? "Télécharger un portrait personnalisé." : "Upload a custom portrait."}</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8">
-                                                <LinkIcon className="h-4 w-4"/>
-                                            </Button>
-                                        </DialogTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Définir le portrait depuis une URL</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Définir le Portrait depuis une URL</DialogTitle>
-                                    <DialogDescription>
-                                        Collez l'URL de l'image que vous souhaitez utiliser comme portrait pour {localChar.name}.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                    <Label htmlFor="portrait-url">URL de l'image</Label>
-                                    <Input
-                                        id="portrait-url"
-                                        value={portraitUrl}
-                                        onChange={(e) => setPortraitUrl(e.target.value)}
-                                        placeholder="https://example.com/portrait.jpg"
-                                        className="mt-1"
-                                    />
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
-                                    <Button onClick={handleSaveUrl}>Enregistrer l'URL</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-            </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> Description de l'Apparence (pour IA)</Label>
+                {localChar.isPlaceholder ? (
                      <Textarea
-                        value={localChar.appearanceDescription || ''}
-                        onChange={(e) => handleLocalFieldChange('appearanceDescription', e.target.value)}
-                        placeholder="Générez ou écrivez une description physique détaillée..."
-                        rows={4}
-                        className="text-sm bg-background border"
+                        value={localChar.roleInStory || ''}
+                        onChange={(e) => handleLocalFieldChange('roleInStory', e.target.value)}
+                        placeholder={lang.placeholderRolePlaceholder}
                     />
-                    <div className="flex items-center gap-2 mt-2">
+                ) : (
+                    <>
+                    <div className="flex gap-2">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handleDescribeAppearance}
-                                    disabled={!isValidUrl(localChar.portraitUrl) || describingAppearance || !visionConsentChecked}
-                                >
-                                    {describingAppearance ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
-                                </Button>
+                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(localChar)}>
+                                        {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                                        {isGloballySaved ? lang.updateButton : lang.saveButton}
+                                    </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{i18n[currentLanguage as Language]?.describeAppearanceTooltip || i18n.en.describeAppearanceTooltip}</p>
+                                <TooltipContent side="bottom">
+                                    <p>{isGloballySaved ? lang.updateCharacterTooltip : lang.saveCharacterTooltip}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox id={`vision-consent-${localChar.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Label htmlFor={`vision-consent-${localChar.id}`} className="cursor-pointer">
-                                            <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                        </Label>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-xs">
-                                        <p>{disclaimerText}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </div>
                     </div>
-                </div>
-                
-                 <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Shirt className="h-4 w-4" /> Vêtements (Description pour IA)</Label>
-                    <div className="flex items-center gap-2">
-                         <Textarea
-                            value={localChar.clothingDescription || ''}
-                            onChange={(e) => handleLocalFieldChange('clothingDescription', e.target.value)}
-                            placeholder="Décrivez ici les vêtements du personnage..."
-                            rows={3}
-                            className="text-sm bg-background border flex-1"
-                        />
-                        <DropdownMenu>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="icon" className="flex-shrink-0"><Library className="h-4 w-4"/></Button>
-                                        </DropdownMenuTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Charger depuis la penderie</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <DropdownMenuContent>
-                                {wardrobe.length > 0 ? (
-                                    wardrobe.map(item => (
-                                        <DropdownMenuItem key={item.id} onSelect={() => handleLoadFromWardrobe(item.id)}>
-                                            {item.name}
-                                        </DropdownMenuItem>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem disabled>Penderie vide</DropdownMenuItem>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
 
-                <Separator />
-                <Label className="block mb-2 mt-4 text-sm font-medium">Champs Narratifs Modifiables :</Label>
-                <div className="space-y-1">
-                    <Label>Nom</Label>
-                    <Input value={localChar.name} onChange={(e) => handleLocalFieldChange('name', e.target.value)} className="h-8 text-sm bg-background border"/>
-                </div>
-                <div className="space-y-1">
-                    <Label>{currentLanguage === 'fr' ? "Description Publique" : "Public Description"}</Label>
-                    <Textarea value={localChar.details} onChange={(e) => handleLocalFieldChange('details', e.target.value)} rows={4} className="text-sm bg-background border"/>
-                </div>
-                 <div className="space-y-1">
-                    <Label>{currentLanguage === 'fr' ? "Biographie / Notes Privées" : "Biography / Private Notes"}</Label>
-                    <Textarea value={localChar.biographyNotes || ''} onChange={(e) => handleLocalFieldChange('biographyNotes', e.target.value)} placeholder={currentLanguage === 'fr' ? "Passé, secrets, objectifs... (pour contexte IA)" : "Background, secrets, goals... (for AI context)"} rows={5} className="text-sm bg-background border"/>
-                </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor={`${localChar.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
-                    <Textarea
-                        id={`${localChar.id}-memory`}
-                        value={localChar.memory || ''}
-                        onChange={(e) => handleLocalFieldChange('memory', e.target.value)}
-                        placeholder="Inscrire ici les souvenirs importants, les connaissances spécifiques ou les secrets du personnage..."
-                        rows={5}
-                        className="text-sm bg-background border"
-                    />
-                </div>
-                
-                {relationsMode && (
-                    <>
-                        <div className="space-y-2">
-                            <Label htmlFor={`${localChar.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {currentLanguage === 'fr' ? `Affinité avec ${playerName}` : `Affinity with ${playerName}`}</Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id={`${localChar.id}-affinity`}
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={currentAffinity}
-                                    onChange={(e) => handleLocalFieldChange('affinity', parseInt(e.target.value,10))}
-                                    className="h-8 text-sm w-20 flex-none bg-background border"
+                    <div className="flex items-start gap-4">
+                            <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center flex-shrink-0">
+                                {imageLoadingStates[localChar.id] ? (
+                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
+                                ) : isValidUrl(localChar.portraitUrl) ? (
+                                    <Image src={localChar.portraitUrl} alt={`${localChar.name} portrait`} layout="fill" objectFit="cover" />
+                                ) : (
+                                    <User className="h-10 w-10 text-muted-foreground"/>
+                                )}
+                            </div>
+                            <div className="flex flex-col gap-2 flex-1">
+                                <DropdownMenu>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8">
+                                                        <Palette className="h-4 w-4"/>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>{lang.chooseImageStyleTooltip}</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DropdownMenuContent>
+                                        {defaultImageStyles.map((style) => (
+                                            <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                        ))}
+                                        {customStyles.length > 0 && <DropdownMenuSeparator />}
+                                        {customStyles.map((style) => (
+                                            <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.prompt)}>{style.name}</DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[localChar.id]}><Wand2 className="h-4 w-4"/></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{lang.generateAIPortraitTooltip}</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    id={`upload-portrait-${localChar.id}`}
+                                    className="hidden"
+                                    onChange={(e) => handleUploadPortrait(localChar.id, e)}
                                 />
-                                <Progress value={currentAffinity} className="flex-1 h-2" />
-                                <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${localChar.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{lang.uploadCustomPortraitTooltip}</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="outline" size="icon" className="h-8 w-8">
+                                                        <LinkIcon className="h-4 w-4"/>
+                                                    </Button>
+                                                </DialogTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>{lang.setPortraitFromURLTooltip}</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>{lang.setPortraitFromURLDialogTitle}</DialogTitle>
+                                            <DialogDescription>
+                                                {lang.setPortraitFromURLDialogDesc.replace('{charName}', localChar.name)}
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                            <Label htmlFor="portrait-url">{lang.imageURLInputLabel}</Label>
+                                            <Input
+                                                id="portrait-url"
+                                                value={portraitUrl}
+                                                onChange={(e) => setPortraitUrl(e.target.value)}
+                                                placeholder={lang.imageURLInputPlaceholder}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>{lang.cancelButton}</Button>
+                                            <Button onClick={handleSaveUrl}>{lang.saveURLButton}</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                    </div>
+
+                        <Separator />
+
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> {lang.appearanceDescriptionLabel}</Label>
+                             <Textarea
+                                value={localChar.appearanceDescription || ''}
+                                onChange={(e) => handleLocalFieldChange('appearanceDescription', e.target.value)}
+                                placeholder={lang.appearanceDescriptionPlaceholder}
+                                rows={4}
+                                className="text-sm bg-background border"
+                            />
+                            <div className="flex items-center gap-2 mt-2">
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleDescribeAppearance}
+                                            disabled={!isValidUrl(localChar.portraitUrl) || describingAppearance || !visionConsentChecked}
+                                        >
+                                            {describingAppearance ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
+                                        </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{lang.describeAppearanceTooltip}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id={`vision-consent-${localChar.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Label htmlFor={`vision-consent-${localChar.id}`} className="cursor-pointer">
+                                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                                </Label>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="bottom" className="max-w-xs">
+                                                <p>{disclaimerText}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                             </div>
                         </div>
-                        <RelationsEditableCard
-                            charId={localChar.id}
-                            data={localChar.relations}
-                            characters={allCharacters}
-                            playerId={playerId}
-                            playerName={playerName}
-                            currentLanguage={currentLanguage}
-                            onUpdate={handleNestedFieldChange}
-                            onRemove={removeNestedField}
-                        />
+                        
+                         <div className="space-y-2">
+                            <Label className="flex items-center gap-2"><Shirt className="h-4 w-4" /> {lang.clothingDescriptionLabel}</Label>
+                            <div className="flex items-center gap-2">
+                                 <Textarea
+                                    value={localChar.clothingDescription || ''}
+                                    onChange={(e) => handleLocalFieldChange('clothingDescription', e.target.value)}
+                                    placeholder={lang.clothingDescriptionPlaceholder}
+                                    rows={3}
+                                    className="text-sm bg-background border flex-1"
+                                />
+                                <DropdownMenu>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="icon" className="flex-shrink-0"><Library className="h-4 w-4"/></Button>
+                                                </DropdownMenuTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>{lang.loadFromWardrobeTooltip}</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DropdownMenuContent>
+                                        {wardrobe.length > 0 ? (
+                                            wardrobe.map(item => (
+                                                <DropdownMenuItem key={item.id} onSelect={() => handleLoadFromWardrobe(item.id)}>
+                                                    {item.name}
+                                                </DropdownMenuItem>
+                                            ))
+                                        ) : (
+                                            <DropdownMenuItem disabled>{lang.wardrobeEmpty}</DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
+
+                        <Separator />
+                        <Label className="block mb-2 mt-4 text-sm font-medium">{lang.narrativeFieldsLabel}:</Label>
+                        <div className="space-y-1">
+                            <Label>{lang.nameLabel}</Label>
+                            <Input value={localChar.name} onChange={(e) => handleLocalFieldChange('name', e.target.value)} className="h-8 text-sm bg-background border"/>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>{lang.publicDescriptionLabel}</Label>
+                            <Textarea value={localChar.details} onChange={(e) => handleLocalFieldChange('details', e.target.value)} rows={4} className="text-sm bg-background border"/>
+                        </div>
+                         <div className="space-y-1">
+                            <Label>{lang.biographyLabel}</Label>
+                            <Textarea value={localChar.biographyNotes || ''} onChange={(e) => handleLocalFieldChange('biographyNotes', e.target.value)} placeholder={lang.biographyPlaceholder} rows={5} className="text-sm bg-background border"/>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor={`${localChar.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
+                            <Textarea
+                                id={`${localChar.id}-memory`}
+                                value={localChar.memory || ''}
+                                onChange={(e) => handleLocalFieldChange('memory', e.target.value)}
+                                placeholder={lang.memoryPlaceholder}
+                                rows={5}
+                                className="text-sm bg-background border"
+                            />
+                        </div>
+                        
+                        {relationsMode && (
+                             <>
+                                <div className="space-y-2">
+                                    <Label htmlFor={`${localChar.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {lang.affinityLabel.replace('{playerName}', playerName)}</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id={`${localChar.id}-affinity`}
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={currentAffinity}
+                                            onChange={(e) => handleLocalFieldChange('affinity', parseInt(e.target.value,10))}
+                                            className="h-8 text-sm w-20 flex-none bg-background border"
+                                        />
+                                        <Progress value={currentAffinity} className="flex-1 h-2" />
+                                        <span className="text-xs text-muted-foreground w-24 text-right shrink-0">{getAffinityLabel(currentAffinity)}</span>
+                                    </div>
+                                </div>
+                                 <RelationsEditableCard
+                                    charId={localChar.id}
+                                    data={localChar.relations}
+                                    characters={allCharacters}
+                                    playerId={playerId}
+                                    playerName={playerName}
+                                    currentLanguage={currentLanguage}
+                                    onUpdate={handleNestedFieldChange}
+                                    onRemove={removeNestedField}
+                                />
+                            </>
+                        )}
                     </>
                 )}
             </AccordionContent>
         </AccordionItem>
     );
 });
-
-    

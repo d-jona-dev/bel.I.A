@@ -472,13 +472,12 @@ isSaveComicDialogOpen,
                         <Separator/>
 
                       <Accordion type="single" collapsible className="w-full" defaultValue='characters-accordion'>
-                          <AccordionItem value="characters-accordion">
-                              <AccordionTrigger>
-                                  <div className="flex items-center gap-2">
-                                      <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
-                                  </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="pt-2">
+                          <AccordionTrigger>
+                              <div className="flex items-center gap-2">
+                                  <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
+                              </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="pt-2">
                                   <CharacterSidebar
                                       characters={stagedCharacters}
                                       onCharacterUpdate={handleCharacterUpdate}
@@ -492,15 +491,14 @@ isSaveComicDialogOpen,
                                       currentLanguage={currentLanguage}
                                       adventureSettings={adventureSettings}
                                   />
-                              </AccordionContent>
-                          </AccordionItem>
+                          </AccordionContent>
                       </Accordion>
 
                       <Accordion type="single" collapsible className="w-full">
                           <AccordionItem value="ai-model-config-accordion">
                               <AccordionTrigger>
                                   <div className="flex items-center gap-2">
-                                  <BrainCircuit className="h-5 w-5" /> Modèle IA
+                                  <BrainCircuit className="h-5 w-5" /> {lang.aiModelTitle}
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pt-2">
@@ -517,7 +515,7 @@ isSaveComicDialogOpen,
               <SidebarFooter className="p-4 border-t border-sidebar-border">
                   <Button onClick={handleApplyStagedChanges} className="w-full">
                       <CheckCircle className="mr-2 h-5 w-5" />
-                      Enregistrer les modifications
+                      {lang.saveChangesButton}
                   </Button>
               </SidebarFooter>
         </Sidebar>
@@ -526,21 +524,17 @@ isSaveComicDialogOpen,
        <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
+                <AlertDialogTitle>{lang.restartAdventureTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés).
+                    {lang.restartAdventureDescription}
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setShowRestartConfirm(false)}>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={onRestartAdventure}>Recommencer</AlertDialogAction>
+                <AlertDialogCancel onClick={() => setShowRestartConfirm(false)}>{lang.cancelButton}</AlertDialogCancel>
+                <AlertDialogAction onClick={onRestartAdventure}>{lang.restartButton}</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     </div>
   );
 }
-
-    
-
-    
