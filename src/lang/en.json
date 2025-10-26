@@ -64,5 +64,14 @@
     "currentHeroTitle": "Current Hero",
     "noHeroDetails": "No details about the hero.",
     "changeAvatarPlaceholder": "Change avatar...",
-    "manageAvatarsButton": "Manage Avatars"
+    "manageAvatarsButton": "Manage Avatars",
+    "charactersTitle": "Characters",
+    "heroTitle": "Hero",
+    "presentCharactersTitle": "Present Characters",
+    "detailsAndConfigTitle": "Details & Configuration",
+    "adventureConfigTitle": "Adventure Configuration",
+    "worldConfigTitle": "World Configuration",
+    "worldDescriptionLabel": "World Description"
 }
+
+    

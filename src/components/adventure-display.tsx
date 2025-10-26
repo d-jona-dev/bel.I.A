@@ -140,22 +140,23 @@ const getAffinityIcon = (affinity: number) => {
 };
 
 
-const CharacterStatusDisplay = ({ heroSettings, characters }: { heroSettings: AdventureSettings, characters: Character[]}) => {
+const CharacterStatusDisplay = ({ heroSettings, characters, currentLanguage }: { heroSettings: AdventureSettings, characters: Character[], currentLanguage: string}) => {
     if (!heroSettings && characters.length === 0) return null;
+    const lang = i18n[currentLanguage as Language] || i18n.en;
     
     return (
         <Card>
             <CardHeader className="p-3">
                 <CardTitle className="text-base flex items-center gap-2">
                     <UserIcon className="h-5 w-5"/>
-                    Personnages
+                    {lang.charactersTitle}
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0 space-y-4">
                  {/* Hero Display */}
                  {heroSettings.playerName && (
                     <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Héros</Label>
+                        <Label className="text-xs text-muted-foreground">{lang.heroTitle}</Label>
                         <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10">
                                 {isValidUrl(heroSettings.playerPortraitUrl) ? (
@@ -173,7 +174,7 @@ const CharacterStatusDisplay = ({ heroSettings, characters }: { heroSettings: Ad
                 {characters.length > 0 && heroSettings.playerName && <Separator />}
                 {characters.length > 0 && (
                      <div className="space-y-3">
-                        <Label className="text-xs text-muted-foreground">Personnages Présents</Label>
+                        <Label className="text-xs text-muted-foreground">{lang.presentCharactersTitle}</Label>
                          {characters.filter(c => !c.isPlaceholder).map(char => (
                             <div key={char.id} className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
@@ -915,7 +916,7 @@ export function AdventureDisplay({
                     </CardFooter>
                 </Card>
 
-                <CharacterStatusDisplay heroSettings={adventureSettings} characters={characters} />
+                <CharacterStatusDisplay heroSettings={adventureSettings} characters={characters} currentLanguage={currentLanguage} />
 
 
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
@@ -985,3 +986,6 @@ export function AdventureDisplay({
   );
 }
 
+
+
+    

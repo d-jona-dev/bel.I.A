@@ -56,5 +56,14 @@
     "currentHeroTitle": "現在のヒーロー",
     "noHeroDetails": "ヒーローに関する詳細はありません。",
     "changeAvatarPlaceholder": "アバターを変更...",
-    "manageAvatarsButton": "アバターを管理"
+    "manageAvatarsButton": "アバターを管理",
+    "charactersTitle": "キャラクター",
+    "heroTitle": "ヒーロー",
+    "presentCharactersTitle": "登場キャラクター",
+    "detailsAndConfigTitle": "詳細と設定",
+    "adventureConfigTitle": "冒険の設定",
+    "worldConfigTitle": "世界設定",
+    "worldDescriptionLabel": "世界の説明"
 }
+
+    

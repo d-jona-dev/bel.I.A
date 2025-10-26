@@ -56,5 +56,14 @@
     "currentHeroTitle": "当前英雄",
     "noHeroDetails": "没有关于英雄的详细信息。",
     "changeAvatarPlaceholder": "更换头像...",
-    "manageAvatarsButton": "管理头像"
+    "manageAvatarsButton": "管理头像",
+    "charactersTitle": "角色",
+    "heroTitle": "英雄",
+    "presentCharactersTitle": "当前角色",
+    "detailsAndConfigTitle": "详细信息和配置",
+    "adventureConfigTitle": "冒险配置",
+    "worldConfigTitle": "世界配置",
+    "worldDescriptionLabel": "世界描述"
 }
+
+    

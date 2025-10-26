@@ -56,5 +56,14 @@
     "currentHeroTitle": "Eroe Attuale",
     "noHeroDetails": "Nessun dettaglio sull'eroe.",
     "changeAvatarPlaceholder": "Cambia avatar...",
-    "manageAvatarsButton": "Gestisci Avatar"
+    "manageAvatarsButton": "Gestisci Avatar",
+    "charactersTitle": "Personaggi",
+    "heroTitle": "Eroe",
+    "presentCharactersTitle": "Personaggi Presenti",
+    "detailsAndConfigTitle": "Dettagli e Configurazione",
+    "adventureConfigTitle": "Configurazione Avventura",
+    "worldConfigTitle": "Configurazione Mondo",
+    "worldDescriptionLabel": "Descrizione del Mondo"
 }
+
+    
