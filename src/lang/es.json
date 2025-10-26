@@ -4,5 +4,8 @@
     "addPlaceholderTooltip": "Añadir Marcador de Posición de Personaje",
     "visionConsent": "Entiendo que la imagen se enviará a un modelo de IA para su análisis y puede que no permanezca privada. No utilice imágenes personales o sensibles.",
     "memory": "Memoria",
-    "addMemory": "Añadir recuerdo"
+    "addMemory": "Añadir recuerdo",
+    "noImageGenerated": "No se ha generado ninguna imagen para esta escena.",
+    "comicEditorButton": "Editor de Cómics",
+    "generateButton": "Generar"
 }

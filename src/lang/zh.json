@@ -4,5 +4,8 @@
     "addPlaceholderTooltip": "添加角色占位符",
     "visionConsent": "我理解该图像将被发送到人工智能模型进行分析，并且可能不会保持私密。请勿使用个人或敏感图像。",
     "memory": "记忆",
-    "addMemory": "添加记忆"
+    "addMemory": "添加记忆",
+    "noImageGenerated": "未为此场景生成图像。",
+    "comicEditorButton": "漫画编辑器",
+    "generateButton": "生成"
 }

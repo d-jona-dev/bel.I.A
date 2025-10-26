@@ -12,5 +12,8 @@
     "placeholderNamePlaceholder": "Ex: O Guerreiro, O Mercador...",
     "npcNamePlaceholder": "Ex: Roric, Elara...",
     "npcDetailsLabel": "Detalhes do NPC",
-    "npcDetailsPlaceholder": "Descrição, personalidade, papel..."
+    "npcDetailsPlaceholder": "Descrição, personalidade, papel...",
+    "noImageGenerated": "Nenhuma imagem gerada para esta cena.",
+    "comicEditorButton": "Editor de Quadrinhos",
+    "generateButton": "Gerar"
 }

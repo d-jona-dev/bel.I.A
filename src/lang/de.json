@@ -4,5 +4,8 @@
     "addPlaceholderTooltip": "Charakter-Platzhalter hinzufügen",
     "visionConsent": "Ich verstehe, dass das Bild zur Analyse an ein KI-Modell gesendet wird und möglicherweise nicht privat bleibt. Verwenden Sie keine persönlichen oder sensiblen Bilder.",
     "memory": "Gedächtnis",
-    "addMemory": "Erinnerung hinzufügen"
+    "addMemory": "Erinnerung hinzufügen",
+    "noImageGenerated": "Kein Bild für diese Szene generiert.",
+    "comicEditorButton": "Comic-Editor",
+    "generateButton": "Generieren"
 }

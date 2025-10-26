@@ -12,5 +12,8 @@
     "placeholderNamePlaceholder": "Ex: Le Guerrier, Le Marchand...",
     "npcNamePlaceholder": "Ex: Roric, Elara...",
     "npcDetailsLabel": "Détails du PNJ",
-    "npcDetailsPlaceholder": "Description, personnalité, rôle..."
+    "npcDetailsPlaceholder": "Description, personnalité, rôle...",
+    "noImageGenerated": "Aucune image générée pour cette scène.",
+    "comicEditorButton": "Éditeur BD",
+    "generateButton": "Générer"
 }

@@ -52,6 +52,8 @@ import { Input } from "./ui/input";
 import { createNewPage as createNewComicPage, exportPageAsJpeg } from "./ComicPageEditor";
 import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 import { Progress } from "@/components/ui/progress";
+import { i18n, type Language } from "@/lib/i18n";
+
 
 interface AdventureDisplayProps {
     playerId: string;
@@ -256,6 +258,8 @@ export function AdventureDisplay({
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const lang = i18n[currentLanguage as Language] || i18n.en;
+
 
     React.useEffect(() => {
         try {
@@ -766,7 +770,7 @@ export function AdventureDisplay({
                         ) : (
                             <div className="text-center text-muted-foreground">
                                 <ImageIcon className="h-12 w-12 mx-auto mb-2" />
-                                <p>Aucune image générée pour cette scène.</p>
+                                <p>{lang.noImageGenerated}</p>
                             </div>
                         )}
                     </CardContent>
@@ -786,7 +790,7 @@ export function AdventureDisplay({
                                 setImageEditorOpen(true);
                             }}
                         >
-                            <Edit3 className="mr-2 h-4 w-4" /> Éditeur BD
+                            <Edit3 className="mr-2 h-4 w-4" /> {lang.comicEditorButton}
                         </Button>
                         <div className="flex w-full gap-2">
                             <DropdownMenu>
@@ -834,7 +838,7 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || !lastAiMessageWithScene}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>Générer</span>
+                                            <span>{lang.generateButton}</span>
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>

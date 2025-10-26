@@ -4,5 +4,8 @@
     "addPlaceholderTooltip": "キャラクタープレースホルダーを追加",
     "visionConsent": "この画像はAIモデルに送信されて分析され、プライベートなものではなくなる可能性があることを理解しています。個人的または機密性の高い画像は使用しないでください。",
     "memory": "記憶",
-    "addMemory": "思い出を追加"
+    "addMemory": "思い出を追加",
+    "noImageGenerated": "このシーンの画像は生成されませんでした。",
+    "comicEditorButton": "コミックエディター",
+    "generateButton": "生成"
 }

@@ -12,5 +12,8 @@
     "placeholderNamePlaceholder": "E.g.: The Warrior, The Merchant...",
     "npcNamePlaceholder": "E.g.: Roric, Elara...",
     "npcDetailsLabel": "NPC Details",
-    "npcDetailsPlaceholder": "Description, personality, role..."
+    "npcDetailsPlaceholder": "Description, personality, role...",
+    "noImageGenerated": "No image generated for this scene.",
+    "comicEditorButton": "Comic Editor",
+    "generateButton": "Generate"
 }
