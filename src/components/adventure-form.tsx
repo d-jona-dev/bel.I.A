@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -10,7 +9,7 @@ import type { AdventureSettings, AiConfig, LocalizedText } from '@/types';
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, User, UserPlus, Languages, Loader2, Globe, Rocket } from "lucide-react";
+import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
@@ -21,9 +20,9 @@ import { i18n, type Language } from "@/lib/i18n";
 import { Textarea } from "./ui/textarea";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { bulkTranslateText } from "@/ai/flows/bulk-translate-text";
 import { translateText } from "@/ai/flows/translate-text";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Globe } from "lucide-react";
 
 
 // Schemas are kept here as they define the shape for the entire form,
@@ -177,54 +176,30 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
          toast({ title: isPlaceholder ? 'Emplacement de personnage ajouté' : 'Personnage ajouté' });
     };
 
-     const handleTranslateToEnglish = async (field: 'world' | 'initialSituation', sourceLang: Language) => {
+    const handleTranslate = async (field: 'world' | 'initialSituation', sourceLang: Language, targetLang: Language) => {
         const textToTranslate = form.getValues(`${field}.${sourceLang}`);
         if (!textToTranslate) {
             toast({ title: "Texte manquant", description: `Veuillez d'abord écrire le texte en ${sourceLang.toUpperCase()}.`, variant: "destructive" });
             return;
         }
 
-        setIsTranslating({ ...isTranslating, [`${field}-${sourceLang}-en`]: true });
-        toast({ title: "Traduction en cours...", description: `Traduction de ${sourceLang.toUpperCase()} vers l'Anglais.` });
+        const translationKey = `${field}-${sourceLang}-${targetLang}`;
+        setIsTranslating(prev => ({ ...prev, [translationKey]: true }));
+        toast({ title: "Traduction en cours...", description: `Traduction de ${sourceLang.toUpperCase()} vers ${targetLang.toUpperCase()}.` });
 
         try {
-            const result = await translateText({ text: textToTranslate, language: 'English' });
-            form.setValue(`${field}.en`, result.translatedText, { shouldValidate: true, shouldDirty: true });
-            toast({ title: "Traduction terminée!", description: "Le champ anglais a été mis à jour." });
+            const targetLanguageName = new Intl.DisplayNames(['en'], { type: 'language' }).of(targetLang) || targetLang;
+            const result = await translateText({ text: textToTranslate, language: targetLanguageName });
+            form.setValue(`${field}.${targetLang}`, result.translatedText, { shouldValidate: true, shouldDirty: true });
+            toast({ title: "Traduction terminée!", description: `Le champ ${targetLang.toUpperCase()} a été mis à jour.` });
         } catch (error) {
-            console.error("Translation to English failed:", error);
+            console.error(`Translation from ${sourceLang} to ${targetLang} failed:`, error);
             toast({ title: "Erreur de traduction", description: error instanceof Error ? error.message : "Une erreur inconnue est survenue.", variant: "destructive" });
         } finally {
-            setIsTranslating({ ...isTranslating, [`${field}-${sourceLang}-en`]: false });
+            setIsTranslating(prev => ({ ...prev, [translationKey]: false }));
         }
     };
-
-    const handleBulkTranslateFromEnglish = async (field: 'world' | 'initialSituation') => {
-        const textToTranslate = form.getValues(`${field}.en`);
-        if (!textToTranslate) {
-            toast({ title: "Texte anglais manquant", description: "Veuillez d'abord fournir le texte en anglais.", variant: "destructive" });
-            return;
-        }
-
-        setIsTranslating({ ...isTranslating, [`${field}-en-all`]: true });
-        toast({ title: "Traduction en masse en cours...", description: "Traduction de l'anglais vers toutes les autres langues." });
-
-        try {
-            const targetLanguages = allLanguageCodes.filter(l => l !== 'en');
-            const result = await bulkTranslateText({ text: textToTranslate, sourceLanguage: 'en', targetLanguages });
-            
-            const currentValues = form.getValues(field);
-            form.setValue(field, { ...currentValues, ...result }, { shouldValidate: true, shouldDirty: true });
-
-            toast({ title: "Traduction terminée!", description: "Tous les champs de langue ont été mis à jour." });
-        } catch (error) {
-            console.error("Bulk translation from English failed:", error);
-            toast({ title: "Erreur de traduction", description: error instanceof Error ? error.message : "Une erreur inconnue est survenue.", variant: "destructive" });
-        } finally {
-            setIsTranslating({ ...isTranslating, [`${field}-en-all`]: false });
-        }
-    };
-
+    
 
     return (
         <FormProvider {...form}>
@@ -259,15 +234,22 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                 )}
                                             />
                                             {lang !== 'en' ? (
-                                                <Button type="button" onClick={() => handleTranslateToEnglish('world', lang)} disabled={isTranslating[`world-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
+                                                <Button type="button" onClick={() => handleTranslate('world', lang, 'en')} disabled={isTranslating[`world-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
                                                     {isTranslating[`world-${lang}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
                                                     Traduire en Anglais
                                                 </Button>
                                             ) : (
-                                                <Button type="button" onClick={() => handleBulkTranslateFromEnglish('world')} disabled={isTranslating['world-en-all']} size="sm" className="mt-2">
-                                                    {isTranslating['world-en-all'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
-                                                    Traduire vers toutes les autres langues
-                                                </Button>
+                                                <div className="mt-2 space-y-2">
+                                                    <Label className="text-xs text-muted-foreground">Traduire depuis l'Anglais vers :</Label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {allLanguageCodes.filter(l => l !== 'en').map(targetLang => (
+                                                            <Button key={targetLang} type="button" onClick={() => handleTranslate('world', 'en', targetLang)} disabled={isTranslating[`world-en-${targetLang}`]} size="xs" variant="outline">
+                                                                {isTranslating[`world-en-${targetLang}`] ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}
+                                                                {targetLang.toUpperCase()}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
                                         </TabsContent>
                                     ))}
@@ -306,15 +288,22 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                                     )}
                                                 />
                                                 {lang !== 'en' ? (
-                                                    <Button type="button" onClick={() => handleTranslateToEnglish('initialSituation', lang)} disabled={isTranslating[`initialSituation-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
+                                                    <Button type="button" onClick={() => handleTranslate('initialSituation', lang, 'en')} disabled={isTranslating[`initialSituation-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
                                                         {isTranslating[`initialSituation-${lang}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
                                                         Traduire en Anglais
                                                     </Button>
                                                 ) : (
-                                                    <Button type="button" onClick={() => handleBulkTranslateFromEnglish('initialSituation')} disabled={isTranslating['initialSituation-en-all']} size="sm" className="mt-2">
-                                                        {isTranslating['initialSituation-en-all'] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
-                                                        Traduire vers toutes les autres langues
-                                                    </Button>
+                                                    <div className="mt-2 space-y-2">
+                                                        <Label className="text-xs text-muted-foreground">Traduire depuis l'Anglais vers :</Label>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {allLanguageCodes.filter(l => l !== 'en').map(targetLang => (
+                                                                <Button key={targetLang} type="button" onClick={() => handleTranslate('initialSituation', 'en', targetLang)} disabled={isTranslating[`initialSituation-en-${targetLang}`]} size="xs" variant="outline">
+                                                                    {isTranslating[`initialSituation-en-${targetLang}`] ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}
+                                                                    {targetLang.toUpperCase()}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </TabsContent>
                                         ))}
@@ -324,20 +313,18 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         </Accordion>
                     )}
 
-                     {!isLiveAdventure && (
-                        <NpcCharacterConfig 
-                            fields={fields} 
-                            remove={remove} 
-                            onAddCharacter={handleAddCharacter}
-                        />
-                    )}
+                    <NpcCharacterConfig 
+                        fields={fields} 
+                        remove={remove} 
+                        onAddCharacter={handleAddCharacter}
+                        currentLanguage={currentLanguage}
+                    />
+
                     <GameModesConfig />
-                    <TimeConfig />
+                    <TimeConfig currentLanguage={currentLanguage} />
                 </div>
             </form>
         </FormProvider>
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    
