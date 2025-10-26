@@ -493,38 +493,38 @@ export default function HistoiresPage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{lang.manageStoriesTooltip}</h1>
+        <h1 className="text-3xl font-bold">{lang.savedStoriesTitle}</h1>
         <div className="flex gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm"><Brush className="mr-2 h-4 w-4"/> Nettoyer</Button>
+                <Button variant="destructive" size="sm"><Brush className="mr-2 h-4 w-4"/> {lang.clearDataButton}</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Nettoyer toutes les données locales ?</AlertDialogTitle>
+                  <AlertDialogTitle>{lang.clearDataDialogTitle}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Cette action est irréversible. Elle supprimera toutes les histoires, personnages et bandes dessinées sauvegardés dans ce navigateur. Êtes-vous sûr de vouloir continuer ?
+                    {lang.clearDataDialogDesc}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearLocalStorage}>Oui, tout nettoyer</AlertDialogAction>
+                  <AlertDialogCancel>{lang.cancelButton}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearLocalStorage}>{lang.clearDataConfirmButton}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
             <input type="file" ref={importFileRef} onChange={handleImportStory} accept=".json" className="hidden" />
             <Button variant="outline" onClick={() => importFileRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" /> Importer
+              <Upload className="mr-2 h-4 w-4" /> {lang.importButton}
             </Button>
             <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> {lang.aiConfigTitle}</Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogTitle>{lang.aiGlobalConfigTitle}</DialogTitle>
                         <DialogDescription>
-                            Configurez les modèles d'IA utilisés pour la génération de texte et d'images dans toute l'application.
+                            {lang.aiGlobalConfigDescription}
                         </DialogDescription>
                     </DialogHeader>
                     <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
@@ -532,17 +532,17 @@ export default function HistoiresPage() {
             </Dialog>
             <Link href="/creation-assistee">
               <Button variant="default">
-                <Bot className="mr-2 h-4 w-4" /> Création Assistée (expérimental)
+                <Bot className="mr-2 h-4 w-4" /> {lang.assistedCreationButton}
               </Button>
             </Link>
             <Button onClick={openCreateDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Aventure
+                <PlusCircle className="mr-2 h-4 w-4" /> {lang.newAdventureButton}
             </Button>
         </div>
       </div>
 
       <section className="mb-12">
-        <h2 className="text-2xl font-semibold mb-4">Mes Histoires Sauvegardées</h2>
+        <h2 className="text-2xl font-semibold mb-4">{lang.mySavedStories}</h2>
         <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
           {savedStories.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -550,22 +550,22 @@ export default function HistoiresPage() {
                 <Card key={story.id}>
                   <CardHeader>
                     <CardTitle>{story.title}</CardTitle>
-                    <CardDescription>Sauvegardée le {story.date}</CardDescription>
+                    <CardDescription>{lang.savedOnDate} {story.date}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground line-clamp-3">{story.description}</p>
                   </CardContent>
                   <CardFooter className="flex flex-wrap justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleLaunchStory(story.id)}>
-                      <Play className="mr-2 h-4 w-4" /> Lancer
+                      <Play className="mr-2 h-4 w-4" /> {lang.launchButton}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => openEditDialog(story)}>
-                        <Edit className="mr-2 h-4 w-4" /> Modifier
+                        <Edit className="mr-2 h-4 w-4" /> {lang.editButton}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" onClick={() => setStoryToDelete(story)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                          <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteButton}
                         </Button>
                       </AlertDialogTrigger>
                       {storyToDelete?.id === story.id && (
@@ -573,23 +573,23 @@ export default function HistoiresPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center">
                               <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
-                              Confirmer la Suppression
+                              {lang.confirmDeletion}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer l'histoire "{storyToDelete.title}" ? Cette action est irréversible.
+                              {lang.deleteStoryConfirmation.replace('{storyTitle}', storyToDelete.title)}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setStoryToDelete(null)}>Annuler</AlertDialogCancel>
+                            <AlertDialogCancel onClick={() => setStoryToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
                             <AlertDialogAction onClick={confirmDeleteStory}>
-                              Supprimer Définitivement
+                              {lang.deletePermanentlyButton}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       )}
                     </AlertDialog>
                     <Button variant="outline" size="sm" onClick={() => handleDownloadStory(story)}>
-                        <Download className="mr-2 h-4 w-4"/> Télécharger
+                        <Download className="mr-2 h-4 w-4"/> {lang.downloadButton}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -597,7 +597,7 @@ export default function HistoiresPage() {
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-10">
-              Aucune histoire sauvegardée pour le moment. Commencez une nouvelle aventure !
+              {lang.noSavedStories}
             </p>
           )}
         </ScrollArea>
@@ -605,7 +605,7 @@ export default function HistoiresPage() {
 
       <section>
         <div className="flex items-center gap-4 mb-4">
-            <h2 className="text-2xl font-semibold">Chatter avec un Personnage</h2>
+            <h2 className="text-2xl font-semibold">{lang.chatWithCharacterTitle}</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <UsersIcon className="h-4 w-4" />
                 <span>{lang.globalCharactersCountTooltip.replace('{count}', String(savedCharacters.length))}</span>
@@ -613,7 +613,7 @@ export default function HistoiresPage() {
         </div>
         <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
           {isLoading ? (
-            <p className="text-muted-foreground text-center py-10">Chargement des personnages...</p>
+            <p className="text-muted-foreground text-center py-10">{lang.loadingCharacters}</p>
           ) : savedCharacters.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {savedCharacters.map((character) => (
@@ -628,18 +628,18 @@ export default function HistoiresPage() {
                     </Avatar>
                     <div className="flex-1">
                       <CardTitle>{character.name}</CardTitle>
-                      <CardDescription className="line-clamp-1">{character.details || "Aucune description."}</CardDescription>
+                      <CardDescription className="line-clamp-1">{character.details || lang.noDescription}</CardDescription>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground line-clamp-2">
-                      Affinité (vs Joueur): {character.affinity ?? 'N/A'}
+                      {lang.affinityVsPlayer}: {character.affinity ?? 'N/A'}
                     </p>
                   </CardContent>
                   <CardFooter className="flex justify-end gap-2">
                     <Link href={`/chat/${character.id}`}>
                       <Button variant="default" size="sm">
-                        <MessageSquare className="mr-2 h-4 w-4" /> Chatter
+                        <MessageSquare className="mr-2 h-4 w-4" /> {lang.chatButton}
                       </Button>
                     </Link>
                   </CardFooter>
@@ -648,7 +648,7 @@ export default function HistoiresPage() {
             </div>
           ) : (
             <p className="text-muted-foreground text-center py-10">
-              Aucun personnage sauvegardé globalement. Sauvegardez des personnages depuis vos aventures pour chatter avec eux.
+              {lang.noGlobalCharactersForChat}
             </p>
           )}
         </ScrollArea>
@@ -657,17 +657,17 @@ export default function HistoiresPage() {
        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>Créer une Nouvelle Aventure</DialogTitle>
+                    <DialogTitle>{lang.createNewAdventureTitle}</DialogTitle>
                     <DialogDescription>
-                        Configurez tous les aspects de votre nouvelle histoire.
+                        {lang.createNewAdventureDesc}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto -mx-6 px-6">
                   {createForm}
                 </div>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button onClick={handleCreateNewStory} disabled={!isCreateFormValid}>Créer et Lancer</Button>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>{lang.cancelButton}</Button>
+                    <Button onClick={handleCreateNewStory} disabled={!isCreateFormValid}>{lang.createAndLaunchButton}</Button>
                  </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -675,17 +675,17 @@ export default function HistoiresPage() {
         <Dialog open={!!editingStory} onOpenChange={(open) => { if(!open) setEditingStory(null) }}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>Modifier l'Histoire : {editingStory?.title}</DialogTitle>
+                    <DialogTitle>{lang.editStoryTitle}: {editingStory?.title}</DialogTitle>
                     <DialogDescription>
-                        Ajustez les détails de votre aventure.
+                        {lang.editStoryDesc}
                     </DialogDescription>
                 </DialogHeader>
                  <div className="flex-1 overflow-y-auto -mx-6 px-6">
                     {editForm}
                  </div>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setEditingStory(null)}>Annuler</Button>
-                    <Button onClick={handleSaveChanges}>Enregistrer les Modifications</Button>
+                    <Button variant="outline" onClick={() => setEditingStory(null)}>{lang.cancelButton}</Button>
+                    <Button onClick={handleSaveChanges}>{lang.saveChangesButton}</Button>
                  </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -693,18 +693,18 @@ export default function HistoiresPage() {
         <Dialog open={!!assigningSlotsForStory} onOpenChange={() => setAssigningSlotsForStory(null)}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Assigner des Personnages</DialogTitle>
+                    <DialogTitle>{lang.assignCharactersTitle}</DialogTitle>
                     <DialogDescription>
-                        Cette histoire contient des rôles à remplir. Choisissez qui jouera chaque rôle parmi vos personnages sauvegardés.
+                        {lang.assignCharactersDesc}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     {(assigningSlotsForStory?.adventureState.characters || []).filter(c => c.isPlaceholder).map(slot => (
                         <div key={slot.id} className="space-y-2">
-                             <Label>Rôle conseillé : <span className="font-semibold">{slot.name}</span></Label>
+                             <Label>{lang.suggestedRole}: <span className="font-semibold">{slot.name}</span></Label>
                             <Select onValueChange={(charId) => setSlotAssignments(prev => ({...prev, [slot.id!]: charId}))}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Choisir un personnage..." />
+                                    <SelectValue placeholder={lang.chooseCharacterPlaceholder} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {savedCharacters.length > 0 ? (
@@ -713,7 +713,7 @@ export default function HistoiresPage() {
                                         ))
                                      ) : (
                                         <div className="p-4 text-center text-sm text-muted-foreground">
-                                            Aucun personnage sauvegardé.
+                                            {lang.noSavedCharacters}
                                         </div>
                                     )}
                                 </SelectContent>
@@ -722,8 +722,8 @@ export default function HistoiresPage() {
                     ))}
                 </div>
                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAssigningSlotsForStory(null)}>Annuler</Button>
-                    <Button onClick={handleConfirmSlotAssignmentsAndLaunch}>Lancer l'Aventure</Button>
+                    <Button variant="outline" onClick={() => setAssigningSlotsForStory(null)}>{lang.cancelButton}</Button>
+                    <Button onClick={handleConfirmSlotAssignmentsAndLaunch}>{lang.launchAdventureButton}</Button>
                  </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -731,3 +731,4 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
