@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Schemas and types for the creative assistant AI flow.
  * This file does not contain server-side logic and can be imported by client/server components.
@@ -14,10 +13,9 @@ const SuggestionSchema = z.object({
       'initialSituation', 
       'characterName', 
       'characterDetails',
-      'rpgMode',
-      'relationsMode',
-      'strategyMode',
-      'comicModeActive'
+      'characterPlaceholder', // NOUVEAU: Pour suggérer un rôle
+      'comicModeActive',
+      'timeManagement.enabled' // NOUVEAU: Pour la gestion du temps
     ]).describe("The target form field for the suggestion."),
   value: z.union([
       z.string(), 
@@ -25,7 +23,7 @@ const SuggestionSchema = z.object({
       z.object({
           fr: z.string().optional(),
           en: z.string().optional(),
-      }).catchall(z.string()) // More specific object schema for localized text
+      }).catchall(z.string())
     ]).describe("The suggested content. For 'world' and 'initialSituation', this MUST be an object like {'fr': 'text...'}. For character fields, it's a string. For modes, it's a boolean."),
 });
 

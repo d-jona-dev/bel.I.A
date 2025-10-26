@@ -152,6 +152,10 @@ export default function CreationAssisteePage() {
         if (suggestion.field === 'characterName') {
             formApi.append('characters', { id: `char-${uid()}`, name: suggestion.value, details: '' });
             toast({ title: "Suggestion Appliquée", description: `Nouveau personnage '${suggestion.value}' ajouté.` });
+        
+        } else if (suggestion.field === 'characterPlaceholder') {
+            formApi.append('characters', { id: `char-ph-${uid()}`, name: suggestion.value, details: 'Emplacement', isPlaceholder: true });
+            toast({ title: "Suggestion Appliquée", description: `Emplacement de personnage '${suggestion.value}' ajouté.` });
 
         } else if (suggestion.field === 'characterDetails') {
             const lastCharIndex = currentCharacters.length - 1;
