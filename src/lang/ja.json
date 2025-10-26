@@ -82,6 +82,7 @@
     "startTimeLabel": "開始時刻 (HH:MM)",
     "timePerTurnLabel": "ターンごとの時間 (HH:MM)",
     "dayNamesLabel": "曜日名（カンマ区切り）",
+    "dayNamesDefault": "月曜日, 火曜日, 水曜日, 木曜日, 金曜日, 土曜日, 日曜日",
     "timeFormatLabel": "時刻形式",
     "timeFormat24h": "24時間",
     "timeFormat12h": "12時間 (AM/PM)",

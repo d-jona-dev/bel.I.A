@@ -82,6 +82,7 @@
     "startTimeLabel": "Начальное время (ЧЧ:ММ)",
     "timePerTurnLabel": "Время за ход (ЧЧ:ММ)",
     "dayNamesLabel": "Названия дней (через запятую)",
+    "dayNamesDefault": "Понедельник, Вторник, Среда, Четверг, Пятница, Суббота, Воскресенье",
     "timeFormatLabel": "Формат времени",
     "timeFormat24h": "24 часа",
     "timeFormat12h": "12 часов (AM/PM)",

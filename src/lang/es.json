@@ -82,6 +82,7 @@
     "startTimeLabel": "Hora de inicio (HH:MM)",
     "timePerTurnLabel": "Tiempo por turno (HH:MM)",
     "dayNamesLabel": "Nombres de los días (separados por comas)",
+    "dayNamesDefault": "Lunes, Martes, Miércoles, Jueves, Viernes, Sábado, Domingo",
     "timeFormatLabel": "Formato de hora",
     "timeFormat24h": "24 Horas",
     "timeFormat12h": "12 Horas (AM/PM)",

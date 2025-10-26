@@ -83,6 +83,7 @@
     "startTimeLabel": "प्रारंभ समय (HH:MM)",
     "timePerTurnLabel": "प्रति मोड़ समय (HH:MM)",
     "dayNamesLabel": "दिन के नाम (अल्पविराम से अलग)",
+    "dayNamesDefault": "सोमवार, मंगलवार, बुधवार, गुरुवार, शुक्रवार, शनिवार, रविवार",
     "timeFormatLabel": "समय प्रारूप",
     "timeFormat24h": "24 घंटे",
     "timeFormat12h": "12 घंटे (AM/PM)",

@@ -82,6 +82,7 @@
     "startTimeLabel": "Start Time (HH:MM)",
     "timePerTurnLabel": "Time per turn (HH:MM)",
     "dayNamesLabel": "Day names (comma separated)",
+    "dayNamesDefault": "Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday",
     "timeFormatLabel": "Time format",
     "timeFormat24h": "24 Hours",
     "timeFormat12h": "12 Hours (AM/PM)",

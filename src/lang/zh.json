@@ -82,6 +82,7 @@
     "startTimeLabel": "开始时间 (HH:MM)",
     "timePerTurnLabel": "每回合时间 (HH:MM)",
     "dayNamesLabel": "日期名称（逗号分隔）",
+    "dayNamesDefault": "星期一, 星期二, 星期三, 星期四, 星期五, 星期六, 星期日",
     "timeFormatLabel": "时间格式",
     "timeFormat24h": "24 小时",
     "timeFormat12h": "12 小时 (AM/PM)",

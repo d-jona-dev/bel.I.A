@@ -82,6 +82,7 @@
     "startTimeLabel": "Heure de départ (HH:MM)",
     "timePerTurnLabel": "Temps par tour (HH:MM)",
     "dayNamesLabel": "Noms des jours (séparés par virgule)",
+    "dayNamesDefault": "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche",
     "timeFormatLabel": "Format de l'heure",
     "timeFormat24h": "24 Heures",
     "timeFormat12h": "12 Heures (AM/PM)",

@@ -32,6 +32,7 @@ export function TimeConfig({ currentLanguage }: TimeConfigProps) {
     const { control, watch } = useFormContext<AdventureFormValues>();
     const timeEnabled = watch("timeManagement.enabled");
     const lang = i18n[currentLanguage] || i18n.en;
+    const defaultDayNames = lang.dayNamesDefault || "Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi, Dimanche";
 
     return (
         <Accordion type="single" collapsible className="w-full">
@@ -62,7 +63,23 @@ export function TimeConfig({ currentLanguage }: TimeConfigProps) {
                             <FormField control={control} name="timeManagement.day" render={({ field }) => (<FormItem><FormLabel>{lang.startDayLabel}</FormLabel><FormControl><Input type="number" min="1" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={control} name="timeManagement.currentTime" render={({ field }) => (<FormItem><FormLabel>{lang.startTimeLabel}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={control} name="timeManagement.timeElapsedPerTurn" render={({ field }) => (<FormItem><FormLabel>{lang.timePerTurnLabel}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={control} name="timeManagement.dayNames" render={({ field }) => (<FormItem><FormLabel>{lang.dayNamesLabel}</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()))} value={(field.value || []).join(', ')}/></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField 
+                                control={control} 
+                                name="timeManagement.dayNames" 
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{lang.dayNamesLabel}</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                {...field} 
+                                                onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()))} 
+                                                value={(field.value || defaultDayNames.split(',').map(s => s.trim())).join(', ')}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField control={control} name="timeManagement.timeFormat" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>{lang.timeFormatLabel}</FormLabel>

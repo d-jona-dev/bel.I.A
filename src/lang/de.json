@@ -82,6 +82,7 @@
     "startTimeLabel": "Startzeit (HH:MM)",
     "timePerTurnLabel": "Zeit pro Runde (HH:MM)",
     "dayNamesLabel": "Namen der Tage (durch Komma getrennt)",
+    "dayNamesDefault": "Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag, Sonntag",
     "timeFormatLabel": "Zeitformat",
     "timeFormat24h": "24 Stunden",
     "timeFormat12h": "12 Stunden (AM/PM)",
