@@ -11,7 +11,7 @@ import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition } f
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, User, UserPlus } from "lucide-react";
+import { Upload, User, UserPlus, Languages, Loader2 } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
@@ -24,6 +24,7 @@ import { Textarea } from "./ui/textarea";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Rocket } from "lucide-react";
+import { bulkTranslateText } from "@/ai/flows/bulk-translate-text";
 
 
 // Schemas are kept here as they define the shape for the entire form,
@@ -156,6 +157,8 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr' }, ref) => {
     
     const { toast } = useToast();
+    const [isTranslatingWorld, setIsTranslatingWorld] = React.useState(false);
+    const [isTranslatingSituation, setIsTranslatingSituation] = React.useState(false);
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
@@ -212,11 +215,70 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
          toast({ title: isPlaceholder ? addPlaceholderTooltip : addCharacterTooltip });
     };
 
+    const handleBulkTranslate = async (field: 'world' | 'initialSituation') => {
+        const textToTranslate = form.getValues(`${field}.fr`);
+        if (!textToTranslate) {
+            toast({ title: "Texte manquant", description: "Veuillez d'abord écrire le texte en français.", variant: "destructive" });
+            return;
+        }
+
+        const setLoading = field === 'world' ? setIsTranslatingWorld : setIsTranslatingSituation;
+        setLoading(true);
+        toast({ title: "Traduction en cours...", description: "L'IA traduit dans toutes les langues." });
+
+        try {
+            const targetLanguages = ['en', 'es', 'it', 'de', 'ja', 'ru', 'zh', 'pt', 'hi'];
+            const result = await bulkTranslateText({ text: textToTranslate, sourceLanguage: 'fr', targetLanguages });
+            
+            form.setValue(field, { fr: textToTranslate, ...result }, { shouldValidate: true, shouldDirty: true });
+
+            toast({ title: "Traduction terminée!", description: "Le champ a été mis à jour avec toutes les traductions." });
+
+        } catch (error) {
+            console.error("Bulk translation failed:", error);
+            toast({ title: "Erreur de traduction", description: error instanceof Error ? error.message : "Une erreur inconnue est survenue.", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     return (
         <FormProvider {...form}>
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
-                    <WorldConfig currentLanguage={currentLanguage} />
+                     <Accordion type="single" collapsible className="w-full" defaultValue="world-config">
+                        <AccordionItem value="world-config">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                    <Languages className="h-5 w-5" /> Description du Monde
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="world.fr"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Description (Français)</FormLabel>
+                                            <FormControl>
+                                                <Textarea
+                                                    placeholder="Décrivez l'univers, son histoire, ses factions, sa magie..."
+                                                    className="resize-y"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="button" onClick={() => handleBulkTranslate('world')} disabled={isTranslatingWorld} size="sm">
+                                    {isTranslatingWorld ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
+                                    Traduire dans toutes les langues
+                                </Button>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                     
                     {!isLiveAdventure && (
                          <Accordion type="single" collapsible className="w-full" defaultValue="initial-situation-config">
@@ -232,7 +294,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                         name="initialSituation.fr"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Situation de départ</FormLabel>
+                                                <FormLabel>Situation de départ (Français)</FormLabel>
                                                 <FormControl>
                                                     <Textarea
                                                         placeholder="Décrivez comment l'aventure commence..."
@@ -244,6 +306,10 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                             </FormItem>
                                         )}
                                     />
+                                    <Button type="button" onClick={() => handleBulkTranslate('initialSituation')} disabled={isTranslatingSituation} size="sm">
+                                        {isTranslatingSituation ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
+                                        Traduire dans toutes les langues
+                                    </Button>
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
@@ -270,3 +336,4 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 AdventureForm.displayName = "AdventureForm";
 
     
+
