@@ -248,78 +248,78 @@ isSaveComicDialogOpen,
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Link href="/">
-                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Aventure Actuelle"> 
+                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.currentAdventureTooltip}> 
                             <HomeIcon className="h-5 w-5" />
-                            <span className="ml-2 group-data-[collapsible=icon]:hidden">Aventure</span>
+                            <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.adventurePageTitle}</span>
                           </Button>
                         </Link>
                       </TooltipTrigger>
-                       <TooltipContent side="right" align="center">Aventure Actuelle</TooltipContent>
+                       <TooltipContent side="right" align="center">{lang.currentAdventureTooltip}</TooltipContent>
                     </Tooltip>
                  </TooltipProvider>
                  <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                          <Link href="/histoires">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Histoires Sauvegardées">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.manageStoriesTooltip}>
                                <Scroll className="h-5 w-5" />
-                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Histoires</span>
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.manageStoriesTooltip}</span>
                             </Button>
                          </Link>
                       </TooltipTrigger>
-                       <TooltipContent side="right" align="center">Gérer les Histoires</TooltipContent>
+                       <TooltipContent side="right" align="center">{lang.manageStoriesTooltip}</TooltipContent>
                     </Tooltip>
                  </TooltipProvider>
                   <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/bd">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Éditeur BD">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.comicEditorTooltip}>
                                 <Clapperboard className="h-5 w-5" />
-                                <span className="ml-2 group-data-[collapsible=icon]:hidden">BD</span>
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.comicEditorTooltip}</span>
                             </Button>
                           </Link>
                         </TooltipTrigger>
-                        <TooltipContent side="right" align="center">Éditeur de BD</TooltipContent>
+                        <TooltipContent side="right" align="center">{lang.comicEditorTooltip}</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                    <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/penderie">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Penderie">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.wardrobeTooltip}>
                                 <Shirt className="h-5 w-5" />
-                                <span className="ml-2 group-data-[collapsible=icon]:hidden">Penderie</span>
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.wardrobeTooltip}</span>
                             </Button>
                           </Link>
                         </TooltipTrigger>
-                        <TooltipContent side="right" align="center">Gérer les Vêtements</TooltipContent>
+                        <TooltipContent side="right" align="center">{lang.wardrobeTooltip}</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
                 <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                          <Link href="/avatars">
-                           <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Avatars Joueur">
+                           <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.playerAvatarsTooltip}>
                                <UserCircle className="h-5 w-5" />
-                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Avatars</span>
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.playerAvatarsTooltip}</span>
                             </Button>
                          </Link>
                       </TooltipTrigger>
-                      <TooltipContent side="right" align="center">Gérer les Avatars Joueur</TooltipContent>
+                      <TooltipContent side="right" align="center">{lang.playerAvatarsTooltip}</TooltipContent>
                     </Tooltip>
                  </TooltipProvider>
                  <TooltipProvider>
                      <Tooltip>
                        <TooltipTrigger asChild>
                           <Link href="/personnages">
-                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label="Personnages Secondaires">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.secondaryCharactersTooltip}>
                                 <Users2 className="h-5 w-5" />
-                               <span className="ml-2 group-data-[collapsible=icon]:hidden">Personnages</span>
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.secondaryCharactersTooltip}</span>
                             </Button>
                           </Link>
                         </TooltipTrigger>
-                        <TooltipContent side="right" align="center">Gérer les Personnages Secondaires</TooltipContent>
+                        <TooltipContent side="right" align="center">{lang.secondaryCharactersTooltip}</TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
               </nav>
@@ -332,17 +332,17 @@ isSaveComicDialogOpen,
               className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start group-data-[collapsible=icon]:justify-center")}
             >
               <Download className="h-5 w-5" />
-              <span className="ml-2 group-data-[collapsible=icon]:hidden">Version Locale</span>
+              <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.localVersionTooltip}</span>
             </a>
             <TooltipProvider>
                  <Tooltip>
                     <TooltipTrigger asChild>
                          <Button variant="outline" className="w-full justify-start group-data-[collapsible=icon]:justify-center" onClick={() => fileInputRef.current?.click()}>
                             <Upload className="h-5 w-5" />
-                            <span className="ml-2 group-data-[collapsible=icon]:hidden">Charger</span>
+                            <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.loadButtonLabel}</span>
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="center">Charger une Aventure (JSON)</TooltipContent>
+                    <TooltipContent side="right" align="center">{lang.loadAdventureTooltip}</TooltipContent>
                  </Tooltip>
             </TooltipProvider>
             <input
@@ -357,10 +357,10 @@ isSaveComicDialogOpen,
               <TooltipTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" disabled>
                   <Settings className="h-5 w-5" />
-                  <span className="ml-2 group-data-[collapsible=icon]:hidden">Paramètres (Future)</span>
+                  <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.settingsButtonLabel}</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" align="center">Paramètres Globaux (non implémenté)</TooltipContent>
+              <TooltipContent side="right" align="center">{lang.globalSettingsTooltip}</TooltipContent>
             </Tooltip>
            </TooltipProvider>
         </SidebarFooter>
@@ -372,7 +372,7 @@ isSaveComicDialogOpen,
             <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
               <div className="flex items-center space-x-2">
                 <SidebarTrigger /> 
-                <span className="font-semibold">Aventure</span>
+                <span className="font-semibold">{lang.adventurePageTitle}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <LanguageSelector
@@ -388,7 +388,7 @@ isSaveComicDialogOpen,
                         <Save className="h-5 w-5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Sauvegarder l'Aventure (JSON)</TooltipContent>
+                    <TooltipContent>{lang.saveAdventureTooltip}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <SidebarTrigger data-sidebar-target="right-sidebar">

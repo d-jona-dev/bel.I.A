@@ -235,5 +235,18 @@
     "styleDescription": "शैली विवरण (संकेत)",
     "styleDescriptionPlaceholder": "उदा. साइबरपंक, नियॉन, भविष्यवादी, जीवंत रंग, कात्सुहिरो ओटोमो द्वारा...",
     "saveAndApply": "सहेजें और लागू करें",
-    "noNPCsForAdventure": "वर्तमान साहसिक कार्य के लिए कोई द्वितीयक पात्र परिभाषित नहीं है।"
+    "noNPCsForAdventure": "वर्तमान साहसिक कार्य के लिए कोई द्वितीयक पात्र परिभाषित नहीं है।",
+    "saveAdventureTooltip": "साहसिक कार्य सहेजें (JSON)",
+    "adventurePageTitle": "साहसिक कार्य",
+    "currentAdventureTooltip": "वर्तमान साहसिक कार्य",
+    "manageStoriesTooltip": "कहानियां प्रबंधित करें",
+    "comicEditorTooltip": "कॉमिक संपादक",
+    "wardrobeTooltip": "अलमारी प्रबंधित करें",
+    "playerAvatarsTooltip": "खिलाड़ी अवतार प्रबंधित करें",
+    "secondaryCharactersTooltip": "माध्यमिक चरित्र प्रबंधित करें",
+    "localVersionTooltip": "स्थानीय संस्करण",
+    "loadAdventureTooltip": "साहसिक कार्य लोड करें (JSON)",
+    "globalSettingsTooltip": "वैश्विक सेटिंग्स (लागू नहीं)",
+    "loadButtonLabel": "लोड",
+    "settingsButtonLabel": "सेटिंग्स (भविष्य)"
 }

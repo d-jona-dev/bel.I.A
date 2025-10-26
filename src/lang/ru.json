@@ -235,5 +235,18 @@
     "styleDescription": "Описание стиля (промпт)",
     "styleDescriptionPlaceholder": "Например, киберпанк, неон, футуристический, яркие цвета, в стиле Кацухиро Отомо...",
     "saveAndApply": "Сохранить и применить",
-    "noNPCsForAdventure": "Для текущего приключения не определены второстепенные персонажи."
+    "noNPCsForAdventure": "Для текущего приключения не определены второстепенные персонажи.",
+    "saveAdventureTooltip": "Сохранить приключение (JSON)",
+    "adventurePageTitle": "Приключение",
+    "currentAdventureTooltip": "Текущее приключение",
+    "manageStoriesTooltip": "Управление историями",
+    "comicEditorTooltip": "Редактор комиксов",
+    "wardrobeTooltip": "Управление гардеробом",
+    "playerAvatarsTooltip": "Управление аватарами игроков",
+    "secondaryCharactersTooltip": "Управление второстепенными персонажами",
+    "localVersionTooltip": "Локальная версия",
+    "loadAdventureTooltip": "Загрузить приключение (JSON)",
+    "globalSettingsTooltip": "Глобальные настройки (не реализовано)",
+    "loadButtonLabel": "Загрузить",
+    "settingsButtonLabel": "Настройки (будущее)"
 }

@@ -236,5 +236,18 @@
     "styleDescription": "Style Description (prompt)",
     "styleDescriptionPlaceholder": "E.g., cyberpunk, neon, futuristic, vibrant colors, by Katsuhiro Otomo...",
     "saveAndApply": "Save and Apply",
-    "noNPCsForAdventure": "No secondary characters defined for the current adventure."
+    "noNPCsForAdventure": "No secondary characters defined for the current adventure.",
+    "saveAdventureTooltip": "Save Adventure (JSON)",
+    "adventurePageTitle": "Adventure",
+    "currentAdventureTooltip": "Current Adventure",
+    "manageStoriesTooltip": "Manage Stories",
+    "comicEditorTooltip": "Comic Editor",
+    "wardrobeTooltip": "Manage Wardrobe",
+    "playerAvatarsTooltip": "Manage Player Avatars",
+    "secondaryCharactersTooltip": "Manage Secondary Characters",
+    "localVersionTooltip": "Local Version",
+    "loadAdventureTooltip": "Load Adventure (JSON)",
+    "globalSettingsTooltip": "Global Settings (not implemented)",
+    "loadButtonLabel": "Load",
+    "settingsButtonLabel": "Settings (future)"
 }

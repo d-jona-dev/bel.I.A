@@ -235,5 +235,18 @@
     "styleDescription": "样式描述（提示）",
     "styleDescriptionPlaceholder": "例如：赛博朋克、霓虹灯、未来主义、鲜艳的色彩，作者：大友克洋...",
     "saveAndApply": "保存并应用",
-    "noNPCsForAdventure": "当前冒险没有定义次要角色。"
+    "noNPCsForAdventure": "当前冒险没有定义次要角色。",
+    "saveAdventureTooltip": "保存冒险 (JSON)",
+    "adventurePageTitle": "冒险",
+    "currentAdventureTooltip": "当前冒险",
+    "manageStoriesTooltip": "管理故事",
+    "comicEditorTooltip": "漫画编辑器",
+    "wardrobeTooltip": "管理衣柜",
+    "playerAvatarsTooltip": "管理玩家头像",
+    "secondaryCharactersTooltip": "管理次要角色",
+    "localVersionTooltip": "本地版本",
+    "loadAdventureTooltip": "加载冒险 (JSON)",
+    "globalSettingsTooltip": "全局设置（未实现）",
+    "loadButtonLabel": "加载",
+    "settingsButtonLabel": "设置（未来）"
 }

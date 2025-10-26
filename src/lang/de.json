@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "Charakter hinzufügen",
     "addPlaceholderTooltip": "Charakter-Platzhalter hinzufügen",
@@ -236,5 +235,18 @@
     "styleDescription": "Stilbeschreibung (Prompt)",
     "styleDescriptionPlaceholder": "Z.B. Cyberpunk, Neon, futuristisch, leuchtende Farben, von Katsuhiro Otomo...",
     "saveAndApply": "Speichern und anwenden",
-    "noNPCsForAdventure": "Für das aktuelle Abenteuer sind keine Nebencharaktere definiert."
+    "noNPCsForAdventure": "Für das aktuelle Abenteuer sind keine Nebencharaktere definiert.",
+    "saveAdventureTooltip": "Abenteuer speichern (JSON)",
+    "adventurePageTitle": "Abenteuer",
+    "currentAdventureTooltip": "Aktuelles Abenteuer",
+    "manageStoriesTooltip": "Geschichten verwalten",
+    "comicEditorTooltip": "Comic-Editor",
+    "wardrobeTooltip": "Garderobe verwalten",
+    "playerAvatarsTooltip": "Spieler-Avatare verwalten",
+    "secondaryCharactersTooltip": "Nebencharaktere verwalten",
+    "localVersionTooltip": "Lokale Version",
+    "loadAdventureTooltip": "Abenteuer laden (JSON)",
+    "globalSettingsTooltip": "Globale Einstellungen (nicht implementiert)",
+    "loadButtonLabel": "Laden",
+    "settingsButtonLabel": "Einstellungen (zukünftig)"
 }

@@ -235,5 +235,18 @@
     "styleDescription": "スタイル説明（プロンプト）",
     "styleDescriptionPlaceholder": "例：サイバーパンク、ネオン、未来的、鮮やかな色、大友克洋風...",
     "saveAndApply": "保存して適用",
-    "noNPCsForAdventure": "現在の冒険にはサブキャラクターが定義されていません。"
+    "noNPCsForAdventure": "現在の冒険にはサブキャラクターが定義されていません。",
+    "saveAdventureTooltip": "冒険を保存 (JSON)",
+    "adventurePageTitle": "冒険",
+    "currentAdventureTooltip": "現在の冒険",
+    "manageStoriesTooltip": "物語を管理",
+    "comicEditorTooltip": "コミックエディター",
+    "wardrobeTooltip": "ワードローブを管理",
+    "playerAvatarsTooltip": "プレイヤーアバターを管理",
+    "secondaryCharactersTooltip": "サブキャラクターを管理",
+    "localVersionTooltip": "ローカルバージョン",
+    "loadAdventureTooltip": "冒険をロード (JSON)",
+    "globalSettingsTooltip": "グローバル設定 (未実装)",
+    "loadButtonLabel": "ロード",
+    "settingsButtonLabel": "設定 (将来)"
 }
