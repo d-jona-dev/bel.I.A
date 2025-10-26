@@ -472,26 +472,28 @@ isSaveComicDialogOpen,
                         <Separator/>
 
                       <Accordion type="single" collapsible className="w-full" defaultValue='characters-accordion'>
-                          <AccordionTrigger>
-                              <div className="flex items-center gap-2">
-                                  <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
-                              </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="pt-2">
-                                  <CharacterSidebar
-                                      characters={stagedCharacters}
-                                      onCharacterUpdate={handleCharacterUpdate}
-                                      onSaveNewCharacter={handleSaveNewCharacter}
-                                      onAddStagedCharacter={onAddStagedCharacter}
-                                      onRelationUpdate={()=>{}}
-                                      generateImageAction={generateSceneImageAction}
-                                      relationsMode={adventureSettings.relationsMode}
-                                      playerId={playerId}
-                                      playerName={stagedAdventureSettings.playerName || "Player"}
-                                      currentLanguage={currentLanguage}
-                                      adventureSettings={adventureSettings}
-                                  />
-                          </AccordionContent>
+                          <AccordionItem value="characters-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                      <CharacterSidebar
+                                          characters={stagedCharacters}
+                                          onCharacterUpdate={handleCharacterUpdate}
+                                          onSaveNewCharacter={handleSaveNewCharacter}
+                                          onAddStagedCharacter={onAddStagedCharacter}
+                                          onRelationUpdate={()=>{}}
+                                          generateImageAction={generateSceneImageAction}
+                                          relationsMode={adventureSettings.relationsMode}
+                                          playerId={playerId}
+                                          playerName={stagedAdventureSettings.playerName || "Player"}
+                                          currentLanguage={currentLanguage}
+                                          adventureSettings={adventureSettings}
+                                      />
+                              </AccordionContent>
+                          </AccordionItem>
                       </Accordion>
 
                       <Accordion type="single" collapsible className="w-full">
