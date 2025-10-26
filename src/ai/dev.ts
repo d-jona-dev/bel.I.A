@@ -3,21 +3,91 @@ import '@/ai/flows/generate-adventure.ts';
 import '@/ai/flows/generate-scene-image-genkit.ts'; // Renamed
 import '@/ai/flows/generate-scene-image-openrouter.ts'; // Added
 import '@/ai/flows/translate-text.ts';
+import '@/ai/flows/bulk-translate-text.ts'; // NOUVEAU
 import '@/ai/flows/simple-chat.ts';
 import '@/ai/flows/suggest-quest-hook.ts'; // Add the new quest hook flow
-import '@/ai/flows/suggest-player-skill.ts'; // Add the new player skill suggestion flow
-import '@/ai/flows/generate-adventure-local'; // Add the new local adventure flow
-import '@/ai/flows/describe-appearance'; // NEW: Add the appearance description flow
-import '@/ai/flows/creative-assistant-gemini'; // NEW: Add the creative assistant flow
-import '@/ai/flows/materialize-character'; // NEW: Add the character materialization flow
-import '@/ai/flows/summarize-history'; // NEW: Add the history summarization flow
-import '@/ai/flows/bulk-translate-text'; // NEW: Add the bulk translation flow
+import '@/ai-o-de-la-gestion-de-la-langue-dans-le-composant-adventure-form.tsx
+<changes>
+  <description>Ajout de boutons de traduction spécifiques à chaque langue dans le formulaire d'aventure. Chaque langue non-anglaise peut être traduite vers l'anglais. L'anglais peut être traduit vers toutes les autres langues en utilisant un flow de traduction de masse.</description>
+  <change>
+    <file>src/ai/flows/bulk-translate-text.ts</file>
+    <content><![CDATA['use server';
+/**
+ * @fileOverview A bulk text translation AI agent.
+ * Takes a source text and translates it into multiple target languages in one call.
+ */
 
-// Note: prompt-styles.ts is not a flow, so it doesn't need to be imported here.
-// Note: creative-assistant.ts acts as a router and its sub-flows are imported, so it doesn't need to be imported itself if it doesn't define a genkit flow directly.
+import { ai } from '@/ai/ai-instance';
+import { z } from 'genkit';
+
+const LANGUAGE_CODES = ['fr', 'es', 'it', 'de', 'ja', 'ru', 'zh', 'pt', 'hi'];
+
+const BulkTranslateInputSchema = z.object({
+  text: z.string().describe('The source text to translate.'),
+  sourceLanguage: z.string().describe('The language of the source text (e.g., "en", "fr").'),
+  targetLanguages: z.array(z.string()).describe('An array of language codes to translate the text into.'),
+});
+
+// The output schema must now be explicit for the Gemini API's JSON mode.
+// We define each target language as an optional property.
+const BulkTranslateOutputSchema = z.object({
+    fr: z.string().optional().describe("The translated text in French."),
+    es: z.string().optional().describe("The translated text in Spanish."),
+    it: z.string().optional().describe("The translated text in Italian."),
+    de: z.string().optional().describe("The translated text in German."),
+    ja: z.string().optional().describe("The translated text in Japanese."),
+    ru: z.string().optional().describe("The translated text in Russian."),
+    zh: z.string().optional().describe("The translated text in Chinese."),
+    pt: z.string().optional().describe("The translated text in Portuguese."),
+    hi: z.string().optional().describe("The translated text in Hindi."),
+});
+
+export type BulkTranslateInput = z.infer<typeof BulkTranslateInputSchema>;
+export type BulkTranslateOutput = z.infer<typeof BulkTranslateOutputSchema>;
+
+
+const prompt = ai.definePrompt({
+    name: 'bulkTranslatePrompt',
+    input: { schema: BulkTranslateInputSchema },
+    output: { schema: BulkTranslateOutputSchema },
+    prompt: `You are a professional translator. Translate the following text from '{{sourceLanguage}}' into each of the target languages listed.
+The output MUST be a valid JSON object where each key is a language code and the value is the translated text in that language.
+Only include the keys for the requested target languages.
+
+Source Text:
+"{{{text}}}"
+
+Target Languages: {{#each targetLanguages}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}.
+
+CRITICAL: Provide ONLY the JSON object. Do not add any extra text, explanations, or markdown.`,
+});
+
+
+export const bulkTranslateText = ai.defineFlow(
+    {
+        name: 'bulkTranslateTextFlow',
+        inputSchema: BulkTranslateInputSchema,
+        outputSchema: BulkTranslateOutputSchema,
+    },
+    async (input): Promise<BulkTranslateOutput> => {
+        try {
+            const { output } = await prompt(input);
+            if (!output) {
+                throw new Error('AI failed to return a translation object.');
+            }
+            return output;
+        } catch (e: any) {
+            console.error("Error in bulkTranslateText flow:", e);
+            const errorMessage = e.message || String(e);
+             if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
+                 throw new Error("Le quota de l'API de traduction a été dépassé. Veuillez réessayer plus tard.");
+            }
+            if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+                 throw new Error("Le modèle d'IA de traduction est actuellement surchargé. Veuillez réessayer.");
+            }
+            throw new Error(`Erreur de traduction en masse : ${errorMessage}`);
+        }
+    }
+);
+
     
-
-    
-
-    
-

@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A bulk text translation AI agent.
@@ -8,18 +7,18 @@
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
 
-const LANGUAGE_CODES = ['en', 'es', 'it', 'de', 'ja', 'ru', 'zh', 'pt', 'hi'];
+const LANGUAGE_CODES = ['fr', 'es', 'it', 'de', 'ja', 'ru', 'zh', 'pt', 'hi'];
 
 const BulkTranslateInputSchema = z.object({
   text: z.string().describe('The source text to translate.'),
-  sourceLanguage: z.string().describe('The language of the source text (e.g., "fr", "en").'),
+  sourceLanguage: z.string().describe('The language of the source text (e.g., "en", "fr").'),
   targetLanguages: z.array(z.string()).describe('An array of language codes to translate the text into.'),
 });
 
 // The output schema must now be explicit for the Gemini API's JSON mode.
 // We define each target language as an optional property.
 const BulkTranslateOutputSchema = z.object({
-    en: z.string().optional().describe("The translated text in English."),
+    fr: z.string().optional().describe("The translated text in French."),
     es: z.string().optional().describe("The translated text in Spanish."),
     it: z.string().optional().describe("The translated text in Italian."),
     de: z.string().optional().describe("The translated text in German."),
