@@ -36,6 +36,7 @@ import { ModelManager } from '@/components/model-manager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useSaveLoad } from '@/hooks/systems/useSaveLoad';
+import { i18n, type Language } from '@/lib/i18n';
 
 
 // Helper to generate a unique ID
@@ -131,9 +132,15 @@ export default function HistoiresPage() {
       image: { source: 'gemini' }
   });
   const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage] || i18n.fr;
 
   const loadData = React.useCallback(() => {
     try {
+      const savedLanguage = localStorage.getItem('adventure_language') as Language;
+      if (savedLanguage && i18n[savedLanguage]) {
+          setCurrentLanguage(savedLanguage);
+      }
       const storiesFromStorage = localStorage.getItem('adventureStories');
       if (storiesFromStorage) {
         setSavedStories(JSON.parse(storiesFromStorage));
@@ -153,13 +160,13 @@ export default function HistoiresPage() {
     } catch (error) {
       console.error("Failed to load data from localStorage:", error);
       toast({
-        title: "Erreur de chargement",
-        description: "Impossible de charger les données sauvegardées.",
+        title: lang.loadingErrorTitle,
+        description: lang.loadingErrorDescription,
         variant: "destructive",
       });
     }
     setIsLoading(false);
-  },[toast]);
+  },[toast, lang]);
 
   // Use the new hook
   const { handleDownloadStory, handleImportStory: handleImportStoryGeneric } = useSaveLoad({
@@ -167,7 +174,7 @@ export default function HistoiresPage() {
     adventureSettings: createNewAdventureState().adventureSettings,
     characters: [],
     narrativeMessages: [],
-    currentLanguage: 'fr',
+    currentLanguage: currentLanguage,
     aiConfig: aiConfig,
     loadAdventureState: () => {}, // Not used here
   });
@@ -184,7 +191,7 @@ export default function HistoiresPage() {
   const handleAiConfigChange = (newConfig: AiConfig) => {
     setAiConfig(newConfig);
     localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
-    toast({ title: "Configuration IA mise à jour."});
+    toast({ title: lang.aiConfigTitle + " mise à jour." });
   }
 
 
@@ -486,7 +493,7 @@ export default function HistoiresPage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Mes Histoires & Personnages</h1>
+        <h1 className="text-3xl font-bold">{lang.manageStoriesTooltip}</h1>
         <div className="flex gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -601,7 +608,7 @@ export default function HistoiresPage() {
             <h2 className="text-2xl font-semibold">Chatter avec un Personnage</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <UsersIcon className="h-4 w-4" />
-                <span>{savedCharacters.length} Personnage(s) Sauvegardé(s)</span>
+                <span>{lang.globalCharactersCountTooltip.replace('{count}', String(savedCharacters.length))}</span>
             </div>
         </div>
         <ScrollArea className="h-[calc(50vh-120px)] lg:h-[calc(100vh-400px)]">
