@@ -33,20 +33,19 @@ export function TimeConfig({ currentLanguage }: TimeConfigProps) {
     const timeEnabled = watch("timeManagement.enabled");
     const lang = i18n[currentLanguage] || i18n.en;
     
-    const defaultDayNamesString = i18n.en.dayNamesDefault;
-    const frDayNamesString = i18n.fr.dayNamesDefault;
+    const allDefaultDayNames = React.useMemo(() => 
+        Object.values(i18n).map(langData => langData.dayNamesDefault)
+    , []);
 
     React.useEffect(() => {
-        const currentDayNames = getValues("timeManagement.dayNames");
-        const currentDayNamesString = Array.isArray(currentDayNames) ? currentDayNames.join(', ') : '';
-        
-        const translatedDefault = lang.dayNamesDefault || defaultDayNamesString;
+        const currentDayNamesString = (getValues("timeManagement.dayNames") || []).join(', ');
+        const translatedDefault = lang.dayNamesDefault;
 
-        // Update only if the current value is one of the default values (English or French) or empty
-        if (!currentDayNamesString || currentDayNamesString === defaultDayNamesString || currentDayNamesString === frDayNamesString) {
+        // Update if the current value is empty OR if it's one of the default values from any language.
+        if (!currentDayNamesString || allDefaultDayNames.includes(currentDayNamesString)) {
             setValue("timeManagement.dayNames", translatedDefault.split(',').map(s => s.trim()), { shouldDirty: false });
         }
-    }, [currentLanguage, lang.dayNamesDefault, setValue, getValues, defaultDayNamesString, frDayNamesString]);
+    }, [currentLanguage, lang.dayNamesDefault, setValue, getValues, allDefaultDayNames]);
 
     return (
         <Accordion type="single" collapsible className="w-full">
