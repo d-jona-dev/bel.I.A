@@ -41,6 +41,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { i18n, type Language } from "@/lib/i18n";
+import { Gem, HeartCrack, HeartHandshake } from 'lucide-react';
 
 
 interface PageStructureProps {
@@ -230,6 +231,7 @@ isSaveComicDialogOpen,
 }: PageStructureProps) {
 
   const stagedCharacters = stagedAdventureSettings?.characters || [];
+  const lang = i18n[currentLanguage as Language] || i18n.en;
 
   return (
     <div className="flex w-full h-screen">
@@ -439,7 +441,7 @@ isSaveComicDialogOpen,
         {/* Right Sidebar: Config, Characters, AI Settings */}
         <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
               <SidebarHeader className="p-4 border-b border-sidebar-border">
-                  <h2 className="text-lg font-semibold text-sidebar-foreground">Détails & Configuration</h2>
+                  <h2 className="text-lg font-semibold text-sidebar-foreground">{lang.detailsAndConfigTitle}</h2>
               </SidebarHeader>
               <ScrollArea className="flex-1">
                   <SidebarContent className="p-4 space-y-6">
@@ -447,7 +449,7 @@ isSaveComicDialogOpen,
                           <AccordionItem value="adventure-config-accordion">
                               <AccordionTrigger>
                                   <div className="flex items-center gap-2">
-                                      <FileCog className="h-5 w-5" /> Configuration de l'Aventure
+                                      <FileCog className="h-5 w-5" /> {lang.adventureConfigTitle}
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pt-2">
@@ -472,7 +474,7 @@ isSaveComicDialogOpen,
                           <AccordionItem value="characters-accordion">
                               <AccordionTrigger>
                                   <div className="flex items-center gap-2">
-                                      <UsersIcon className="h-5 w-5" /> Personnages Présents
+                                      <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
                                   </div>
                               </AccordionTrigger>
                               <AccordionContent className="pt-2">
@@ -537,5 +539,7 @@ isSaveComicDialogOpen,
     </div>
   );
 }
+
+    
 
     

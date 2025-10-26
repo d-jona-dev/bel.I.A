@@ -12,7 +12,7 @@
     "imageEditorDescription": "Fügen Sie Ihrem Bild Sprechblasen hinzu und fügen Sie es dem Comic hinzu.",
     "forHero": "Für {playerName} (Held)",
     "forSpeaker": "Für {charName}",
-    "noImageToEdit": "Kein Bild zum Bearbeiten",
+    "noImageToEdit": "Kein image zu bearbeiten",
     "pleaseUploadImage": "Bitte laden Sie zuerst ein Bild hoch.",
     "imageSaved": "Bild gespeichert",
     "imageAddedToComic": "Ihr bearbeitetes Bild wurde dem Comic hinzugefügt.",
