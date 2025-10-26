@@ -1,5 +1,4 @@
 
-
 // src/app/chat/[characterId]/page.tsx
 "use client";
 
@@ -27,7 +26,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { i18n, type Language } from "@/lib/i18n";
 
 export default function CharacterChatPage() {
   const params = useParams();
@@ -42,12 +42,18 @@ export default function CharacterChatPage() {
   const [isLoadingCharacter, setIsLoadingCharacter] = React.useState<boolean>(true);
   const [adventureContextSummary, setAdventureContextSummary] = React.useState<string>("");
   const [playerName, setPlayerName] = React.useState<string>("Joueur"); // Default player name
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage];
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (characterId) {
       try {
+        const savedLanguage = localStorage.getItem('adventure_language') as Language;
+        if (savedLanguage && i18n[savedLanguage]) {
+            setCurrentLanguage(savedLanguage);
+        }
         const charactersFromStorage = localStorage.getItem('globalCharacters');
         const adventureSettingsFromStorage = localStorage.getItem('adventureSettings');
 
@@ -262,7 +268,7 @@ export default function CharacterChatPage() {
                       )}
                   </Avatar>
                   <span className="flex items-center text-muted-foreground italic p-3">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {character.name} écrit...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {character.name} {lang.writingInProgress}
                   </span>
                 </div>
               )}

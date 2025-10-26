@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { i18n, type Language } from '@/lib/i18n';
 
 interface SavedComic {
     id: string;
@@ -34,10 +35,16 @@ export default function ComicLibraryPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [comicToDelete, setComicToDelete] = React.useState<SavedComic | null>(null);
   const { toast } = useToast();
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage];
 
   const loadComics = React.useCallback(() => {
     setIsLoading(true);
     try {
+        const savedLanguage = localStorage.getItem('adventure_language') as Language;
+        if (savedLanguage && i18n[savedLanguage]) {
+            setCurrentLanguage(savedLanguage);
+        }
         const storedComics = localStorage.getItem('savedComics_v1');
         if (storedComics) {
             setSavedComics(JSON.parse(storedComics));
@@ -46,10 +53,10 @@ export default function ComicLibraryPage() {
         }
     } catch (e) {
         console.error("Failed to load comics from storage", e);
-        toast({title: "Erreur de chargement", variant: "destructive"})
+        toast({title: lang.loadingErrorTitle, variant: "destructive"})
     }
     setIsLoading(false);
-  }, [toast]);
+  }, [toast, lang]);
 
   React.useEffect(() => {
     loadComics();
@@ -64,7 +71,7 @@ export default function ComicLibraryPage() {
         toast({ title: "BD Supprimée", description: `"${comicToDelete.title}" a été retiré de votre bibliothèque.`});
     } catch (e) {
         console.error("Failed to delete comic", e);
-        toast({ title: "Erreur", description: "Impossible de supprimer la BD.", variant: "destructive"});
+        toast({ title: lang.errorTitle, description: "Impossible de supprimer la BD.", variant: "destructive"});
     }
     setComicToDelete(null);
   }
@@ -121,8 +128,8 @@ export default function ComicLibraryPage() {
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setComicToDelete(null)}>Annuler</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleDeleteComic}>Supprimer</AlertDialogAction>
+                                            <AlertDialogCancel onClick={() => setComicToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteComic}>{lang.deleteBubble}</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 )}

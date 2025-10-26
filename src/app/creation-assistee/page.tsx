@@ -9,6 +9,7 @@ import type { Character, AdventureSettings, SaveData, MapPointOfInterest, AiConf
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 import AssistantChat from '@/components/assistant-chat';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { i18n, type Language } from "@/lib/i18n";
 
 // Helper to generate a unique ID
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
@@ -75,11 +76,17 @@ export default function CreationAssisteePage() {
       llm: { source: 'gemini' },
       image: { source: 'gemini' }
     });
+    const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+    const lang = i18n[currentLanguage];
 
     const initialAdventureState = React.useMemo(() => createNewAdventureState(), []);
 
     React.useEffect(() => {
         try {
+            const savedLanguage = localStorage.getItem('adventure_language') as Language;
+            if (savedLanguage && i18n[savedLanguage]) {
+                setCurrentLanguage(savedLanguage);
+            }
             const aiConfigFromStorage = localStorage.getItem('globalAiConfig');
             if (aiConfigFromStorage) {
                 setAiConfig(JSON.parse(aiConfigFromStorage));
@@ -92,7 +99,7 @@ export default function CreationAssisteePage() {
     const handleAiConfigChange = (newConfig: AiConfig) => {
         setAiConfig(newConfig);
         localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
-        toast({ title: "Configuration IA mise à jour." });
+        toast({ title: lang.aiConfigTitle + " mise à jour." });
     };
 
     const handleCreateAndLaunch = async () => {
@@ -220,6 +227,7 @@ export default function CreationAssisteePage() {
                                 relationsMode={true}
                                 strategyMode={true}
                                 aiConfig={aiConfig}
+                                currentLanguage={currentLanguage}
                             />
                         </ScrollArea>
                     </CardContent>

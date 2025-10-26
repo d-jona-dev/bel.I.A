@@ -43,7 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { AiConfig } from '@/types';
 import { ModelManager } from '@/components/model-manager';
 import { Checkbox } from '@/components/ui/checkbox';
-import { i18n } from '@/lib/i18n';
+import { i18n, type Language } from '@/lib/i18n';
 import { generateSceneImage } from '@/ai/flows/generate-scene-image';
 
 
@@ -102,6 +102,8 @@ export default function AvatarsPage() {
   const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
   const [isProcessingVision, setIsProcessingVision] = React.useState(false);
   const [visionConsent, setVisionConsent] = React.useState(false);
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage];
 
 
   React.useEffect(() => {
@@ -132,6 +134,10 @@ export default function AvatarsPage() {
        const savedAiConfig = localStorage.getItem('globalAiConfig');
       if (savedAiConfig) {
         setAiConfig(JSON.parse(savedAiConfig));
+      }
+       const savedLanguage = localStorage.getItem('adventure_language') as Language;
+      if (savedLanguage && i18n[savedLanguage]) {
+          setCurrentLanguage(savedLanguage);
       }
 
     } catch (error) {
@@ -336,7 +342,7 @@ export default function AvatarsPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Button onClick={handleGeneratePortrait} disabled={isGeneratingPortrait} className="w-full">
-                        <Wand2 className="mr-2 h-4 w-4" /> Générer
+                        <Wand2 className="mr-2 h-4 w-4" /> {lang.generateButton}
                     </Button>
                 </div>
                     <input type="file" accept="image/*" id={`upload-portrait-${isEditing ? 'edit' : 'create'}`} className="hidden" onChange={(e) => {
@@ -349,18 +355,18 @@ export default function AvatarsPage() {
                     }}/>
                     <div className="flex gap-2">
                     <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-portrait-${isEditing ? 'edit' : 'create'}`)?.click()}>
-                        <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
+                        <UploadCloud className="mr-2 h-4 w-4"/> {lang.uploadImage}
                     </Button>
                         <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
                         </DialogTrigger>
                         <DialogContent>
-                            <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
+                            <DialogHeader><DialogTitle>{lang.setPortraitFromURLDialogTitle}</DialogTitle></DialogHeader>
                             <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
                             <DialogFooter>
-                                <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
-                                <Button onClick={handleSaveUrl}>Enregistrer</Button>
+                                <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>{lang.cancelButton}</Button>
+                                <Button onClick={handleSaveUrl}>{lang.saveURLButton}</Button>
                             </DialogFooter>
                         </DialogContent>
                         </Dialog>
@@ -368,16 +374,16 @@ export default function AvatarsPage() {
             </div>
         </div>
         <div className="space-y-2">
-            <Label>Nom</Label>
+            <Label>{lang.nameLabel}</Label>
             <Input value={avatarData.name || ''} onChange={e => setData((p: any) => ({...p, name: e.target.value}))} />
         </div>
         <div className="space-y-2">
-            <Label>Détails (Physique, Âge)</Label>
+            <Label>{lang.npcDetailsLabel} (Physique, Âge)</Label>
             <Textarea value={avatarData.details || ''} onChange={e => setData((p: any) => ({...p, details: e.target.value}))} rows={2}/>
             <div className="flex items-center gap-2 pt-1">
                 <Button size="sm" onClick={() => handleVisionScan(avatarData, setData)} disabled={isProcessingVision || !avatarData.portraitUrl || !visionConsent} className="w-full">
                     {isProcessingVision ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
-                    Scanner avec Vision
+                    {lang.describeAppearanceTooltip}
                 </Button>
                 <Checkbox id={`vision-consent-${isEditing ? 'edit' : 'create'}`} checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
                 <TooltipProvider>
@@ -388,18 +394,18 @@ export default function AvatarsPage() {
                             </Label>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-xs">
-                            <p>{i18n.fr.visionConsent}</p>
+                            <p>{lang.visionConsent}</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </div>
         </div>
         <div className="space-y-2">
-            <Label>Description (Background)</Label>
+            <Label>{lang.publicDescriptionLabel} (Background)</Label>
             <Textarea value={avatarData.description || ''} onChange={e => setData((p: any) => ({...p, description: e.target.value}))} rows={3}/>
         </div>
             <div className="space-y-2">
-            <Label>Orientation Amoureuse</Label>
+            <Label>{lang.playerOrientation}</Label>
             <Input value={avatarData.orientation || ''} onChange={e => setData((p: any) => ({...p, orientation: e.target.value}))}/>
         </div>
     </div>
@@ -417,16 +423,16 @@ export default function AvatarsPage() {
           </Button>
             <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> {lang.aiConfigTitle}</Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogTitle>{lang.aiConfigTitle}</DialogTitle>
                         <DialogDescription>
                             Configurez les modèles d'IA utilisés pour la génération de texte et d'images.
                         </DialogDescription>
                     </DialogHeader>
-                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} currentLanguage={currentLanguage} />
                 </DialogContent>
             </Dialog>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -441,7 +447,7 @@ export default function AvatarsPage() {
                 </DialogHeader>
                  {renderAvatarEditor(newAvatarData, setNewAvatarData, false)}
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>{lang.cancelButton}</Button>
                     <Button onClick={handleCreateAvatar}>Créer l'Avatar</Button>
                 </DialogFooter>
             </DialogContent>
@@ -490,7 +496,7 @@ export default function AvatarsPage() {
                     <Dialog open={editingAvatar?.id === avatar.id} onOpenChange={(open) => !open && setEditingAvatar(null)}>
                         <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" onClick={() => setEditingAvatar(JSON.parse(JSON.stringify(avatar)))}>
-                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                                <Edit className="mr-2 h-4 w-4" /> {lang.editButton}
                             </Button>
                         </DialogTrigger>
                         {editingAvatar?.id === avatar.id && (
@@ -500,8 +506,8 @@ export default function AvatarsPage() {
                                 </DialogHeader>
                                 {renderAvatarEditor(editingAvatar, setEditingAvatar, true)}
                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setEditingAvatar(null)}>Annuler</Button>
-                                  <Button onClick={handleUpdateAvatar}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
+                                  <Button variant="outline" onClick={() => setEditingAvatar(null)}>{lang.cancelButton}</Button>
+                                  <Button onClick={handleUpdateAvatar}><Save className="mr-2 h-4 w-4"/> {lang.saveButton}</Button>
                                </DialogFooter>
                            </DialogContent>
                         )}
@@ -509,7 +515,7 @@ export default function AvatarsPage() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" onClick={() => setAvatarToDelete(avatar)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                        <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteBubble}
                       </Button>
                     </AlertDialogTrigger>
                     {avatarToDelete?.id === avatar.id && (
@@ -521,14 +527,14 @@ export default function AvatarsPage() {
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setAvatarToDelete(null)}>Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={confirmDelete}>Supprimer</AlertDialogAction>
+                            <AlertDialogCancel onClick={() => setAvatarToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete}>{lang.deleteBubble}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                     )}
                   </AlertDialog>
                   <Button variant="outline" size="sm" onClick={() => handleDownloadAvatar(avatar)}>
-                    <Download className="mr-2 h-4 w-4" /> Télécharger
+                    <Download className="mr-2 h-4 w-4" /> {lang.downloadPage}
                   </Button>
                   <Button
                     variant="default"

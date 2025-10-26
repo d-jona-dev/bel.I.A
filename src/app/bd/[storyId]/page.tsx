@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import ComicPageEditor from '@/components/ComicPageEditor';
 import type { ComicPage } from '@/types';
 import { useParams } from 'next/navigation';
+import { i18n, type Language } from "@/lib/i18n";
 
 interface SavedComic {
     id: string;
@@ -24,10 +25,16 @@ export default function StoryComicEditorPage() {
 
   const [comic, setComic] = useState<SavedComic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentLanguage, setCurrentLanguage] = useState<Language>('fr');
+  const lang = i18n[currentLanguage];
 
   useEffect(() => {
     if (!storyId) return;
     try {
+      const savedLanguage = localStorage.getItem('adventure_language') as Language;
+      if (savedLanguage && i18n[savedLanguage]) {
+          setCurrentLanguage(savedLanguage);
+      }
       const storedComics = localStorage.getItem('savedComics_v1');
       if (storedComics) {
         const allComics: SavedComic[] = JSON.parse(storedComics);
@@ -35,15 +42,15 @@ export default function StoryComicEditorPage() {
         if (foundComic) {
           setComic(foundComic);
         } else {
-          toast({ title: "BD non trouvée", variant: "destructive" });
+          toast({ title: lang.errorTitle, description: "BD non trouvée", variant: "destructive" });
         }
       }
     } catch (e) {
       console.error("Failed to load comic from storage", e);
-      toast({ title: "Erreur de chargement", variant: "destructive" });
+      toast({ title: lang.loadingErrorTitle, variant: "destructive" });
     }
     setIsLoading(false);
-  }, [storyId, toast]);
+  }, [storyId, toast, lang]);
 
   const handlePagesChange = (updatedPages: ComicPage[]) => {
     if (!comic) return;
