@@ -20,6 +20,10 @@ import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
 import { ConditionsConfig } from "./adventure-form-parts/conditions-config";
 import { i18n, type Language } from "@/lib/i18n";
+import { Textarea } from "./ui/textarea";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { Rocket } from "lucide-react";
 
 
 // Schemas are kept here as they define the shape for the entire form,
@@ -213,6 +217,38 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
                     <WorldConfig currentLanguage={currentLanguage} />
+                    
+                    {!isLiveAdventure && (
+                         <Accordion type="single" collapsible className="w-full" defaultValue="initial-situation-config">
+                            <AccordionItem value="initial-situation-config">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2">
+                                        <Rocket className="h-5 w-5" /> Situation de Départ
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2 space-y-4">
+                                     <FormField
+                                        control={form.control}
+                                        name="initialSituation.fr"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Situation de départ</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Décrivez comment l'aventure commence..."
+                                                        className="resize-y"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                    )}
+
                      {!isLiveAdventure && (
                         <>
                             <NpcCharacterConfig 

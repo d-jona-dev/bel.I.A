@@ -13,9 +13,9 @@ const SuggestionSchema = z.object({
       'initialSituation', 
       'characterName', 
       'characterDetails',
-      'characterPlaceholder', // NOUVEAU: Pour suggérer un rôle
+      'characterPlaceholder',
       'comicModeActive',
-      'timeManagement.enabled' // NOUVEAU: Pour la gestion du temps
+      'timeManagement.enabled'
     ]).describe("The target form field for the suggestion."),
   value: z.union([
       z.string(), 
