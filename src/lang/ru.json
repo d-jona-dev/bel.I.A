@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Добавить персонажа",
     "addPlaceholderTooltip": "Добавить заполнитель персонажа",
@@ -235,6 +236,12 @@
     "styleDescription": "Описание стиля (промпт)",
     "styleDescriptionPlaceholder": "Например, киберпанк, неон, футуристический, яркие цвета, в стиле Кацухиро Отомо...",
     "saveAndApply": "Сохранить и применить",
+    "styleDefault": "По умолчанию",
+    "styleRealistic": "Реалистичный",
+    "styleManga": "Манга / Аниме",
+    "styleFantasy": "Эпическое фэнтези",
+    "styleOilPainting": "Масляная живопись",
+    "styleComics": "Комиксы",
     "noNPCsForAdventure": "Для текущего приключения не определены второстепенные персонажи.",
     "saveAdventureTooltip": "Сохранить приключение (JSON)",
     "adventurePageTitle": "Приключение",

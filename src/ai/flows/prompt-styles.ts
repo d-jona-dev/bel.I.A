@@ -1,5 +1,6 @@
 
 import type { SceneDescriptionForImage } from "@/types";
+import { defaultImageStyles } from "@/lib/image-styles";
 
 // This file is not a server module and can export helper functions safely.
 
@@ -65,28 +66,23 @@ export const getStyleEnhancedPrompt = (descriptionObject?: SceneDescriptionForIm
   const sizePrompt = "Generate a square image, 512x512 pixels.";
 
   const isPortrait = finalDescription.toLowerCase().includes('portrait of');
+  
+  const styleDefinition = defaultImageStyles.find(s => s.key === style);
 
   // Compose the final prompt: negative prompt first, then style directive, then scene
   if (isPortrait) {
-      const base = style && style !== "Par Défaut"
-          ? `${style}. ${finalDescription}`
+      const base = (style && style !== "default" && styleDefinition)
+          ? `${styleDefinition.prompt}. ${finalDescription}`
           : `photorealistic portrait, highly detailed, dramatic lighting. ${finalDescription}`;
 
       return `${negativePrompt} ${sizePrompt} ${base}`;
   } else {
-      const styleMap: Record<string, string> = {
-        'Réaliste': `Photorealistic, ultra-detailed, 8k, sharp focus. ${finalDescription}`,
-        'Manga / Anime': `Vibrant anime illustration, expressive faces, clean lines, cel shading, cinematic composition. ${finalDescription}`,
-        'Fantaisie Epique': `Epic fantasy painting, dramatic atmosphere, detailed armor and fabrics, grand composition. ${finalDescription}`,
-        "Peinture à l'huile": `Classical oil painting look, visible brushstrokes, painterly texture, warm tonality. ${finalDescription}`,
-        'Comics': `Bold comic-style composition, strong inks, dynamic poses, halftone elements optional. ${finalDescription}`,
-      };
-
-      const stylePart = style && style !== "Par Défaut"
-          ? (styleMap[style] || `${style}. ${finalDescription}`)
+      const stylePart = (style && style !== "default" && styleDefinition)
+          ? `${styleDefinition.prompt}. ${finalDescription}`
           : finalDescription;
 
       // Keep negative prompt and size at the start so it's consistently applied.
       return `${negativePrompt} ${sizePrompt} ${stylePart}`;
   }
 };
+

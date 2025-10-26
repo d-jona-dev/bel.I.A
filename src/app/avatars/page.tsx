@@ -45,6 +45,7 @@ import { ModelManager } from '@/components/model-manager';
 import { Checkbox } from '@/components/ui/checkbox';
 import { i18n, type Language } from '@/lib/i18n';
 import { generateSceneImage } from '@/ai/flows/generate-scene-image';
+import { defaultImageStyles, type ImageStyle } from '@/lib/image-styles';
 
 
 // Define a type for your avatar data
@@ -61,15 +62,6 @@ interface CustomImageStyle {
   name: string;
   prompt: string;
 }
-
-const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
-    { name: "Par Défaut", isDefault: true },
-    { name: "Réaliste", isDefault: true },
-    { name: "Manga / Anime", isDefault: true },
-    { name: "Fantaisie Epique", isDefault: true },
-    { name: "Peinture à l'huile", isDefault: true },
-    { name: "Comics", isDefault: true },
-];
 
 const AVATARS_STORAGE_KEY = 'playerAvatars_v2'; // increment version
 const CURRENT_AVATAR_ID_KEY = 'currentAvatarId';
@@ -91,7 +83,7 @@ export default function AvatarsPage() {
   const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
   const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
 
-  const [imageStyle, setImageStyle] = React.useState<string>("");
+  const [imageStyle, setImageStyle] = React.useState<string>('default');
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
@@ -333,7 +325,7 @@ export default function AvatarsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             {defaultImageStyles.map(style => (
-                                <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                <DropdownMenuItem key={style.key} onSelect={() => setImageStyle(style.key)}>{lang[style.langKey as keyof typeof lang] || style.key}</DropdownMenuItem>
                             ))}
                             {customStyles.length > 0 && <DropdownMenuSeparator />}
                             {customStyles.map(style => (

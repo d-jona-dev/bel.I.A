@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "चरित्र जोड़ें",
     "addPlaceholderTooltip": "चरित्र प्लेसहोल्डर जोड़ें",
@@ -72,7 +73,6 @@
     "adventureConfigTitle": "साहसिक कॉन्फ़िगरेशन",
     "worldConfigTitle": "विश्व कॉन्फ़िगरेशन",
     "worldDescriptionLabel": "विश्व विवरण",
-    "describeAppearanceTooltip": "छवि का विश्लेषण करने और चरित्र की उपस्थिति का वर्णन करने के लिए AI का उपयोग करें।",
     "timeManagementTitle": "समय प्रबंधन",
     "enableTimeManagementLabel": "समय प्रबंधन सक्षम करें",
     "enableTimeManagementDescription": "एआई प्रत्येक मोड़ पर समय आगे बढ़ाएगा।",
@@ -124,6 +124,7 @@
     "saveURLButton": "यूआरएल सहेजें",
     "appearanceDescriptionLabel": "उपस्थिति विवरण (एआई के लिए)",
     "appearanceDescriptionPlaceholder": "एक विस्तृत भौतिक विवरण बनाएं या लिखें...",
+    "describeAppearanceTooltip": "छवि का विश्लेषण करने और चरित्र की उपस्थिति का वर्णन करने के लिए AI का उपयोग करें।",
     "imageAnalysisInProgress": "छवि विश्लेषण जारी है...",
     "aiDescribingAppearance": "एआई {charName} की उपस्थिति का वर्णन कर रहा है।",
     "descriptionSuccessTitle": "विवरण सफल!",
@@ -235,6 +236,12 @@
     "styleDescription": "शैली विवरण (संकेत)",
     "styleDescriptionPlaceholder": "उदा. साइबरपंक, नियॉन, भविष्यवादी, जीवंत रंग, कात्सुहिरो ओटोमो द्वारा...",
     "saveAndApply": "सहेजें और लागू करें",
+    "styleDefault": "डिफ़ॉल्ट",
+    "styleRealistic": "यथार्थवादी",
+    "styleManga": "मंगा / एनीमे",
+    "styleFantasy": "महाकाव्य काल्पनिक",
+    "styleOilPainting": "तैल चित्र",
+    "styleComics": "कॉमिक्स",
     "noNPCsForAdventure": "वर्तमान साहसिक कार्य के लिए कोई द्वितीयक पात्र परिभाषित नहीं है।",
     "saveAdventureTooltip": "साहसिक कार्य सहेजें (JSON)",
     "adventurePageTitle": "साहसिक कार्य",

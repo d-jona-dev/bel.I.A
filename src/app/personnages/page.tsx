@@ -37,7 +37,8 @@ import { Slider } from '@/components/ui/slider';
 import { generateSceneImage } from '@/ai/flows/generate-scene-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Loader2 } from 'lucide-react';
-
+import { defaultImageStyles, type ImageStyle } from '@/lib/image-styles';
+import { i18n, type Language } from '@/lib/i18n';
 
 // Helper to generate a unique ID
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
@@ -46,15 +47,6 @@ interface CustomImageStyle {
   name: string;
   prompt: string;
 }
-
-const defaultImageStyles: Array<{ name: string; isDefault: true }> = [
-    { name: "Par Défaut", isDefault: true },
-    { name: "Réaliste", isDefault: true },
-    { name: "Manga / Anime", isDefault: true },
-    { name: "Fantaisie Epique", isDefault: true },
-    { name: "Peinture à l'huile", isDefault: true },
-    { name: "Comics", isDefault: true },
-];
 
 
 export default function PersonnagesPage() {
@@ -74,9 +66,10 @@ export default function PersonnagesPage() {
   const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
   const [portraitUrlInput, setPortraitUrlInput] = React.useState("");
 
-  const [imageStyle, setImageStyle] = React.useState<string>("");
+  const [imageStyle, setImageStyle] = React.useState<string>('default');
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
-
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage];
 
   const loadCharactersFromStorage = React.useCallback(() => {
      try {
@@ -87,6 +80,10 @@ export default function PersonnagesPage() {
       const savedStyles = localStorage.getItem("customImageStyles_v1");
       if (savedStyles) {
           setCustomStyles(JSON.parse(savedStyles));
+      }
+      const savedLanguage = localStorage.getItem('adventure_language') as Language;
+      if (savedLanguage && i18n[savedLanguage]) {
+          setCurrentLanguage(savedLanguage);
       }
     } catch (error) {
       console.error("Failed to load characters from localStorage:", error);
@@ -208,7 +205,7 @@ export default function PersonnagesPage() {
     const prompt = `portrait of ${editingCharacter.name}. Description: ${editingCharacter.details}. ${editingCharacter.characterClass ? `Class: ${editingCharacter.characterClass}.` : ''}`;
 
     try {
-        const result = await generateSceneImage({ sceneDescription: prompt, style: imageStyle });
+        const result = await generateSceneImage({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
         if (result.imageUrl) {
             setEditingCharacter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
             toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
@@ -331,7 +328,7 @@ export default function PersonnagesPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent>
                                                 {defaultImageStyles.map(style => (
-                                                    <DropdownMenuItem key={style.name} onSelect={() => setImageStyle(style.name === "Par Défaut" ? "" : style.name)}>{style.name}</DropdownMenuItem>
+                                                    <DropdownMenuItem key={style.key} onSelect={() => setImageStyle(style.key)}>{lang[style.langKey as keyof typeof lang] || style.key}</DropdownMenuItem>
                                                 ))}
                                                 {customStyles.length > 0 && <DropdownMenuSeparator />}
                                                 {customStyles.map(style => (

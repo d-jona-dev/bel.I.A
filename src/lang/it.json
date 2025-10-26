@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Aggiungi Personaggio",
     "addPlaceholderTooltip": "Aggiungi Segnaposto Personaggio",
@@ -151,7 +152,7 @@
     "noOtherNpcRelations": "Nessun'altra relazione PNG definita.",
     "describeRelationHelpText": "Descrivi la relazione di questo personaggio verso gli altri.",
     "entryLabel": "Voce",
-    "noItemsAdded": "Nessun {items} aggiunto.",
+    "noItemsAdded": "Nessun(a) {items} aggiunto(a).",
     "affinityHate": "Odio Profondo",
     "affinityHostile": "Ostile",
     "affinityWary": "Diffidente",
@@ -235,6 +236,12 @@
     "styleDescription": "Descrizione stile (prompt)",
     "styleDescriptionPlaceholder": "Es: cyberpunk, neon, futuristico, colori vivaci, di Katsuhiro Otomo...",
     "saveAndApply": "Salva e Applica",
+    "styleDefault": "Predefinito",
+    "styleRealistic": "Realistico",
+    "styleManga": "Manga / Anime",
+    "styleFantasy": "Fantasia Epica",
+    "styleOilPainting": "Pittura a Olio",
+    "styleComics": "Fumetti",
     "noNPCsForAdventure": "Nessun personaggio secondario definito per l'avventura corrente.",
     "saveAdventureTooltip": "Salva Avventura (JSON)",
     "adventurePageTitle": "Avventura",

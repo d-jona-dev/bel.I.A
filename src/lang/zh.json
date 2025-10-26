@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "添加角色",
     "addPlaceholderTooltip": "添加角色占位符",
@@ -235,6 +236,12 @@
     "styleDescription": "样式描述（提示）",
     "styleDescriptionPlaceholder": "例如：赛博朋克、霓虹灯、未来主义、鲜艳的色彩，作者：大友克洋...",
     "saveAndApply": "保存并应用",
+    "styleDefault": "默认",
+    "styleRealistic": "写实",
+    "styleManga": "漫画/动漫",
+    "styleFantasy": "史诗奇幻",
+    "styleOilPainting": "油画",
+    "styleComics": "漫画",
     "noNPCsForAdventure": "当前冒险没有定义次要角色。",
     "saveAdventureTooltip": "保存冒险 (JSON)",
     "adventurePageTitle": "冒险",

@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "キャラクターを追加",
     "addPlaceholderTooltip": "キャラクタープレースホルダーを追加",
@@ -235,6 +236,12 @@
     "styleDescription": "スタイル説明（プロンプト）",
     "styleDescriptionPlaceholder": "例：サイバーパンク、ネオン、未来的、鮮やかな色、大友克洋風...",
     "saveAndApply": "保存して適用",
+    "styleDefault": "デフォルト",
+    "styleRealistic": "写実的",
+    "styleManga": "マンガ/アニメ",
+    "styleFantasy": "エピックファンタジー",
+    "styleOilPainting": "油絵",
+    "styleComics": "コミック",
     "noNPCsForAdventure": "現在の冒険にはサブキャラクターが定義されていません。",
     "saveAdventureTooltip": "冒険を保存 (JSON)",
     "adventurePageTitle": "冒険",
