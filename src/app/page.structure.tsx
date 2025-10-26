@@ -1,4 +1,5 @@
 
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 
@@ -39,6 +40,7 @@ import type { GameClockState } from '@/lib/game-clock';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { i18n, type Language } from "@/lib/i18n";
 
 
 interface PageStructureProps {
@@ -101,12 +103,15 @@ interface PageStructureProps {
 
 const HeroCard = ({
   adventureSettings,
-  onAvatarChange
+  onAvatarChange,
+  currentLanguage,
 }: {
   adventureSettings: AdventureSettings;
   onAvatarChange: (avatarId: string) => void;
+  currentLanguage: string;
 }) => {
     const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([]);
+    const lang = i18n[currentLanguage as Language] || i18n.en;
     
     React.useEffect(() => {
         try {
@@ -126,7 +131,7 @@ const HeroCard = ({
     return (
          <Card>
             <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />Héros Actuel</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />{lang.currentHeroTitle}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -140,12 +145,12 @@ const HeroCard = ({
                     </div>
                 </div>
                 <p className="text-sm text-muted-foreground pt-2 line-clamp-3">
-                    {adventureSettings.playerDetails || "Aucun détail sur le héros."}
+                    {adventureSettings.playerDetails || lang.noHeroDetails}
                 </p>
                 {avatars.length > 0 ? (
                      <Select onValueChange={onAvatarChange} value={currentAvatarId || ''}>
                         <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Changer l'avatar..."/>
+                            <SelectValue placeholder={lang.changeAvatarPlaceholder}/>
                         </SelectTrigger>
                         <SelectContent>
                             {avatars.map(avatar => (
@@ -157,7 +162,7 @@ const HeroCard = ({
                     </Select>
                 ) : (
                      <Link href="/avatars" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}>
-                      Gérer les Avatars
+                      {lang.manageAvatarsButton}
                     </Link>
                 )}
             </CardContent>
@@ -423,10 +428,10 @@ isSaveComicDialogOpen,
                     setComicTitle={setComicTitle}
                     comicCoverUrl={comicCoverUrl}
                     onGenerateCover={onGenerateCover}
-                    isGeneratingCover={isGeneratingCover}
                     onSaveToLibrary={onSaveToLibrary}
                     isLoading={isLoading}
                     timeState={timeState}
+                    isGeneratingCover={isGeneratingCover}
                 />
             </main>
         </SidebarInset>
@@ -459,7 +464,7 @@ isSaveComicDialogOpen,
                           </AccordionItem>
                       </Accordion>
                       
-                       <HeroCard adventureSettings={adventureSettings} onAvatarChange={onAvatarChange} />
+                       <HeroCard adventureSettings={adventureSettings} onAvatarChange={onAvatarChange} currentLanguage={currentLanguage} />
 
                         <Separator/>
 

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -853,7 +854,7 @@ export function AdventureDisplay({
                     <CardHeader className="flex flex-row items-center justify-between p-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Clapperboard className="h-5 w-5"/>
-                            Brouillon de la BD
+                            {lang.comicDraftTitle}
                         </CardTitle>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -863,10 +864,10 @@ export function AdventureDisplay({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onSelect={onDownloadComicDraft}>
-                                    <Download className="mr-2 h-4 w-4"/> Télécharger la planche (JPEG)
+                                    <Download className="mr-2 h-4 w-4"/> {lang.downloadPage}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
-                                    <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la bibliothèque
+                                    <Library className="mr-2 h-4 w-4"/> {lang.saveToLibrary}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -876,7 +877,7 @@ export function AdventureDisplay({
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
                                 <ArrowLeft className="h-4 w-4"/>
                             </Button>
-                            <span className="text-xs font-medium">Page {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
+                            <span className="text-xs font-medium">{lang.page} {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
                                 <ArrowRight className="h-4 w-4"/>
                             </Button>
@@ -902,14 +903,14 @@ export function AdventureDisplay({
                                     </div>
                                 ))
                              ) : (
-                                <p className="text-sm text-muted-foreground italic text-center col-span-full py-10">Aucune case sur cette page.</p>
+                                <p className="text-sm text-muted-foreground italic text-center col-span-full py-10">{lang.noPanelsOnPage}</p>
                             )}
                             </div>
                         </ScrollArea>
                     </CardContent>
                     <CardFooter className="p-2 border-t flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>Page</Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>Case</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>{lang.addPage}</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>{lang.addPanel}</Button>
                         <Button variant="destructive" size="icon" onClick={onRemoveLastComicPanel}><Trash2Icon className="h-4 w-4"/></Button>
                     </CardFooter>
                 </Card>
@@ -951,29 +952,29 @@ export function AdventureDisplay({
                 <Dialog open={isSaveComicDialogOpen} onOpenChange={setIsSaveComicDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Sauvegarder dans la Bibliothèque</DialogTitle>
-                            <DialogDescription>Donnez un titre à votre BD. Vous pouvez aussi générer une couverture.</DialogDescription>
+                            <DialogTitle>{lang.saveToLibraryDialogTitle}</DialogTitle>
+                            <DialogDescription>{lang.saveToLibraryDialogDesc}</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="comic-title">Titre de la BD</Label>
+                                <Label htmlFor="comic-title">{lang.comicTitleLabel}</Label>
                                 <Input id="comic-title" value={comicTitle} onChange={(e) => setComicTitle(e.target.value)} />
                             </div>
                              <div className="space-y-2">
-                                <Label>Couverture</Label>
+                                <Label>{lang.coverLabel}</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
                                     {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
                                      isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" fill style={{objectFit: 'cover'}} className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
                                 <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
-                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? "Génération..." : "Générer une couverture"}
+                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? lang.generatingCover : lang.generateCover}
                                 </Button>
                             </div>
                         </div>
                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>Annuler</Button>
-                            <Button onClick={onSaveToLibrary}>Sauvegarder</Button>
+                            <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>{lang.cancel}</Button>
+                            <Button onClick={onSaveToLibrary}>{lang.save}</Button>
                          </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -983,3 +984,4 @@ export function AdventureDisplay({
     </div>
   );
 }
+
