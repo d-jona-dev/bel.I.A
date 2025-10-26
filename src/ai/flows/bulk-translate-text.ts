@@ -16,10 +16,19 @@ const BulkTranslateInputSchema = z.object({
   targetLanguages: z.array(z.string()).describe('An array of language codes to translate the text into.'),
 });
 
-// The output schema will be dynamic, so we use z.record
-const BulkTranslateOutputSchema = z.record(z.string(), z.string()).describe(
-    "An object where keys are the target language codes and values are the translated texts."
-);
+// The output schema must now be explicit for the Gemini API's JSON mode.
+// We define each target language as an optional property.
+const BulkTranslateOutputSchema = z.object({
+    en: z.string().optional().describe("The translated text in English."),
+    es: z.string().optional().describe("The translated text in Spanish."),
+    it: z.string().optional().describe("The translated text in Italian."),
+    de: z.string().optional().describe("The translated text in German."),
+    ja: z.string().optional().describe("The translated text in Japanese."),
+    ru: z.string().optional().describe("The translated text in Russian."),
+    zh: z.string().optional().describe("The translated text in Chinese."),
+    pt: z.string().optional().describe("The translated text in Portuguese."),
+    hi: z.string().optional().describe("The translated text in Hindi."),
+});
 
 export type BulkTranslateInput = z.infer<typeof BulkTranslateInputSchema>;
 export type BulkTranslateOutput = z.infer<typeof BulkTranslateOutputSchema>;
@@ -30,7 +39,8 @@ const prompt = ai.definePrompt({
     input: { schema: BulkTranslateInputSchema },
     output: { schema: BulkTranslateOutputSchema },
     prompt: `You are a professional translator. Translate the following text from '{{sourceLanguage}}' into each of the target languages listed.
-The output MUST be a valid JSON object where each key is a language code from the target list and the value is the translated text in that language.
+The output MUST be a valid JSON object where each key is a language code and the value is the translated text in that language.
+Only include the keys for the requested target languages.
 
 Source Text:
 "{{{text}}}"
