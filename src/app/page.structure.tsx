@@ -507,6 +507,7 @@ isSaveComicDialogOpen,
                                   <ModelManager
                                     config={aiConfig}
                                     onConfigChange={onAiConfigChange}
+                                    currentLanguage={currentLanguage as Language}
                                   />
                               </AccordionContent>
                           </AccordionItem>

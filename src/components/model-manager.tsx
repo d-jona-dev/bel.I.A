@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Separator } from "./ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { i18n, type Language } from "@/lib/i18n";
 
 
 const DEFAULT_LLM_MODELS: ModelDefinition[] = [
@@ -44,10 +45,12 @@ const DEFAULT_IMAGE_MODELS: ImageModelDefinition[] = [
 interface ModelManagerProps {
   config: AiConfig;
   onConfigChange: (newConfig: AiConfig) => void;
+  currentLanguage: Language; // NEW
 }
 
-export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
+export function ModelManager({ config, onConfigChange, currentLanguage }: ModelManagerProps) {
   const { toast } = useToast();
+  const lang = i18n[currentLanguage] || i18n.fr;
   const [llmModels, setLlmModels] = React.useState<ModelDefinition[]>([]);
   const [imageModels, setImageModels] = React.useState<ImageModelDefinition[]>([]);
   
@@ -79,21 +82,21 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
         try {
             const response = await fetch('http://localhost:9000/api/local-llm/models');
             if (!response.ok) {
-                throw new Error("Le serveur LLM local ne répond pas. Veuillez le démarrer.");
+                throw new Error(lang.localServerError);
             }
             const data = await response.json();
             setLocalModels(data.models || []);
             setLocalServerError(null);
         } catch (error) {
             console.warn("Could not fetch local models:", error);
-            setLocalServerError(error instanceof Error ? error.message : "Erreur inconnue");
+            setLocalServerError(error instanceof Error ? error.message : lang.unknownError);
         } finally {
             setIsLocalServerLoading(false);
         }
     };
     fetchLocalModels();
 
-  }, []);
+  }, [lang.localServerError, lang.unknownError]);
 
   const saveLlmModels = (updatedModels: ModelDefinition[]) => {
     setLlmModels(updatedModels);
@@ -122,10 +125,10 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Exportation Réussie", description: "La liste des modèles a été téléchargée." });
+      toast({ title: lang.exportSuccessTitle, description: lang.exportSuccessDesc });
     } catch (error) {
       console.error("Failed to download models:", error);
-      toast({ title: "Erreur d'Exportation", variant: "destructive" });
+      toast({ title: lang.exportErrorTitle, variant: "destructive" });
     }
   };
 
@@ -143,13 +146,13 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
         if (Array.isArray(importedData.llmModels) && Array.isArray(importedData.imageModels)) {
           saveLlmModels(importedData.llmModels);
           saveImageModels(importedData.imageModels);
-          toast({ title: "Importation Réussie", description: "Les listes de modèles ont été mises à jour." });
+          toast({ title: lang.importSuccessTitle, description: lang.importSuccessDesc });
         } else {
           throw new Error("Invalid JSON structure.");
         }
       } catch (error) {
         console.error("Failed to import models:", error);
-        toast({ title: "Erreur d'Importation", description: "Le fichier JSON est invalide ou corrompu.", variant: "destructive" });
+        toast({ title: lang.importErrorTitle, description: lang.importErrorDesc, variant: "destructive" });
       }
     };
     reader.readAsText(file);
@@ -202,7 +205,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
   const handleSaveLlmModel = () => {
     if (!editingLlmModel || !editingLlmModel.name || !editingLlmModel.modelName) {
-        toast({ title: "Erreur", description: "Le nom et l'identifiant du modèle sont requis.", variant: 'destructive' });
+        toast({ title: lang.errorTitle, description: lang.modelFieldsRequired, variant: 'destructive' });
         return;
     }
     const isNew = editingLlmModel.id.startsWith('new-');
@@ -293,7 +296,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
 
   const handleSaveImageModel = () => {
     if (!editingImageModel || !editingImageModel.name || !editingImageModel.modelName) {
-        toast({ title: "Erreur", description: "Le nom et l'identifiant du modèle sont requis.", variant: 'destructive' });
+        toast({ title: lang.errorTitle, description: lang.modelFieldsRequired, variant: 'destructive' });
         return;
     }
     const isNew = editingImageModel.id.startsWith('new-');
@@ -332,7 +335,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
     <Card className="bg-muted/20 border-dashed">
         <CardHeader className="flex-row items-center justify-between pb-4">
             <div>
-                <CardTitle className="text-base flex items-center gap-2">Configuration IA</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">{lang.aiConfigTitle}</CardTitle>
             </div>
             <div className="flex gap-2">
                  <input type="file" ref={importFileRef} accept=".json" onChange={handleImportModels} className="hidden" />
@@ -343,7 +346,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                 <Upload className="h-4 w-4"/>
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Importer une liste de modèles</TooltipContent>
+                        <TooltipContent><p>{lang.importModelsTooltip}</p></TooltipContent>
                     </Tooltip>
                  </TooltipProvider>
                  <TooltipProvider>
@@ -353,7 +356,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                  <Download className="h-4 w-4"/>
                              </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Exporter la liste de modèles</TooltipContent>
+                        <TooltipContent><p>{lang.exportModelsTooltip}</p></TooltipContent>
                      </Tooltip>
                  </TooltipProvider>
             </div>
@@ -361,20 +364,20 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
         <CardContent className="p-4 pt-0 space-y-4">
             {/* LLM Config Section */}
             <div className="space-y-2">
-                <Label className="flex items-center gap-2"><BrainCircuit className="h-4 w-4"/> Modèle de Langage (LLM)</Label>
+                <Label className="flex items-center gap-2"><BrainCircuit className="h-4 w-4"/> {lang.llmTitle}</Label>
                 <Select value={config.llm.source} onValueChange={(value) => handleSelectLlmSource(value as any)}>
                     <SelectTrigger id="llm-source-select"><SelectValue/></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
-                        <SelectItem value="openrouter">OpenRouter (API Externe)</SelectItem>
-                        <SelectItem value="local">Local (llama.cpp)</SelectItem>
+                        <SelectItem value="openrouter">{lang.openRouterTitle}</SelectItem>
+                        <SelectItem value="local">{lang.localLlmTitle}</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
             
             {config.llm.source === 'openrouter' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                    <Label>Configuration OpenRouter (LLM)</Label>
+                    <Label>{lang.openRouterLlmConfig}</Label>
                      <Select value={selectedLlmModelId} onValueChange={(modelId) => {
                         const selected = llmModels.find(m => m.id === modelId);
                         if (selected && selected.source === 'openrouter') {
@@ -392,7 +395,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                             });
                         }
                     }}>
-                        <SelectTrigger><SelectValue placeholder="Choisir un modèle..."/></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={lang.chooseModelPlaceholder}/></SelectTrigger>
                         <SelectContent>
                             {llmModels.filter(m => m.source === 'openrouter').map(model => (
                                 <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
@@ -401,28 +404,28 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     </Select>
                     <Input
                         type="password"
-                        placeholder="Clé API OpenRouter"
+                        placeholder={lang.openRouterApiKeyPlaceholder}
                         value={config.llm.openRouter?.apiKey || ''}
                         onChange={(e) => handleOpenRouterConfigChange('apiKey', e.target.value)}
                     />
                     <div className="flex items-center space-x-2">
                         <Switch id="structured-response-switch" checked={config.llm.openRouter?.enforceStructuredResponse || false} onCheckedChange={(checked) => handleOpenRouterConfigChange('enforceStructuredResponse', checked)}/>
-                        <Label htmlFor="structured-response-switch" className="text-xs">Forcer la réponse structurée (JSON)</Label>
+                        <Label htmlFor="structured-response-switch" className="text-xs">{lang.enforceJsonResponse}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="compatibility-mode-switch" checked={config.llm.openRouter?.compatibilityMode || false} onCheckedChange={(checked) => handleOpenRouterConfigChange('compatibilityMode', checked)}/>
-                        <Label htmlFor="compatibility-mode-switch" className="text-xs">Mode de compatibilité (Mistral, etc.)</Label>
+                        <Label htmlFor="compatibility-mode-switch" className="text-xs">{lang.compatibilityMode}</Label>
                     </div>
                      <Accordion type="single" collapsible>
                         <AccordionItem value="manage-llm-models" className="border-b-0">
-                            <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
+                            <AccordionTrigger className="text-xs p-2 hover:no-underline">{lang.manageModels}</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {llmModels.filter(m => m.source === 'openrouter').map(model => (
                                     <div key={model.id} className={cn("p-2 border rounded-md", editingLlmModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingLlmModel?.id === model.id ? (
                                              <div className="space-y-2">
-                                                <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                                <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                                <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                                <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                                 <div className="flex justify-end gap-2">
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveLlmModel}><Check className="h-4 w-4"/></Button>
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingLlmModel(null)}><X className="h-4 w-4"/></Button>
@@ -441,8 +444,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                 ))}
                                 {editingLlmModel && editingLlmModel.id.startsWith('new-') && (
                                      <div className="p-2 border rounded-md bg-muted/50 space-y-2">
-                                        <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                        <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <Input value={editingLlmModel.name} onChange={e => setEditingLlmModel({...editingLlmModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                        <Input value={editingLlmModel.modelName} onChange={e => setEditingLlmModel({...editingLlmModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                         <div className="flex justify-end gap-2">
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveLlmModel}><Check className="h-4 w-4"/></Button>
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingLlmModel(null)}><X className="h-4 w-4"/></Button>
@@ -450,7 +453,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                      </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={handleAddNewLlmModel}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
+                                    <PlusCircle className="mr-2 h-4 w-4"/> {lang.addModel}
                                 </Button>
                             </AccordionContent>
                         </AccordionItem>
@@ -460,18 +463,18 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             
             {config.llm.source === 'local' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                     <Label>Configuration Locale (llama.cpp)</Label>
+                     <Label>{lang.localLlmConfig}</Label>
                       {isLocalServerLoading ? (
-                          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> Recherche...</div>
+                          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> {lang.searching}...</div>
                       ) : localServerError ? (
                           <div className="p-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
                               <AlertTriangle className="h-4 w-4 mt-0.5"/>
-                              <div><p className="font-semibold">Erreur du serveur local</p><p>{localServerError}</p></div>
+                              <div><p className="font-semibold">{lang.localServerErrorTitle}</p><p>{localServerError}</p></div>
                           </div>
                       ) : localModels.length === 0 ? (
                             <div className="p-2 text-sm text-muted-foreground bg-muted/50 border rounded-md flex items-start gap-2">
                                 <Folder className="h-4 w-4 mt-0.5"/>
-                                <div><p className="font-semibold">Aucun modèle local trouvé.</p><p>Placez vos modèles `.gguf` dans le dossier `models`.</p></div>
+                                <div><p className="font-semibold">{lang.noLocalModelsTitle}</p><p>{lang.noLocalModelsDesc}</p></div>
                             </div>
                       ) : (
                         <Select value={config.llm.local?.model || ''} onValueChange={handleSelectLocalModel}>
@@ -488,26 +491,26 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             
             {/* Image Gen Config Section */}
             <div className="space-y-2">
-                <Label className="flex items-center gap-2"><ImageIcon className="h-4 w-4"/> Modèle de Génération d'Image</Label>
+                <Label className="flex items-center gap-2"><ImageIcon className="h-4 w-4"/> {lang.imageModelTitle}</Label>
                 <Select value={config.image.source} onValueChange={value => handleSelectImageSource(value as any)}>
                     <SelectTrigger id="image-source-select"><SelectValue/></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
                         <SelectItem value="huggingface">Hugging Face</SelectItem>
-                        <SelectItem value="local-sd">Local (Stable Diffusion)</SelectItem>
+                        <SelectItem value="local-sd">{lang.localSdTitle}</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
             
             {config.image.source === 'openrouter' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
-                    <Label>Configuration OpenRouter (Image)</Label>
+                    <Label>{lang.openRouterImageConfig}</Label>
                     <Select value={selectedImageModelId} onValueChange={(modelId) => {
                         const selected = imageModels.find(m => m.id === modelId);
                         if(selected) handleImageOpenRouterConfigChange('model', selected.modelName || '');
                     }}>
-                        <SelectTrigger><SelectValue placeholder="Choisir un modèle d'image..."/></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={lang.chooseImageModelPlaceholder}/></SelectTrigger>
                         <SelectContent>
                              {imageModels.filter(m => m.source === 'openrouter').map(model => (
                                 <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
@@ -516,25 +519,25 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     </Select>
                     <Input
                         type="password"
-                        placeholder="Clé API OpenRouter"
+                        placeholder={lang.openRouterApiKeyPlaceholder}
                         value={config.image.openRouter?.apiKey || ''}
                         onChange={(e) => handleImageOpenRouterConfigChange('apiKey', e.target.value)}
                     />
                     <Accordion type="single" collapsible>
                         <AccordionItem value="manage-image-models" className="border-b-0">
-                            <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
+                            <AccordionTrigger className="text-xs p-2 hover:no-underline">{lang.manageModels}</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {imageModels.filter(m => m.source === 'openrouter').map(model => (
                                      <div key={model.id} className={cn("p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingImageModel?.id === model.id ? (
                                              <div className="space-y-2">
-                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                                 <div className="flex justify-end gap-2">
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
                                                 </div>
-                                            </div>
+                                             </div>
                                         ) : (
                                             <div className="flex flex-col gap-2">
                                                 <p className="text-sm font-medium truncate">{model.name}</p>
@@ -548,8 +551,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                 ))}
                                 {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'openrouter' && (
                                      <div className="p-2 border rounded-md bg-muted/50 space-y-2">
-                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                         <div className="flex justify-end gap-2">
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
@@ -557,7 +560,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                      </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('openrouter')}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
+                                    <PlusCircle className="mr-2 h-4 w-4"/> {lang.addModel}
                                 </Button>
                             </AccordionContent>
                         </AccordionItem>
@@ -567,12 +570,12 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             
             {config.image.source === 'huggingface' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
-                    <Label>Configuration Hugging Face</Label>
+                    <Label>{lang.huggingFaceConfig}</Label>
                      <Select value={selectedImageModelId} onValueChange={(modelId) => {
                         const selected = imageModels.find(m => m.id === modelId);
                         if(selected) handleImageHuggingFaceConfigChange('model', selected.modelName || '');
                     }}>
-                        <SelectTrigger><SelectValue placeholder="Choisir un modèle d'image..."/></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={lang.chooseImageModelPlaceholder}/></SelectTrigger>
                         <SelectContent>
                              {imageModels.filter(m => m.source === 'huggingface').map(model => (
                                 <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
@@ -581,20 +584,20 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                     </Select>
                     <Input
                         type="password"
-                        placeholder="Clé API Hugging Face (recommandé)"
+                        placeholder={lang.huggingFaceApiKeyPlaceholder}
                         value={config.image.huggingface?.apiKey || ''}
                         onChange={(e) => handleImageHuggingFaceConfigChange('apiKey', e.target.value)}
                     />
                      <Accordion type="single" collapsible>
                         <AccordionItem value="manage-hf-image-models" className="border-b-0">
-                            <AccordionTrigger className="text-xs p-2 hover:no-underline">Gérer la liste des modèles</AccordionTrigger>
+                            <AccordionTrigger className="text-xs p-2 hover:no-underline">{lang.manageModels}</AccordionTrigger>
                             <AccordionContent className="space-y-2">
                                 {imageModels.filter(m => m.source === 'huggingface').map(model => (
                                     <div key={model.id} className={cn("p-2 border rounded-md", editingImageModel?.id === model.id ? "bg-muted/50" : "bg-background")}>
                                         {editingImageModel?.id === model.id ? (
                                              <div className="space-y-2">
-                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                                <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                                <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                                 <div className="flex justify-end gap-2">
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
@@ -613,8 +616,8 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                 ))}
                                 {editingImageModel && editingImageModel.id.startsWith('new-') && editingImageModel.source === 'huggingface' && (
                                      <div className="p-2 border rounded-md bg-muted/50 space-y-2">
-                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder="Nom affiché" className="h-8"/>
-                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder="Identifiant modèle" className="h-8"/>
+                                        <Input value={editingImageModel.name} onChange={e => setEditingImageModel({...editingImageModel, name: e.target.value})} placeholder={lang.displayName} className="h-8"/>
+                                        <Input value={editingImageModel.modelName} onChange={e => setEditingImageModel({...editingImageModel, modelName: e.target.value})} placeholder={lang.modelIdentifier} className="h-8"/>
                                         <div className="flex justify-end gap-2">
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleSaveImageModel}><Check className="h-4 w-4"/></Button>
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setEditingImageModel(null)}><X className="h-4 w-4"/></Button>
@@ -622,7 +625,7 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
                                      </div>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => handleAddNewImageModel('huggingface')}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/> Ajouter un modèle
+                                    <PlusCircle className="mr-2 h-4 w-4"/> {lang.addModel}
                                 </Button>
                             </AccordionContent>
                         </AccordionItem>
@@ -631,15 +634,15 @@ export function ModelManager({ config, onConfigChange }: ModelManagerProps) {
             )}
              {config.image.source === 'local-sd' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
-                     <Label>Configuration Stable Diffusion Local</Label>
+                     <Label>{lang.localSdConfig}</Label>
                       <Input
                         type="text"
-                        placeholder="URL de l'API (ex: http://127.0.0.1:7860)"
+                        placeholder={lang.localSdApiUrlPlaceholder}
                         value={config.image.localSd?.apiUrl || ''}
                         onChange={(e) => handleImageLocalSdConfigChange('apiUrl', e.target.value)}
                     />
                      <CardDescription className="text-xs">
-                        Entrez l'URL de base de votre API locale (par exemple, celle de votre interface Automatic1111).
+                        {lang.localSdApiUrlDesc}
                      </CardDescription>
                 </div>
             )}
