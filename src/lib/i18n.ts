@@ -8,9 +8,10 @@ import ja from '@/lang/ja.json';
 import ru from '@/lang/ru.json';
 import zh from '@/lang/zh.json';
 import pt from '@/lang/pt.json';
+import hi from '@/lang/hi.json';
 
 
-export type Language = 'fr' | 'en' | 'es' | 'it' | 'de' | 'ja' | 'ru' | 'zh' | 'pt';
+export type Language = 'fr' | 'en' | 'es' | 'it' | 'de' | 'ja' | 'ru' | 'zh' | 'pt' | 'hi';
 
 export const i18n: Record<Language, typeof en> = {
   fr,
@@ -22,4 +23,5 @@ export const i18n: Record<Language, typeof en> = {
   ru,
   zh,
   pt,
+  hi,
 };

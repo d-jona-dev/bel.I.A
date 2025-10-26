@@ -20,9 +20,11 @@ const availableLanguages = [
   { code: "es", name: "Español" },
   { code: "de", name: "Deutsch" },
   { code: "it", name: "Italiano" },
+  { code: "pt", name: "Português" },
   { code: "ja", name: "日本語" },
   { code: "ru", name: "Русский" },
   { code: "zh", name: "中文" },
+  { code: "hi", name: "हिन्दी" },
 ];
 
 // Define prop types for the AI function and state management

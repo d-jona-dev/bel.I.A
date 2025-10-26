@@ -461,6 +461,7 @@ isSaveComicDialogOpen,
                                     strategyMode={false} // Caché
                                     isLiveAdventure={true} // NOUVELLE PROP
                                     adventureSettings={adventureSettings}
+                                    currentLanguage={currentLanguage as Language}
                                 />
                               </AccordionContent>
                           </AccordionItem>

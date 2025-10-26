@@ -62,6 +62,7 @@ interface AdventureFormProps {
     aiConfig?: AiConfig;
     isLiveAdventure?: boolean;
     adventureSettings?: AdventureSettings; // Make this optional
+    currentLanguage?: Language;
 }
 
 const characterSchema = z.object({
@@ -148,7 +149,7 @@ const adventureFormSchema = z.object({
 });
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings }, ref) => {
+    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr' }, ref) => {
     
     const { toast } = useToast();
 
@@ -192,9 +193,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     }, [form, onFormValidityChange]);
     
     const handleAddCharacter = (isPlaceholder = false) => {
-        const lang = adventureSettings?.currentLanguage || 'fr';
-        const addCharacterTooltip = i18n[lang as Language]?.addCharacterTooltip || 'Ajouter un personnage';
-        const addPlaceholderTooltip = i18n[lang as Language]?.addPlaceholderTooltip || 'Ajouter un emplacement de personnage';
+        const lang = i18n[currentLanguage as Language] || i18n.en;
+        const addCharacterTooltip = lang.addCharacterTooltip;
+        const addPlaceholderTooltip = lang.addPlaceholderTooltip;
 
         append({
             id: `char-new-${Date.now()}`,
@@ -211,13 +212,14 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
         <FormProvider {...form}>
             <form className="space-y-4 p-1" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-4">
-                    <WorldConfig />
+                    <WorldConfig currentLanguage={currentLanguage} />
                      {!isLiveAdventure && (
                         <>
                             <NpcCharacterConfig 
                                 fields={fields} 
                                 remove={remove} 
                                 onAddCharacter={handleAddCharacter}
+                                currentLanguage={currentLanguage}
                             />
                             <ConditionsConfig />
                         </>

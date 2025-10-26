@@ -30,20 +30,21 @@ interface NpcCharacterConfigProps {
     fields: Record<"id", string>[];
     remove: UseFieldArrayRemove;
     onAddCharacter: (isPlaceholder: boolean) => void;
+    currentLanguage: Language;
 }
 
-export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharacterConfigProps) {
+export function NpcCharacterConfig({ fields, remove, onAddCharacter, currentLanguage }: NpcCharacterConfigProps) {
     const { control, watch } = useFormContext();
-    const lang = 'fr'; // Or get from context
-    const addCharacterTooltip = i18n[lang as Language]?.addCharacterTooltip || 'Ajouter un personnage';
-    const addPlaceholderTooltip = i18n[lang as Language]?.addPlaceholderTooltip || 'Ajouter un emplacement de personnage';
+    const lang = i18n[currentLanguage] || i18n.en;
+    const addCharacterTooltip = lang.addCharacterTooltip;
+    const addPlaceholderTooltip = lang.addPlaceholderTooltip;
 
     return (
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="npc-config">
                 <AccordionTrigger>
                     <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5" /> {i18n[lang as Language]?.secondaryCharactersLabel || "Personnages Secondaires (PNJ)"}
+                        <Users className="h-5 w-5" /> {lang.secondaryCharactersLabel}
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 space-y-4">
@@ -61,7 +62,7 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                         render={({ field }) => (
                                             <FormItem className="flex items-center gap-2 space-y-0">
                                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                <FormLabel className="text-xs">{i18n[lang as Language]?.placeholderLabel || "Emplacement ?"}</FormLabel>
+                                                <FormLabel className="text-xs">{lang.placeholderLabel}</FormLabel>
                                             </FormItem>
                                         )}
                                     />
@@ -71,8 +72,8 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                     name={`characters.${index}.name`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>{isPlaceholder ? i18n[lang as Language]?.placeholderNameLabel || "Nom de l'emplacement" : i18n[lang as Language]?.npcNameLabel || "Nom du PNJ"}</FormLabel>
-                                            <FormControl><Input {...field} placeholder={isPlaceholder ? i18n[lang as Language]?.placeholderNamePlaceholder || "Ex: Le Guerrier, Le Marchand..." : i18n[lang as Language]?.npcNamePlaceholder || "Ex: Roric, Elara..."} /></FormControl>
+                                            <FormLabel>{isPlaceholder ? lang.placeholderNameLabel : lang.npcNameLabel}</FormLabel>
+                                            <FormControl><Input {...field} placeholder={isPlaceholder ? lang.placeholderNamePlaceholder : lang.npcNamePlaceholder} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -83,8 +84,8 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter }: NpcCharac
                                         name={`characters.${index}.details`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>{i18n[lang as Language]?.npcDetailsLabel || "Détails du PNJ"}</FormLabel>
-                                                <FormControl><Textarea {...field} placeholder={i18n[lang as Language]?.npcDetailsPlaceholder || "Description, personnalité, rôle..."} rows={3} /></FormControl>
+                                                <FormLabel>{lang.npcDetailsLabel}</FormLabel>
+                                                <FormControl><Textarea {...field} placeholder={lang.npcDetailsPlaceholder} rows={3} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

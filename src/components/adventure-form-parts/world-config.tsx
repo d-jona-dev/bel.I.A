@@ -24,10 +24,9 @@ import type { AdventureFormValues } from "../adventure-form";
 import { i18n, type Language } from "@/lib/i18n";
 
 
-export function WorldConfig() {
-    const { control, watch } = useFormContext<AdventureFormValues>();
-    const currentLanguage = watch('currentLanguage') || 'fr';
-    const lang = i18n[currentLanguage as Language] || i18n.en;
+export function WorldConfig({ currentLanguage }: { currentLanguage: Language }) {
+    const { control } = useFormContext<AdventureFormValues>();
+    const lang = i18n[currentLanguage] || i18n.en;
 
     return (
         <Accordion type="single" collapsible className="w-full" defaultValue="world-config">
