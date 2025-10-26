@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -9,7 +10,7 @@ import type { AdventureSettings, AiConfig, LocalizedText } from '@/types';
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon } from "lucide-react";
+import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon, Globe } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
@@ -22,7 +23,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/f
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { translateText } from "@/ai/flows/translate-text";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Globe } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 
 // Schemas are kept here as they define the shape for the entire form,
