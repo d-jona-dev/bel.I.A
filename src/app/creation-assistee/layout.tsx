@@ -7,28 +7,152 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard, Bot } from 'lucide-react';
-import { GlobalNav } from '@/components/global-nav'; // NEW: Import the global nav
-import { i18n, type Language } from '@/lib/i18n'; // NEW: Import i18n
+import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard, Shirt, Bot } from 'lucide-react';
+import { i18n, type Language } from '@/lib/i18n';
 
 export default function CreationAssisteeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // This state will be managed by GlobalNav but we can still read from it if needed
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
   const lang = i18n[currentLanguage] || i18n.fr;
 
+  React.useEffect(() => {
+    const savedLanguage = localStorage.getItem('adventure_language') as Language;
+    if (savedLanguage && i18n[savedLanguage]) {
+      setCurrentLanguage(savedLanguage);
+    }
+  }, []);
+  
+  const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // This functionality can be handled on the page itself
+  };
+
   return (
     <>
-      {/* NEW: Use the centralized GlobalNav component */}
-      <GlobalNav 
-        activePath="/histoires" 
-        currentLanguage={currentLanguage} 
-        setCurrentLanguage={setCurrentLanguage} 
-        showAssistedCreation={false}
-      />
+       <Sidebar side="left" variant="sidebar" collapsible="icon">
+         <SidebarHeader className="p-4 border-b border-sidebar-border">
+           <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
+         </SidebarHeader>
+         <ScrollArea className="flex-1">
+            <SidebarContent className="p-4 space-y-4">
+               <nav className="space-y-2">
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                         <Link href="/">
+                           <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.currentAdventureTooltip}>
+                             <HomeIcon className="h-5 w-5" />
+                             <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.adventurePageTitle}</span>
+                           </Button>
+                         </Link>
+                       </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.currentAdventureTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/histoires">
+                             <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.manageStoriesTooltip}>
+                                <Scroll className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.manageStoriesTooltip}</span>
+                             </Button>
+                          </Link>
+                       </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.manageStoriesTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/bd">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.comicEditorTooltip}>
+                                <Clapperboard className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.comicEditorTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.comicEditorTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                 <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/penderie">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.wardrobeTooltip}>
+                                <Shirt className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.wardrobeTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.wardrobeTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                 <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/avatars">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.playerAvatarsTooltip}>
+                                <UserCircle className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.playerAvatarsTooltip}</span>
+                             </Button>
+                          </Link>
+                       </TooltipTrigger>
+                       <TooltipContent side="right" align="center">{lang.playerAvatarsTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/personnages">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.secondaryCharactersTooltip}>
+                                <Users2 className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.secondaryCharactersTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.secondaryCharactersTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+               </nav>
+
+           </SidebarContent>
+         </ScrollArea>
+         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+             <TooltipProvider>
+                  <Tooltip>
+                     <TooltipTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start group-data-[collapsible=icon]:justify-center" onClick={() => fileInputRef.current?.click()}>
+                             <Upload className="h-5 w-5" />
+                             <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.loadButtonLabel}</span>
+                         </Button>
+                     </TooltipTrigger>
+                     <TooltipContent side="right" align="center">{lang.loadAdventureTooltip}</TooltipContent>
+                  </Tooltip>
+             </TooltipProvider>
+             <input
+                 type="file"
+                 ref={fileInputRef}
+                 accept=".json"
+                 onChange={handleLoad}
+                 className="hidden"
+             />
+            <TooltipProvider>
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" disabled>
+                   <Settings className="h-5 w-5" />
+                   <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.settingsButtonLabel}</span>
+                 </Button>
+               </TooltipTrigger>
+               <TooltipContent side="right" align="center">{lang.globalSettingsTooltip}</TooltipContent>
+             </Tooltip>
+            </TooltipProvider>
+         </SidebarFooter>
+       </Sidebar>
 
       <SidebarInset className="flex flex-col h-screen">
         <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
@@ -44,5 +168,3 @@ export default function CreationAssisteeLayout({
     </>
   );
 }
-
-    
