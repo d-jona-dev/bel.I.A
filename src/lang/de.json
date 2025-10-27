@@ -242,7 +242,6 @@
     "styleFantasy": "Epische Fantasie",
     "styleOilPainting": "Ölgemälde",
     "styleComics": "Comics",
-    "noNPCsForAdventure": "Für das aktuelle Abenteuer sind keine Nebencharaktere definiert.",
     "saveAdventureTooltip": "Abenteuer speichern (JSON)",
     "adventurePageTitle": "Abenteuer",
     "currentAdventureTooltip": "Aktuelles Abenteuer",
@@ -308,3 +307,4 @@
     "translateFrom": "Übersetzen von {lang} nach:",
     "translateTo": "Übersetzen nach {lang}"
 }
+

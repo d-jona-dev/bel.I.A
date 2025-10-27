@@ -242,7 +242,6 @@
     "styleFantasy": "Эпическое фэнтези",
     "styleOilPainting": "Масляная живопись",
     "styleComics": "Комиксы",
-    "noNPCsForAdventure": "Для текущего приключения не определены второстепенные персонажи.",
     "saveAdventureTooltip": "Сохранить приключение (JSON)",
     "adventurePageTitle": "Приключение",
     "currentAdventureTooltip": "Текущее приключение",
@@ -308,3 +307,4 @@
     "translateFrom": "Перевести с {lang} на:",
     "translateTo": "Перевести на {lang}"
 }
+

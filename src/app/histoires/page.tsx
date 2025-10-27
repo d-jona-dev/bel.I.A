@@ -471,8 +471,9 @@ export default function HistoiresPage() {
       strategyMode={true}
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
+      currentLanguage={currentLanguage}
     />
-  ), [isCreateModalOpen, aiConfig]);
+  ), [isCreateModalOpen, aiConfig, currentLanguage]);
 
   const editForm = React.useMemo(() => {
     if (!editingStory) return null;
@@ -485,9 +486,10 @@ export default function HistoiresPage() {
            relationsMode={editingStory.adventureState.adventureSettings.relationsMode}
            strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
            aiConfig={aiConfig}
+           currentLanguage={currentLanguage}
         />
     )
-  }, [editingStory, aiConfig]);
+  }, [editingStory, aiConfig, currentLanguage]);
 
 
   return (

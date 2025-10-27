@@ -242,7 +242,6 @@
     "styleFantasy": "Fantasia Epica",
     "styleOilPainting": "Pittura a Olio",
     "styleComics": "Fumetti",
-    "noNPCsForAdventure": "Nessun personaggio secondario definito per l'avventura corrente.",
     "saveAdventureTooltip": "Salva Avventura (JSON)",
     "adventurePageTitle": "Avventura",
     "currentAdventureTooltip": "Avventura Corrente",
@@ -308,3 +307,4 @@
     "translateFrom": "Traduci da {lang} a:",
     "translateTo": "Traduci in {lang}"
 }
+

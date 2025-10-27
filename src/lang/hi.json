@@ -242,7 +242,6 @@
     "styleFantasy": "महाकाव्य काल्पनिक",
     "styleOilPainting": "तैल चित्र",
     "styleComics": "कॉमिक्स",
-    "noNPCsForAdventure": "वर्तमान साहसिक कार्य के लिए कोई द्वितीयक पात्र परिभाषित नहीं है।",
     "saveAdventureTooltip": "साहसिक कार्य सहेजें (JSON)",
     "adventurePageTitle": "साहसिक कार्य",
     "currentAdventureTooltip": "वर्तमान साहसिक कार्य",
@@ -308,3 +307,4 @@
     "translateFrom": "{lang} से अनुवाद करें:",
     "translateTo": "{lang} में अनुवाद करें"
 }
+

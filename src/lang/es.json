@@ -242,7 +242,6 @@
     "styleFantasy": "Fantasía Épica",
     "styleOilPainting": "Pintura al Óleo",
     "styleComics": "Cómics",
-    "noNPCsForAdventure": "No hay personajes secundarios definidos para la aventura actual.",
     "saveAdventureTooltip": "Guardar Aventura (JSON)",
     "adventurePageTitle": "Aventura",
     "currentAdventureTooltip": "Aventura Actual",
@@ -308,3 +307,4 @@
     "translateFrom": "Traducir de {lang} a:",
     "translateTo": "Traducir a {lang}"
 }
+

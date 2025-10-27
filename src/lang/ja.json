@@ -242,7 +242,6 @@
     "styleFantasy": "エピックファンタジー",
     "styleOilPainting": "油絵",
     "styleComics": "コミック",
-    "noNPCsForAdventure": "現在の冒険にはサブキャラクターが定義されていません。",
     "saveAdventureTooltip": "冒険を保存 (JSON)",
     "adventurePageTitle": "冒険",
     "currentAdventureTooltip": "現在の冒険",
@@ -308,3 +307,4 @@
     "translateFrom": "{lang}から翻訳：",
     "translateTo": "{lang}に翻訳"
 }
+
