@@ -217,7 +217,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 space-y-4">
                                 <Tabs defaultValue={currentLanguage} className="w-full">
-                                    <TabsList>
+                                    <TabsList className="flex-wrap h-auto">
                                         {allLanguageCodes.map(langCode => (
                                             <TabsTrigger key={langCode} value={langCode}>{langCode.toUpperCase()}</TabsTrigger>
                                         ))}
@@ -271,7 +271,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 space-y-4">
                                      <Tabs defaultValue={currentLanguage} className="w-full">
-                                        <TabsList>
+                                        <TabsList className="flex-wrap h-auto">
                                             {allLanguageCodes.map(langCode => (
                                                 <TabsTrigger key={langCode} value={langCode}>{langCode.toUpperCase()}</TabsTrigger>
                                             ))}
