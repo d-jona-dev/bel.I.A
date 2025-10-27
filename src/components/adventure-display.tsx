@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart, Gem, HeartCrack, HeartHandshake, Settings } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart, Gem, HeartCrack, HeartHandshake } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -399,10 +399,10 @@ export function AdventureDisplay({
 
    const handleCopyMessage = (content: string) => {
         navigator.clipboard.writeText(content).then(() => {
-            React.startTransition(() => { toast({ title: lang.copied, description: lang.copiedToClipboard }); });
+            React.startTransition(() => { toast({ title: "Copié", description: "Message copié dans le presse-papiers." }); });
         }).catch(err => {
             console.error('Failed to copy text: ', err);
-            React.startTransition(() => { toast({ title: lang.errorTitle, description: lang.copyError, variant: "destructive" }); });
+            React.startTransition(() => { toast({ title: "Erreur", description: "Impossible de copier le message.", variant: "destructive" }); });
         });
    };
 
@@ -419,12 +419,12 @@ export function AdventureDisplay({
     };
     
   const handleMaterializeCharacter = async (context: string) => {
-    toast({ title: lang.materializationInProgress, description: lang.aiCreatingCharacter });
+    toast({ title: "Matérialisation en cours...", description: "L'IA crée la fiche du personnage." });
     await onMaterializeCharacter(context);
   };
   
     const handleSummarizeHistory = async (context: string) => {
-        toast({ title: lang.memorizationInProgress, description: lang.aiSummarizingEvent });
+        toast({ title: "Mémorisation en cours...", description: "L'IA résume l'événement." });
         await onSummarizeHistory(context);
     };
 
@@ -532,12 +532,12 @@ export function AdventureDisplay({
                                                                       </Button>
                                                                     </DialogTrigger>
                                                                   </TooltipTrigger>
-                                                                  <TooltipContent side="top">{lang.editButton}</TooltipContent>
+                                                                  <TooltipContent side="top">Modifier</TooltipContent>
                                                               </Tooltip>
                                                             </TooltipProvider>
                                                               <DialogContent>
                                                               <DialogHeader>
-                                                                  <DialogTitle>{lang.editMessage}</DialogTitle>
+                                                                  <DialogTitle>Modifier le Message</DialogTitle>
                                                               </DialogHeader>
                                                               <Textarea
                                                                       value={editContent}
@@ -546,8 +546,8 @@ export function AdventureDisplay({
                                                                       className="my-4"
                                                                   />
                                                               <DialogFooter>
-                                                                  <Button variant="outline" onClick={() => setEditingMessage(null)}>{lang.cancelButton}</Button>
-                                                                  <Button onClick={handleSaveChanges}>{lang.saveButton}</Button>
+                                                                  <Button variant="outline" onClick={() => setEditingMessage(null)}>Annuler</Button>
+                                                                  <Button onClick={handleSaveChanges}>Sauvegarder</Button>
                                                               </DialogFooter>
                                                               </DialogContent>
                                                           </Dialog>
@@ -558,7 +558,7 @@ export function AdventureDisplay({
                                                                           <Copy className="h-4 w-4" />
                                                                       </Button>
                                                                   </TooltipTrigger>
-                                                                  <TooltipContent side="top">{lang.copyButton}</TooltipContent>
+                                                                  <TooltipContent side="top">Copier</TooltipContent>
                                                               </Tooltip>
                                                           </TooltipProvider>
                                                             {message.type === 'ai' && (
@@ -570,7 +570,7 @@ export function AdventureDisplay({
                                                                                 <UserPlus className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
-                                                                        <TooltipContent side="top">{lang.materializeNpcTooltip}</TooltipContent>
+                                                                        <TooltipContent side="top">Matérialiser un PNJ</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
                                                                 <TooltipProvider>
@@ -580,7 +580,7 @@ export function AdventureDisplay({
                                                                                 <MemoryStick className="h-4 w-4" />
                                                                             </Button>
                                                                         </TooltipTrigger>
-                                                                        <TooltipContent side="top">{lang.memorizeEventTooltip}</TooltipContent>
+                                                                        <TooltipContent side="top">Mémoriser cet événement</TooltipContent>
                                                                     </Tooltip>
                                                                 </TooltipProvider>
                                                                 {isLastAiMessage && (
@@ -591,7 +591,7 @@ export function AdventureDisplay({
                                                                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                                                 </Button>
                                                                             </TooltipTrigger>
-                                                                            <TooltipContent side="top">{lang.regenerateButton}</TooltipContent>
+                                                                            <TooltipContent side="top">Régénérer</TooltipContent>
                                                                         </Tooltip>
                                                                     </TooltipProvider>
                                                                 )}
@@ -635,7 +635,7 @@ export function AdventureDisplay({
                                          <Trash2Icon className="h-5 w-5" />
                                      </Button>
                                  </TooltipTrigger>
-                                 <TooltipContent>{lang.undoLastActionTooltip}</TooltipContent>
+                                 <TooltipContent>Annuler la dernière action/réponse</TooltipContent>
                              </Tooltip>
                          </TooltipProvider>
                           <TooltipProvider>
@@ -649,19 +649,19 @@ export function AdventureDisplay({
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>{lang.restartAdventureTitle}</AlertDialogTitle>
+                                                <AlertDialogTitle>Recommencer l'aventure ?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                {lang.restartAdventureDescription}
+                                                Êtes-vous sûr de vouloir recommencer l'aventure en cours ? Toute la progression narrative et les changements sur les personnages (non sauvegardés globalement) seront perdus et réinitialisés aux derniers paramètres de l'aventure (ou ceux par défaut si non modifiés).
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>{lang.cancelButton}</AlertDialogCancel>
-                                                <AlertDialogAction onClick={onRestartAdventure}>{lang.restartButton}</AlertDialogAction>
+                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                <AlertDialogAction onClick={onRestartAdventure}>Recommencer</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
                                   </TooltipTrigger>
-                                  <TooltipContent>{lang.restartAdventureTooltip}</TooltipContent>
+                                  <TooltipContent>Recommencer l'Aventure depuis le début</TooltipContent>
                               </Tooltip>
                           </TooltipProvider>
                           <TooltipProvider>
@@ -677,7 +677,7 @@ export function AdventureDisplay({
                                         {isSuggestingQuest ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lightbulb className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{lang.suggestQuestTooltip}</TooltipContent>
+                                <TooltipContent>Suggérer un objectif ou une quête</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
 
@@ -697,7 +697,7 @@ export function AdventureDisplay({
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>{lang.sendButton}</TooltipContent>
+                                <TooltipContent>Envoyer</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>
@@ -708,9 +708,9 @@ export function AdventureDisplay({
                  <Dialog open={imageEditorOpen} onOpenChange={setImageEditorOpen}>
                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                         <DialogHeader>
-                            <DialogTitle>{lang.imageEditorTitle}</DialogTitle>
+                            <DialogTitle>Éditeur d'Image</DialogTitle>
                             <DialogDescription>
-                                {lang.imageEditorDescription}
+                                Ajoutez des bulles de dialogue à votre image et ajoutez-la à la BD.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
@@ -786,7 +786,7 @@ export function AdventureDisplay({
                                 setImageEditorOpen(true);
                             }}
                         >
-                            <Edit3 className="mr-2 h-4 w-4" /> {lang.comicEditorButton}
+                            <Edit3 className="mr-2 h-4 w-4" /> Éditeur BD
                         </Button>
                         <div className="flex w-full gap-2">
                             <DropdownMenu>
@@ -800,7 +800,7 @@ export function AdventureDisplay({
                                             </DropdownMenuTrigger>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{lang.chooseImageStyleTooltip}</p>
+                                            <p>Choisir un style d'image</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -819,7 +819,7 @@ export function AdventureDisplay({
                                     ))}
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => setIsCustomStyleDialogOpen(true)}>
-                                        {lang.manageStyles}
+                                        Gérer les styles...
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -834,10 +834,10 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || !lastAiMessageWithScene}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>{lang.generateButton}</span>
+                                            <span>Générer</span>
                                         </Button>
                                      </TooltipTrigger>
-                                     <TooltipContent>{lang.generateImageTooltip}</TooltipContent>
+                                     <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
@@ -848,7 +848,7 @@ export function AdventureDisplay({
                     <CardHeader className="flex flex-row items-center justify-between p-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Clapperboard className="h-5 w-5"/>
-                            {lang.comicDraftTitle}
+                            Brouillon de la BD
                         </CardTitle>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -858,10 +858,10 @@ export function AdventureDisplay({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onSelect={onDownloadComicDraft}>
-                                    <Download className="mr-2 h-4 w-4"/> {lang.downloadPage}
+                                    <Download className="mr-2 h-4 w-4"/> Télécharger la Planche
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
-                                    <Library className="mr-2 h-4 w-4"/> {lang.saveToLibrary}
+                                    <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la Bibliothèque
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -871,7 +871,7 @@ export function AdventureDisplay({
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
                                 <ArrowLeft className="h-4 w-4"/>
                             </Button>
-                            <span className="text-xs font-medium">{lang.page} {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
+                            <span className="text-xs font-medium">Planche {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
                                 <ArrowRight className="h-4 w-4"/>
                             </Button>
@@ -897,62 +897,47 @@ export function AdventureDisplay({
                                     </div>
                                 ))
                              ) : (
-                                <p className="text-sm text-muted-foreground italic text-center col-span-full py-10">{lang.noPanelsOnPage}</p>
+                                <p className="text-sm text-muted-foreground italic text-center col-span-full py-10">Aucune case sur cette planche.</p>
                             )}
                             </div>
                         </ScrollArea>
                     </CardContent>
                     <CardFooter className="p-2 border-t flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>{lang.addPage}</Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>{lang.addPanel}</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>Page</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>Case</Button>
                         <Button variant="destructive" size="icon" onClick={onRemoveLastComicPanel}><Trash2Icon className="h-4 w-4"/></Button>
                     </CardFooter>
                 </Card>
 
                 <CharacterStatusDisplay heroSettings={adventureSettings} characters={characters} currentLanguage={currentLanguage} />
 
-                 <Card>
-                    <CardHeader className="p-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <Settings className="h-5 w-5"/>
-                            Paramètres
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                         <div className="flex items-center justify-between">
-                            <Label htmlFor="theme-toggle">Mode Nuit</Label>
-                            <ThemeToggle />
-                        </div>
-                    </CardContent>
-                </Card>
-
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{lang.manageCustomStyles}</DialogTitle>
+                            <DialogTitle>Gérer les Styles Personnalisés</DialogTitle>
                             <DialogDescription>
-                                {lang.addOrEditCustomStyle}
+                                Ajoutez un nouveau style personnalisé ou modifiez les existants.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="custom-style-name">{lang.styleName}</Label>
-                                <Input id="custom-style-name" value={customStyleName} onChange={(e) => setCustomStyleName(e.target.value)} placeholder={lang.styleNamePlaceholder}/>
+                                <Label htmlFor="custom-style-name">Nom du style</Label>
+                                <Input id="custom-style-name" value={customStyleName} onChange={(e) => setCustomStyleName(e.target.value)} placeholder="Ex: Mon style Cyberpunk"/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="custom-style-prompt">{lang.styleDescription}</Label>
+                                <Label htmlFor="custom-style-prompt">Description du style (prompt)</Label>
                                 <Textarea
                                     id="custom-style-prompt"
                                     value={customStylePrompt}
                                     onChange={(e) => setCustomStylePrompt(e.target.value)}
-                                    placeholder={lang.styleDescriptionPlaceholder}
+                                    placeholder="Ex: cyberpunk, néon, futuriste, couleurs vives, par Katsuhiro Otomo..."
                                     rows={3}
                                 />
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>{lang.cancelButton}</Button>
-                            <Button onClick={handleSaveCustomStyle}>{lang.saveAndApply}</Button>
+                            <Button variant="outline" onClick={() => setIsCustomStyleDialogOpen(false)}>Annuler</Button>
+                            <Button onClick={handleSaveCustomStyle}>Enregistrer et Appliquer</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -960,29 +945,29 @@ export function AdventureDisplay({
                 <Dialog open={isSaveComicDialogOpen} onOpenChange={setIsSaveComicDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{lang.saveToLibraryDialogTitle}</DialogTitle>
-                            <DialogDescription>{lang.saveToLibraryDialogDesc}</DialogDescription>
+                            <DialogTitle>Sauvegarder dans la Bibliothèque</DialogTitle>
+                            <DialogDescription>Donnez un titre à votre BD. Vous pouvez aussi générer une couverture.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="comic-title">{lang.comicTitleLabel}</Label>
+                                <Label htmlFor="comic-title">Titre de la BD</Label>
                                 <Input id="comic-title" value={comicTitle} onChange={(e) => setComicTitle(e.target.value)} />
                             </div>
                              <div className="space-y-2">
-                                <Label>{lang.coverLabel}</Label>
+                                <Label>Couverture</Label>
                                 <div className="relative aspect-[2/3] w-full max-w-sm mx-auto bg-muted rounded-md flex items-center justify-center">
                                     {isGeneratingCover ? <Loader2 className="h-8 w-8 animate-spin"/> :
                                      isValidUrl(comicCoverUrl) ? <Image src={comicCoverUrl} alt="Aperçu de la couverture" fill style={{objectFit: 'cover'}} className="rounded-md"/>
                                      : <ImageIcon className="h-10 w-10 text-muted-foreground"/>}
                                 </div>
                                 <Button onClick={onGenerateCover} disabled={isGeneratingCover} className="w-full mt-2">
-                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? lang.generatingCover : lang.generateCover}
+                                    <Wand2 className="mr-2 h-4 w-4"/> {isGeneratingCover ? "Génération..." : "Générer une couverture"}
                                 </Button>
                             </div>
                         </div>
                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>{lang.cancel}</Button>
-                            <Button onClick={onSaveToLibrary}>{lang.save}</Button>
+                            <Button variant="outline" onClick={() => setIsSaveComicDialogOpen(false)}>Annuler</Button>
+                            <Button onClick={onSaveToLibrary}>Sauvegarder</Button>
                          </DialogFooter>
                     </DialogContent>
                 </Dialog>

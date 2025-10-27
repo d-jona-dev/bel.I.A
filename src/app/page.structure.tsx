@@ -42,6 +42,7 @@ import { Separator } from '../components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { i18n, type Language } from "@/lib/i18n";
 import { Gem, HeartCrack, HeartHandshake } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 
 interface PageStructureProps {
@@ -375,6 +376,7 @@ isSaveComicDialogOpen,
                 <span className="font-semibold">{lang.adventurePageTitle}</span>
               </div>
               <div className="flex items-center space-x-2">
+                <ThemeToggle />
                 <LanguageSelector
                     translateTextAction={translateTextAction}
                     currentText={narrativeMessages.map(m => m.content).join('\n\n')}
