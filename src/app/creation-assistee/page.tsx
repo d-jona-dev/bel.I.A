@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest, AiConfig } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
 import AssistantChat from '@/components/assistant-chat';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -199,14 +200,15 @@ export default function CreationAssisteePage() {
             <div className="w-1/2 p-4 border-r flex flex-col">
                 <Card className="flex-1 flex flex-col">
                     <CardHeader>
-                        <CardTitle>Assistant Créatif</CardTitle>
-                        <CardDescription>Discutez avec l'IA pour trouver l'inspiration, définir votre monde, vos personnages et la situation de départ.</CardDescription>
+                        <CardTitle>{lang.assistedCreationTitle}</CardTitle>
+                        <CardDescription>{lang.assistedCreationDescription}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden">
                         <AssistantChat
                             aiConfig={aiConfig}
                             onConfigChange={handleAiConfigChange}
                             onApplySuggestion={handleApplySuggestion}
+                            currentLanguage={currentLanguage}
                         />
                     </CardContent>
                 </Card>
@@ -214,8 +216,8 @@ export default function CreationAssisteePage() {
             <div className="w-1/2 p-4 flex flex-col">
                 <Card className="flex-1 flex flex-col">
                     <CardHeader>
-                        <CardTitle>Configuration de l'Aventure</CardTitle>
-                        <CardDescription>Remplissez ce formulaire avec les idées de l'assistant ou vos propres créations.</CardDescription>
+                        <CardTitle>{lang.adventureConfigTitle}</CardTitle>
+                        <CardDescription>{lang.adventureConfigDescription}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-hidden">
                         <ScrollArea className="h-full pr-4">
@@ -233,7 +235,7 @@ export default function CreationAssisteePage() {
                     </CardContent>
                     <CardFooter>
                         <Button onClick={handleCreateAndLaunch} disabled={!isFormValid} className="w-full">
-                            Créer et Lancer l'Aventure
+                            {lang.createAndLaunchButton}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -241,3 +243,5 @@ export default function CreationAssisteePage() {
         </div>
     );
 }
+
+    

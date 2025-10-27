@@ -1,5 +1,6 @@
 
 
+
 {
     "addCharacterTooltip": "Add Character",
     "addPlaceholderTooltip": "Add Character Placeholder",
@@ -291,7 +292,19 @@
     "suggestedRole": "Suggested Role",
     "chooseCharacterPlaceholder": "Choose a character...",
     "noSavedCharacters": "No saved characters.",
-    "launchAdventureButton": "Launch Adventure"
+    "launchAdventureButton": "Launch Adventure",
+    "assistedCreationTitle": "Creative Assistant",
+    "assistedCreationDescription": "Chat with the AI to get inspiration, define your world, characters, and starting situation.",
+    "adventureConfigDescription": "Fill out this form with ideas from the assistant or your own creations.",
+    "assistantWelcomeMessage": "I am your creative assistant. Ask me for help creating a world, a plot, or characters!",
+    "suggestionsTitle": "Suggestions",
+    "suggestionField": "For field",
+    "applySuggestionButton": "Apply",
+    "assistantThinking": "Thinking...",
+    "assistantPlaceholder": "Ask for an idea..."
 }
 
 
+
+
+    

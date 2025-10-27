@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from 'react';
@@ -12,6 +13,7 @@ import { ModelManager } from '@/components/model-manager';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { creativeAssistant } from '@/ai/flows/creative-assistant';
 import { Separator } from './ui/separator';
+import { i18n, type Language } from '@/lib/i18n';
 
 interface Message {
     id: string;
@@ -24,10 +26,12 @@ interface AssistantChatProps {
     aiConfig: AiConfig;
     onConfigChange: (newConfig: AiConfig) => void;
     onApplySuggestion: (suggestion: { field: any; value: any }) => void;
+    currentLanguage: Language;
 }
 
-export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggestion }: AssistantChatProps) {
+export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggestion, currentLanguage }: AssistantChatProps) {
     const { toast } = useToast();
+    const lang = i18n[currentLanguage];
     const [messages, setMessages] = React.useState<Message[]>([]);
     const [input, setInput] = React.useState('');
     const [isLoading, setIsLoading] = React.useState(false);
@@ -108,7 +112,7 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                         {messages.length === 0 && (
                             <div className="text-center text-muted-foreground p-8">
                                 <Bot className="mx-auto h-12 w-12 mb-4" />
-                                <p>Je suis votre assistant créatif. Demandez-moi de l'aide pour créer un monde, une intrigue ou des personnages !</p>
+                                <p>{lang.assistantWelcomeMessage}</p>
                             </div>
                         )}
                         {messages.map((message) => (
@@ -117,16 +121,16 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                                     <p className="whitespace-pre-wrap">{message.content}</p>
                                     {message.role === 'assistant' && message.suggestions && message.suggestions.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-muted-foreground/20 space-y-2">
-                                            <p className="text-xs font-semibold">Suggestions :</p>
+                                            <p className="text-xs font-semibold">{lang.suggestionsTitle}:</p>
                                             {message.suggestions.map((suggestion, index) => {
                                                 const suggestionValueText = typeof suggestion.value === 'object' ? JSON.stringify(suggestion.value, null, 2) : String(suggestion.value);
                                                 return (
                                                     <div key={index} className="p-2 bg-background/50 rounded-md">
-                                                        <p className="text-xs text-muted-foreground">Pour le champ : <span className="font-bold">{suggestion.field}</span></p>
+                                                        <p className="text-xs text-muted-foreground">{lang.suggestionField}: <span className="font-bold">{suggestion.field}</span></p>
                                                         <pre className="text-sm my-1 italic whitespace-pre-wrap font-sans">"{suggestionValueText}"</pre>
                                                         <div className="flex gap-2">
                                                             <Button size="xs" variant="outline" onClick={() => onApplySuggestion(suggestion)}>
-                                                                <Wand2 className="mr-2 h-3 w-3"/>Appliquer
+                                                                <Wand2 className="mr-2 h-3 w-3"/>{lang.applySuggestionButton}
                                                             </Button>
                                                              <Button
                                                                 size="xs"
@@ -134,7 +138,7 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                                                                 onClick={() => handleCopySuggestion(suggestion.value, `${message.id}-${index}`)}
                                                             >
                                                                 {copiedStates[`${message.id}-${index}`] ? <Check className="mr-2 h-3 w-3 text-green-500"/> : <Clipboard className="mr-2 h-3 w-3"/>}
-                                                                Copier
+                                                                {lang.copyButton}
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -149,7 +153,7 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                             <div className="flex justify-start">
                                 <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
                                     <Loader2 className="h-4 w-4 animate-spin"/>
-                                    <span className="text-sm text-muted-foreground">Réflexion en cours...</span>
+                                    <span className="text-sm text-muted-foreground">{lang.assistantThinking}</span>
                                 </div>
                             </div>
                         )}
@@ -159,7 +163,7 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
             <Separator />
             <div className="p-4 border-t flex items-center gap-2">
                 <Textarea
-                    placeholder="Demandez une idée..."
+                    placeholder={lang.assistantPlaceholder}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
@@ -173,9 +177,9 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Configuration de l'IA</DialogTitle>
+                            <DialogTitle>{lang.aiConfigTitle}</DialogTitle>
                         </DialogHeader>
-                        <ModelManager config={aiConfig} onConfigChange={onConfigChange} />
+                        <ModelManager config={aiConfig} onConfigChange={onConfigChange} currentLanguage={currentLanguage} />
                     </DialogContent>
                 </Dialog>
                 <Button size="icon" onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
@@ -185,3 +189,5 @@ export default function AssistantChat({ aiConfig, onConfigChange, onApplySuggest
         </div>
     );
 }
+
+    

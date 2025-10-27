@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Добавить персонажа",
     "addPlaceholderTooltip": "Добавить заполнитель персонажа",
@@ -290,5 +291,17 @@
     "suggestedRole": "Предлагаемая роль",
     "chooseCharacterPlaceholder": "Выберите персонажа...",
     "noSavedCharacters": "Нет сохраненных персонажей.",
-    "launchAdventureButton": "Начать приключение"
+    "launchAdventureButton": "Начать приключение",
+    "assistedCreationTitle": "Творческий помощник",
+    "assistedCreationDescription": "Общайтесь с ИИ, чтобы получить вдохновение, определить свой мир, персонажей и начальную ситуацию.",
+    "adventureConfigDescription": "Заполните эту форму идеями от помощника или вашими собственными творениями.",
+    "assistantWelcomeMessage": "Я ваш творческий помощник. Попросите меня помочь создать мир, сюжет или персонажей!",
+    "suggestionsTitle": "Предложения",
+    "suggestionField": "Для поля",
+    "applySuggestionButton": "Применить",
+    "assistantThinking": "Думаю...",
+    "assistantPlaceholder": "Попросите идею..."
 }
+
+
+    

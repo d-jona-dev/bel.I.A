@@ -291,7 +291,19 @@
     "suggestedRole": "Rôle conseillé",
     "chooseCharacterPlaceholder": "Choisir un personnage...",
     "noSavedCharacters": "Aucun personnage sauvegardé.",
-    "launchAdventureButton": "Lancer l'Aventure"
+    "launchAdventureButton": "Lancer l'Aventure",
+    "assistedCreationTitle": "Assistant Créatif",
+    "assistedCreationDescription": "Discutez avec l'IA pour trouver l'inspiration, définir votre monde, vos personnages et la situation de départ.",
+    "adventureConfigDescription": "Remplissez ce formulaire avec les idées de l'assistant ou vos propres créations.",
+    "assistantWelcomeMessage": "Je suis votre assistant créatif. Demandez-moi de l'aide pour créer un monde, une intrigue ou des personnages !",
+    "suggestionsTitle": "Suggestions",
+    "suggestionField": "Pour le champ",
+    "applySuggestionButton": "Appliquer",
+    "assistantThinking": "Réflexion en cours...",
+    "assistantPlaceholder": "Demandez une idée..."
 }
 
 
+
+
+    

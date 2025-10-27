@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "添加角色",
     "addPlaceholderTooltip": "添加角色占位符",
@@ -290,6 +291,18 @@
     "suggestedRole": "建议的角色",
     "chooseCharacterPlaceholder": "选择一个角色...",
     "noSavedCharacters": "没有保存的角色。",
-    "launchAdventureButton": "启动冒险"
+    "launchAdventureButton": "启动冒险",
+    "assistedCreationTitle": "创意助手",
+    "assistedCreationDescription": "与 AI 聊天以获取灵感，定义您的世界、角色和初始情况。",
+    "adventureConfigDescription": "用助手的想法或您自己的创作填写此表格。",
+    "assistantWelcomeMessage": "我是你的创意助手。向我寻求帮助，创建世界、情节或角色！",
+    "suggestionsTitle": "建议",
+    "suggestionField": "用于字段",
+    "applySuggestionButton": "应用",
+    "assistantThinking": "正在思考...",
+    "assistantPlaceholder": "请求一个想法..."
 }
 
+
+
+    

@@ -1,4 +1,5 @@
 
+
 {
     "addCharacterTooltip": "Charakter hinzufügen",
     "addPlaceholderTooltip": "Charakter-Platzhalter hinzufügen",
@@ -290,6 +291,18 @@
     "suggestedRole": "Vorgeschlagene Rolle",
     "chooseCharacterPlaceholder": "Wählen Sie einen Charakter...",
     "noSavedCharacters": "Keine gespeicherten Charaktere.",
-    "launchAdventureButton": "Abenteuer starten"
+    "launchAdventureButton": "Abenteuer starten",
+    "assistedCreationTitle": "Kreativ-Assistent",
+    "assistedCreationDescription": "Chatten Sie mit der KI, um Inspiration zu finden, Ihre Welt, Charaktere und Ausgangssituation zu definieren.",
+    "adventureConfigDescription": "Füllen Sie dieses Formular mit Ideen des Assistenten oder Ihren eigenen Kreationen aus.",
+    "assistantWelcomeMessage": "Ich bin Ihr kreativer Assistent. Fragen Sie mich um Hilfe bei der Erstellung einer Welt, einer Handlung oder von Charakteren!",
+    "suggestionsTitle": "Vorschläge",
+    "suggestionField": "Für das Feld",
+    "applySuggestionButton": "Anwenden",
+    "assistantThinking": "Denken...",
+    "assistantPlaceholder": "Fragen Sie nach einer Idee..."
 }
 
+
+
+    

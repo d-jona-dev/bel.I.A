@@ -1,5 +1,6 @@
 
 
+
 {
     "addCharacterTooltip": "Añadir Personaje",
     "addPlaceholderTooltip": "Añadir Marcador de Posición de Personaje",
@@ -291,6 +292,18 @@
     "suggestedRole": "Rol sugerido",
     "chooseCharacterPlaceholder": "Elegir un personaje...",
     "noSavedCharacters": "No hay personajes guardados.",
-    "launchAdventureButton": "Lanzar la Aventura"
+    "launchAdventureButton": "Lanzar la Aventura",
+    "assistedCreationTitle": "Asistente Creativo",
+    "assistedCreationDescription": "Chatea con la IA para obtener inspiración, definir tu mundo, personajes y situación inicial.",
+    "adventureConfigDescription": "Rellena este formulario con ideas del asistente o tus propias creaciones.",
+    "assistantWelcomeMessage": "Soy tu asistente creativo. ¡Pídeme ayuda para crear un mundo, una trama o personajes!",
+    "suggestionsTitle": "Sugerencias",
+    "suggestionField": "Para el campo",
+    "applySuggestionButton": "Aplicar",
+    "assistantThinking": "Pensando...",
+    "assistantPlaceholder": "Pide una idea..."
 }
 
+
+
+    
