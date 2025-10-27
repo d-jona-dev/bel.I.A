@@ -1,5 +1,3 @@
-
-
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 
@@ -43,6 +41,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { i18n, type Language } from "@/lib/i18n";
 import { Gem, HeartCrack, HeartHandshake } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import AdBanner from '@/components/adsense-banner';
 
 
 interface PageStructureProps {
@@ -327,6 +326,9 @@ isSaveComicDialogOpen,
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+            <div className="p-2 border rounded-md">
+                <AdBanner />
+            </div>
             <a
               href="/downloads/app-local.zip"
               download

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script'; // Importer le composant Script
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { MedievalSharp } from 'next/font/google'; // Import de la police
@@ -29,6 +30,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} ${medievalSharp.variable}`} suppressHydrationWarning>
+      <head>
+        {/*
+          IMPORTANT: Remplacez 'ca-pub-XXXXXXXXXXXXXXXX' par votre propre ID d'éditeur Google AdSense.
+          Vous pouvez trouver cet ID dans votre compte AdSense.
+        */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className={`antialiased`}>
         <ThemeProvider
           attribute="class"
