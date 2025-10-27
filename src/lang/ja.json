@@ -6,6 +6,14 @@
     "visionConsent": "この画像はAIモデルに送信されて分析され、プライベートなものではなくなる可能性があることを理解しています。個人的または機密性の高い画像は使用しないでください。",
     "memory": "記憶",
     "addMemory": "思い出を追加",
+    "secondaryCharactersLabel": "サブキャラクター（NPC）",
+    "placeholderLabel": "プレースホルダー？",
+    "placeholderNameLabel": "プレースホルダー名",
+    "npcNameLabel": "NPC名",
+    "placeholderNamePlaceholder": "例：戦士、商人...",
+    "npcNamePlaceholder": "例：ローリック、エララ...",
+    "npcDetailsLabel": "NPC詳細",
+    "npcDetailsPlaceholder": "説明、性格、役割...",
     "noImageGenerated": "このシーンの画像は生成されませんでした。",
     "comicEditorButton": "コミックエディター",
     "generateButton": "生成",
@@ -65,14 +73,6 @@
     "adventureConfigTitle": "冒険の設定",
     "worldConfigTitle": "世界設定",
     "worldDescriptionLabel": "世界の説明",
-    "secondaryCharactersLabel": "サブキャラクター（NPC）",
-    "placeholderLabel": "プレースホルダー？",
-    "placeholderNameLabel": "プレースホルダー名",
-    "npcNameLabel": "NPC名",
-    "placeholderNamePlaceholder": "例：戦士、商人...",
-    "npcNamePlaceholder": "例：ローリック、エララ...",
-    "npcDetailsLabel": "NPC詳細",
-    "npcDetailsPlaceholder": "説明、性格、役割...",
     "timeManagementTitle": "時間管理",
     "enableTimeManagementLabel": "時間管理を有効にする",
     "enableTimeManagementDescription": "AIは各ターンで時間を進めます。",
@@ -300,8 +300,11 @@
     "suggestionField": "フィールド用",
     "applySuggestionButton": "適用",
     "assistantThinking": "考え中...",
-    "assistantPlaceholder": "アイデアを求める..."
+    "assistantPlaceholder": "アイデアを求める...",
+    "worldDescriptionPlaceholder": "{lang}の世界の説明...",
+    "initialSituationTitle": "開始状況",
+    "initialSituationPlaceholder": "{lang}での開始状況...",
+    "translateButton": "英語に翻訳",
+    "translateFrom": "{lang}から翻訳：",
+    "translateTo": "{lang}に翻訳"
 }
-
-
-    

@@ -6,6 +6,14 @@
     "visionConsent": "Comprendo che l'immagine verrà inviata a un modello di intelligenza artificiale per l'analisi e potrebbe non rimanere privata. Non utilizzare immagini personali o sensibili.",
     "memory": "Memoria",
     "addMemory": "Aggiungi ricordo",
+    "secondaryCharactersLabel": "Personaggi Secondari (PNG)",
+    "placeholderLabel": "Segnaposto?",
+    "placeholderNameLabel": "Nome segnaposto",
+    "npcNameLabel": "Nome PNG",
+    "placeholderNamePlaceholder": "Es: Il Guerriero, Il Mercante...",
+    "npcNamePlaceholder": "Es: Roric, Elara...",
+    "npcDetailsLabel": "Dettagli PNG",
+    "npcDetailsPlaceholder": "Descrizione, personalità, ruolo...",
     "noImageGenerated": "Nessuna immagine generata per questa scena.",
     "comicEditorButton": "Editor di Fumetti",
     "generateButton": "Genera",
@@ -65,14 +73,6 @@
     "adventureConfigTitle": "Configurazione Avventura",
     "worldConfigTitle": "Configurazione Mondo",
     "worldDescriptionLabel": "Descrizione del Mondo",
-    "secondaryCharactersLabel": "Personaggi Secondari (PNG)",
-    "placeholderLabel": "Segnaposto?",
-    "placeholderNameLabel": "Nome segnaposto",
-    "npcNameLabel": "Nome PNG",
-    "placeholderNamePlaceholder": "Es: Il Guerriero, Il Mercante...",
-    "npcNamePlaceholder": "Es: Roric, Elara...",
-    "npcDetailsLabel": "Dettagli PNG",
-    "npcDetailsPlaceholder": "Descrizione, personalità, ruolo...",
     "timeManagementTitle": "Gestione del Tempo",
     "enableTimeManagementLabel": "Abilita gestione del tempo",
     "enableTimeManagementDescription": "L'IA avanzerà il tempo ad ogni turno.",
@@ -300,9 +300,11 @@
     "suggestionField": "Per il campo",
     "applySuggestionButton": "Applica",
     "assistantThinking": "Pensando...",
-    "assistantPlaceholder": "Chiedi un'idea..."
+    "assistantPlaceholder": "Chiedi un'idea...",
+    "worldDescriptionPlaceholder": "Descrizione del mondo in {lang}...",
+    "initialSituationTitle": "Situazione Iniziale",
+    "initialSituationPlaceholder": "Situazione iniziale in {lang}...",
+    "translateButton": "Traduci in Inglese",
+    "translateFrom": "Traduci da {lang} a:",
+    "translateTo": "Traduci in {lang}"
 }
-
-
-
-    

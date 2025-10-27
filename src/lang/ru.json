@@ -6,6 +6,14 @@
     "visionConsent": "Я понимаю, что изображение будет отправлено модели ИИ для анализа и может не остаться конфиденциальным. Не используйте личные или конфиденциальные изображения.",
     "memory": "Память",
     "addMemory": "Добавить воспоминание",
+    "secondaryCharactersLabel": "Второстепенные персонажи (NPC)",
+    "placeholderLabel": "Заполнитель?",
+    "placeholderNameLabel": "Имя заполнителя",
+    "npcNameLabel": "Имя NPC",
+    "placeholderNamePlaceholder": "Например: Воин, Торговец...",
+    "npcNamePlaceholder": "Например: Рорик, Элара...",
+    "npcDetailsLabel": "Детали NPC",
+    "npcDetailsPlaceholder": "Описание, личность, роль...",
     "noImageGenerated": "Для этой сцены изображение не создано.",
     "comicEditorButton": "Редактор комиксов",
     "generateButton": "Создать",
@@ -65,14 +73,6 @@
     "adventureConfigTitle": "Конфигурация приключения",
     "worldConfigTitle": "Конфигурация мира",
     "worldDescriptionLabel": "Описание мира",
-    "secondaryCharactersLabel": "Второстепенные персонажи (NPC)",
-    "placeholderLabel": "Заполнитель?",
-    "placeholderNameLabel": "Имя заполнителя",
-    "npcNameLabel": "Имя NPC",
-    "placeholderNamePlaceholder": "Например: Воин, Торговец...",
-    "npcNamePlaceholder": "Например: Рорик, Элара...",
-    "npcDetailsLabel": "Детали NPC",
-    "npcDetailsPlaceholder": "Описание, личность, роль...",
     "timeManagementTitle": "Управление временем",
     "enableTimeManagementLabel": "Включить управление временем",
     "enableTimeManagementDescription": "ИИ будет продвигать время каждый ход.",
@@ -300,8 +300,11 @@
     "suggestionField": "Для поля",
     "applySuggestionButton": "Применить",
     "assistantThinking": "Думаю...",
-    "assistantPlaceholder": "Попросите идею..."
+    "assistantPlaceholder": "Попросите идею...",
+    "worldDescriptionPlaceholder": "Описание мира на {lang}...",
+    "initialSituationTitle": "Начальная ситуация",
+    "initialSituationPlaceholder": "Начальная ситуация на {lang}...",
+    "translateButton": "Перевести на английский",
+    "translateFrom": "Перевести с {lang} на:",
+    "translateTo": "Перевести на {lang}"
 }
-
-
-    

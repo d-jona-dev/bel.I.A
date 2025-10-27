@@ -1,6 +1,5 @@
 
 
-
 {
     "addCharacterTooltip": "Add Character",
     "addPlaceholderTooltip": "Add Character Placeholder",
@@ -301,10 +300,11 @@
     "suggestionField": "For field",
     "applySuggestionButton": "Apply",
     "assistantThinking": "Thinking...",
-    "assistantPlaceholder": "Ask for an idea..."
+    "assistantPlaceholder": "Ask for an idea...",
+    "worldDescriptionPlaceholder": "World description in {lang}...",
+    "initialSituationTitle": "Starting Situation",
+    "initialSituationPlaceholder": "Starting situation in {lang}...",
+    "translateButton": "Translate to English",
+    "translateFrom": "Translate from {lang} to:",
+    "translateTo": "Translate to {lang}"
 }
-
-
-
-
-    

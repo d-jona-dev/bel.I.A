@@ -300,9 +300,11 @@
     "suggestionField": "用于字段",
     "applySuggestionButton": "应用",
     "assistantThinking": "正在思考...",
-    "assistantPlaceholder": "请求一个想法..."
+    "assistantPlaceholder": "请求一个想法...",
+    "worldDescriptionPlaceholder": "用 {lang} 描述世界...",
+    "initialSituationTitle": "初始情况",
+    "initialSituationPlaceholder": "用 {lang} 描述初始情况...",
+    "translateButton": "翻译成英文",
+    "translateFrom": "从 {lang} 翻译到：",
+    "translateTo": "翻译成 {lang}"
 }
-
-
-
-    

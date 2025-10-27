@@ -300,9 +300,11 @@
     "suggestionField": "Für das Feld",
     "applySuggestionButton": "Anwenden",
     "assistantThinking": "Denken...",
-    "assistantPlaceholder": "Fragen Sie nach einer Idee..."
+    "assistantPlaceholder": "Fragen Sie nach einer Idee...",
+    "worldDescriptionPlaceholder": "Weltbeschreibung in {lang}...",
+    "initialSituationTitle": "Ausgangssituation",
+    "initialSituationPlaceholder": "Ausgangssituation in {lang}...",
+    "translateButton": "Auf Englisch übersetzen",
+    "translateFrom": "Übersetzen von {lang} nach:",
+    "translateTo": "Übersetzen nach {lang}"
 }
-
-
-
-    

@@ -1,6 +1,5 @@
 
 
-
 {
     "addCharacterTooltip": "Añadir Personaje",
     "addPlaceholderTooltip": "Añadir Marcador de Posición de Personaje",
@@ -301,9 +300,11 @@
     "suggestionField": "Para el campo",
     "applySuggestionButton": "Aplicar",
     "assistantThinking": "Pensando...",
-    "assistantPlaceholder": "Pide una idea..."
+    "assistantPlaceholder": "Pide una idea...",
+    "worldDescriptionPlaceholder": "Descripción del mundo en {lang}...",
+    "initialSituationTitle": "Situación Inicial",
+    "initialSituationPlaceholder": "Situación inicial en {lang}...",
+    "translateButton": "Traducir al Inglés",
+    "translateFrom": "Traducir de {lang} a:",
+    "translateTo": "Traducir a {lang}"
 }
-
-
-
-    

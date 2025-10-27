@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -127,6 +128,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     
     const { toast } = useToast();
     const [isTranslating, setIsTranslating] = React.useState<Record<string, boolean>>({});
+    const lang = i18n[currentLanguage];
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
@@ -210,43 +212,43 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         <AccordionItem value="world-config">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-2">
-                                    <Globe className="h-5 w-5" /> Description du Monde
+                                    <Globe className="h-5 w-5" /> {lang.worldConfigTitle}
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="pt-2 space-y-4">
                                 <Tabs defaultValue={currentLanguage} className="w-full">
                                     <TabsList>
-                                        {allLanguageCodes.map(lang => (
-                                            <TabsTrigger key={lang} value={lang}>{lang.toUpperCase()}</TabsTrigger>
+                                        {allLanguageCodes.map(langCode => (
+                                            <TabsTrigger key={langCode} value={langCode}>{langCode.toUpperCase()}</TabsTrigger>
                                         ))}
                                     </TabsList>
-                                    {allLanguageCodes.map(lang => (
-                                        <TabsContent key={lang} value={lang} className="mt-4">
+                                    {allLanguageCodes.map(langCode => (
+                                        <TabsContent key={langCode} value={langCode} className="mt-4">
                                              <FormField
                                                 control={form.control}
-                                                name={`world.${lang}` as const}
+                                                name={`world.${langCode}` as const}
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormControl>
-                                                            <LanguageTextarea field={field} placeholder={`Description du monde en ${lang}...`} />
+                                                            <LanguageTextarea field={field} placeholder={lang.worldDescriptionPlaceholder.replace('{lang}', langCode)} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                            {lang !== 'en' ? (
-                                                <Button type="button" onClick={() => handleTranslate('world', lang, 'en')} disabled={isTranslating[`world-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
-                                                    {isTranslating[`world-${lang}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
-                                                    Traduire en Anglais
+                                            {langCode !== 'en' ? (
+                                                <Button type="button" onClick={() => handleTranslate('world', langCode, 'en')} disabled={isTranslating[`world-${langCode}-en`]} size="sm" variant="ghost" className="mt-2">
+                                                    {isTranslating[`world-${langCode}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
+                                                    {lang.translateButton}
                                                 </Button>
                                             ) : (
                                                 <div className="mt-2 space-y-2">
-                                                    <Label className="text-xs text-muted-foreground">Traduire depuis l'Anglais vers :</Label>
+                                                    <Label className="text-xs text-muted-foreground">{lang.translateFrom.replace('{lang}', langCode.toUpperCase())}</Label>
                                                     <div className="flex flex-wrap gap-2">
                                                         {allLanguageCodes.filter(l => l !== 'en').map(targetLang => (
                                                             <Button key={targetLang} type="button" onClick={() => handleTranslate('world', 'en', targetLang)} disabled={isTranslating[`world-en-${targetLang}`]} size="xs" variant="outline">
                                                                 {isTranslating[`world-en-${targetLang}`] ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}
-                                                                {targetLang.toUpperCase()}
+                                                                {lang.translateTo.replace('{lang}', targetLang.toUpperCase())}
                                                             </Button>
                                                         ))}
                                                     </div>
@@ -264,43 +266,43 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             <AccordionItem value="initial-situation-config">
                                 <AccordionTrigger>
                                     <div className="flex items-center gap-2">
-                                        <Rocket className="h-5 w-5" /> Situation de Départ
+                                        <Rocket className="h-5 w-5" /> {lang.initialSituationTitle}
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 space-y-4">
                                      <Tabs defaultValue={currentLanguage} className="w-full">
                                         <TabsList>
-                                            {allLanguageCodes.map(lang => (
-                                                <TabsTrigger key={lang} value={lang}>{lang.toUpperCase()}</TabsTrigger>
+                                            {allLanguageCodes.map(langCode => (
+                                                <TabsTrigger key={langCode} value={langCode}>{langCode.toUpperCase()}</TabsTrigger>
                                             ))}
                                         </TabsList>
-                                        {allLanguageCodes.map(lang => (
-                                            <TabsContent key={lang} value={lang} className="mt-4">
+                                        {allLanguageCodes.map(langCode => (
+                                            <TabsContent key={langCode} value={langCode} className="mt-4">
                                                 <FormField
                                                     control={form.control}
-                                                    name={`initialSituation.${lang}` as const}
+                                                    name={`initialSituation.${langCode}` as const}
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormControl>
-                                                                <LanguageTextarea field={field} placeholder={`Situation de départ en ${lang}...`} />
+                                                                <LanguageTextarea field={field} placeholder={lang.initialSituationPlaceholder.replace('{lang}', langCode)} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
-                                                {lang !== 'en' ? (
-                                                    <Button type="button" onClick={() => handleTranslate('initialSituation', lang, 'en')} disabled={isTranslating[`initialSituation-${lang}-en`]} size="sm" variant="ghost" className="mt-2">
-                                                        {isTranslating[`initialSituation-${lang}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
-                                                        Traduire en Anglais
+                                                {langCode !== 'en' ? (
+                                                    <Button type="button" onClick={() => handleTranslate('initialSituation', langCode, 'en')} disabled={isTranslating[`initialSituation-${langCode}-en`]} size="sm" variant="ghost" className="mt-2">
+                                                        {isTranslating[`initialSituation-${langCode}-en`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Languages className="mr-2 h-4 w-4"/>}
+                                                        {lang.translateButton}
                                                     </Button>
                                                 ) : (
                                                     <div className="mt-2 space-y-2">
-                                                        <Label className="text-xs text-muted-foreground">Traduire depuis l'Anglais vers :</Label>
+                                                        <Label className="text-xs text-muted-foreground">{lang.translateFrom.replace('{lang}', langCode.toUpperCase())}</Label>
                                                         <div className="flex flex-wrap gap-2">
                                                             {allLanguageCodes.filter(l => l !== 'en').map(targetLang => (
                                                                 <Button key={targetLang} type="button" onClick={() => handleTranslate('initialSituation', 'en', targetLang)} disabled={isTranslating[`initialSituation-en-${targetLang}`]} size="xs" variant="outline">
                                                                     {isTranslating[`initialSituation-en-${targetLang}`] ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : null}
-                                                                    {targetLang.toUpperCase()}
+                                                                    {lang.translateTo.replace('{lang}', targetLang.toUpperCase())}
                                                                 </Button>
                                                             ))}
                                                         </div>
@@ -329,5 +331,3 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     );
 });
 AdventureForm.displayName = "AdventureForm";
-
-    

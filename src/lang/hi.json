@@ -300,8 +300,11 @@
     "suggestionField": "फ़ील्ड के लिए",
     "applySuggestionButton": "लागू करें",
     "assistantThinking": "सोच रहा हूँ...",
-    "assistantPlaceholder": "एक विचार के लिए पूछें..."
+    "assistantPlaceholder": "एक विचार के लिए पूछें...",
+    "worldDescriptionPlaceholder": "{lang} में विश्व विवरण...",
+    "initialSituationTitle": "आरंभिक स्थिति",
+    "initialSituationPlaceholder": "{lang} में आरंभिक स्थिति...",
+    "translateButton": "अंग्रेजी में अनुवाद करें",
+    "translateFrom": "{lang} से अनुवाद करें:",
+    "translateTo": "{lang} में अनुवाद करें"
 }
-
-
-    

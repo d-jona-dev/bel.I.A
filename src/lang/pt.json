@@ -6,6 +6,14 @@
     "visionConsent": "Eu entendo que a imagem será enviada para um modelo de IA para análise e pode não permanecer privada. Não use imagens pessoais ou sensíveis.",
     "memory": "Memória",
     "addMemory": "Adicionar memória",
+    "secondaryCharactersLabel": "Personagens Secundários (NPCs)",
+    "placeholderLabel": "Espaço reservado?",
+    "placeholderNameLabel": "Nome do espaço reservado",
+    "npcNameLabel": "Nome do NPC",
+    "placeholderNamePlaceholder": "Ex: O Guerreiro, O Mercador...",
+    "npcNamePlaceholder": "Ex: Roric, Elara...",
+    "npcDetailsLabel": "Detalhes do NPC",
+    "npcDetailsPlaceholder": "Descrição, personalidade, papel...",
     "noImageGenerated": "Nenhuma imagem gerada para esta cena.",
     "comicEditorButton": "Editor de Quadrinhos",
     "generateButton": "Gerar",
@@ -65,14 +73,6 @@
     "adventureConfigTitle": "Configuração da Aventura",
     "worldConfigTitle": "Configuração do Mundo",
     "worldDescriptionLabel": "Descrição do Mundo",
-    "secondaryCharactersLabel": "Personagens Secundários (NPCs)",
-    "placeholderLabel": "Espaço reservado?",
-    "placeholderNameLabel": "Nome do espaço reservado",
-    "npcNameLabel": "Nome do NPC",
-    "placeholderNamePlaceholder": "Ex: O Guerreiro, O Mercador...",
-    "npcNamePlaceholder": "Ex: Roric, Elara...",
-    "npcDetailsLabel": "Detalhes do NPC",
-    "npcDetailsPlaceholder": "Descrição, personalidade, papel...",
     "timeManagementTitle": "Gerenciamento de Tempo",
     "enableTimeManagementLabel": "Habilitar gerenciamento de tempo",
     "enableTimeManagementDescription": "A IA avançará o tempo a cada turno.",
@@ -300,8 +300,11 @@
     "suggestionField": "Para o campo",
     "applySuggestionButton": "Aplicar",
     "assistantThinking": "Pensando...",
-    "assistantPlaceholder": "Peça uma ideia..."
+    "assistantPlaceholder": "Peça uma ideia...",
+    "worldDescriptionPlaceholder": "Descrição do mundo em {lang}...",
+    "initialSituationTitle": "Situação Inicial",
+    "initialSituationPlaceholder": "Situação inicial em {lang}...",
+    "translateButton": "Traduzir para Inglês",
+    "translateFrom": "Traduzir de {lang} para:",
+    "translateTo": "Traduzir para {lang}"
 }
-
-
-    
