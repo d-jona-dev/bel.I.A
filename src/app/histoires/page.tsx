@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useSaveLoad } from '@/hooks/systems/useSaveLoad';
 import { i18n, type Language } from '@/lib/i18n';
+import { getLocalizedText } from '@/hooks/systems/useAdventureState';
 
 
 // Helper to generate a unique ID
@@ -336,8 +337,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: formValues.world['fr']?.substring(0, 30) || editingStory.title,
-              description: formValues.initialSituation['fr']?.substring(0, 100) || editingStory.description,
+              title: getLocalizedText(formValues.world, 'fr') || editingStory.title,
+              description: getLocalizedText(formValues.initialSituation, 'fr') || editingStory.description,
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
@@ -390,10 +391,10 @@ export default function HistoiresPage() {
 
     const newStory: SavedStory = {
         id: newId,
-        title: formValues.world['fr']?.substring(0, 40) || "Nouvelle Histoire",
-        description: formValues.initialSituation['fr']?.substring(0, 100) || "...",
-        date: new Date().toISOString().split('T')[0],
+        title: getLocalizedText(formValues.world, 'fr') || "Nouvelle Histoire",
+        description: getLocalizedText(formValues.initialSituation, 'fr') || "...",
         adventureState: newAdventureState,
+        date: new Date().toISOString().split('T')[0],
     };
 
     // Save the new story to the list
@@ -557,11 +558,11 @@ export default function HistoiresPage() {
               {savedStories.map((story) => (
                 <Card key={story.id}>
                   <CardHeader>
-                    <CardTitle>{story.title}</CardTitle>
+                    <CardTitle>{getLocalizedText(story.adventureState.adventureSettings.world, currentLanguage) || story.title}</CardTitle>
                     <CardDescription>{lang.savedOnDate} {story.date}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3">{story.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-3">{getLocalizedText(story.adventureState.adventureSettings.initialSituation, currentLanguage) || story.description}</p>
                   </CardContent>
                   <CardFooter className="flex flex-wrap justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleLaunchStory(story.id)}>
@@ -683,7 +684,7 @@ export default function HistoiresPage() {
         <Dialog open={!!editingStory} onOpenChange={(open) => { if(!open) setEditingStory(null) }}>
             <DialogContent className="max-w-[80vw] lg:max-w-3xl h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>{lang.editStoryTitle}: {editingStory?.title}</DialogTitle>
+                    <DialogTitle>{lang.editStoryTitle}: {getLocalizedText(editingStory?.adventureState.adventureSettings.world, currentLanguage) || editingStory?.title}</DialogTitle>
                     <DialogDescription>
                         {lang.editStoryDesc}
                     </DialogDescription>
@@ -742,5 +743,7 @@ export default function HistoiresPage() {
 
 
 
+
+    
 
     

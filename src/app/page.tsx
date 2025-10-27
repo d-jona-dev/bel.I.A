@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -206,77 +207,53 @@ export default function Home() {
 
     React.useEffect(() => {
         const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
-        const currentAvatarId = localStorage.getItem('currentAvatarId');
         const tempStateJSON = localStorage.getItem('tempAdventureState');
-        const savedLanguage = localStorage.getItem('adventure_language'); // Read the saved language
-
-        if (savedLanguage) {
-            setCurrentLanguage(savedLanguage);
-        }
-
-        // Priority order:
-        // 1. Temporary state from slot assignment.
-        // 2. Story ID from library.
-        // 3. Current adventure state (already handled by useAdventureState).
+        const savedLanguage = localStorage.getItem('adventure_language');
         
+        let dataToLoad: SaveData | null = null;
+        let languageFromHistory: string | null = savedLanguage;
+
         if (tempStateJSON) {
             try {
-                const tempState = JSON.parse(tempStateJSON);
-                 const stateWithAvatar = applyAvatarToSettings(
-                     currentAvatarId ? JSON.parse(currentAvatarId) : '',
-                     tempState.adventureSettings
-                 );
-                loadAdventureState({
-                    ...tempState,
-                    adventureSettings: stateWithAvatar,
-                });
-            } catch (error) {
-                console.error("Failed to load temporary adventure state:", error);
-                 toast({ title: "Erreur de chargement", variant: "destructive" });
-            } finally {
-                localStorage.removeItem('tempAdventureState');
-                 // Critical: clear storyIdToLoad to prevent it from overwriting the temp state
-                localStorage.removeItem('loadStoryIdOnMount');
-            }
+                dataToLoad = JSON.parse(tempStateJSON);
+            } catch (e) { console.error(e); }
+            localStorage.removeItem('tempAdventureState');
+            localStorage.removeItem('loadStoryIdOnMount');
         } else if (storyIdToLoad) {
             const storiesFromStorage = localStorage.getItem('adventureStories');
             if (storiesFromStorage) {
                 const savedStories = JSON.parse(storiesFromStorage);
                 const story = savedStories.find((s: any) => s.id === storyIdToLoad);
                 if (story && story.adventureState) {
-                    const stateWithAvatar = applyAvatarToSettings(
-                        currentAvatarId ? JSON.parse(currentAvatarId) : '', 
-                        story.adventureState.adventureSettings
-                    );
-                    loadAdventureState({
-                        ...story.adventureState,
-                        adventureSettings: stateWithAvatar,
-                    });
+                    dataToLoad = story.adventureState;
                 } else {
-                     toast({ title: "Erreur", description: `Histoire ${storyIdToLoad} non trouvée.`, variant: "destructive" });
+                    toast({ title: "Erreur", description: `Histoire ${storyIdToLoad} non trouvée.`, variant: "destructive" });
                 }
             }
             localStorage.removeItem('loadStoryIdOnMount');
-        } else {
-             // This case is handled by the auto-loader in useAdventureState.
-             // We only apply avatar if no story is being loaded from the library.
-             if (currentAvatarId) {
-                setAdventureSettings(prev => applyAvatarToSettings(JSON.parse(currentAvatarId), prev));
-             }
         }
-        
-        const savedClockState = localStorage.getItem('gameClockState_v2');
-        if (savedClockState) {
-            try {
-                const clock = GameClock.deserialize(savedClockState);
-                setGameClock(clock);
-                setTimeState(clock.getState());
-            } catch (error) {
-                 console.error("Failed to load clock state:", error);
+
+        if (dataToLoad) {
+            // **LA CORRECTION EST ICI**
+            // On force la langue à être celle qui était sélectionnée sur la page "Histoires"
+            if (languageFromHistory) {
+                dataToLoad.currentLanguage = languageFromHistory;
             }
+            const currentAvatarId = localStorage.getItem('currentAvatarId');
+            const stateWithAvatar = applyAvatarToSettings(
+                currentAvatarId ? JSON.parse(currentAvatarId) : '',
+                dataToLoad.adventureSettings
+            );
+            loadAdventureState({
+                ...dataToLoad,
+                adventureSettings: stateWithAvatar,
+            });
+        } else if (savedLanguage) {
+             // Si aucune histoire n'est chargée, on applique quand même la langue de la session précédente
+            setCurrentLanguage(savedLanguage);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only once on initial mount
+    }, []);
 
 
     const handleUndoLastMessage = () => {
@@ -511,3 +488,5 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
         </>
     );
 }
+
+    

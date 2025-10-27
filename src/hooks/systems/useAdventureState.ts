@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -45,7 +46,7 @@ const createInitialState = (): SaveData => ({
 
 export const getLocalizedText = (field: LocalizedText, lang: string): string => {
     if (!field || typeof field !== 'object') return "";
-    return field[lang] || field['en'] || field['fr'] || Object.values(field)[0] || "";
+    return field[lang] || field['fr'] || Object.values(field)[0] || "";
 };
 
 const CURRENT_ADVENTURE_STATE_KEY = 'currentAdventureState_v2.7';
@@ -99,11 +100,15 @@ export function useAdventureState() {
           }
         };
         
+        // **LA CORRECTION CLÉ EST ICI**
+        // On vérifie s'il y a une langue spécifiée à charger, sinon on garde la langue actuelle.
+        const languageToLoad = data.currentLanguage || currentLanguage;
+
         setAdventureSettings(settingsWithDefaults);
         const loadedCharacters = data.characters || [];
         setCharacters(loadedCharacters);
         setNarrativeMessages(data.narrative || createInitialState().narrative);
-        setCurrentLanguage(data.currentLanguage || 'fr');
+        setCurrentLanguage(languageToLoad);
         setAiConfig(data.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
         
         setBaseAdventureSettings(JSON.parse(JSON.stringify(settingsWithDefaults)));
@@ -112,7 +117,7 @@ export function useAdventureState() {
 
         toast({ title: "Aventure Chargée", description: "Votre partie a été chargée avec succès." });
         setIsLoaded(true); // Mark as loaded after setting state
-    }, [toast]);
+    }, [toast, currentLanguage]);
     
     // Auto-load from localStorage on initial mount
     React.useEffect(() => {
@@ -174,3 +179,5 @@ export function useAdventureState() {
         undoLastCharacterState,
     };
 }
+
+    
