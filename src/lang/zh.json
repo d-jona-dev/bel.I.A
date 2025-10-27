@@ -349,5 +349,10 @@
     "createClothingTitle": "创建一件新衣物",
     "createButton": "创建",
     "editClothingTitle": "编辑",
-    "deleteClothingConfirmation": "你确定要删除“{itemName}”吗？"
+    "deleteClothingConfirmation": "你确定要删除“{itemName}”吗？",
+    "playerAvatarsPageTitle": "我的玩家头像",
+    "playerAvatarsPageDescription": "管理你的玩家资料。带有绿色复选标记的头像是新冒险中默认使用的头像。",
+    "importAvatarButton": "导入一个头像",
+    "createAvatarButton": "创建一个头像",
+    "setDefaultButton": "设为默认"
 }

@@ -349,5 +349,10 @@
     "createClothingTitle": "Créer un nouveau vêtement",
     "createButton": "Créer",
     "editClothingTitle": "Modifier",
-    "deleteClothingConfirmation": "Êtes-vous sûr de vouloir supprimer \"{itemName}\" ?"
+    "deleteClothingConfirmation": "Êtes-vous sûr de vouloir supprimer \"{itemName}\" ?",
+    "playerAvatarsPageTitle": "Mes Avatars Joueur",
+    "playerAvatarsPageDescription": "Gérez vos profils de joueur. L'avatar avec la coche verte est celui qui sera utilisé par défaut dans les nouvelles aventures.",
+    "importAvatarButton": "Importer un Avatar",
+    "createAvatarButton": "Créer un Avatar",
+    "setDefaultButton": "Définir par défaut"
 }

@@ -349,5 +349,10 @@
     "createClothingTitle": "Create a new piece of clothing",
     "createButton": "Create",
     "editClothingTitle": "Edit",
-    "deleteClothingConfirmation": "Are you sure you want to delete \"{itemName}\"?"
+    "deleteClothingConfirmation": "Are you sure you want to delete \"{itemName}\"?",
+    "playerAvatarsPageTitle": "My Player Avatars",
+    "playerAvatarsPageDescription": "Manage your player profiles. The avatar with the green checkmark is the one that will be used by default in new adventures.",
+    "importAvatarButton": "Import an Avatar",
+    "createAvatarButton": "Create an Avatar",
+    "setDefaultButton": "Set as Default"
 }

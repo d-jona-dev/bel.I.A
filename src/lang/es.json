@@ -349,5 +349,10 @@
     "createClothingTitle": "Crear una nueva prenda de vestir",
     "createButton": "Crear",
     "editClothingTitle": "Editar",
-    "deleteClothingConfirmation": "¿Estás seguro de que quieres eliminar \"{itemName}\"?"
+    "deleteClothingConfirmation": "¿Estás seguro de que quieres eliminar \"{itemName}\"?",
+    "playerAvatarsPageTitle": "Mis Avatares de Jugador",
+    "playerAvatarsPageDescription": "Gestiona tus perfiles de jugador. El avatar con la marca de verificación verde es el que se usará por defecto en las nuevas aventuras.",
+    "importAvatarButton": "Importar un Avatar",
+    "createAvatarButton": "Crear un Avatar",
+    "setDefaultButton": "Establecer como predeterminado"
 }

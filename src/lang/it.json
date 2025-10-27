@@ -349,5 +349,10 @@
     "createClothingTitle": "Crea un nuovo capo di abbigliamento",
     "createButton": "Crea",
     "editClothingTitle": "Modifica",
-    "deleteClothingConfirmation": "Sei sicuro di voler eliminare \"{itemName}\"?"
+    "deleteClothingConfirmation": "Sei sicuro di voler eliminare \"{itemName}\"?",
+    "playerAvatarsPageTitle": "I Miei Avatar Giocatore",
+    "playerAvatarsPageDescription": "Gestisci i tuoi profili giocatore. L'avatar con il segno di spunta verde è quello che verrà utilizzato di default nelle nuove avventure.",
+    "importAvatarButton": "Importa un Avatar",
+    "createAvatarButton": "Crea un Avatar",
+    "setDefaultButton": "Imposta come predefinito"
 }

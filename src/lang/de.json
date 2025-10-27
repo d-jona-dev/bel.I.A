@@ -349,5 +349,10 @@
     "createClothingTitle": "Ein neues Kleidungsstück erstellen",
     "createButton": "Erstellen",
     "editClothingTitle": "Bearbeiten",
-    "deleteClothingConfirmation": "Sind Sie sicher, dass Sie \"{itemName}\" löschen möchten?"
+    "deleteClothingConfirmation": "Sind Sie sicher, dass Sie \"{itemName}\" löschen möchten?",
+    "playerAvatarsPageTitle": "Meine Spieler-Avatare",
+    "playerAvatarsPageDescription": "Verwalten Sie Ihre Spielerprofile. Der Avatar mit dem grünen Häkchen wird standardmäßig in neuen Abenteuern verwendet.",
+    "importAvatarButton": "Einen Avatar importieren",
+    "createAvatarButton": "Einen Avatar erstellen",
+    "setDefaultButton": "Als Standard festlegen"
 }

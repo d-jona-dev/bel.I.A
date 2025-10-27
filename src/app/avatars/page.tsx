@@ -407,11 +407,11 @@ export default function AvatarsPage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Mes Avatars Joueur</h1>
+        <h1 className="text-3xl font-bold">{lang.playerAvatarsPageTitle}</h1>
         <div className="flex gap-2">
             <input type="file" ref={importFileRef} onChange={handleImportAvatar} accept=".json" className="hidden" />
            <Button variant="outline" onClick={() => importFileRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" /> Importer un Avatar
+            <Upload className="mr-2 h-4 w-4" /> {lang.importAvatarButton}
           </Button>
             <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
                 <DialogTrigger asChild>
@@ -430,7 +430,7 @@ export default function AvatarsPage() {
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    <UserPlus className="mr-2 h-4 w-4" /> Créer un Avatar
+                    <UserPlus className="mr-2 h-4 w-4" /> {lang.createAvatarButton}
                 </Button>
             </DialogTrigger>
             <DialogContent>
@@ -448,7 +448,7 @@ export default function AvatarsPage() {
       </div>
 
       <p className="text-muted-foreground mb-4">
-        Gérez vos profils de joueur. L'avatar avec la coche verte est celui qui sera utilisé par défaut dans les nouvelles aventures.
+        {lang.playerAvatarsPageDescription}
       </p>
 
       <ScrollArea className="h-[calc(100vh-240px)]">
@@ -507,7 +507,7 @@ export default function AvatarsPage() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" onClick={() => setAvatarToDelete(avatar)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteBubble}
+                        <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteButton}
                       </Button>
                     </AlertDialogTrigger>
                     {avatarToDelete?.id === avatar.id && (
@@ -520,13 +520,13 @@ export default function AvatarsPage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setAvatarToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
-                            <AlertDialogAction onClick={confirmDelete}>{lang.deleteBubble}</AlertDialogAction>
+                            <AlertDialogAction onClick={confirmDelete}>{lang.deleteButton}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                     )}
                   </AlertDialog>
                   <Button variant="outline" size="sm" onClick={() => handleDownloadAvatar(avatar)}>
-                    <Download className="mr-2 h-4 w-4" /> {lang.downloadPage}
+                    <Download className="mr-2 h-4 w-4" /> {lang.downloadButton}
                   </Button>
                   <Button
                     variant="default"
@@ -534,7 +534,7 @@ export default function AvatarsPage() {
                     disabled={avatar.id === currentAvatarId}
                     onClick={() => handleSelectCurrentAvatar(avatar.id)}
                   >
-                    Définir par défaut
+                    {lang.setDefaultButton}
                   </Button>
                 </CardFooter>
               </Card>

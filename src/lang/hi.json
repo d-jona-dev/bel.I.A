@@ -349,5 +349,10 @@
     "createClothingTitle": "एक नया कपड़ा बनाएं",
     "createButton": "बनाएं",
     "editClothingTitle": "संपादित करें",
-    "deleteClothingConfirmation": "क्या आप वाकई \"{itemName}\" को हटाना चाहते हैं?"
+    "deleteClothingConfirmation": "क्या आप वाकई \"{itemName}\" को हटाना चाहते हैं?",
+    "playerAvatarsPageTitle": "मेरे खिलाड़ी अवतार",
+    "playerAvatarsPageDescription": "अपने खिलाड़ी प्रोफाइल प्रबंधित करें। हरे चेकमार्क वाला अवतार वह है जो नए रोमांच में डिफ़ॉल्ट रूप से उपयोग किया जाएगा।",
+    "importAvatarButton": "एक अवतार आयात करें",
+    "createAvatarButton": "एक अवतार बनाएं",
+    "setDefaultButton": "डिफ़ॉल्ट के रूप में सेट करें"
 }

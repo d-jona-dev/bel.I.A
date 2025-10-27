@@ -333,5 +333,10 @@
     "bubbleTextLabel": "Texto do balão",
     "selectBubbleToEdit": "Selecione um balão para editá-lo.",
     "saveAndClose": "Salvar e Fechar",
-    "cancelButton": "Cancelar"
+    "cancelButton": "Cancelar",
+    "playerAvatarsPageTitle": "Meus Avatares de Jogador",
+    "playerAvatarsPageDescription": "Gerencie seus perfis de jogador. O avatar com a marca de seleção verde é o que será usado por padrão em novas aventuras.",
+    "importAvatarButton": "Importar um Avatar",
+    "createAvatarButton": "Criar um Avatar",
+    "setDefaultButton": "Definir como padrão"
 }
