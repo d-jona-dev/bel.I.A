@@ -35,7 +35,7 @@ import type { ClothingItem, AiConfig } from '@/types';
 import { describeAppearance } from '@/ai/flows/describe-appearance';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { i18n } from '@/lib/i18n';
+import { i18n, type Language } from '@/lib/i18n';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ModelManager } from '@/components/model-manager';
 
@@ -63,9 +63,15 @@ export default function PenderiePage() {
       image: { source: 'gemini' }
   });
   const [isAiConfigOpen, setIsAiConfigOpen] = React.useState(false);
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage] || i18n.fr;
 
   React.useEffect(() => {
     try {
+      const savedLanguage = localStorage.getItem('adventure_language') as Language;
+      if (savedLanguage && i18n[savedLanguage]) {
+          setCurrentLanguage(savedLanguage);
+      }
       const savedItems = localStorage.getItem(WARDROBE_STORAGE_KEY);
       if (savedItems) {
         setItems(JSON.parse(savedItems));
@@ -76,15 +82,15 @@ export default function PenderiePage() {
       }
     } catch (error) {
       console.error("Failed to load wardrobe items from localStorage:", error);
-      toast({ title: "Erreur de chargement", description: "Impossible de charger la penderie.", variant: "destructive" });
+      toast({ title: lang.loadingErrorTitle, description: "Impossible de charger la penderie.", variant: "destructive" });
     }
     setIsLoading(false);
-  }, [toast]);
+  }, [toast, lang]);
   
   const handleAiConfigChange = (newConfig: AiConfig) => {
     setAiConfig(newConfig);
     localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
-    toast({ title: "Configuration IA mise à jour."});
+    toast({ title: lang.aiConfigTitle + " mise à jour."});
   }
 
   const saveItems = (updatedItems: ClothingItem[]) => {
@@ -120,16 +126,16 @@ export default function PenderiePage() {
             }
             
             if (items.some(c => c.id === newItem.id)) {
-                 toast({ title: "Importation échouée", description: `Un vêtement avec l'ID "${newItem.id}" existe déjà.`, variant: "destructive" });
+                 toast({ title: lang.importErrorTitle, description: `Un vêtement avec l'ID "${newItem.id}" existe déjà.`, variant: "destructive" });
                  return;
             }
 
             saveItems([...items, newItem]);
-            toast({ title: "Vêtement Importé", description: `"${newItem.name}" a été ajouté à votre penderie.` });
+            toast({ title: lang.importSuccessTitle, description: `"${newItem.name}" a été ajouté à votre penderie.` });
 
         } catch (error) {
             console.error("Error loading clothing from JSON:", error);
-            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+            toast({ title: lang.importErrorTitle, description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
         }
     };
     reader.readAsText(file);
@@ -178,9 +184,9 @@ export default function PenderiePage() {
         // Note: The `describeAppearance` flow is used here. We've updated it to handle clothing.
         const result = await describeAppearance({ portraitUrl: itemData.imageUrl });
         setItemData(prev => ({...prev, description: result.description }));
-        toast({ title: "Scan Réussi", description: "La description a été générée par l'IA." });
+        toast({ title: lang.descriptionSuccessTitle, description: "La description a été générée par l'IA." });
     } catch (error) {
-        toast({ title: "Erreur de Vision", description: `Impossible de scanner l'image. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+        toast({ title: lang.visionErrorTitle, description: `Impossible de scanner l'image. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
     } finally {
         setIsProcessing(false);
     }
@@ -207,10 +213,10 @@ export default function PenderiePage() {
                 )}
             </div>
             <div className="space-y-2 flex-1">
-                <Label>Image du vêtement</Label>
+                <Label>{lang.clothingImageLabel}</Label>
                 <div className="flex gap-2">
                     <Input 
-                        placeholder="URL de l'image" 
+                        placeholder={lang.imageURLInputPlaceholder} 
                         value={itemData.imageUrl || ''} 
                         onChange={e => setItemData(prev => ({ ...prev, imageUrl: e.target.value }))}
                     />
@@ -220,17 +226,17 @@ export default function PenderiePage() {
             </div>
         </div>
         <div className="space-y-2">
-            <Label htmlFor="item-name">Nom du vêtement</Label>
-            <Input id="item-name" value={itemData.name || ''} onChange={e => setItemData(prev => ({...prev, name: e.target.value}))} placeholder="Ex: Tunique en lin, Armure de plaques..."/>
+            <Label htmlFor="item-name">{lang.clothingNameLabel}</Label>
+            <Input id="item-name" value={itemData.name || ''} onChange={e => setItemData(prev => ({...prev, name: e.target.value}))} placeholder={lang.clothingNamePlaceholder}/>
         </div>
         <div className="space-y-2">
-            <Label htmlFor="item-description">Description (pour IA)</Label>
-            <Textarea id="item-description" value={itemData.description || ''} onChange={e => setItemData(prev => ({...prev, description: e.target.value}))} placeholder="Description objective pour la génération d'images..." rows={5}/>
+            <Label htmlFor="item-description">{lang.clothingDescriptionLabelAi}</Label>
+            <Textarea id="item-description" value={itemData.description || ''} onChange={e => setItemData(prev => ({...prev, description: e.target.value}))} placeholder={lang.clothingDescriptionPlaceholderAi} rows={5}/>
         </div>
         <div className="flex items-center gap-2">
             <Button onClick={() => handleVisionScan(itemData, setItemData)} disabled={isProcessing || !itemData.imageUrl || !visionConsent} className="w-full">
                 {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Eye className="mr-2 h-4 w-4" />}
-                Scanner avec Vision IA
+                {lang.scanWithVision}
             </Button>
             <div className="flex items-center space-x-2">
                 <Checkbox id="vision-consent" checked={visionConsent} onCheckedChange={(checked) => setVisionConsent(!!checked)} />
@@ -242,7 +248,7 @@ export default function PenderiePage() {
                             </Label>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-xs">
-                            <p>{i18n.fr.visionConsent}</p>
+                            <p>{lang.visionConsent}</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -253,46 +259,46 @@ export default function PenderiePage() {
 
 
   if (isLoading) {
-    return <div className="text-center p-10">Chargement de la penderie...</div>;
+    return <div className="text-center p-10">{lang.loadingWardrobe}...</div>;
   }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Ma Penderie</h1>
+        <h1 className="text-3xl font-bold">{lang.wardrobePageTitle}</h1>
         <div className="flex gap-2">
             <input type="file" ref={importFileRef} onChange={handleImportItem} accept=".json" className="hidden" />
             <Button variant="outline" onClick={() => importFileRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" /> Importer
+                <Upload className="mr-2 h-4 w-4" /> {lang.importButton}
             </Button>
             <Dialog open={isAiConfigOpen} onOpenChange={setIsAiConfigOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> Config IA</Button>
+                    <Button variant="outline"><BrainCircuit className="mr-2 h-4 w-4" /> {lang.aiConfigTitle}</Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Configuration Globale de l'IA</DialogTitle>
+                        <DialogTitle>{lang.aiGlobalConfigTitle}</DialogTitle>
                         <DialogDescription>
-                            Configurez les modèles d'IA utilisés pour la génération de texte et d'images. Ces paramètres s'appliquent à toute l'application.
+                            {lang.aiGlobalConfigDescription}
                         </DialogDescription>
                     </DialogHeader>
-                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} currentLanguage={currentLanguage}/>
                 </DialogContent>
             </Dialog>
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                 <DialogTrigger asChild>
                     <Button>
-                        <Shirt className="mr-2 h-4 w-4" /> Créer un vêtement
+                        <Shirt className="mr-2 h-4 w-4" /> {lang.createClothingButton}
                     </Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Créer un nouveau vêtement</DialogTitle>
+                        <DialogTitle>{lang.createClothingTitle}</DialogTitle>
                     </DialogHeader>
                     {commonEditorFields(newItemData, setNewItemData)}
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                        <Button onClick={handleCreateItem}><Save className="mr-2 h-4 w-4"/> Créer</Button>
+                        <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>{lang.cancelButton}</Button>
+                        <Button onClick={handleCreateItem}><Save className="mr-2 h-4 w-4"/> {lang.createButton}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -300,7 +306,7 @@ export default function PenderiePage() {
       </div>
 
       <p className="text-muted-foreground mb-4">
-        Gérez votre collection de vêtements. Vous pourrez les assigner à vos personnages pour influencer la génération d'images.
+        {lang.wardrobePageDescription}
       </p>
 
       <ScrollArea className="h-[calc(100vh-240px)]">
@@ -319,24 +325,24 @@ export default function PenderiePage() {
                 </CardHeader>
                 <CardContent className="p-4 flex-1">
                     <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <CardDescription className="text-xs line-clamp-3 mt-1">{item.description || "Aucune description."}</CardDescription>
+                    <CardDescription className="text-xs line-clamp-3 mt-1">{item.description || lang.noDescription}</CardDescription>
                 </CardContent>
                 <CardFooter className="flex flex-wrap justify-end gap-2 p-4 pt-0">
                     <Dialog open={editingItem?.id === item.id} onOpenChange={(open) => !open && setEditingItem(null)}>
                         <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" onClick={() => setEditingItem(JSON.parse(JSON.stringify(item)))}>
-                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                                <Edit className="mr-2 h-4 w-4" /> {lang.editButton}
                             </Button>
                         </DialogTrigger>
                         {editingItem?.id === item.id && (
                            <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Modifier: {editingItem.name}</DialogTitle>
+                                    <DialogTitle>{lang.editClothingTitle}: {editingItem.name}</DialogTitle>
                                 </DialogHeader>
                                 {commonEditorFields(editingItem, setEditingItem)}
                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setEditingItem(null)}>Annuler</Button>
-                                  <Button onClick={handleUpdateItem}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
+                                  <Button variant="outline" onClick={() => setEditingItem(null)}>{lang.cancelButton}</Button>
+                                  <Button onClick={handleUpdateItem}><Save className="mr-2 h-4 w-4"/> {lang.saveButton}</Button>
                                </DialogFooter>
                            </DialogContent>
                         )}
@@ -344,34 +350,34 @@ export default function PenderiePage() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" onClick={() => setItemToDelete(item)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                        <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteButton}
                       </Button>
                     </AlertDialogTrigger>
                     {itemToDelete?.id === item.id && (
                        <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
+                            <AlertDialogTitle>{lang.confirmDeletion}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer "{itemToDelete.name}" ?
+                              {lang.deleteClothingConfirmation.replace('{itemName}', itemToDelete.name)}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={confirmDelete}>Supprimer</AlertDialogAction>
+                            <AlertDialogCancel onClick={() => setItemToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete}>{lang.deleteButton}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                     )}
                   </AlertDialog>
                   <Button variant="outline" size="sm" onClick={() => handleDownloadItem(item)}>
-                    <Download className="mr-2 h-4 w-4" /> Télécharger
+                    <Download className="mr-2 h-4 w-4" /> {lang.downloadButton}
                   </Button>
                 </CardFooter>
               </Card>
             ))
           ) : (
             <div className="col-span-full text-center py-10 border-2 border-dashed rounded-lg">
-                <h2 className="text-xl font-semibold">Penderie vide</h2>
-                <p className="text-muted-foreground mt-2">Créez votre premier vêtement pour commencer !</p>
+                <h2 className="text-xl font-semibold">{lang.wardrobeEmptyTitle}</h2>
+                <p className="text-muted-foreground mt-2">{lang.wardrobeEmptyDesc}</p>
             </div>
           )}
         </div>
