@@ -527,7 +527,7 @@ export default function HistoiresPage() {
                             {lang.aiGlobalConfigDescription}
                         </DialogDescription>
                     </DialogHeader>
-                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} />
+                    <ModelManager config={aiConfig} onConfigChange={handleAiConfigChange} currentLanguage={currentLanguage} />
                 </DialogContent>
             </Dialog>
             <Link href="/creation-assistee">
@@ -731,4 +731,5 @@ export default function HistoiresPage() {
     </div>
   );
 }
+
 

@@ -98,6 +98,7 @@
     "addExistingCharacterPlaceholder": "Ajouter un personnage existant...",
     "allCharactersInAdventure": "Tous les personnages sauvegardés sont déjà dans cette aventure.",
     "noGlobalCharacters": "Aucun personnage global sauvegardé pour le moment.",
+    "noNPCsForAdventure": "Aucun personnage secondaire défini pour l'aventure actuelle.",
     "loadingErrorTitle": "Erreur de chargement",
     "loadingErrorDescription": "Impossible de charger les données sauvegardées.",
     "characterUpdatedTitle": "Personnage Mis à Jour",
@@ -292,4 +293,5 @@
     "noSavedCharacters": "Aucun personnage sauvegardé.",
     "launchAdventureButton": "Lancer l'Aventure"
 }
+
 
