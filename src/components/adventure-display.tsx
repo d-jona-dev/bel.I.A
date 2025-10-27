@@ -55,6 +55,7 @@ import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 import { Progress } from "@/components/ui/progress";
 import { i18n, type Language } from "@/lib/i18n";
 import { defaultImageStyles, type ImageStyle } from "@/lib/image-styles";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 
 interface AdventureDisplayProps {
@@ -910,6 +911,20 @@ export function AdventureDisplay({
 
                 <CharacterStatusDisplay heroSettings={adventureSettings} characters={characters} currentLanguage={currentLanguage} />
 
+                 <Card>
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Settings className="h-5 w-5"/>
+                            Paramètres
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                         <div className="flex items-center justify-between">
+                            <Label htmlFor="theme-toggle">Mode Nuit</Label>
+                            <ThemeToggle />
+                        </div>
+                    </CardContent>
+                </Card>
 
                  <Dialog open={isCustomStyleDialogOpen} onOpenChange={setIsCustomStyleDialogOpen}>
                     <DialogContent>
@@ -977,7 +992,3 @@ export function AdventureDisplay({
     </div>
   );
 }
-
-    
-
-    

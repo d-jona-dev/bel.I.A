@@ -6,6 +6,7 @@ import { MedievalSharp } from 'next/font/google'; // Import de la police
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
+import { ThemeProvider } from '@/components/theme-provider';
 
 const geistSans = GeistSans;
 const geistMono = GeistMono;
@@ -28,13 +29,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} ${medievalSharp.variable}`}>
+    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} ${medievalSharp.variable}`} suppressHydrationWarning>
       <body className={`antialiased`}>
-         {/* Wrap the entire application content with SidebarProvider */}
-         <SidebarProvider defaultOpen>
-            {children}
-        </SidebarProvider>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider defaultOpen>
+              {children}
+          </SidebarProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
