@@ -26,13 +26,19 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
+          Clair
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
+          Sombre
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("grey")}>
+          Gris
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("black")}>
+          Noir
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
+          Système
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
