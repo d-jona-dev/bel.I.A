@@ -18,6 +18,7 @@ export interface Message {
   sceneDescriptionForImage?: SceneDescriptionForImage; // Changed to new type
   imageUrl?: string | null;
   imageTransform?: ImageTransform;
+  speakingCharacterNames?: string[];
 }
 
 // Nouveau : Structure pour un vêtement
