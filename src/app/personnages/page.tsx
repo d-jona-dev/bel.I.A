@@ -69,7 +69,7 @@ export default function PersonnagesPage() {
   const [imageStyle, setImageStyle] = React.useState<string>('default');
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
   const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
-  const lang = i18n[currentLanguage];
+  const lang = i18n[currentLanguage] || i18n.fr;
 
   const loadCharactersFromStorage = React.useCallback(() => {
      try {
@@ -88,13 +88,13 @@ export default function PersonnagesPage() {
     } catch (error) {
       console.error("Failed to load characters from localStorage:", error);
       toast({
-        title: "Erreur de chargement",
+        title: lang.loadingErrorTitle,
         description: "Impossible de charger les personnages sauvegardés.",
         variant: "destructive",
       });
     }
     setIsLoading(false);
-  }, [toast]);
+  }, [toast, lang]);
 
   React.useEffect(() => {
     loadCharactersFromStorage();
@@ -146,7 +146,7 @@ export default function PersonnagesPage() {
             
             const isDuplicate = savedNPCs.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase());
             if (isDuplicate) {
-                 toast({ title: "Importation échouée", description: `Un personnage avec le nom ou l'ID "${newChar.name}" existe déjà.`, variant: "destructive" });
+                 toast({ title: lang.importErrorTitle, description: `Un personnage avec le nom ou l'ID "${newChar.name}" existe déjà.`, variant: "destructive" });
                  return;
             }
 
@@ -156,7 +156,7 @@ export default function PersonnagesPage() {
 
         } catch (error) {
             console.error("Error loading character from JSON:", error);
-            toast({ title: "Erreur d'Importation", description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+            toast({ title: lang.importErrorTitle, description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
         }
     };
     reader.readAsText(file);
@@ -231,16 +231,16 @@ export default function PersonnagesPage() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Mes Personnages Secondaires</h1>
+        <h1 className="text-3xl font-bold">{lang.chatWithCharacterTitle}</h1>
         <div className="flex gap-2">
           <input type="file" ref={importFileRef} onChange={handleImportCharacter} accept=".json" className="hidden" />
           <Button variant="outline" onClick={() => importFileRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" /> Importer un Personnage
+            <Upload className="mr-2 h-4 w-4" /> {lang.importButton}
           </Button>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
               <Button>
-                <UserPlus className="mr-2 h-4 w-4" /> Créer un Personnage
+                <UserPlus className="mr-2 h-4 w-4" /> {lang.createButton}
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -270,13 +270,13 @@ export default function PersonnagesPage() {
       </div>
 
       <p className="text-muted-foreground mb-4">
-        Gérez les personnages secondaires que vous avez rencontrés ou créés. Vous pourrez les réutiliser dans d'autres aventures ou discuter avec eux.
+        {lang.noGlobalCharactersForChat}
       </p>
 
       <ScrollArea className="h-[calc(100vh-240px)]">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
-            <p className="text-muted-foreground col-span-full text-center py-10">Chargement des personnages...</p>
+            <p className="text-muted-foreground col-span-full text-center py-10">{lang.loadingCharacters}</p>
           ) : savedNPCs.length > 0 ? (
             savedNPCs.map((npc) => (
               <Card key={npc.id}>
@@ -291,20 +291,20 @@ export default function PersonnagesPage() {
                    <div className="flex-1">
                     <CardTitle>{npc.name}</CardTitle>
                      <CardDescription className="line-clamp-1">
-                        {npc.details || "Aucune description."}
+                        {npc.details || lang.noDescription}
                      </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    Affinité&nbsp;: {npc.affinity ?? 'N/A'}
+                    {lang.affinityVsPlayer}: {npc.affinity ?? 'N/A'}
                   </p>
                 </CardContent>
                 <CardFooter className="flex flex-wrap justify-end gap-2">
                   <Dialog open={editingCharacter?.id === npc.id} onOpenChange={(open) => !open && setEditingCharacter(null)}>
                     <DialogTrigger asChild>
                        <Button variant="ghost" size="sm" onClick={() => setEditingCharacter(JSON.parse(JSON.stringify(npc)))}>
-                        <Edit className="mr-2 h-4 w-4" /> Modifier
+                        <Edit className="mr-2 h-4 w-4" /> {lang.editButton}
                       </Button>
                     </DialogTrigger>
                     {editingCharacter?.id === npc.id && (
@@ -337,7 +337,7 @@ export default function PersonnagesPage() {
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         <Button onClick={handleGeneratePortraitForEditor} disabled={isGeneratingPortrait} className="w-full">
-                                            <Wand2 className="mr-2 h-4 w-4" /> Générer
+                                            <Wand2 className="mr-2 h-4 w-4" /> {lang.generateButton}
                                         </Button>
                                     </div>
                                     <input type="file" accept="image/*" id={`upload-edit-portrait-${npc.id}`} className="hidden" onChange={(e) => {
@@ -350,18 +350,18 @@ export default function PersonnagesPage() {
                                     }}/>
                                     <div className="flex gap-2">
                                         <Button variant="outline" className="w-full" onClick={() => document.getElementById(`upload-edit-portrait-${npc.id}`)?.click()}>
-                                            <UploadCloud className="mr-2 h-4 w-4"/> Télécharger
+                                            <UploadCloud className="mr-2 h-4 w-4"/> {lang.uploadImage}
                                         </Button>
                                         <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
                                             <DialogTrigger asChild>
                                                 <Button variant="outline" size="icon"><LinkIcon className="h-4 w-4"/></Button>
                                             </DialogTrigger>
                                             <DialogContent>
-                                                <DialogHeader><DialogTitle>Définir le portrait depuis une URL</DialogTitle></DialogHeader>
-                                                <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder="https://example.com/image.png"/>
+                                                <DialogHeader><DialogTitle>{lang.setPortraitFromURLDialogTitle}</DialogTitle></DialogHeader>
+                                                <Input value={portraitUrlInput} onChange={e => setPortraitUrlInput(e.target.value)} placeholder={lang.imageURLInputPlaceholder}/>
                                                 <DialogFooter>
-                                                    <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>Annuler</Button>
-                                                    <Button onClick={handleSaveUrl}>Enregistrer</Button>
+                                                    <Button variant="outline" onClick={()=>setIsUrlDialogOpen(false)}>{lang.cancelButton}</Button>
+                                                    <Button onClick={handleSaveUrl}>{lang.saveURLButton}</Button>
                                                 </DialogFooter>
                                             </DialogContent>
                                         </Dialog>
@@ -394,8 +394,8 @@ export default function PersonnagesPage() {
                              </div>
                           </div>
                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setEditingCharacter(null)}>Annuler</Button>
-                              <Button onClick={handleUpdateCharacter}><Save className="mr-2 h-4 w-4"/> Enregistrer</Button>
+                              <Button variant="outline" onClick={() => setEditingCharacter(null)}>{lang.cancelButton}</Button>
+                              <Button onClick={handleUpdateCharacter}><Save className="mr-2 h-4 w-4"/> {lang.saveButton}</Button>
                            </DialogFooter>
                        </DialogContent>
                     )}
@@ -403,21 +403,21 @@ export default function PersonnagesPage() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" onClick={() => setCharacterToDelete(npc)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                        <Trash2 className="mr-2 h-4 w-4" /> {lang.deleteButton}
                       </Button>
                     </AlertDialogTrigger>
                     {characterToDelete?.id === npc.id && (
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
+                          <AlertDialogTitle>{lang.confirmDeletion}</AlertDialogTitle>
                           <AlertDialogDescription>
                             Êtes-vous sûr de vouloir supprimer définitivement "{characterToDelete.name}" de vos sauvegardes globales ? Cette action est irréversible.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setCharacterToDelete(null)}>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => setCharacterToDelete(null)}>{lang.cancelButton}</AlertDialogCancel>
                           <AlertDialogAction onClick={confirmDelete}>
-                            Supprimer Définitivement
+                            {lang.deletePermanentlyButton}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -428,7 +428,7 @@ export default function PersonnagesPage() {
                   </Button>
                   <Link href={`/chat/${npc.id}`}>
                       <Button variant="default" size="sm">
-                        <MessageSquare className="mr-2 h-4 w-4" /> Chatter
+                        <MessageSquare className="mr-2 h-4 w-4" /> {lang.chatButton}
                       </Button>
                     </Link>
                 </CardFooter>
@@ -436,7 +436,7 @@ export default function PersonnagesPage() {
             ))
           ) : (
             <p className="text-muted-foreground col-span-full text-center py-10">
-              Aucun personnage secondaire sauvegardé pour le moment.
+              {lang.noGlobalCharacters}
             </p>
           )}
         </div>
