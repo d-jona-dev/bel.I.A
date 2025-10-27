@@ -370,5 +370,20 @@
     "characterImportedTitle": "Character Imported",
     "characterAddedToList": "has been added to your list.",
     "jsonReadError": "Could not read the JSON file",
-    "invalidFormat": "Invalid format"
+    "invalidFormat": "Invalid format",
+    "chatStartMessage": "You are now chatting with {charName}. This character remembers key events from past adventures.",
+    "characterMemoryLabel": "Character's memory",
+    "noCharacterMemory": "This character has no specific memories recorded.",
+    "characterNotFoundTitle": "Character not found",
+    "characterNotFoundDesc": "The character you are trying to contact does not exist.",
+    "noCharactersFoundTitle": "No characters",
+    "noCharactersFoundDesc": "No characters saved locally.",
+    "errorTitle": "Error",
+    "characterLoadError": "Could not load character details.",
+    "chatErrorTitle": "Chat Error",
+    "chatErrorDesc": "Could not get a response:",
+    "chatResponseError": "Error: Could not get a response from the character. Please try again.",
+    "loadingCharacter": "Loading character...",
+    "adventureMemoriesTitle": "Adventure memories with {charName} (context for AI)",
+    "chatPlaceholder": "Message to {charName}..."
 }

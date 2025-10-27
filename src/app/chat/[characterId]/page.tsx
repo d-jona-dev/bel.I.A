@@ -51,9 +51,10 @@ export default function CharacterChatPage() {
     if (characterId) {
       try {
         const savedLanguage = localStorage.getItem('adventure_language') as Language;
-        if (savedLanguage && i18n[savedLanguage]) {
-            setCurrentLanguage(savedLanguage);
-        }
+        const effectiveLang = savedLanguage && i18n[savedLanguage] ? savedLanguage : 'fr';
+        setCurrentLanguage(effectiveLang);
+        const t = i18n[effectiveLang];
+
         const charactersFromStorage = localStorage.getItem('globalCharacters');
         const adventureSettingsFromStorage = localStorage.getItem('adventureSettings');
 
@@ -70,31 +71,32 @@ export default function CharacterChatPage() {
             setChatHistory([{
               id: `sys-${Date.now()}`,
               type: 'system',
-              content: `Vous discutez maintenant avec ${foundCharacter.name}. Ce personnage se souvient des événements clés des aventures passées.`,
+              content: t.chatStartMessage.replace('{charName}', foundCharacter.name),
               timestamp: Date.now()
             }]);
 
             // Prepare adventure context summary
-            const memorySummary = foundCharacter.memory ? `Mémoire du personnage : \n${foundCharacter.memory}` : "Ce personnage n'a pas de souvenirs spécifiques enregistrés.";
+            const memorySummary = foundCharacter.memory ? `${t.characterMemoryLabel}:\n${foundCharacter.memory}` : t.noCharacterMemory;
             setAdventureContextSummary(memorySummary);
 
           } else {
-            toast({ title: "Personnage non trouvé", description: "Le personnage que vous essayez de contacter n'existe pas.", variant: "destructive" });
+            toast({ title: t.characterNotFoundTitle, description: t.characterNotFoundDesc, variant: "destructive" });
             router.push('/personnages'); 
           }
         } else {
-            toast({ title: "Aucun personnage", description: "Aucun personnage sauvegardé localement.", variant: "destructive" });
+            toast({ title: t.noCharactersFoundTitle, description: t.noCharactersFoundDesc, variant: "destructive" });
             router.push('/personnages');
         }
       } catch (error) {
         console.error("Failed to load character:", error);
-        toast({ title: "Erreur", description: "Impossible de charger les détails du personnage.", variant: "destructive" });
+        const t = i18n[currentLanguage]
+        toast({ title: t.errorTitle, description: t.characterLoadError, variant: "destructive" });
         router.push('/personnages');
       } finally {
         setIsLoadingCharacter(false);
       }
     }
-  }, [characterId, router, toast, playerName]);
+  }, [characterId, router, toast, currentLanguage]);
 
 
   React.useEffect(() => {
@@ -159,14 +161,14 @@ export default function CharacterChatPage() {
     } catch (error) {
       console.error("Error in chat:", error);
       toast({
-        title: "Erreur de Chat",
-        description: `Impossible d'obtenir une réponse: ${error instanceof Error ? error.message : String(error)}.`,
+        title: lang.chatErrorTitle,
+        description: `${lang.chatErrorDesc} ${error instanceof Error ? error.message : String(error)}.`,
         variant: "destructive",
       });
       const errorMessage: Message = {
         id: `err-${Date.now()}`,
         type: 'system',
-        content: `Erreur : Impossible d'obtenir une réponse du personnage. Veuillez réessayer.`,
+        content: lang.chatResponseError,
         timestamp: Date.now(),
       };
       setChatHistory(prev => [...prev, errorMessage]);
@@ -187,7 +189,7 @@ export default function CharacterChatPage() {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Chargement du personnage...</p>
+        <p className="ml-4 text-lg">{lang.loadingCharacter}</p>
       </div>
     );
   }
@@ -216,7 +218,7 @@ export default function CharacterChatPage() {
           <AccordionTrigger className="text-sm p-2 bg-muted/50 rounded-md hover:no-underline">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4" />
-              Souvenirs d'aventure avec {character.name} (contextualisation pour l'IA)
+              {lang.adventureMemoriesTitle.replace('{charName}', character.name)}
             </div>
           </AccordionTrigger>
           <AccordionContent className="p-2 text-xs text-muted-foreground bg-muted/20 rounded-md">
@@ -277,7 +279,7 @@ export default function CharacterChatPage() {
         </CardContent>
         <CardFooter className="p-4 border-t flex items-center gap-2 bg-card">
           <Textarea
-            placeholder={`Message à ${character.name}...`}
+            placeholder={lang.chatPlaceholder.replace('{charName}', character.name)}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onKeyPress={handleKeyPress}
