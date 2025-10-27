@@ -18,6 +18,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { Bubble, Panel, ComicPage } from '@/types';
+import { i18n, type Language } from "@/lib/i18n";
+
 
 /* Util */
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
@@ -116,8 +118,8 @@ const renderPanelToCanvas = async (panel: Panel, width: number, height: number):
     return c;
   };
 
-export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast: (options: any) => void, pageWidth = 1200, pageHeight = 1700, scale = 2) => {
-    toast({ title: "Exportation en cours...", description: `Génération de votre planche en JPEG.` });
+export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast: (options: any) => void, lang: any, pageWidth = 1200, pageHeight = 1700, scale = 2) => {
+    toast({ title: lang.exportingTitle, description: lang.exportingDesc });
     
     const gutterWidth = 10;
     const rows = Math.ceil(page.panels.length / page.gridCols);
@@ -157,16 +159,16 @@ export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast
         outCtx.fillStyle = "red";
         outCtx.fillRect(x,y, panelW, panelH);
         outCtx.fillStyle = "white";
-        outCtx.fillText(`Erreur panneau ${i+1}`, x + 10, y + 20);
+        outCtx.fillText(`${lang.panelError} ${i+1}`, x + 10, y + 20);
       }
     }
 
     const mimeType = 'image/jpeg';
     const link = document.createElement("a");
-    link.download = `planche_bd_${pageIndex + 1}.jpeg`;
+    link.download = `${lang.comicPageFileName.replace('{pageIndex}', String(pageIndex + 1))}.jpeg`;
     link.href = outCanvas.toDataURL(mimeType, 0.9);
     link.click();
-    toast({ title: "Exportation terminée", description: `La planche ${pageIndex + 1} a été téléchargée en JPEG.` });
+    toast({ title: lang.exportCompleteTitle, description: lang.exportCompleteDesc.replace('{pageIndex}', String(pageIndex + 1)) });
 };
 
 
@@ -174,15 +176,18 @@ export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast
 export default function ComicPageEditor({
   pages: initialPages,
   onPagesChange,
+  currentLanguage,
   pageWidth = 1200,
   pageHeight = 1700,
 }: {
   pages: ComicPage[];
   onPagesChange: (pages: ComicPage[]) => void;
+  currentLanguage: Language;
   pageWidth?: number;
   pageHeight?: number;
 }) {
   const { toast } = useToast();
+  const lang = i18n[currentLanguage];
   // No longer maintains its own state, works directly with props
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
@@ -222,9 +227,9 @@ export default function ComicPageEditor({
   if (!currentPage) {
     return (
         <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-muted-foreground">Aucune planche à afficher.</p>
+            <p className="text-muted-foreground">{lang.noPagesToDisplay}</p>
             <Button onClick={() => onPagesChange([createNewPage()])} className="mt-4">
-                <PlusCircle className="mr-2 h-4 w-4" /> Créer la première planche
+                <PlusCircle className="mr-2 h-4 w-4" /> {lang.createFirstPage}
             </Button>
         </div>
     );
@@ -240,11 +245,11 @@ export default function ComicPageEditor({
         <CardContent className="p-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.max(0, p-1))} disabled={currentPageIndex === 0}><ArrowLeft className="h-4 w-4"/></Button>
-            <span className="text-sm font-medium w-24 text-center">Planche {currentPageIndex+1} / {initialPages.length}</span>
+            <span className="text-sm font-medium w-24 text-center">{lang.page} {currentPageIndex+1} / {initialPages.length}</span>
             <Button variant="outline" size="icon" onClick={() => setCurrentPageIndex(p => Math.min(initialPages.length-1, p+1))} disabled={currentPageIndex === initialPages.length - 1}><ArrowRight className="h-4 w-4"/></Button>
           </div>
            <div className="flex items-center gap-2">
-            <Label htmlFor="grid-cols-input">Colonnes :</Label>
+            <Label htmlFor="grid-cols-input">{lang.columnsLabel}:</Label>
             <Input
               id="grid-cols-input"
               type="number"
@@ -255,13 +260,13 @@ export default function ComicPageEditor({
             />
           </div>
           <Button onClick={() => updateCurrentPage(p => ({...p, panels: [...p.panels, { id: uid(), imageUrl: null, bubbles: [] }] }))}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter panneau
+            <PlusCircle className="mr-2 h-4 w-4" /> {lang.addPanel}
           </Button>
            <Button onClick={() => onPagesChange([...initialPages, createNewPage(initialPages[initialPages.length-1]?.gridCols || 2)])}>
-            <BookPlus className="mr-2 h-4 w-4" /> Ajouter planche vierge
+            <BookPlus className="mr-2 h-4 w-4" /> {lang.addBlankPage}
           </Button>
-          <Button onClick={() => exportPageAsJpeg(currentPage, currentPageIndex, toast)} variant="secondary">
-            <Download className="mr-2 h-4 w-4" /> Exporter Planche (JPEG)
+          <Button onClick={() => exportPageAsJpeg(currentPage, currentPageIndex, toast, lang)} variant="secondary">
+            <Download className="mr-2 h-4 w-4" /> {lang.exportPage}
           </Button>
         </CardContent>
       </Card>
@@ -271,7 +276,7 @@ export default function ComicPageEditor({
           <Card key={panel.id} className="overflow-hidden">
             <CardContent className="p-2 space-y-2">
               <div style={{ height: previewH, position: "relative", background: "#f8f8f8", borderRadius: '4px' }}>
-                <PanelPreview panel={panel} width={previewW} height={previewH} />
+                <PanelPreview panel={panel} width={previewW} height={previewH} lang={lang} />
               </div>
               <div className="flex gap-2">
                  <Button variant="outline" size="sm" className="flex-1" onClick={() => {
@@ -283,7 +288,7 @@ export default function ComicPageEditor({
                         if (target.files?.[0]) handleFileForPanel(panel.id, target.files[0]);
                     };
                     input.click();
-                 }}>Importer Image</Button>
+                 }}>{lang.importImage}</Button>
                 <Button variant="secondary" size="sm" onClick={() => { setSelectedPanelId(panel.id); setIsEditorOpen(true); }}>
                     <Edit className="h-4 w-4" />
                 </Button>
@@ -299,9 +304,9 @@ export default function ComicPageEditor({
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
         <DialogContent className="max-w-[90vw] w-full h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Éditeur de Panneau</DialogTitle>
+            <DialogTitle>{lang.panelEditorTitle}</DialogTitle>
             <DialogDescription>
-              Ajoutez et modifiez les bulles de dialogue pour ce panneau. Cliquez sur "Sauvegarder" pour appliquer les changements.
+              {lang.panelEditorDescription}
             </DialogDescription>
           </DialogHeader>
           {selectedPanelData && (
@@ -311,6 +316,7 @@ export default function ComicPageEditor({
               onChange={(updated) =>
                 updateCurrentPage(p => ({...p, panels: p.panels.map((pl) => (pl.id === updated.id ? updated : pl))}))
               }
+              lang={lang}
             />
           )}
         </DialogContent>
@@ -320,11 +326,11 @@ export default function ComicPageEditor({
 }
 
 /* PanelPreview: lightweight canvas drawing in a small canvas */
-function PanelPreview({ panel, width, height }: { panel: Panel; width: number; height: number }) {
+function PanelPreview({ panel, width, height, lang }: { panel: Panel; width: number; height: number; lang: any }) {
   const isValidUrl = panel.imageUrl && (panel.imageUrl.startsWith('/') || panel.imageUrl.startsWith('http') || panel.imageUrl.startsWith('data:image'));
 
   if (!isValidUrl) {
-    return <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">Aucune image</div>;
+    return <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">{lang.noImage}</div>;
   }
   return (
     <div className="w-full h-full relative">
@@ -340,7 +346,7 @@ function PanelPreview({ panel, width, height }: { panel: Panel; width: number; h
 
 
 /* PanelEditor: full editor for a panel (move bubbles and edit text) */
-function PanelEditor({ panel, onClose, onChange }: { panel: Panel; onClose: () => void; onChange: (p: Panel) => void }) {
+function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose: () => void; onChange: (p: Panel) => void; lang: any }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [workingPanel, setWorkingPanel] = useState<Panel>({ ...panel });
   const [activeBubbleId, setActiveBubbleId] = useState<string | null>(null);
@@ -422,32 +428,32 @@ function PanelEditor({ panel, onClose, onChange }: { panel: Panel; onClose: () =
         {activeBubbleData ? (
             <Card>
                 <CardContent className="p-4 space-y-3">
-                    <Label htmlFor="bubble-text">Texte de la bulle</Label>
+                    <Label htmlFor="bubble-text">{lang.bubbleTextLabel}</Label>
                     <Textarea id="bubble-text" value={activeBubbleData.text} onChange={(e) => updateBubble(activeBubbleId!, { text: e.target.value })} className="h-24" />
-                    <Label>Style</Label>
+                    <Label>{lang.style}</Label>
                     <Select value={activeBubbleData.type || 'parole'} onValueChange={(val: Bubble['type']) => updateBubble(activeBubbleId!, {type: val})}>
                         <SelectTrigger><SelectValue/></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="parole">Parole</SelectItem>
-                            <SelectItem value="pensée">Pensée</SelectItem>
-                            <SelectItem value="cri">Cri</SelectItem>
-                            <SelectItem value="chuchotement">Chuchotement</SelectItem>
+                            <SelectItem value="parole">{lang.parole}</SelectItem>
+                            <SelectItem value="pensée">{lang.pensée}</SelectItem>
+                            <SelectItem value="cri">{lang.cri}</SelectItem>
+                            <SelectItem value="chuchotement">{lang.chuchotement}</SelectItem>
                         </SelectContent>
                     </Select>
                      <Button variant="destructive" size="sm" className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: p.bubbles.filter(b => b.id !== activeBubbleId)}))}>
-                        <Trash2 className="mr-2 h-4 w-4"/>Supprimer la bulle
+                        <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
                     </Button>
                 </CardContent>
             </Card>
         ) : (
-            <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">Sélectionnez une bulle pour l'éditer.</p>
+            <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">{lang.selectBubbleToEdit}</p>
         )}
-        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: "Nouvelle...", type: "parole" }] }))}>
-            <PlusCircle className="mr-2 h-4 w-4"/> Ajouter une bulle
+        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: lang.newBubbleText, type: "parole" }] }))}>
+            <PlusCircle className="mr-2 h-4 w-4"/> {lang.addBubble}
         </Button>
          <DialogFooter className="mt-auto">
-          <Button variant="outline" onClick={onClose}>Annuler</Button>
-          <Button onClick={() => { onChange(workingPanel); onClose(); }}>Sauvegarder et Fermer</Button>
+          <Button variant="outline" onClick={onClose}>{lang.cancelButton}</Button>
+          <Button onClick={() => { onChange(workingPanel); onClose(); }}>{lang.saveAndClose}</Button>
         </DialogFooter>
       </div>
     </div>

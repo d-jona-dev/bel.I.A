@@ -42,7 +42,7 @@ export default function StoryComicEditorPage() {
         if (foundComic) {
           setComic(foundComic);
         } else {
-          toast({ title: lang.errorTitle, description: "BD non trouvée", variant: "destructive" });
+          toast({ title: lang.errorTitle, description: lang.comicNotFound, variant: "destructive" });
         }
       }
     } catch (e) {
@@ -70,15 +70,15 @@ export default function StoryComicEditorPage() {
   }
 
   if (isLoading) {
-    return <div className="text-center p-10">Chargement de la BD...</div>;
+    return <div className="text-center p-10">{lang.loadingComic}...</div>;
   }
 
   if (!comic) {
     return (
       <div className="text-center p-10">
-        <h2 className="text-xl font-semibold">Bande Dessinée Introuvable</h2>
-        <p className="text-muted-foreground mt-2">Cette BD n'existe pas ou n'a pas pu être chargée.</p>
-        <Button asChild className="mt-4"><Link href="/bd">Retour à la bibliothèque</Link></Button>
+        <h2 className="text-xl font-semibold">{lang.comicNotFoundTitle}</h2>
+        <p className="text-muted-foreground mt-2">{lang.comicNotFoundDesc}</p>
+        <Button asChild className="mt-4"><Link href="/bd">{lang.backToLibrary}</Link></Button>
       </div>
     );
   }
@@ -91,13 +91,14 @@ export default function StoryComicEditorPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">{comic.title}</h1>
-          <p className="text-muted-foreground">Éditeur de planches</p>
+          <p className="text-muted-foreground">{lang.comicPageEditorTitle}</p>
         </div>
       </div>
       <div className="flex-1 min-h-0">
          <ComicPageEditor
             pages={comic.comicDraft}
             onPagesChange={handlePagesChange}
+            currentLanguage={currentLanguage}
         />
       </div>
     </div>
