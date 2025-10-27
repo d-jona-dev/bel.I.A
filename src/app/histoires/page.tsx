@@ -235,6 +235,9 @@ export default function HistoiresPage() {
       return;
     }
 
+    // Save the currently selected language so the adventure page can pick it up.
+    localStorage.setItem('adventure_language', currentLanguage);
+
     const placeholderChars = storyToLoad.adventureState.characters.filter(c => c.isPlaceholder);
 
     if (placeholderChars.length > 0) {
@@ -249,6 +252,9 @@ export default function HistoiresPage() {
   const handleConfirmSlotAssignmentsAndLaunch = () => {
     if (!assigningSlotsForStory) return;
 
+    // Save the currently selected language so the adventure page can pick it up.
+    localStorage.setItem('adventure_language', currentLanguage);
+    
     const placeholderChars = assigningSlotsForStory.adventureState.characters.filter(c => c.isPlaceholder);
     const allSlotsFilled = placeholderChars.every(p => slotAssignments[p.id!]);
 

@@ -208,6 +208,11 @@ export default function Home() {
         const storyIdToLoad = localStorage.getItem('loadStoryIdOnMount');
         const currentAvatarId = localStorage.getItem('currentAvatarId');
         const tempStateJSON = localStorage.getItem('tempAdventureState');
+        const savedLanguage = localStorage.getItem('adventure_language'); // Read the saved language
+
+        if (savedLanguage) {
+            setCurrentLanguage(savedLanguage);
+        }
 
         // Priority order:
         // 1. Temporary state from slot assignment.
