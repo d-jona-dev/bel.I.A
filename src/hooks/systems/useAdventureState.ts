@@ -100,14 +100,19 @@ export function useAdventureState() {
           }
         };
         
-        // **LA CORRECTION CLÉ EST ICI**
-        // On vérifie s'il y a une langue spécifiée à charger, sinon on garde la langue actuelle.
+        // Prioritize the language passed with the data (coming from the history page selection).
         const languageToLoad = data.currentLanguage || currentLanguage;
+        
+        // Generate the initial narrative message based on the loaded language.
+        const initialSitText = getLocalizedText(settingsWithDefaults.initialSituation, languageToLoad);
+        const initialNarrative = [{ id: `msg-${Date.now()}`, type: 'system' as const, content: initialSitText, timestamp: Date.now() }];
+
 
         setAdventureSettings(settingsWithDefaults);
         const loadedCharacters = data.characters || [];
         setCharacters(loadedCharacters);
-        setNarrativeMessages(data.narrative || createInitialState().narrative);
+        // Set the narrative to start with the correctly translated initial situation.
+        setNarrativeMessages(initialNarrative);
         setCurrentLanguage(languageToLoad);
         setAiConfig(data.aiConfig || { llm: { source: 'gemini' }, image: { source: 'gemini' } });
         
@@ -179,5 +184,3 @@ export function useAdventureState() {
         undoLastCharacterState,
     };
 }
-
-    
