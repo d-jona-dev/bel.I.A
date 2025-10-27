@@ -71,8 +71,8 @@ export default function PersonnagesPage() {
   const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
   const lang = i18n[currentLanguage] || i18n.fr;
 
-  const loadCharactersFromStorage = React.useCallback(() => {
-     try {
+  React.useEffect(() => {
+    try {
       const charactersFromStorage = localStorage.getItem('globalCharacters');
       if (charactersFromStorage) {
         setSavedNPCs(JSON.parse(charactersFromStorage));
@@ -96,9 +96,6 @@ export default function PersonnagesPage() {
     setIsLoading(false);
   }, [toast, lang]);
 
-  React.useEffect(() => {
-    loadCharactersFromStorage();
-  }, [loadCharactersFromStorage]);
 
   const saveCharactersToStorage = (characters: Character[]) => {
     localStorage.setItem('globalCharacters', JSON.stringify(characters));
