@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "Add Character",
     "addPlaceholderTooltip": "Add Character Placeholder",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "Starting situation in {lang}...",
     "translateButton": "Translate to English",
     "translateFrom": "Translate from {lang} to:",
-    "translateTo": "Translate to {lang}"
+    "translateTo": "Translate to {lang}",
+    "comicLibraryTitle": "Comic Library",
+    "comicLibraryPageTitle": "Comic Book Library",
+    "comicLibraryDescription": "Find here all the comics you have saved.",
+    "readButton": "Read",
+    "noCover": "No cover"
 }
-

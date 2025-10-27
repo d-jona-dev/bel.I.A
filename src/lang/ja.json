@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "キャラクターを追加",
     "addPlaceholderTooltip": "キャラクタープレースホルダーを追加",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "{lang}での開始状況...",
     "translateButton": "英語に翻訳",
     "translateFrom": "{lang}から翻訳：",
-    "translateTo": "{lang}に翻訳"
+    "translateTo": "{lang}に翻訳",
+    "comicLibraryTitle": "コミックライブラリ",
+    "comicLibraryPageTitle": "コミックライブラリ",
+    "comicLibraryDescription": "保存したすべてのコミックをここで見つけます。",
+    "readButton": "読む",
+    "noCover": "表紙なし"
 }
-

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Upload, Settings, HomeIcon, Scroll, UserCircle, Users2, PawPrint, Clapperboard, Shirt } from 'lucide-react';
+import { i18n, type Language } from '@/lib/i18n';
 
 export default function BdLayout({
   children,
@@ -15,6 +16,16 @@ export default function BdLayout({
   children: React.ReactNode;
 }>) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [currentLanguage, setCurrentLanguage] = React.useState<Language>('fr');
+  const lang = i18n[currentLanguage];
+
+
+  React.useEffect(() => {
+    const savedLanguage = localStorage.getItem('adventure_language') as Language;
+    if (savedLanguage && i18n[savedLanguage]) {
+      setCurrentLanguage(savedLanguage);
+    }
+  }, []);
 
   const handleLoad = (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log("Load triggered from bd layout", event.target.files);
@@ -148,7 +159,7 @@ export default function BdLayout({
          <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
             <div className="flex items-center space-x-2">
               <SidebarTrigger />
-              <span className="font-semibold">Bibliothèque de BD</span>
+              <span className="font-semibold">{lang.comicLibraryTitle}</span>
             </div>
          </header>
          <main className="flex-1 overflow-auto">

@@ -1,19 +1,10 @@
 
-
 {
     "addCharacterTooltip": "添加角色",
     "addPlaceholderTooltip": "添加角色占位符",
     "visionConsent": "我理解该图像将被发送到人工智能模型进行分析，并且可能不会保持私密。请勿使用个人或敏感图像。",
     "memory": "记忆",
     "addMemory": "添加记忆",
-    "secondaryCharactersLabel": "次要角色 (NPC)",
-    "placeholderLabel": "占位符？",
-    "placeholderNameLabel": "占位符名称",
-    "npcNameLabel": "NPC 名称",
-    "placeholderNamePlaceholder": "例如：战士、商人...",
-    "npcNamePlaceholder": "例如：罗里克、埃拉拉...",
-    "npcDetailsLabel": "NPC 详细信息",
-    "npcDetailsPlaceholder": "描述、个性、角色...",
     "noImageGenerated": "未为此场景生成图像。",
     "comicEditorButton": "漫画编辑器",
     "generateButton": "生成",
@@ -73,6 +64,14 @@
     "adventureConfigTitle": "冒险配置",
     "worldConfigTitle": "世界配置",
     "worldDescriptionLabel": "世界描述",
+    "secondaryCharactersLabel": "次要角色 (NPC)",
+    "placeholderLabel": "占位符？",
+    "placeholderNameLabel": "占位符名称",
+    "npcNameLabel": "NPC 名称",
+    "placeholderNamePlaceholder": "例如：战士、商人...",
+    "npcNamePlaceholder": "例如：罗里克、埃拉拉...",
+    "npcDetailsLabel": "NPC 详细信息",
+    "npcDetailsPlaceholder": "描述、个性、角色...",
     "timeManagementTitle": "时间管理",
     "enableTimeManagementLabel": "启用时间管理",
     "enableTimeManagementDescription": "AI 将在每个回合推进时间。",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "用 {lang} 描述初始情况...",
     "translateButton": "翻译成英文",
     "translateFrom": "从 {lang} 翻译到：",
-    "translateTo": "翻译成 {lang}"
+    "translateTo": "翻译成 {lang}",
+    "comicLibraryTitle": "漫画库",
+    "comicLibraryPageTitle": "漫画书库",
+    "comicLibraryDescription": "在这里找到你保存的所有漫画。",
+    "readButton": "阅读",
+    "noCover": "无封面"
 }
-

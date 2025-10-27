@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "चरित्र जोड़ें",
     "addPlaceholderTooltip": "चरित्र प्लेसहोल्डर जोड़ें",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "{lang} में आरंभिक स्थिति...",
     "translateButton": "अंग्रेजी में अनुवाद करें",
     "translateFrom": "{lang} से अनुवाद करें:",
-    "translateTo": "{lang} में अनुवाद करें"
+    "translateTo": "{lang} में अनुवाद करें",
+    "comicLibraryTitle": "कॉमिक लाइब्रेरी",
+    "comicLibraryPageTitle": "कॉमिक बुक लाइब्रेरी",
+    "comicLibraryDescription": "यहां आपके द्वारा सहेजे गए सभी कॉमिक्स खोजें।",
+    "readButton": "पढ़ें",
+    "noCover": "कोई कवर नहीं"
 }
-

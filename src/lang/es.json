@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "Añadir Personaje",
     "addPlaceholderTooltip": "Añadir Marcador de Posición de Personaje",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "Situación inicial en {lang}...",
     "translateButton": "Traducir al Inglés",
     "translateFrom": "Traducir de {lang} a:",
-    "translateTo": "Traducir a {lang}"
+    "translateTo": "Traducir a {lang}",
+    "comicLibraryTitle": "Biblioteca de Cómics",
+    "comicLibraryPageTitle": "Biblioteca de Cómics",
+    "comicLibraryDescription": "Encuentra aquí todos los cómics que has guardado.",
+    "readButton": "Leer",
+    "noCover": "Sin portada"
 }
-

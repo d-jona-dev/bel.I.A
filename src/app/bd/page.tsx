@@ -78,9 +78,9 @@ export default function ComicLibraryPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <h1 className="text-3xl font-bold mb-2">Bibliothèque de Bandes Dessinées</h1>
+      <h1 className="text-3xl font-bold mb-2">{lang.comicLibraryPageTitle}</h1>
       <p className="text-muted-foreground mb-6">
-        Retrouvez ici toutes les bandes dessinées que vous avez sauvegardées.
+        {lang.comicLibraryDescription}
       </p>
       
       {isLoading ? (
@@ -100,7 +100,7 @@ export default function ComicLibraryPage() {
                                 {comic.coverUrl ? (
                                     <Image src={comic.coverUrl} alt={`Couverture de ${comic.title}`} layout="fill" objectFit="cover"/>
                                 ) : (
-                                    <div className="flex items-center justify-center h-full text-muted-foreground">Pas de couverture</div>
+                                    <div className="flex items-center justify-center h-full text-muted-foreground">{lang.noCover}</div>
                                 )}
                             </div>
                         </CardHeader>
@@ -110,7 +110,7 @@ export default function ComicLibraryPage() {
                         <CardFooter className="p-4 pt-0 flex gap-2">
                              <Button asChild className="flex-1">
                                 <Link href={`/bd/${comic.id}`}>
-                                    <BookOpen className="mr-2 h-4 w-4"/> Lire
+                                    <BookOpen className="mr-2 h-4 w-4"/> {lang.readButton}
                                 </Link>
                             </Button>
                              <AlertDialog>

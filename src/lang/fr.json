@@ -1,11 +1,18 @@
 
-
 {
     "addCharacterTooltip": "Ajouter un personnage",
     "addPlaceholderTooltip": "Ajouter un emplacement de personnage",
     "visionConsent": "Je comprends que l'image sera envoyée à un modèle d'IA pour analyse et pourrait ne pas rester privée. N'utilisez pas d'images personnelles ou sensitives.",
     "memory": "Mémoire",
     "addMemory": "Ajouter un souvenir",
+    "secondaryCharactersLabel": "Personnages Secondaires (PNJ)",
+    "placeholderLabel": "Emplacement ?",
+    "placeholderNameLabel": "Nom de l'emplacement",
+    "npcNameLabel": "Nom du PNJ",
+    "placeholderNamePlaceholder": "Ex: Le Guerrier, Le Marchand...",
+    "npcNamePlaceholder": "Ex: Roric, Elara...",
+    "npcDetailsLabel": "Détails du PNJ",
+    "npcDetailsPlaceholder": "Description, personnalité, rôle...",
     "noImageGenerated": "Aucune image générée pour cette scène.",
     "comicEditorButton": "Éditeur BD",
     "generateButton": "Générer",
@@ -65,14 +72,6 @@
     "adventureConfigTitle": "Configuration de l'Aventure",
     "worldConfigTitle": "Configuration du Monde",
     "worldDescriptionLabel": "Description du Monde",
-    "secondaryCharactersLabel": "Personnages Secondaires (PNJ)",
-    "placeholderLabel": "Emplacement ?",
-    "placeholderNameLabel": "Nom de l'emplacement",
-    "npcNameLabel": "Nom du PNJ",
-    "placeholderNamePlaceholder": "Ex: Le Guerrier, Le Marchand...",
-    "npcNamePlaceholder": "Ex: Roric, Elara...",
-    "npcDetailsLabel": "Détails du PNJ",
-    "npcDetailsPlaceholder": "Description, personnalité, rôle...",
     "timeManagementTitle": "Gestion du Temps",
     "enableTimeManagementLabel": "Activer la gestion du temps",
     "enableTimeManagementDescription": "L'IA fera avancer le temps à chaque tour.",
@@ -306,6 +305,10 @@
     "initialSituationPlaceholder": "Situation de départ en {lang}...",
     "translateButton": "Traduire en Anglais",
     "translateFrom": "Traduire depuis {lang} vers :",
-    "translateTo": "Traduire en {lang}"
+    "translateTo": "Traduire en {lang}",
+    "comicLibraryTitle": "Bibliothèque de BD",
+    "comicLibraryPageTitle": "Bibliothèque de Bandes Dessinées",
+    "comicLibraryDescription": "Retrouvez ici toutes les bandes dessinées que vous avez sauvegardées.",
+    "readButton": "Lire",
+    "noCover": "Pas de couverture"
 }
-

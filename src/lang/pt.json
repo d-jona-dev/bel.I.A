@@ -1,5 +1,4 @@
 
-
 {
     "addCharacterTooltip": "Adicionar Personagem",
     "addPlaceholderTooltip": "Adicionar Espaço para Personagem",
@@ -305,6 +304,10 @@
     "initialSituationPlaceholder": "Situação inicial em {lang}...",
     "translateButton": "Traduzir para Inglês",
     "translateFrom": "Traduzir de {lang} para:",
-    "translateTo": "Traduzir para {lang}"
+    "translateTo": "Traduzir para {lang}",
+    "comicLibraryTitle": "Biblioteca de HQs",
+    "comicLibraryPageTitle": "Biblioteca de Histórias em Quadrinhos",
+    "comicLibraryDescription": "Encontre aqui todas as HQs que você salvou.",
+    "readButton": "Ler",
+    "noCover": "Sem capa"
 }
-
