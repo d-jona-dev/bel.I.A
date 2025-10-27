@@ -21,12 +21,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Zap, PlusCircle, Trash2 } from "lucide-react";
-
+import { i18n, type Language } from "@/lib/i18n";
 import type { AdventureFormValues } from "../adventure-form";
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
-export function ConditionsConfig() {
+interface ConditionsConfigProps {
+    currentLanguage: Language;
+}
+
+export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
     const { control, watch } = useFormContext<AdventureFormValues>();
     const { fields, append, remove } = useFieldArray({
         control,
@@ -34,6 +38,7 @@ export function ConditionsConfig() {
     });
     
     const characters = watch("characters") || [];
+    const lang = i18n[currentLanguage] || i18n.en;
 
     const addCondition = () => append({
         id: uid(),
@@ -50,7 +55,7 @@ export function ConditionsConfig() {
             <AccordionItem value="conditions-config">
                 <AccordionTrigger>
                     <div className="flex items-center gap-2">
-                        <Zap className="h-5 w-5" /> Conditions de Scénario
+                        <Zap className="h-5 w-5" /> {lang.scenarioConditionsTitle}
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="pt-2 space-y-4">
@@ -64,12 +69,12 @@ export function ConditionsConfig() {
                                     name={`conditions.${index}.targetCharacterId`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Personnage Cible</FormLabel>
+                                            <FormLabel>{lang.targetCharacterLabel}</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir un personnage..." /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger><SelectValue placeholder={lang.chooseCharacterPlaceholder} /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     {characters.map(char => (
-                                                        <SelectItem key={char.id!} value={char.id!}>{char.name} {char.isPlaceholder ? '(Emplacement)' : ''}</SelectItem>
+                                                        <SelectItem key={char.id!} value={char.id!}>{char.name} {char.isPlaceholder ? `(${lang.placeholderLabelShort})` : ''}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -83,13 +88,13 @@ export function ConditionsConfig() {
                                         name={`conditions.${index}.triggerType`}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Déclencheur</FormLabel>
+                                                <FormLabel>{lang.triggerLabel}</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="relation">Affinité</SelectItem>
-                                                        <SelectItem value="day">Jour</SelectItem>
-                                                        <SelectItem value="end">Fin de l'histoire</SelectItem>
+                                                        <SelectItem value="relation">{lang.affinityTrigger}</SelectItem>
+                                                        <SelectItem value="day">{lang.dayTrigger}</SelectItem>
+                                                        <SelectItem value="end">{lang.endOfStoryTrigger}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </FormItem>
@@ -97,8 +102,8 @@ export function ConditionsConfig() {
                                     />
                                     {triggerType !== 'end' && (
                                         <>
-                                            <FormField control={control} name={`conditions.${index}.triggerOperator`} render={({ field }) => (<FormItem><FormLabel>Opérateur</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="greater_than">Supérieur à</SelectItem><SelectItem value="less_than">Inférieur à</SelectItem></SelectContent></Select></FormItem>)}/>
-                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>Valeur</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                            <FormField control={control} name={`conditions.${index}.triggerOperator`} render={({ field }) => (<FormItem><FormLabel>{lang.operatorLabel}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="greater_than">{lang.greaterThanOperator}</SelectItem><SelectItem value="less_than">{lang.lessThanOperator}</SelectItem></SelectContent></Select></FormItem>)}/>
+                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>{lang.valueLabel}</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
                                         </>
                                     )}
                                 </div>
@@ -107,8 +112,8 @@ export function ConditionsConfig() {
                                     name={`conditions.${index}.effect`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Effet (Instruction pour l'IA)</FormLabel>
-                                            <FormControl><Textarea {...field} placeholder="Ex: Lyra devient plus méfiante envers le joueur." /></FormControl>
+                                            <FormLabel>{lang.effectInstructionLabel}</FormLabel>
+                                            <FormControl><Textarea {...field} placeholder={lang.effectInstructionPlaceholder} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -120,7 +125,7 @@ export function ConditionsConfig() {
                         )
                     })}
                      <Button type="button" variant="outline" size="sm" onClick={addCondition}>
-                        <PlusCircle className="mr-2 h-4 w-4"/> Ajouter une Condition
+                        <PlusCircle className="mr-2 h-4 w-4"/> {lang.addConditionButton}
                     </Button>
                 </AccordionContent>
             </AccordionItem>

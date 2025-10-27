@@ -389,5 +389,18 @@
     "chatResponseError": "Ошибка: Не удалось получить ответ от персонажа. Пожалуйста, попробуйте еще раз.",
     "loadingCharacter": "Загрузка персонажа...",
     "adventureMemoriesTitle": "Воспоминания о приключениях с {charName} (контекст для ИИ)",
-    "chatPlaceholder": "Сообщение для {charName}..."
+    "chatPlaceholder": "Сообщение для {charName}...",
+    "scenarioConditionsTitle": "Условия сценария",
+    "targetCharacterLabel": "Целевой персонаж",
+    "triggerLabel": "Триггер",
+    "affinityTrigger": "Отношение",
+    "dayTrigger": "День",
+    "endOfStoryTrigger": "Конец истории",
+    "operatorLabel": "Оператор",
+    "greaterThanOperator": "Больше чем",
+    "lessThanOperator": "Меньше чем",
+    "valueLabel": "Значение",
+    "effectInstructionLabel": "Эффект (инструкция для ИИ)",
+    "effectInstructionPlaceholder": "Например, Лира становится более осторожной по отношению к игроку.",
+    "addConditionButton": "Добавить условие"
 }

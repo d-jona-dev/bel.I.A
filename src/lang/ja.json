@@ -176,6 +176,7 @@
     "importSuccessDesc": "モデルリストが更新されました。",
     "importErrorTitle": "インポートエラー",
     "importErrorDesc": "JSONファイルが無効または破損しています。",
+    "errorTitle": "エラー",
     "modelFieldsRequired": "モデル名と識別子が必要です。",
     "llmTitle": "言語モデル (LLM)",
     "openRouterTitle": "OpenRouter (外部 API)",
@@ -387,5 +388,18 @@
     "chatResponseError": "エラー：キャラクターから応答を取得できませんでした。もう一度お試しください。",
     "loadingCharacter": "キャラクターを読み込み中...",
     "adventureMemoriesTitle": "{charName} との冒険の思い出（AIコンテキスト）",
-    "chatPlaceholder": "{charName} へのメッセージ..."
+    "chatPlaceholder": "{charName} へのメッセージ...",
+    "scenarioConditionsTitle": "シナリオの条件",
+    "targetCharacterLabel": "ターゲットキャラクター",
+    "triggerLabel": "トリガー",
+    "affinityTrigger": "親和性",
+    "dayTrigger": "日",
+    "endOfStoryTrigger": "物語の終わり",
+    "operatorLabel": "演算子",
+    "greaterThanOperator": "より大きい",
+    "lessThanOperator": "より小さい",
+    "valueLabel": "値",
+    "effectInstructionLabel": "効果（AIへの指示）",
+    "effectInstructionPlaceholder": "例：ライラはプレイヤーに対してより警戒するようになります。",
+    "addConditionButton": "条件を追加"
 }

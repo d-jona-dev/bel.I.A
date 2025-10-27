@@ -176,6 +176,7 @@
     "importSuccessDesc": "Die Modelllisten wurden aktualisiert.",
     "importErrorTitle": "Importfehler",
     "importErrorDesc": "Die JSON-Datei ist ungültig oder beschädigt.",
+    "errorTitle": "Fehler",
     "modelFieldsRequired": "Modellname und -kennung sind erforderlich.",
     "llmTitle": "Sprachmodell (LLM)",
     "openRouterTitle": "OpenRouter (Externe API)",
@@ -387,5 +388,18 @@
     "chatResponseError": "Fehler: Antwort vom Charakter konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.",
     "loadingCharacter": "Lade Charakter...",
     "adventureMemoriesTitle": "Abenteuererinnerungen mit {charName} (Kontext für KI)",
-    "chatPlaceholder": "Nachricht an {charName}..."
+    "chatPlaceholder": "Nachricht an {charName}...",
+    "scenarioConditionsTitle": "Szenario-Bedingungen",
+    "targetCharacterLabel": "Zielcharakter",
+    "triggerLabel": "Auslöser",
+    "affinityTrigger": "Affinität",
+    "dayTrigger": "Tag",
+    "endOfStoryTrigger": "Ende der Geschichte",
+    "operatorLabel": "Operator",
+    "greaterThanOperator": "Größer als",
+    "lessThanOperator": "Kleiner als",
+    "valueLabel": "Wert",
+    "effectInstructionLabel": "Effekt (Anweisung für KI)",
+    "effectInstructionPlaceholder": "Z.B.: Lyra wird misstrauischer gegenüber dem Spieler.",
+    "addConditionButton": "Bedingung hinzufügen"
 }
