@@ -32,8 +32,8 @@ export default function RootLayout({
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} ${medievalSharp.variable}`} suppressHydrationWarning>
       <head>
         {/*
-          IMPORTANT: Remplacez 'ca-pub-XXXXXXXXXXXXXXXX' par votre propre ID d'éditeur Google AdSense.
-          Vous pouvez trouver cet ID dans votre compte AdSense.
+          Le script AdSense est chargé ici. L'ID d'éditeur est géré
+          dans le composant AdBanner et doit être remplacé là-bas.
         */}
         <Script
           async
