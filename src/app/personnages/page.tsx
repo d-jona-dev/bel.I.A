@@ -89,7 +89,7 @@ export default function PersonnagesPage() {
       console.error("Failed to load characters from localStorage:", error);
       toast({
         title: lang.loadingErrorTitle,
-        description: "Impossible de charger les personnages sauvegardés.",
+        description: lang.loadingErrorDescription,
         variant: "destructive",
       });
     }
@@ -141,22 +141,22 @@ export default function PersonnagesPage() {
             const newChar = JSON.parse(jsonString) as Character;
 
             if (!newChar.id || !newChar.name || !newChar.details) {
-                throw new Error("Fichier JSON invalide ou manquant de champs obligatoires.");
+                throw new Error(lang.invalidJsonFile);
             }
             
             const isDuplicate = savedNPCs.some(c => c.id === newChar.id || c.name.toLowerCase() === newChar.name.toLowerCase());
             if (isDuplicate) {
-                 toast({ title: lang.importErrorTitle, description: `Un personnage avec le nom ou l'ID "${newChar.name}" existe déjà.`, variant: "destructive" });
+                 toast({ title: lang.importErrorTitle, description: lang.importDuplicateError.replace('{charName}', newChar.name), variant: "destructive" });
                  return;
             }
 
             const updatedChars = [...savedNPCs, { ...newChar, _lastSaved: Date.now() }];
             saveCharactersToStorage(updatedChars);
-            toast({ title: "Personnage Importé", description: `"${newChar.name}" a été ajouté à votre liste.` });
+            toast({ title: lang.characterImportedTitle, description: `"${newChar.name}" ${lang.characterAddedToList}` });
 
         } catch (error) {
             console.error("Error loading character from JSON:", error);
-            toast({ title: lang.importErrorTitle, description: `Impossible de lire le fichier JSON: ${error instanceof Error ? error.message : 'Format invalide'}.`, variant: "destructive" });
+            toast({ title: lang.importErrorTitle, description: `${lang.jsonReadError}: ${error instanceof Error ? error.message : lang.invalidFormat}`, variant: "destructive" });
         }
     };
     reader.readAsText(file);
@@ -166,7 +166,7 @@ export default function PersonnagesPage() {
 
   const handleCreateCharacter = () => {
     if (!newCharacterData.name?.trim() || !newCharacterData.details?.trim()) {
-        toast({ title: "Champs requis manquants", description: "Le nom et les détails du personnage sont obligatoires.", variant: "destructive" });
+        toast({ title: lang.requiredFieldsMissing, description: lang.nameAndDetailsRequired, variant: "destructive" });
         return;
     }
 
@@ -185,7 +185,7 @@ export default function PersonnagesPage() {
     
     const updatedChars = [...savedNPCs, newChar];
     saveCharactersToStorage(updatedChars);
-    toast({ title: "Personnage Créé", description: `"${newChar.name}" est maintenant prêt !` });
+    toast({ title: lang.characterCreatedTitle, description: `"${newChar.name}" ${lang.characterCreatedSuccess}` });
     setIsCreateModalOpen(false);
     setNewCharacterData({ name: '', details: '', affinity: 50, relations: { player: "Inconnu" } });
   }
@@ -194,7 +194,7 @@ export default function PersonnagesPage() {
       if (!editingCharacter) return;
       const updatedChars = savedNPCs.map(c => c.id === editingCharacter.id ? editingCharacter : c);
       saveCharactersToStorage(updatedChars);
-      toast({ title: "Personnage Mis à Jour", description: `Les informations de "${editingCharacter.name}" ont été sauvegardées.` });
+      toast({ title: lang.characterUpdatedTitle, description: lang.characterInfoSaved.replace('{charName}', editingCharacter.name) });
       setEditingCharacter(null); // This will close the dialog
   }
 
@@ -208,12 +208,12 @@ export default function PersonnagesPage() {
         const result = await generateSceneImage({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
         if (result.imageUrl) {
             setEditingCharacter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
-            toast({ title: "Portrait Généré!", description: "Le nouveau portrait est affiché." });
+            toast({ title: lang.portraitGeneratedTitle, description: lang.newPortraitDisplayed });
         } else {
-            throw new Error(result.error || "La génération d'image a échoué.");
+            throw new Error(result.error || lang.imageGenerationFailed);
         }
     } catch (error) {
-         toast({ title: "Erreur de Génération", description: `Impossible de générer le portrait : ${error instanceof Error ? error.message : 'Erreur inconnue'}.`, variant: "destructive" });
+         toast({ title: lang.generationErrorTitle, description: `${lang.portraitGenerationError} ${error instanceof Error ? error.message : lang.unknownError}.`, variant: "destructive" });
     } finally {
         setIsGeneratingPortrait(false);
     }
@@ -224,45 +224,45 @@ export default function PersonnagesPage() {
     setEditingCharacter(prev => prev ? { ...prev, portraitUrl: portraitUrlInput } : null);
     setIsUrlDialogOpen(false);
     setPortraitUrlInput("");
-    toast({ title: "Portrait mis à jour", description: "L'URL du portrait a été enregistrée." });
+    toast({ title: lang.portraitUpdatedTitle, description: lang.portraitUrlSaved });
   };
 
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">{lang.chatWithCharacterTitle}</h1>
+        <h1 className="text-3xl font-bold">{lang.secondaryCharactersPageTitle}</h1>
         <div className="flex gap-2">
           <input type="file" ref={importFileRef} onChange={handleImportCharacter} accept=".json" className="hidden" />
           <Button variant="outline" onClick={() => importFileRef.current?.click()}>
-            <Upload className="mr-2 h-4 w-4" /> {lang.importButton}
+            <Upload className="mr-2 h-4 w-4" /> {lang.importCharacterButton}
           </Button>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
               <Button>
-                <UserPlus className="mr-2 h-4 w-4" /> {lang.createButton}
+                <UserPlus className="mr-2 h-4 w-4" /> {lang.createCharacterButton}
               </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Créer un Nouveau Personnage</DialogTitle>
+                    <DialogTitle>{lang.createNewCharacterTitle}</DialogTitle>
                     <DialogDescription>
-                        Remplissez les informations de base de votre personnage.
+                        {lang.fillBasicInfo}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="new-char-name">Nom</Label>
-                        <Input id="new-char-name" value={newCharacterData.name || ''} onChange={e => setNewCharacterData({...newCharacterData, name: e.target.value})} placeholder="Ex: Un garde, une espionne..."/>
+                        <Label htmlFor="new-char-name">{lang.nameLabel}</Label>
+                        <Input id="new-char-name" value={newCharacterData.name || ''} onChange={e => setNewCharacterData({...newCharacterData, name: e.target.value})} placeholder={lang.npcNamePlaceholder}/>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="new-char-details">Détails (Description)</Label>
-                        <Textarea id="new-char-details" value={newCharacterData.details || ''} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder="Description physique, personnalité, rôle..."/>
+                        <Label htmlFor="new-char-details">{lang.npcDetailsLabel}</Label>
+                        <Textarea id="new-char-details" value={newCharacterData.details || ''} onChange={e => setNewCharacterData({...newCharacterData, details: e.target.value})} placeholder={lang.npcDetailsPlaceholder}/>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-                    <Button onClick={handleCreateCharacter}>Créer le Personnage</Button>
+                    <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>{lang.cancelButton}</Button>
+                    <Button onClick={handleCreateCharacter}>{lang.createCharacterConfirmButton}</Button>
                 </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -270,7 +270,7 @@ export default function PersonnagesPage() {
       </div>
 
       <p className="text-muted-foreground mb-4">
-        {lang.noGlobalCharactersForChat}
+        {lang.secondaryCharactersPageDescription}
       </p>
 
       <ScrollArea className="h-[calc(100vh-240px)]">
@@ -310,7 +310,7 @@ export default function PersonnagesPage() {
                     {editingCharacter?.id === npc.id && (
                        <DialogContent className="max-w-3xl">
                           <DialogHeader>
-                              <DialogTitle>Modifier {editingCharacter.name}</DialogTitle>
+                              <DialogTitle>{lang.editCharacterTitle} {editingCharacter.name}</DialogTitle>
                           </DialogHeader>
                           <div className="max-h-[70vh] overflow-y-auto p-1 space-y-4">
                              <div className="flex items-center gap-4">
@@ -369,27 +369,27 @@ export default function PersonnagesPage() {
                                 </div>
                              </div>
                              <div className="space-y-2">
-                                <Label>Nom</Label>
+                                <Label>{lang.nameLabel}</Label>
                                 <Input value={editingCharacter.name} onChange={e => setEditingCharacter({...editingCharacter!, name: e.target.value})} />
                              </div>
                              <div className="space-y-2">
-                                <Label>Détails</Label>
+                                <Label>{lang.npcDetailsLabel}</Label>
                                 <Textarea value={editingCharacter.details} onChange={e => setEditingCharacter({...editingCharacter!, details: e.target.value})} rows={4}/>
                              </div>
                              <div className="space-y-2">
-                                <Label>Biographie / Notes Privées</Label>
-                                <Textarea value={editingCharacter.biographyNotes || ''} onChange={e => setEditingCharacter({...editingCharacter!, biographyNotes: e.target.value})} rows={3} placeholder="Passé, secrets, objectifs..."/>
+                                <Label>{lang.biographyLabel}</Label>
+                                <Textarea value={editingCharacter.biographyNotes || ''} onChange={e => setEditingCharacter({...editingCharacter!, biographyNotes: e.target.value})} rows={3} placeholder={lang.biographyPlaceholder}/>
                               </div>
                                <div className="space-y-2">
-                                <Label>Description de l'Apparence (par IA)</Label>
-                                <Textarea value={editingCharacter.appearanceDescription || ''} onChange={e => setEditingCharacter({...editingCharacter!, appearanceDescription: e.target.value})} rows={4} placeholder="Description physique détaillée pour la génération d'images..."/>
+                                <Label>{lang.appearanceDescriptionLabel}</Label>
+                                <Textarea value={editingCharacter.appearanceDescription || ''} onChange={e => setEditingCharacter({...editingCharacter!, appearanceDescription: e.target.value})} rows={4} placeholder={lang.appearanceDescriptionPlaceholder}/>
                               </div>
                               <div className="space-y-2">
-                                <Label>Relation par défaut avec le Joueur</Label>
-                                <Input value={editingCharacter.relations?.player || 'Inconnu'} onChange={e => setEditingCharacter({...editingCharacter!, relations: {...editingCharacter!.relations, player: e.target.value}})} placeholder="Ami, Rival, Inconnu..."/>
+                                <Label>{lang.defaultRelationLabel}</Label>
+                                <Input value={editingCharacter.relations?.player || 'Inconnu'} onChange={e => setEditingCharacter({...editingCharacter!, relations: {...editingCharacter!.relations, player: e.target.value}})} placeholder={lang.relationPlaceholder}/>
                              </div>
                               <div className="space-y-2">
-                                <Label>Affinité par défaut : {editingCharacter.affinity}</Label>
+                                <Label>{lang.defaultAffinityLabel} {editingCharacter.affinity}</Label>
                                 <Slider min={0} max={100} step={1} value={[editingCharacter.affinity || 50]} onValueChange={value => setEditingCharacter({...editingCharacter!, affinity: value[0]})}/>
                              </div>
                           </div>
@@ -411,7 +411,7 @@ export default function PersonnagesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>{lang.confirmDeletion}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Êtes-vous sûr de vouloir supprimer définitivement "{characterToDelete.name}" de vos sauvegardes globales ? Cette action est irréversible.
+                            {lang.deleteCharacterConfirmation.replace('{charName}', characterToDelete.name)}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
