@@ -42,7 +42,7 @@ export function useSaveLoad({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `aventurier_textuel_${adventureSettings.playerName || 'aventure'}_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `bel_ia_${adventureSettings.playerName || 'aventure'}_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -139,4 +139,3 @@ export function useSaveLoad({
 
     return { handleSave, handleLoad, handleDownloadStory, handleImportStory };
 }
-

@@ -31,7 +31,7 @@ export async function generateSceneImageWithOpenRouter(
         'Authorization': `Bearer ${imageConfig.apiKey}`,
         'Content-Type': 'application/json',
         "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Aventurier Textuel",
+        "X-Title": "Bel.I.A.",
       },
       body: JSON.stringify({
         model: imageConfig.model,

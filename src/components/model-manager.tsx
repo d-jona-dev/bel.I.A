@@ -50,7 +50,7 @@ interface ModelManagerProps {
 
 export function ModelManager({ config, onConfigChange, currentLanguage }: ModelManagerProps) {
   const { toast } = useToast();
-  const lang = i18n[currentLanguage] || i18n.fr;
+  const lang = i18n[currentLanguage] || i18n.en;
   const [llmModels, setLlmModels] = React.useState<ModelDefinition[]>([]);
   const [imageModels, setImageModels] = React.useState<ImageModelDefinition[]>([]);
   
@@ -120,7 +120,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "aventurier_textuel_models.json";
+      a.download = "bel_ia_models.json";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

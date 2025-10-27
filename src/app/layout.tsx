@@ -19,7 +19,7 @@ const medievalSharp = MedievalSharp({
 });
 
 export const metadata: Metadata = {
-  title: 'Aventurier Textuel',
+  title: 'Bel.I.A.',
   description: 'Généré par Firebase Studio',
 };
 

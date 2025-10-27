@@ -35,7 +35,7 @@ export default function BdLayout({
     <>
       <Sidebar side="left" variant="sidebar" collapsible="icon">
          <SidebarHeader className="p-4 border-b border-sidebar-border">
-           <h1 className="text-xl font-semibold text-sidebar-foreground">Aventurier Textuel</h1>
+           <h1 className="text-xl font-semibold text-sidebar-foreground">Bel.I.A.</h1>
          </SidebarHeader>
          <ScrollArea className="flex-1">
             <SidebarContent className="p-4 space-y-4">
