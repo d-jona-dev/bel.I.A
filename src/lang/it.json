@@ -333,5 +333,21 @@
     "bubbleTextLabel": "Testo del fumetto",
     "selectBubbleToEdit": "Seleziona un fumetto per modificarlo.",
     "saveAndClose": "Salva e Chiudi",
-    "cancelButton": "Annulla"
+    "cancelButton": "Annulla",
+    "wardrobePageTitle": "Il Mio Guardaroba",
+    "wardrobePageDescription": "Gestisci la tua collezione di abiti. Puoi assegnarli ai tuoi personaggi per influenzare la generazione di immagini.",
+    "createClothingButton": "Crea Abito",
+    "wardrobeEmptyTitle": "Guardaroba Vuoto",
+    "wardrobeEmptyDesc": "Crea il tuo primo capo di abbigliamento per iniziare!",
+    "clothingImageLabel": "Immagine dell'Abito",
+    "clothingNameLabel": "Nome dell'Abito",
+    "clothingNamePlaceholder": "Es: Tunica di Lino, Armatura a Piastre...",
+    "clothingDescriptionLabelAi": "Descrizione (per IA)",
+    "clothingDescriptionPlaceholderAi": "Descrizione oggettiva per la generazione di immagini...",
+    "scanWithVision": "Scansiona con Vision AI",
+    "loadingWardrobe": "Caricamento guardaroba...",
+    "createClothingTitle": "Crea un nuovo capo di abbigliamento",
+    "createButton": "Crea",
+    "editClothingTitle": "Modifica",
+    "deleteClothingConfirmation": "Sei sicuro di voler eliminare \"{itemName}\"?"
 }

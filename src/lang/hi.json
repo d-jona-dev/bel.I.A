@@ -333,5 +333,21 @@
     "bubbleTextLabel": "बुलबुला पाठ",
     "selectBubbleToEdit": "संपादित करने के लिए एक बुलबुला चुनें।",
     "saveAndClose": "सहेजें और बंद करें",
-    "cancelButton": "रद्द करें"
+    "cancelButton": "रद्द करें",
+    "wardrobePageTitle": "मेरी अलमारी",
+    "wardrobePageDescription": "कपड़ों के अपने संग्रह को प्रबंधित करें। आप उन्हें अपने पात्रों को सौंप सकते हैं ताकि छवि निर्माण को प्रभावित किया जा सके।",
+    "createClothingButton": "कपड़े बनाएं",
+    "wardrobeEmptyTitle": "खाली अलमारी",
+    "wardrobeEmptyDesc": "शुरू करने के लिए अपना पहला कपड़ा बनाएं!",
+    "clothingImageLabel": "कपड़े की छवि",
+    "clothingNameLabel": "कपड़े का नाम",
+    "clothingNamePlaceholder": "जैसे, लिनन ट्यूनिक, प्लेट आर्मर...",
+    "clothingDescriptionLabelAi": "विवरण (एआई के लिए)",
+    "clothingDescriptionPlaceholderAi": "छवि निर्माण के लिए वस्तुनिष्ठ विवरण...",
+    "scanWithVision": "विजन एआई से स्कैन करें",
+    "loadingWardrobe": "अलमारी लोड हो रही है...",
+    "createClothingTitle": "एक नया कपड़ा बनाएं",
+    "createButton": "बनाएं",
+    "editClothingTitle": "संपादित करें",
+    "deleteClothingConfirmation": "क्या आप वाकई \"{itemName}\" को हटाना चाहते हैं?"
 }

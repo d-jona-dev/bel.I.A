@@ -259,7 +259,7 @@ export default function PenderiePage() {
 
 
   if (isLoading) {
-    return <div className="text-center p-10">{lang.loadingWardrobe}...</div>;
+    return <div className="text-center p-10">{lang.loadingWardrobe}</div>;
   }
 
   return (

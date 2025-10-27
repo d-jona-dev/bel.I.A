@@ -333,5 +333,21 @@
     "bubbleTextLabel": "Texto del bocadillo",
     "selectBubbleToEdit": "Selecciona un bocadillo para editarlo.",
     "saveAndClose": "Guardar y Cerrar",
-    "cancelButton": "Cancelar"
+    "cancelButton": "Cancelar",
+    "wardrobePageTitle": "Mi Guardarropa",
+    "wardrobePageDescription": "Administra tu colección de ropa. Puedes asignarla a tus personajes para influir en la generación de imágenes.",
+    "createClothingButton": "Crear Ropa",
+    "wardrobeEmptyTitle": "Guardarropa Vacío",
+    "wardrobeEmptyDesc": "¡Crea tu primera prenda de vestir para empezar!",
+    "clothingImageLabel": "Imagen de la Ropa",
+    "clothingNameLabel": "Nombre de la Ropa",
+    "clothingNamePlaceholder": "Ej: Túnica de Lino, Armadura de Placas...",
+    "clothingDescriptionLabelAi": "Descripción (para IA)",
+    "clothingDescriptionPlaceholderAi": "Descripción objetiva para la generación de imágenes...",
+    "scanWithVision": "Escanear con Vision AI",
+    "loadingWardrobe": "Cargando guardarropa...",
+    "createClothingTitle": "Crear una nueva prenda de vestir",
+    "createButton": "Crear",
+    "editClothingTitle": "Editar",
+    "deleteClothingConfirmation": "¿Estás seguro de que quieres eliminar \"{itemName}\"?"
 }

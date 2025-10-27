@@ -333,5 +333,21 @@
     "bubbleTextLabel": "Sprechblasentext",
     "selectBubbleToEdit": "Wählen Sie eine Sprechblase zum Bearbeiten aus.",
     "saveAndClose": "Speichern und Schließen",
-    "cancelButton": "Abbrechen"
+    "cancelButton": "Abbrechen",
+    "wardrobePageTitle": "Meine Garderobe",
+    "wardrobePageDescription": "Verwalten Sie Ihre Kleidungssammlung. Sie können sie Ihren Charakteren zuweisen, um die Bilderzeugung zu beeinflussen.",
+    "createClothingButton": "Kleidung erstellen",
+    "wardrobeEmptyTitle": "Leere Garderobe",
+    "wardrobeEmptyDesc": "Erstellen Sie Ihr erstes Kleidungsstück, um loszulegen!",
+    "clothingImageLabel": "Kleidungsbild",
+    "clothingNameLabel": "Kleidungsname",
+    "clothingNamePlaceholder": "Z.B. Leinentunika, Plattenrüstung...",
+    "clothingDescriptionLabelAi": "Beschreibung (für KI)",
+    "clothingDescriptionPlaceholderAi": "Objektive Beschreibung für die Bilderzeugung...",
+    "scanWithVision": "Mit Vision AI scannen",
+    "loadingWardrobe": "Lade Garderobe...",
+    "createClothingTitle": "Ein neues Kleidungsstück erstellen",
+    "createButton": "Erstellen",
+    "editClothingTitle": "Bearbeiten",
+    "deleteClothingConfirmation": "Sind Sie sicher, dass Sie \"{itemName}\" löschen möchten?"
 }

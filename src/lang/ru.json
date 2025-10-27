@@ -333,5 +333,21 @@
     "bubbleTextLabel": "Текст пузыря",
     "selectBubbleToEdit": "Выберите пузырь для редактирования.",
     "saveAndClose": "Сохранить и закрыть",
-    "cancelButton": "Отмена"
+    "cancelButton": "Отмена",
+    "wardrobePageTitle": "Мой гардероб",
+    "wardrobePageDescription": "Управляйте своей коллекцией одежды. Вы можете назначать ее своим персонажам, чтобы влиять на создание изображений.",
+    "createClothingButton": "Создать одежду",
+    "wardrobeEmptyTitle": "Пустой гардероб",
+    "wardrobeEmptyDesc": "Создайте свою первую вещь, чтобы начать!",
+    "clothingImageLabel": "Изображение одежды",
+    "clothingNameLabel": "Название одежды",
+    "clothingNamePlaceholder": "Например, льняная туника, латная броня...",
+    "clothingDescriptionLabelAi": "Описание (для ИИ)",
+    "clothingDescriptionPlaceholderAi": "Объективное описание для создания изображений...",
+    "scanWithVision": "Сканировать с помощью Vision AI",
+    "loadingWardrobe": "Загрузка гардероба...",
+    "createClothingTitle": "Создать новую вещь",
+    "createButton": "Создать",
+    "editClothingTitle": "Редактировать",
+    "deleteClothingConfirmation": "Вы уверены, что хотите удалить \"{itemName}\"?"
 }
