@@ -6,16 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 import type { Message, ComicPage } from "@/types";
 import { createNewPage as createNewComicPageUtil, exportPageAsJpeg } from "@/components/ComicPageEditor";
 import { compressImage } from "@/components/ImageEditor";
+import { i18n, type Language } from "@/lib/i18n"; // Importer les traductions
 
 const uid = (n = 6) => Math.random().toString(36).slice(2, 2 + n);
 
 interface UseComicProps {
     narrativeMessages: Message[];
     generateSceneImageAction: (input: { sceneDescription: string; style?: string }) => Promise<{ imageUrl: string; error?: string }>;
+    currentLanguage: Language; // Ajouter la langue actuelle
 }
 
-export function useComic({ narrativeMessages, generateSceneImageAction }: UseComicProps) {
+export function useComic({ narrativeMessages, generateSceneImageAction, currentLanguage }: UseComicProps) {
     const { toast } = useToast();
+    const lang = i18n[currentLanguage]; // Obtenir l'objet de langue
     const [comicDraft, setComicDraft] = React.useState<ComicPage[]>([createNewComicPageUtil()]);
     const [currentComicPageIndex, setCurrentComicPageIndex] = React.useState(0);
     const [isSaveComicDialogOpen, setIsSaveComicDialogOpen] = React.useState(false);
@@ -26,15 +29,16 @@ export function useComic({ narrativeMessages, generateSceneImageAction }: UseCom
     const handleDownloadComicDraft = React.useCallback(() => {
         if (comicDraft.length === 0 || !comicDraft[currentComicPageIndex]) {
             toast({
-                title: "Rien à télécharger",
+                title: lang.noPanelsOnPage, // Traduit
                 description: "Il n'y a pas de planche de BD active à télécharger.",
                 variant: "destructive"
             });
             return;
         }
         const currentPage = comicDraft[currentComicPageIndex];
-        exportPageAsJpeg(currentPage, currentComicPageIndex, toast);
-    }, [comicDraft, currentComicPageIndex, toast]);
+        // Passer l'objet `lang` à la fonction d'exportation
+        exportPageAsJpeg(currentPage, currentComicPageIndex, toast, lang);
+    }, [comicDraft, currentComicPageIndex, toast, lang]);
 
     const handleAddComicPage = React.useCallback(() => {
         const newPage = createNewComicPageUtil();

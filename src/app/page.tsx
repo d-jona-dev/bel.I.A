@@ -14,6 +14,7 @@ import { useSaveLoad } from "@/hooks/systems/useSaveLoad";
 import { useAIActions } from "@/hooks/systems/useAIActions";
 
 import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
+import { i18n, type Language } from "@/lib/i18n"; // Importer i18n
 
 import {
   AlertDialog,
@@ -144,6 +145,7 @@ export default function Home() {
     } = useComic({
         narrativeMessages,
         generateSceneImageAction: generateSceneImageActionWrapper,
+        currentLanguage: currentLanguage as Language, // Passer la langue
     });
     
     const loadAdventureState = React.useCallback((data: SaveData) => {
@@ -423,6 +425,8 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
         timeManagement: adventureSettings.timeManagement || createInitialState().adventureSettings.timeManagement,
     }), [adventureSettings, characters, createInitialState]);
     
+    const lang = i18n[currentLanguage as Language] || i18n.fr;
+
     return (
         <>
             <PageStructure
