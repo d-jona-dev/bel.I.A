@@ -106,7 +106,7 @@ const conditionSchema = z.object({
 
 const creatorLinkSchema = z.object({
   id: z.string(),
-  platform: z.enum(['youtube', 'x', 'patreon', 'facebook', 'ko-fi', 'tipeee']),
+  platform: z.enum(['youtube', 'x', 'patreon', 'facebook', 'ko-fi', 'tipeee', 'instagram', 'threads', 'tiktok', 'bsky', 'linkedin', 'reddit', 'pinterest', 'mastodon', 'buymeacoffee', 'liberapay', 'itch', 'substack']),
   identifier: z.string().min(1, "L'identifiant est requis."),
 });
 
@@ -344,7 +344,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         currentLanguage={currentLanguage}
                     />
 
-                    <GameModesConfig />
+                    <GameModesConfig currentLanguage={currentLanguage} />
                     <TimeConfig currentLanguage={currentLanguage} />
                     <ConditionsConfig currentLanguage={currentLanguage} />
                     {!isLiveAdventure && (
