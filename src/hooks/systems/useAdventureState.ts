@@ -10,20 +10,19 @@ const createInitialState = (): SaveData => ({
     adventureSettings: {
         world: { fr: "" },
         initialSituation: { fr: "" },
-        rpgMode: false, // Forcé à false
-        relationsMode: true, // Forcé à true
-        strategyMode: false, // Forcé à false
-        comicModeActive: true, // Forcé à true
+        rpgMode: false,
+        relationsMode: true, 
+        strategyMode: false,
+        comicModeActive: true, 
         playerName: "Héros",
-        playerClass: "Aventurier", // Conservé pour le contexte
-        playerLevel: 1, // Conservé pour le contexte
+        playerClass: "Aventurier", 
+        playerLevel: 1, 
         playerPortraitUrl: null,
         playerDetails: "",
         playerDescription: "",
         playerOrientation: "",
         playerFaceSwapEnabled: false,
-        playerLocationId: undefined, // Retiré car la stratégie est désactivée
-        // NOUVEAU: S'assurer que timeManagement est toujours initialisé
+        playerLocationId: undefined, 
         timeManagement: {
             enabled: false,
             day: 1,
@@ -38,7 +37,7 @@ const createInitialState = (): SaveData => ({
     characters: [],
     narrative: [],
     currentLanguage: "fr",
-    saveFormatVersion: 2.6, // Gardé pour compatibilité
+    saveFormatVersion: 2.7,
     timestamp: new Date().toISOString(),
     aiConfig: { llm: { source: 'gemini' }, image: { source: 'gemini' } },
 });

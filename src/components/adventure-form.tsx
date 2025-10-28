@@ -16,7 +16,6 @@ import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon,
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
 import { TimeConfig } from './adventure-form-parts/time-config';
-import { GameModesConfig } from './adventure-form-parts/game-modes-config';
 import { WorldConfig } from './adventure-form-parts/world-config';
 import { ConditionsConfig } from './adventure-form-parts/conditions-config';
 import { i18n, type Language } from "@/lib/i18n";
@@ -346,10 +345,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                         currentLanguage={currentLanguage}
                     />
 
-                    <GameModesConfig currentLanguage={currentLanguage} />
                     <TimeConfig currentLanguage={currentLanguage} />
                     <ConditionsConfig currentLanguage={currentLanguage} />
-                    {!isLiveAdventure && !isEditing && (
+                    {!isEditing && !isLiveAdventure && (
                          <CreatorLinksConfig currentLanguage={currentLanguage} />
                     )}
                 </div>
