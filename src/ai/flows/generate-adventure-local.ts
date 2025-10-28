@@ -35,7 +35,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
 
-    let mainInstruction = `You are an interactive fiction engine. Your task is to generate the continuation of the story based on the provided context. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object that adheres to the following Zod schema. Do NOT provide any text outside the JSON object. Do not wrap the JSON in quotes or markdown backticks. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
+    let mainInstruction = `You are an interactive fiction engine for a relationship-focused game. Your task is to generate the continuation of the story. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
     
     mainInstruction += `\n**NEW RULE: To avoid ambiguity, when an NPC performs an action, start the sentence with their name (e.g., "L'espionne prend une profonde inspiration...").**`;
     mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.`;
@@ -44,7 +44,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     
     mainInstruction += `\nFor \`newEvent\` : If the narrative implies a change of event (e.g., class ends), describe it briefly. Otherwise, leave this field empty.`;
 
-    mainInstruction += "\nFocus on narrative and character consistency. The game system handles all rewards and game logic internally. Your role is PURELY narrative.";
+    mainInstruction += "\nFocus on narrative and character consistency. The game system handles all other logic internally. Your role is PURELY narrative.";
 
     const zodSchemaString = `{
     "narrative": "Le vent glacial balayait les couloirs. L'espionne se frotta les bras. *Il est en retard...* pensa-t-elle, avant de voir le guerrier s'approcher. \\"Tu as l'air soucieuse. Tout va bien ?\\"",

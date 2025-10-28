@@ -1,3 +1,4 @@
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 
@@ -10,9 +11,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
-import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar } from "@/types";
+import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar, CreatorLink } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
 import {
   AlertDialog,
@@ -39,7 +40,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { i18n, type Language } from "@/lib/i18n";
-import { Gem, HeartCrack, HeartHandshake } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import AdBanner from '@/components/adsense-banner';
 
@@ -169,6 +169,48 @@ const HeroCard = ({
             </CardContent>
         </Card>
     );
+};
+
+const platformIcons: Record<CreatorLink['platform'], React.ElementType> = {
+  youtube: Youtube,
+  x: Twitter,
+  facebook: Facebook,
+  patreon: Rss, // Using RSS icon as a stand-in
+  'ko-fi': Gamepad2, // Using a generic icon
+  tipeee: ShoppingCart, // Using a generic icon
+  instagram: Instagram,
+  threads: MessageSquare,
+  tiktok: Drama,
+  bsky: Drama,
+  linkedin: Linkedin,
+  reddit: MessageSquare,
+  pinterest: Pin,
+  mastodon: Pilcrow,
+  buymeacoffee: Gamepad2,
+  liberapay: Heart,
+  itch: Gamepad2,
+  substack: Rss,
+};
+
+const platformUrls: Record<CreatorLink['platform'], string> = {
+    youtube: 'https://www.youtube.com/',
+    x: 'https://x.com/',
+    facebook: 'https://www.facebook.com/',
+    patreon: 'https://www.patreon.com/',
+    'ko-fi': 'https://ko-fi.com/',
+    tipeee: 'https://www.tipeee.com/',
+    instagram: 'https://www.instagram.com/',
+    threads: 'https://www.threads.net/',
+    tiktok: 'https://www.tiktok.com/@',
+    bsky: 'https://bsky.app/profile/',
+    linkedin: 'https://www.linkedin.com/in/',
+    reddit: 'https://www.reddit.com/user/',
+    pinterest: 'https://www.pinterest.com/',
+    mastodon: 'https://mastodon.social/@',
+    buymeacoffee: 'https://www.buymeacoffee.com/',
+    liberapay: 'https://liberapay.com/',
+    itch: 'https://', // requires FQDN
+    substack: 'https://', // requires FQDN
 };
 
 
@@ -326,6 +368,24 @@ isSaveComicDialogOpen,
            </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+            {adventureSettings.creatorLinks && adventureSettings.creatorLinks.length > 0 && (
+                <div className="p-2 border rounded-md">
+                    <Label className="text-xs text-muted-foreground px-2">{lang.creatorLinksTitle}</Label>
+                    <div className="space-y-1 mt-1">
+                        {adventureSettings.creatorLinks.map(link => {
+                           const Icon = platformIcons[link.platform] || LinkIcon;
+                           const baseUrl = platformUrls[link.platform];
+                           const url = baseUrl.endsWith('/') ? `${baseUrl}${link.identifier}` : `${link.identifier}`;
+                           return (
+                                <a key={link.id} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({variant: 'ghost', size: 'sm'}), "w-full justify-start group-data-[collapsible=icon]:justify-center")}>
+                                    <Icon className="h-4 w-4"/>
+                                    <span className="ml-2 group-data-[collapsible=icon]:hidden">{link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}</span>
+                                </a>
+                           )
+                        })}
+                    </div>
+                </div>
+            )}
             <div className="p-2 border rounded-md">
                 <AdBanner />
             </div>
@@ -460,9 +520,6 @@ isSaveComicDialogOpen,
                                 <AdventureForm
                                     ref={adventureFormRef}
                                     initialValues={stagedAdventureSettings}
-                                    rpgMode={false} // Caché
-                                    relationsMode={adventureSettings.relationsMode}
-                                    strategyMode={false} // Caché
                                     isLiveAdventure={true} // NOUVELLE PROP
                                     adventureSettings={adventureSettings}
                                     currentLanguage={currentLanguage as Language}

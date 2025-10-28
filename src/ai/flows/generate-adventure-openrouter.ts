@@ -46,7 +46,7 @@ function buildOpenRouterPrompt(
     
     addSection(`ACTION DU JOUEUR (${input.playerName})`, input.userAction);
 
-    let mainInstruction = `Tu es un maître du jeu pour une fiction interactive. Ta tâche est de faire avancer l'histoire.
+    let mainInstruction = `Tu es un maître du jeu pour une fiction interactive centrée sur les relations. Ta tâche est de faire avancer l'histoire.
     La langue de sortie OBLIGATOIRE est : **${input.currentLanguage}**.
     Ne décris que les conséquences de l'action du joueur et les réactions des PNJ.
     Commence ta narration directement, sans répéter l'action du joueur.
@@ -120,8 +120,8 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
         characters: processedCharacters,
-        relationsModeActive: input.relationsModeActive ?? true,
-        comicModeActive: input.comicModeActive ?? true,
+        relationsModeActive: true,
+        comicModeActive: true,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
     };
@@ -149,7 +149,7 @@ export async function generateAdventureWithOpenRouter(
                 "Authorization": `Bearer ${openRouterConfig.apiKey}`,
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Aventurier Textuel",
+                "X-Title": "Bel.I.A.",
             },
             body: JSON.stringify({
                 model: openRouterConfig.model,

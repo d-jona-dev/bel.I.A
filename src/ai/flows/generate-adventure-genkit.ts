@@ -24,9 +24,7 @@ const getDefaultOutput = (errorMsg?: string): GenerateAdventureFlowOutput => ({
 async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.infer<typeof GenerateAdventureInputSchema>> {
     const processedCharacters: z.infer<typeof CharacterWithContextSummarySchema>[] = input.characters.map(char => {
         
-        let relationsSummaryText = input.currentLanguage === 'fr' ? "Mode relations désactivé." : "Relations mode disabled.";
-        if (input.relationsModeActive && char.relations) {
-             relationsSummaryText = Object.entries(char.relations)
+        let relationsSummaryText = Object.entries(char.relations || {})
                       .map(([targetId, description]) => {
                           const targetName = targetId === 'player'
                               ? input.playerName
@@ -34,7 +32,6 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
                           return `${targetName}: ${description}`;
                       })
                       .join('; ') || (input.currentLanguage === 'fr' ? 'Aucune relation définie.' : 'No relations defined.');
-        }
 
         return {
             id: char.id,
@@ -42,8 +39,8 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
             details: char.details || (input.currentLanguage === 'fr' ? "Aucun détail fourni." : "No details provided."),
             biographyNotes: char.biographyNotes || (input.currentLanguage === 'fr' ? 'Aucune note biographique.' : 'No biographical notes.'),
             appearanceDescription: char.appearanceDescription || (input.currentLanguage === 'fr' ? 'Aucune description d\'apparence.' : 'No appearance description.'),
-            affinity: input.relationsModeActive ? (char.affinity ?? 50) : 50,
-            relations: input.relationsModeActive ? (char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") }) : {},
+            affinity: char.affinity ?? 50,
+            relations: char.relations || { ['player']: (input.currentLanguage === 'fr' ? "Inconnu" : "Unknown") },
             relationsSummary: relationsSummaryText,
             portraitUrl: char.portraitUrl,
         };
@@ -52,8 +49,8 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
     const flowInput: z.infer<typeof GenerateAdventureInputSchema> = {
         ...input,
         characters: processedCharacters,
-        relationsModeActive: input.relationsModeActive ?? true,
-        comicModeActive: input.comicModeActive ?? true,
+        relationsModeActive: true,
+        comicModeActive: true,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
     };
@@ -68,7 +65,7 @@ const prompt = ai.definePrompt({
   output: {
     schema: GenerateAdventureOutputSchema,
   },
-  prompt: `You are an interactive fiction engine. Weave a cohesive and engaging story based on the context provided. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
+  prompt: `You are an interactive fiction engine for a relationship-focused game. Weave a cohesive and engaging story based on the context provided. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
 
 **Player Character:**
 - **Name:** {{playerName}}
