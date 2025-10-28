@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -65,6 +66,7 @@ interface AdventureFormProps {
     isLiveAdventure?: boolean;
     adventureSettings?: AdventureSettings; // Make this optional
     currentLanguage?: Language;
+    isEditing?: boolean; // NOUVEAU
 }
 
 const characterSchema = z.object({
@@ -145,7 +147,7 @@ const allLanguageCodes: Language[] = ['fr', 'en', 'es', 'it', 'de', 'ja', 'ru', 
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr' }, ref) => {
+    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr', isEditing = false }, ref) => {
     
     const { toast } = useToast();
     const [isTranslating, setIsTranslating] = React.useState<Record<string, boolean>>({});
@@ -347,7 +349,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <GameModesConfig currentLanguage={currentLanguage} />
                     <TimeConfig currentLanguage={currentLanguage} />
                     <ConditionsConfig currentLanguage={currentLanguage} />
-                    {!isLiveAdventure && (
+                    {!isLiveAdventure && !isEditing && (
                          <CreatorLinksConfig currentLanguage={currentLanguage} />
                     )}
                 </div>

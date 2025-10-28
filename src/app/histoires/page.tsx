@@ -426,6 +426,7 @@ export default function HistoiresPage() {
               playerDescription: "",
               playerOrientation: "",
               timeManagement: defaultState.adventureSettings.timeManagement,
+              creatorLinks: [],
           };
       }
       
@@ -456,6 +457,7 @@ export default function HistoiresPage() {
           playerPortraitUrl: settings.playerPortraitUrl,
           mapPointsOfInterest: settings.mapPointsOfInterest,
           timeManagement: settings.timeManagement,
+          creatorLinks: settings.creatorLinks || [],
       }
   }
 
@@ -479,6 +481,7 @@ export default function HistoiresPage() {
       aiConfig={aiConfig}
       onFormValidityChange={setIsCreateFormValid}
       currentLanguage={currentLanguage}
+      isEditing={false}
     />
   ), [isCreateModalOpen, aiConfig, currentLanguage]);
 
@@ -494,6 +497,7 @@ export default function HistoiresPage() {
            strategyMode={editingStory.adventureState.adventureSettings.strategyMode}
            aiConfig={aiConfig}
            currentLanguage={currentLanguage}
+           isEditing={true}
         />
     )
   }, [editingStory, aiConfig, currentLanguage]);
