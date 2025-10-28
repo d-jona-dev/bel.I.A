@@ -20,7 +20,7 @@ import type { CreatorLinkPlatform } from "@/types";
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
-const availablePlatforms: CreatorLinkPlatform[] = ['youtube', 'x', 'patreon', 'facebook', 'ko-fi', 'tipeee'];
+const availablePlatforms: CreatorLinkPlatform[] = ['youtube', 'x', 'facebook', 'patreon', 'ko-fi', 'tipeee', 'instagram', 'threads', 'tiktok', 'bsky', 'linkedin', 'reddit', 'pinterest', 'mastodon', 'buymeacoffee', 'liberapay', 'itch', 'substack'];
 
 interface CreatorLinksConfigProps {
     currentLanguage: Language;

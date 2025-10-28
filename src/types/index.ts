@@ -1,3 +1,4 @@
+
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -21,7 +22,7 @@ export interface Message {
 }
 
 // NOUVEAU : Type pour les liens de créateur
-export type CreatorLinkPlatform = 'youtube' | 'x' | 'patreon' | 'facebook' | 'ko-fi' | 'tipeee';
+export type CreatorLinkPlatform = 'youtube' | 'x' | 'patreon' | 'facebook' | 'ko-fi' | 'tipeee' | 'instagram' | 'threads' | 'tiktok' | 'bsky' | 'linkedin' | 'reddit' | 'pinterest' | 'mastodon' | 'buymeacoffee' | 'liberapay' | 'itch' | 'substack';
 export interface CreatorLink {
   id: string;
   platform: CreatorLinkPlatform;
