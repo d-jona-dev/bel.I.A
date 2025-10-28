@@ -74,7 +74,7 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter, currentLang
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>{isPlaceholder ? lang.placeholderNameLabel : lang.npcNameLabel}</FormLabel>
-                                            <FormControl><Input {...field} placeholder={isPlaceholder ? lang.placeholderNamePlaceholder : lang.npcNamePlaceholder} /></FormControl>
+                                            <FormControl><Input {...field} value={field.value || ''} placeholder={isPlaceholder ? lang.placeholderNamePlaceholder : lang.npcNamePlaceholder} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -86,7 +86,7 @@ export function NpcCharacterConfig({ fields, remove, onAddCharacter, currentLang
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>{lang.npcDetailsLabel}</FormLabel>
-                                                <FormControl><Textarea {...field} placeholder={lang.npcDetailsPlaceholder} rows={3} /></FormControl>
+                                                <FormControl><Textarea {...field} value={field.value || ''} placeholder={lang.npcDetailsPlaceholder} rows={3} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

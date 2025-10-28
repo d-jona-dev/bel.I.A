@@ -16,7 +16,6 @@ import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon,
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
 import { TimeConfig } from './adventure-form-parts/time-config';
-import { WorldConfig } from './adventure-form-parts/world-config';
 import { ConditionsConfig } from './adventure-form-parts/conditions-config';
 import { i18n, type Language } from "@/lib/i18n";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,9 +57,6 @@ export interface AdventureFormHandle {
 interface AdventureFormProps {
     initialValues: AdventureFormValues;
     onFormValidityChange?: (isValid: boolean) => void;
-    rpgMode: boolean;
-    relationsMode: boolean;
-    strategyMode: boolean;
     aiConfig?: AiConfig;
     isLiveAdventure?: boolean;
     adventureSettings?: AdventureSettings; // Make this optional
@@ -116,10 +112,6 @@ const adventureFormSchema = z.object({
   world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
   initialSituation: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La situation initiale est requise dans au moins une langue."}),
   characters: z.array(characterSchema).optional(),
-  rpgMode: z.boolean().default(true).optional(),
-  relationsMode: z.boolean().default(true).optional(),
-  strategyMode: z.boolean().default(true).optional(),
-  comicModeActive: z.boolean().default(false).optional(),
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
@@ -146,7 +138,7 @@ const allLanguageCodes: Language[] = ['fr', 'en', 'es', 'it', 'de', 'ja', 'ru', 
 
 
 export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureFormProps>(
-    ({ initialValues, onFormValidityChange, rpgMode, relationsMode, strategyMode, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr', isEditing = false }, ref) => {
+    ({ initialValues, onFormValidityChange, aiConfig, isLiveAdventure = false, adventureSettings, currentLanguage = 'fr', isEditing = false }, ref) => {
     
     const { toast } = useToast();
     const [isTranslating, setIsTranslating] = React.useState<Record<string, boolean>>({});

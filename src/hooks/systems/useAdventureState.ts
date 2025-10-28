@@ -108,7 +108,11 @@ export function useAdventureState() {
 
 
         setAdventureSettings(settingsWithDefaults);
-        const loadedCharacters = data.characters || [];
+        const loadedCharacters = (data.characters || []).map(c => ({
+            ...c,
+            details: c.details || '',
+            biographyNotes: c.biographyNotes || '',
+        }));
         setCharacters(loadedCharacters);
         // Set the narrative to start with the correctly translated initial situation.
         setNarrativeMessages(initialNarrative);
