@@ -1,4 +1,5 @@
 
+
 // src/app/page.structure.tsx
 // This component defines the main layout structure for the adventure page.
 
@@ -11,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow, FilePenLine } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar, CreatorLink } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
@@ -370,7 +371,10 @@ isSaveComicDialogOpen,
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
             {adventureSettings.creatorLinks && adventureSettings.creatorLinks.length > 0 && (
                 <div className="p-2 border rounded-md">
-                    <Label className="text-xs text-muted-foreground px-2">{lang.creatorLinksTitle}</Label>
+                    <Label className="text-xs text-muted-foreground px-2 flex items-center gap-1.5">
+                      <FilePenLine className="h-4 w-4" />
+                      {lang.creatorLinksTitle}
+                    </Label>
                     <div className="space-y-1 mt-1">
                         {adventureSettings.creatorLinks.map(link => {
                            const Icon = platformIcons[link.platform] || LinkIcon;
