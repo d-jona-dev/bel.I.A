@@ -6,7 +6,7 @@ import { useForm, FormProvider, useFieldArray, type UseFieldArrayAppend } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition } from '@/types';
+import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition, CreatorLink } from '@/types';
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -20,11 +20,12 @@ import { WorldConfig } from './adventure-form-parts/world-config';
 import { ConditionsConfig } from './adventure-form-parts/conditions-config';
 import { i18n, type Language } from "@/lib/i18n";
 import { Textarea } from "@/components/ui/textarea";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { translateText } from "@/ai/flows/translate-text";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { CreatorLinksConfig } from "./adventure-form-parts/creator-links-config";
 
 
 // Schemas are kept here as they define the shape for the entire form,
@@ -43,6 +44,7 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     initialSituation: LocalizedText;
     characters: FormCharacterDefinition[];
     conditions?: AdventureCondition[];
+    creatorLinks?: CreatorLink[];
 };
 
 export interface AdventureFormHandle {
@@ -102,6 +104,12 @@ const conditionSchema = z.object({
   hasTriggered: z.boolean().default(false),
 });
 
+const creatorLinkSchema = z.object({
+  id: z.string(),
+  platform: z.enum(['youtube', 'x', 'patreon', 'facebook', 'ko-fi', 'tipeee']),
+  identifier: z.string().min(1, "L'identifiant est requis."),
+});
+
 
 const adventureFormSchema = z.object({
   world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
@@ -116,6 +124,7 @@ const adventureFormSchema = z.object({
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
   timeManagement: timeManagementSchema.optional(),
   conditions: z.array(conditionSchema).optional(),
+  creatorLinks: z.array(creatorLinkSchema).optional(),
 });
 
 const LanguageTextarea = ({
@@ -338,6 +347,9 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                     <GameModesConfig />
                     <TimeConfig currentLanguage={currentLanguage} />
                     <ConditionsConfig currentLanguage={currentLanguage} />
+                    {!isLiveAdventure && (
+                         <CreatorLinksConfig currentLanguage={currentLanguage} />
+                    )}
                 </div>
             </form>
         </FormProvider>

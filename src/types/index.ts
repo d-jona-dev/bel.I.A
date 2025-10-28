@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -19,6 +18,14 @@ export interface Message {
   imageUrl?: string | null;
   imageTransform?: ImageTransform;
   speakingCharacterNames?: string[];
+}
+
+// NOUVEAU : Type pour les liens de créateur
+export type CreatorLinkPlatform = 'youtube' | 'x' | 'patreon' | 'facebook' | 'ko-fi' | 'tipeee';
+export interface CreatorLink {
+  id: string;
+  platform: CreatorLinkPlatform;
+  identifier: string;
 }
 
 // Nouveau : Structure pour un vêtement
@@ -106,6 +113,7 @@ export interface AdventureSettings {
   timeManagement?: TimeManagementSettings;
   mapPointsOfInterest?: MapPointOfInterest[]; // Gardé pour la structure, non utilisé
   conditions?: AdventureCondition[]; // NOUVEAU
+  creatorLinks?: CreatorLink[]; // NOUVEAU
 }
 
 export interface MapPointOfInterest {
