@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow, FilePenLine } from 'lucide-react';
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow, FilePenLine, Coffee, HandCoins, CircleDollarSign } from 'lucide-react';
 import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
 import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar, CreatorLink } from "@/types";
 import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
@@ -280,8 +280,18 @@ isSaveComicDialogOpen,
     <div className="flex w-full h-screen">
       {/* Left Sidebar: Global Actions & Navigation */}
       <Sidebar side="left" variant="sidebar" collapsible="icon">
-        <SidebarHeader className="p-4 border-b border-sidebar-border">
+        <SidebarHeader className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <h1 className="text-xl font-semibold text-sidebar-foreground">Bel.I.A.</h1>
+           <div className="flex items-center gap-1.5">
+             <TooltipProvider>
+                <Tooltip><TooltipTrigger asChild><a href="https://ko-fi.com/mauganra" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Coffee className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Ko-fi</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.buymeacoffee.com/bel_ia" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Coffee className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Buy Me a Coffee</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.tipeee.com/belia" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><HandCoins className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Tipeee</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.patreon.com/Bel_IA" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><CircleDollarSign className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Patreon</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.youtube.com/@BelIA-Adventure" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Youtube className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Youtube</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://x.com/belIA_Adventure" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Twitter className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>X (Twitter)</p></TooltipContent></Tooltip>
+            </TooltipProvider>
+          </div>
         </SidebarHeader>
         <ScrollArea className="flex-1">
            <SidebarContent className="p-4 space-y-4">
