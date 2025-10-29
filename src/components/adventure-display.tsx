@@ -786,7 +786,7 @@ export function AdventureDisplay({
                                 setImageEditorOpen(true);
                             }}
                         >
-                            <Edit3 className="mr-2 h-4 w-4" /> Éditeur BD
+                            <Edit3 className="mr-2 h-4 w-4" /> {lang.comicEditorButton}
                         </Button>
                         <div className="flex w-full gap-2">
                             <DropdownMenu>
@@ -834,7 +834,7 @@ export function AdventureDisplay({
                                             }
                                         }} disabled={isImageLoading || isLoading || !lastAiMessageWithScene}>
                                             <Wand2 className="mr-2 h-4 w-4" />
-                                            <span>Générer</span>
+                                            <span>{lang.generateButton}</span>
                                         </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>Utilise l'IA pour générer une image basée sur la description visuelle actuelle (si disponible).</TooltipContent>
@@ -848,7 +848,7 @@ export function AdventureDisplay({
                     <CardHeader className="flex flex-row items-center justify-between p-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Clapperboard className="h-5 w-5"/>
-                            Brouillon de la BD
+                            {lang.comicDraftTitle}
                         </CardTitle>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -858,10 +858,10 @@ export function AdventureDisplay({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuItem onSelect={onDownloadComicDraft}>
-                                    <Download className="mr-2 h-4 w-4"/> Télécharger la Planche
+                                    <Download className="mr-2 h-4 w-4"/> {lang.downloadPage}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setIsSaveComicDialogOpen(true)}>
-                                    <Library className="mr-2 h-4 w-4"/> Sauvegarder dans la Bibliothèque
+                                    <Library className="mr-2 h-4 w-4"/> {lang.saveToLibrary}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -871,7 +871,7 @@ export function AdventureDisplay({
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.max(0, currentComicPageIndex - 1))} disabled={currentComicPageIndex === 0}>
                                 <ArrowLeft className="h-4 w-4"/>
                             </Button>
-                            <span className="text-xs font-medium">Planche {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
+                            <span className="text-xs font-medium">{lang.page} {currentComicPageIndex + 1} / {Math.max(1, comicDraft.length)}</span>
                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => onComicPageChange(Math.min(comicDraft.length - 1, currentComicPageIndex + 1))} disabled={currentComicPageIndex >= comicDraft.length - 1}>
                                 <ArrowRight className="h-4 w-4"/>
                             </Button>
@@ -903,8 +903,8 @@ export function AdventureDisplay({
                         </ScrollArea>
                     </CardContent>
                     <CardFooter className="p-2 border-t flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>Page</Button>
-                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>Case</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPage}><PlusCircle className="mr-2 h-4 w-4"/>{lang.addPage}</Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={onAddComicPanel}><PlusSquare className="mr-2 h-4 w-4"/>{lang.addPanel}</Button>
                         <Button variant="destructive" size="icon" onClick={onRemoveLastComicPanel}><Trash2Icon className="h-4 w-4"/></Button>
                     </CardFooter>
                 </Card>
