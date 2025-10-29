@@ -63,6 +63,7 @@ export default function Home() {
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [showRestartConfirm, setShowRestartConfirm] = React.useState<boolean>(false);
     const [useAestheticFont, setUseAestheticFont] = React.useState(true);
+    const [turnCountForAdRefresh, setTurnCountForAdRefresh] = React.useState(0);
     
     const playerName = adventureSettings.playerName || "Player";
     
@@ -98,7 +99,10 @@ export default function Home() {
         setIsLoading,
         setNarrativeMessages,
         setCharacters,
-        onTurnEnd: advanceTime,
+        onTurnEnd: () => {
+            advanceTime();
+            setTurnCountForAdRefresh(prev => prev + 1); // Incrémenter le compteur de tour
+        },
     });
     
     const onMaterializeCharacter = React.useCallback(async (narrativeContext: string) => {
@@ -488,6 +492,7 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
                 onGenerateCover={onGenerateCover}
                 onSaveToLibrary={onSaveToLibrary}
                 isGeneratingCover={isGeneratingCover}
+                turnCountForAdRefresh={turnCountForAdRefresh}
             />
         </>
     );

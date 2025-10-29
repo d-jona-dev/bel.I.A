@@ -101,6 +101,7 @@ interface PageStructureProps {
   onSaveToLibrary: () => void;
   isLoading: boolean;
   timeState: GameClockState;
+  turnCountForAdRefresh: number;
 }
 
 const HeroCard = ({
@@ -271,10 +272,12 @@ isSaveComicDialogOpen,
   isGeneratingCover,
   onSaveToLibrary,
   timeState,
+  turnCountForAdRefresh,
 }: PageStructureProps) {
 
   const stagedCharacters = stagedAdventureSettings?.characters || [];
   const lang = i18n[currentLanguage as Language] || i18n.en;
+  const adRefreshKey = Math.floor(turnCountForAdRefresh / 10);
 
   return (
     <div className="flex w-full h-screen">
@@ -401,7 +404,7 @@ isSaveComicDialogOpen,
                 </div>
             )}
             <div className="p-2 border rounded-md">
-                <AdBanner />
+                <AdBanner key={adRefreshKey} />
             </div>
             <a
               href="/downloads/app-local.zip"

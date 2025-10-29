@@ -8,17 +8,18 @@ declare global {
     }
 }
 
-const AdBanner: React.FC = () => {
+const AdBanner: React.FC<{ adKey?: number }> = ({ adKey }) => {
     useEffect(() => {
         try {
             (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (e) {
             console.error("AdSense error:", e);
         }
-    }, []);
+    }, [adKey]); // Rafraîchir lorsque la clé change
 
     return (
         <ins
+            key={adKey} // Utiliser la clé pour forcer la recréation
             className="adsbygoogle"
             style={{ display: 'block' }}
             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" // IMPORTANT: Remplacez par votre ID d'éditeur
