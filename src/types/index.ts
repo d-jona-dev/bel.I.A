@@ -21,7 +21,6 @@ export interface Message {
   speakingCharacterNames?: string[];
 }
 
-// NOUVEAU : Type pour les liens de créateur
 export type CreatorLinkPlatform = 'youtube' | 'x' | 'patreon' | 'facebook' | 'ko-fi' | 'tipeee' | 'instagram' | 'threads' | 'tiktok' | 'bsky' | 'linkedin' | 'reddit' | 'pinterest' | 'mastodon' | 'buymeacoffee' | 'liberapay' | 'itch' | 'substack';
 export interface CreatorLink {
   id: string;
@@ -29,7 +28,6 @@ export interface CreatorLink {
   identifier: string;
 }
 
-// Nouveau : Structure pour un vêtement
 export interface ClothingItem {
   id: string;
   name: string;
@@ -83,7 +81,6 @@ export interface TimeManagementSettings {
     timeElapsedPerTurn: string;
 }
 
-// NOUVEAU: Interface pour les conditions
 export interface AdventureCondition {
   id: string;
   targetCharacterId: string; // ID of the character or placeholder
@@ -113,8 +110,8 @@ export interface AdventureSettings {
   playerFaceSwapEnabled?: boolean;
   timeManagement?: TimeManagementSettings;
   mapPointsOfInterest?: MapPointOfInterest[]; // Gardé pour la structure, non utilisé
-  conditions?: AdventureCondition[]; // NOUVEAU
-  creatorLinks?: CreatorLink[]; // NOUVEAU
+  conditions?: AdventureCondition[];
+  creatorLinks?: CreatorLink[];
 }
 
 export interface MapPointOfInterest {
@@ -221,19 +218,18 @@ export interface SaveData {
     aiConfig?: AiConfig;
 }
 
-// NEW type for richer image description
 export interface SceneDescriptionForImage {
-    action: string; // "who is doing what, and where"
-    cameraAngle?: string; // NOUVEAU: Angle de caméra suggéré
+    action: string;
+    cameraAngle?: string;
     charactersInScene: Array<{
         name: string;
         appearanceDescription?: string;
-        clothingDescription?: string; // Nouveau
+        clothingDescription?: string;
     }>;
 }
 
 
-// ZOD SCHEMAS FOR GENKIT FLOW (Simplified for relationship-only)
+// ZOD SCHEMAS FOR GENKIT FLOW
 const CharacterWithContextSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -260,14 +256,13 @@ export const GenerateAdventureInputSchema = z.object({
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
   playerOrientation: z.string().optional(),
-  aiConfig: z.any().optional(), // Keep it flexible
+  aiConfig: z.any().optional(),
   timeManagement: z.any().optional(),
-  activeConditions: z.array(z.string()).optional().describe("A list of active condition effects to apply to the narrative."), // NOUVEAU
+  activeConditions: z.array(z.string()).optional().describe("A list of active condition effects to apply to the narrative."),
 });
 
-// This is the type that the `generateAdventure` flow will actually receive
 export type GenerateAdventureInput = z.infer<typeof GenerateAdventureInputSchema> & {
-    characters: Character[]; // Overwrite with the full Character type
+    characters: Character[];
 };
 
 export const NewCharacterSchema = z.object({
@@ -292,7 +287,6 @@ export const RelationUpdateSchema = z.object({
 });
 export type RelationUpdateSchema = z.infer<typeof RelationUpdateSchema>;
 
-// New Schema for the scene description object
 export const SceneDescriptionForImageSchema = z.object({
     action: z.string().describe("Minimalist description (in ENGLISH) of the scene: who is doing what, where. Example: 'Rina and Kentaro are arguing in a classroom.'"),
     cameraAngle: z.string().optional().describe("A dynamic camera angle in English. Examples: 'dynamic low-angle shot', 'aerial view', 'first-person perspective', 'cinematic wide shot', 'over-the-shoulder shot'. Be creative."),
@@ -308,9 +302,8 @@ export const GenerateAdventureOutputSchema = z.object({
 
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
-// Types for Image Generation flows
 export interface GenerateSceneImageInput {
-  sceneDescription?: SceneDescriptionForImage; // Make optional
+  sceneDescription?: SceneDescriptionForImage;
   style?: string;
 }
 

@@ -45,7 +45,7 @@ const DEFAULT_IMAGE_MODELS: ImageModelDefinition[] = [
 interface ModelManagerProps {
   config: AiConfig;
   onConfigChange: (newConfig: AiConfig) => void;
-  currentLanguage: Language; // NEW
+  currentLanguage: Language;
 }
 
 export function ModelManager({ config, onConfigChange, currentLanguage }: ModelManagerProps) {
@@ -57,9 +57,9 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
   const [editingLlmModel, setEditingLlmModel] = React.useState<ModelDefinition | null>(null);
   const [editingImageModel, setEditingImageModel] = React.useState<ImageModelDefinition | null>(null);
 
-  const [localModels, setLocalModels] = React.useState<string[]>([]);
-  const [isLocalServerLoading, setIsLocalServerLoading] = React.useState(true);
-  const [localServerError, setLocalServerError] = React.useState<string | null>(null);
+  const [ollamaModels, setOllamaModels] = React.useState<string[]>([]);
+  const [isOllamaLoading, setIsOllamaLoading] = React.useState(true);
+  const [ollamaError, setOllamaError] = React.useState<string | null>(null);
   
   const importFileRef = React.useRef<HTMLInputElement>(null);
 
@@ -78,23 +78,24 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
         setImageModels(DEFAULT_IMAGE_MODELS);
     }
 
-    const fetchLocalModels = async () => {
+    const fetchOllamaModels = async () => {
+        setIsOllamaLoading(true);
         try {
-            const response = await fetch('http://localhost:9000/api/local-llm/models');
+            const response = await fetch('http://localhost:11434/api/tags');
             if (!response.ok) {
                 throw new Error(lang.localServerError);
             }
             const data = await response.json();
-            setLocalModels(data.models || []);
-            setLocalServerError(null);
+            setOllamaModels(data.models.map((m: any) => m.name) || []);
+            setOllamaError(null);
         } catch (error) {
-            console.warn("Could not fetch local models:", error);
-            setLocalServerError(error instanceof Error ? error.message : lang.unknownError);
+            console.warn("Could not fetch Ollama models:", error);
+            setOllamaError(error instanceof Error ? error.message : lang.unknownError);
         } finally {
-            setIsLocalServerLoading(false);
+            setIsOllamaLoading(false);
         }
     };
-    fetchLocalModels();
+    fetchOllamaModels();
 
   }, [lang.localServerError, lang.unknownError]);
 
@@ -110,7 +111,6 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
 
   const handleDownloadModels = () => {
     try {
-      // SECURITY FIX: Remove apiKey from exported data
       const llmModelsToSave = llmModels.map(({ apiKey, ...rest }) => rest);
       const imageModelsToSave = imageModels.map(({ apiKey, ...rest }) => rest);
 
@@ -186,7 +186,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
         };
     } else if (source === 'local') {
         newLlmConfig.local = {
-            model: localModels[0] || ''
+            model: ollamaModels[0] || ''
         };
     }
     onConfigChange({ ...config, llm: newLlmConfig });
@@ -463,24 +463,24 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
             
             {config.llm.source === 'local' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                     <Label>{lang.localLlmConfig}</Label>
-                      {isLocalServerLoading ? (
+                     <Label>{lang.localLlmConfig.replace('llama.cpp', 'Ollama')}</Label>
+                      {isOllamaLoading ? (
                           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> {lang.searching}...</div>
-                      ) : localServerError ? (
+                      ) : ollamaError ? (
                           <div className="p-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md flex items-start gap-2">
                               <AlertTriangle className="h-4 w-4 mt-0.5"/>
-                              <div><p className="font-semibold">{lang.localServerErrorTitle}</p><p>{localServerError}</p></div>
+                              <div><p className="font-semibold">{lang.localServerErrorTitle}</p><p>{ollamaError}</p></div>
                           </div>
-                      ) : localModels.length === 0 ? (
+                      ) : ollamaModels.length === 0 ? (
                             <div className="p-2 text-sm text-muted-foreground bg-muted/50 border rounded-md flex items-start gap-2">
                                 <Folder className="h-4 w-4 mt-0.5"/>
-                                <div><p className="font-semibold">{lang.noLocalModelsTitle}</p><p>{lang.noLocalModelsDesc}</p></div>
+                                <div><p className="font-semibold">{lang.noLocalModelsTitle.replace('local', 'Ollama')}</p><p>{lang.noLocalModelsDesc.replace('models', 'Ollama')}</p></div>
                             </div>
                       ) : (
                         <Select value={config.llm.local?.model || ''} onValueChange={handleSelectLocalModel}>
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
-                                {localModels.map(modelName => (<SelectItem key={modelName} value={modelName}>{modelName}</SelectItem>))}
+                                {ollamaModels.map(modelName => (<SelectItem key={modelName} value={modelName}>{modelName}</SelectItem>))}
                             </SelectContent>
                         </Select>
                       )}

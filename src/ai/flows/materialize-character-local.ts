@@ -1,16 +1,16 @@
 
 "use server";
 /**
- * @fileOverview Local LLM implementation for materializing a character.
+ * @fileOverview Ollama implementation for materializing a character.
  */
 
 import { z } from 'zod';
 import type { MaterializeCharacterInput, MaterializeCharacterOutput } from './materialize-character';
 import { NewCharacterSchema } from '@/types';
 
-const LOCAL_LLM_API_URL = "http://localhost:9000/api/local-llm/generate";
+const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
-function buildLocalLLMPrompt(input: MaterializeCharacterInput): string {
+function buildOllamaPrompt(input: MaterializeCharacterInput): string {
     const systemPrompt = `You are a character creation assistant for a text-based adventure game.
 Your task is to identify a NEW character mentioned in the narrative context and create a full character sheet for them in JSON format.
 
@@ -23,37 +23,39 @@ CRITICAL RULES:
 Here is the narrative context where a character might be mentioned:
 "${input.narrativeContext}"
 
-Generate the character sheet in the language '${input.currentLanguage}'.`;
+Generate the character sheet in the language '${input.currentLanguage}'.
+The JSON schema you must adhere to is:
+${JSON.stringify(NewCharacterSchema.shape, null, 2)}
+`;
 
-    const jsonSchemaString = JSON.stringify(NewCharacterSchema.shape, null, 2);
-
-    return `USER: ${systemPrompt}\n\nYour output MUST be a JSON object matching this Zod schema:\n${jsonSchemaString}\nASSISTANT:`;
+    return systemPrompt;
 }
 
 export async function materializeCharacterWithLocalLlm(input: MaterializeCharacterInput): Promise<MaterializeCharacterOutput> {
     if (!input.aiConfig?.llm.local?.model) {
-        throw new Error("Nom du modèle LLM local manquant.");
+        throw new Error("Nom du modèle Ollama manquant.");
     }
-    const prompt = buildLocalLLMPrompt(input);
+    const prompt = buildOllamaPrompt(input);
 
     try {
-        const response = await fetch(LOCAL_LLM_API_URL, {
+        const response = await fetch(OLLAMA_API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 model: input.aiConfig.llm.local.model,
                 prompt: prompt,
-                json_schema: NewCharacterSchema.shape,
+                format: 'json',
+                stream: false,
             }),
         });
 
         if (!response.ok) {
             const errorBody = await response.text();
-            throw new Error(`Erreur du serveur LLM Local: ${response.status} ${errorBody}`);
+            throw new Error(`Erreur du serveur Ollama: ${response.status} ${errorBody}`);
         }
         
         const data = await response.json();
-        let content = data.content;
+        let content = data.response;
         
         if (!content || content.trim() === '{}') {
              throw new Error("L'IA n'a identifié aucun nouveau personnage à créer.");
@@ -69,8 +71,8 @@ export async function materializeCharacterWithLocalLlm(input: MaterializeCharact
         const validationResult = NewCharacterSchema.safeParse(parsedJson);
 
         if (!validationResult.success) {
-            console.error("Zod validation failed (Local LLM):", validationResult.error.errors);
-            throw new Error(`La réponse du LLM local ne respecte pas le format attendu: ${validationResult.error.message}`);
+            console.error("Zod validation failed (Ollama):", validationResult.error.errors);
+            throw new Error(`La réponse d'Ollama ne respecte pas le format attendu: ${validationResult.error.message}`);
         }
         
         const isExisting = input.existingCharacters.some(
@@ -84,6 +86,6 @@ export async function materializeCharacterWithLocalLlm(input: MaterializeCharact
 
     } catch (error) {
         console.error("Error in materializeCharacterWithLocalLlm:", error);
-        throw new Error(`Erreur lors de la création du personnage avec le LLM local: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Erreur lors de la création du personnage avec Ollama: ${error instanceof Error ? error.message : String(error)}`);
     }
 }

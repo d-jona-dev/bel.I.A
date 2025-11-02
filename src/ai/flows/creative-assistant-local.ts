@@ -1,8 +1,7 @@
 
 "use server";
 /**
- * @fileOverview Local LLM-specific implementation for the creative assistant AI flow.
- * This file formats the prompt as a single text string for a local llama.cpp server.
+ * @fileOverview Ollama-specific implementation for the creative assistant AI flow.
  */
 
 import { z } from 'zod';
@@ -13,9 +12,9 @@ import {
     type CreativeAssistantOutput 
 } from './creative-assistant-schemas';
 
-const LOCAL_LLM_API_URL = "http://localhost:9000/api/local-llm/generate";
+const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
-function buildLocalLLMPrompt(input: CreativeAssistantInput): string {
+function buildOllamaMessages(input: CreativeAssistantInput): any[] {
      const systemPrompt = `You are a creative assistant for a text-based adventure game creator. The game focuses ONLY on relationship mode. Do not suggest RPG or strategy elements. Your goal is to help the user brainstorm ideas for their world, story, and characters.
     - Be concise, creative, and inspiring.
     - You MUST respond with a valid JSON object. Do not add any text outside the JSON object.
@@ -37,41 +36,50 @@ function buildLocalLLMPrompt(input: CreativeAssistantInput): string {
     - For "characterName", "characterDetails", and "characterPlaceholder", the value MUST be a string.
     - For "comicModeActive" and "timeManagement.enabled", the value MUST be a boolean (true or false).`;
 
-    const history = (input.history || []).map(msg => `${msg.role === 'user' ? 'USER' : 'ASSISTANT'}: ${msg.content}`).join('\n\n');
+    const history = (input.history || []).map(msg => ({
+        role: msg.role,
+        content: msg.content
+    }));
 
-    return `USER: ${systemPrompt}\n\n${history}\n\n${input.userRequest}\nASSISTANT:`;
+    return [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        { role: 'user', content: input.userRequest }
+    ];
 }
-
 
 export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInput): Promise<CreativeAssistantOutput> {
     const localConfig = input.aiConfig?.llm.local;
 
     if (!localConfig?.model) {
-        return { error: "Local LLM model name is missing.", response: "" };
+        return { error: "Ollama model name is missing.", response: "" };
     }
-
-    const prompt = buildLocalLLMPrompt(input);
+    
+    const messages = buildOllamaMessages(input);
+    const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
     try {
-        const response = await fetch(LOCAL_LLM_API_URL, {
+        const response = await fetch(OLLAMA_API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 model: localConfig.model,
                 prompt: prompt,
+                format: "json",
+                stream: false,
             }),
         });
 
         if (!response.ok) {
             const errorBody = await response.text();
-            throw new Error(`Local LLM Server Error: ${response.status} ${errorBody}`);
+            throw new Error(`Ollama API Error: ${response.status} ${errorBody}`);
         }
 
         const data = await response.json();
-        let content = data.content;
+        let content = data.response;
 
         if (!content) {
-            throw new Error("Invalid response format from Local LLM server.");
+            throw new Error("Invalid response format from Ollama server.");
         }
         
         content = content.replace(/^```json\n?/, '').replace(/```$/, '');
@@ -89,11 +97,10 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
             parsedJson.response = "Voici quelques suggestions basées sur votre demande :";
         }
 
-
         const validationResult = CreativeAssistantOutputSchema.safeParse(parsedJson);
 
         if (!validationResult.success) {
-            console.error("Zod validation failed (Local LLM):", validationResult.error.errors);
+            console.error("Zod validation failed (Ollama):", validationResult.error.errors);
             return {
                 response: parsedJson.response || "L'IA locale a retourné une réponse malformée.",
                 suggestions: parsedJson.suggestions || [],
@@ -104,7 +111,7 @@ export async function creativeAssistantWithLocalLlm(input: CreativeAssistantInpu
         return { ...validationResult.data, error: undefined };
 
     } catch (e: any) {
-        console.error("Error in creativeAssistantWithLocalLlm flow:", e);
-        return { error: `An unexpected error occurred with the Local LLM: ${e.message}`, response: "" };
+        console.error("Error in creativeAssistantWithLocalLlm (Ollama) flow:", e);
+        return { error: `An unexpected error occurred with Ollama: ${e.message}`, response: "" };
     }
 }

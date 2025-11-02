@@ -5,9 +5,9 @@
 import type { GenerateAdventureInput, GenerateAdventureFlowOutput } from '@/types';
 import { GenerateAdventureOutputSchema } from '@/types';
 
-const LOCAL_LLM_API_URL = "http://localhost:9000/api/local-llm/generate";
+const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
-function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
+function buildOllamaPrompt(input: GenerateAdventureInput): string {
     const promptSections: string[] = [];
 
     const addSection = (title: string, content: string | undefined | null | string[]) => {
@@ -17,7 +17,6 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
         }
     };
     
-    // Add player info
     let playerInfo = `- Name: ${input.playerName}`;
     if (input.playerDetails) playerInfo += `\n- Physical Description: ${input.playerDetails}`;
     if (input.playerDescription) playerInfo += `\n- Background/Personality: ${input.playerDescription}`;
@@ -59,8 +58,7 @@ function buildLocalLLMPrompt(input: GenerateAdventureInput): string {
     promptSections.unshift(mainInstruction);
     promptSections.push(`## EXPECTED JSON OUTPUT EXAMPLE\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
 
-    // This format is a common starting point for instruction-tuned models.
-    return `USER: ${promptSections.join('\n\n')}\nASSISTANT:`;
+    return promptSections.join('\n\n');
 }
 
 
@@ -68,39 +66,37 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
     const { aiConfig } = input;
 
     if (!aiConfig?.llm.local?.model) {
-        return { error: "Nom du modèle local manquant.", narrative: "" };
+        return { error: "Nom du modèle Ollama manquant.", narrative: "" };
     }
 
     try {
-        const prompt = buildLocalLLMPrompt(input);
+        const prompt = buildOllamaPrompt(input);
         
-        const response = await fetch(LOCAL_LLM_API_URL, {
+        const response = await fetch(OLLAMA_API_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 model: aiConfig.llm.local.model,
                 prompt: prompt,
-                json_schema: GenerateAdventureOutputSchema.shape, // Pass the schema shape
+                format: "json",
+                stream: false,
             }),
         });
 
         if (!response.ok) {
             const errorBody = await response.text();
-            console.error("Local LLM API Error:", response.status, errorBody);
-            return { error: `Erreur du serveur LLM Local: ${response.status} ${errorBody}`, narrative: "" };
+            console.error("Ollama API Error:", response.status, errorBody);
+            return { error: `Erreur du serveur Ollama: ${response.status} ${errorBody}`, narrative: "" };
         }
 
         const rawApiResponse = await response.json();
         
-        let content = rawApiResponse.content;
+        let content = rawApiResponse.response;
         
         if (!content) {
-            return { error: "La réponse du LLM local ne contenait pas de contenu valide.", narrative: "" };
+            return { error: "La réponse d'Ollama ne contenait pas de contenu valide.", narrative: "" };
         }
 
-        // Clean potential markdown code blocks
         content = content.replace(/^```json\n?/, '').replace(/```$/, '');
 
         try {
@@ -110,7 +106,7 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
             if (!validationResult.success) {
                 console.error("Zod validation failed:", validationResult.error.errors);
                 return {
-                    error: `La réponse du LLM local ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}\nRéponse brute: ${content}`,
+                    error: `La réponse d'Ollama ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}\nRéponse brute: ${content}`,
                     narrative: ""
                 };
             }
@@ -119,11 +115,11 @@ export async function generateAdventureWithLocalLlm(input: GenerateAdventureInpu
 
         } catch (e) {
             console.error("JSON parsing error:", e);
-            return { error: `Erreur lors du parsing de la réponse JSON du LLM local. Réponse brute: ${content}`, narrative: "" };
+            return { error: `Erreur lors du parsing de la réponse JSON d'Ollama. Réponse brute: ${content}`, narrative: "" };
         }
 
     } catch (error) {
-        console.error("Error calling Local LLM Server:", error);
-        return { error: `Erreur inattendue lors de l'appel au serveur local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
+        console.error("Error calling Ollama Server:", error);
+        return { error: `Erreur inattendue lors de l'appel au serveur Ollama: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }

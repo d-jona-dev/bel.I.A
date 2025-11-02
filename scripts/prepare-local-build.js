@@ -43,7 +43,7 @@ async function prepareLocalBuild() {
     }
   }
 
-  // 3. Supprimer les dépendances et références Firebase/Genkit
+  // 3. Supprimer les dépendances et références Firebase/Genkit/Ollama
   console.log('Modifying files for local version...');
   
   // Rendre le script lui-même vide dans le build pour ne pas l'inclure
@@ -52,7 +52,6 @@ async function prepareLocalBuild() {
   
   // Supprimer les fichiers liés à Genkit
   await fs.remove(path.join(buildDir, 'src/ai'));
-  await fs.remove(path.join(buildDir, 'src/server')); // Supprime aussi le serveur LLM local
   
   // Modifier package.json pour la version locale
   const packageJsonPath = path.join(buildDir, 'package.json');
@@ -62,12 +61,8 @@ async function prepareLocalBuild() {
   delete packageJson.dependencies['@genkit-ai/googleai'];
   delete packageJson.dependencies['@genkit-ai/next'];
   delete packageJson.dependencies['genkit'];
-  delete packageJson.dependencies['cors'];
-  delete packageJson.dependencies['express'];
-  
+
   delete packageJson.devDependencies['genkit-cli'];
-  delete packageJson.devDependencies['@types/cors'];
-  delete packageJson.devDependencies['@types/express'];
   delete packageJson.devDependencies['tsx'];
 
   // Ajuster les scripts
@@ -75,7 +70,6 @@ async function prepareLocalBuild() {
   delete packageJson.scripts['genkit:dev'];
   delete packageJson.scripts['genkit:watch'];
   delete packageJson.scripts['build-local'];
-  delete packageJson.scripts['local-llm'];
 
   await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
   console.log('  - Modified package.json to remove Firebase/Genkit dependencies.');
