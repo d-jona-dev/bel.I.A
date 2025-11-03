@@ -463,7 +463,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
             
             {config.llm.source === 'local' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                     <Label>{lang.localLlmConfig.replace('llama.cpp', 'Ollama')}</Label>
+                     <Label>{lang.localLlmConfig}</Label>
                       {isOllamaLoading ? (
                           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> {lang.searching}...</div>
                       ) : ollamaError ? (
@@ -474,7 +474,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                       ) : ollamaModels.length === 0 ? (
                             <div className="p-2 text-sm text-muted-foreground bg-muted/50 border rounded-md flex items-start gap-2">
                                 <Folder className="h-4 w-4 mt-0.5"/>
-                                <div><p className="font-semibold">{lang.noLocalModelsTitle.replace('local', 'Ollama')}</p><p>{lang.noLocalModelsDesc.replace('models', 'Ollama')}</p></div>
+                                <div><p className="font-semibold">{lang.noLocalModelsTitle}</p><p>{lang.noLocalModelsDesc}</p></div>
                             </div>
                       ) : (
                         <Select value={config.llm.local?.model || ''} onValueChange={handleSelectLocalModel}>
