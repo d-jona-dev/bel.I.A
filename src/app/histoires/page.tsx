@@ -337,8 +337,8 @@ export default function HistoiresPage() {
 
           const updatedStory: SavedStory = {
               ...editingStory,
-              title: getLocalizedText(formValues.world, 'fr') || editingStory.title,
-              description: getLocalizedText(formValues.initialSituation, 'fr') || editingStory.description,
+              title: getLocalizedText(formValues.world, currentLanguage) || editingStory.title,
+              description: getLocalizedText(formValues.initialSituation, currentLanguage) || editingStory.description,
               adventureState: updatedState,
               date: new Date().toISOString().split('T')[0],
           };
