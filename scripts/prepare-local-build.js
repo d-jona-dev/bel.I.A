@@ -111,10 +111,31 @@ Ceci est une version autonome de l'application qui ne nécessite aucune connexio
     \`\`\`
 5.  Ouvrez votre navigateur et allez à l'adresse [http://localhost:3000](http://localhost:3000).
 
+## Utiliser l'IA en local avec Ollama
+
+Cette version peut utiliser des modèles de langage (LLM) qui tournent sur votre propre machine, gratuitement et sans envoyer vos données sur internet. Pour cela, nous utilisons **Ollama**.
+
+1.  **Installez Ollama** : Rendez-vous sur [https://ollama.com](https://ollama.com) et téléchargez l'application pour votre système d'exploitation (Windows, macOS, Linux).
+
+2.  **Téléchargez un modèle** : Ouvrez un terminal et téléchargez un modèle. Nous vous recommandons de commencer par `llama3`.
+    \`\`\`bash
+    ollama run llama3
+    \`\`\`
+    Attendez la fin du téléchargement. Vous pouvez télécharger d'autres modèles comme `mistral` de la même manière.
+
+3.  **Activez le modèle dans l'application** :
+    *   Assurez-vous qu'Ollama est en cours d'exécution.
+    *   Dans l'application, allez dans la page **"Histoires"**.
+    *   Cliquez sur le bouton **"Configuration IA"**.
+    *   Dans la section "Modèle de Langage (LLM)", sélectionnez **"Local (Ollama)"**.
+    *   Dans la liste déroulante qui apparaît, choisissez le modèle que vous venez de télécharger (ex: `llama3`).
+
+Et voilà ! L'application utilisera maintenant votre modèle local pour générer les aventures.
+
 ## Notes importantes
 
 *   **Stockage des données** : Toutes les données (personnages, histoires, etc.) sont sauvegardées sous forme de fichiers JSON dans le sous-dossier \`public/data/\`.
-*   **Fonctionnalités IA** : Les fonctionnalités basées sur l'intelligence artificielle (génération de texte, d'images) sont désactivées dans cette version locale.
+*   **Génération d'images** : La génération d'images avec des services externes (comme Gemini) est toujours disponible via la "Configuration IA" si vous le souhaitez.
   `;
   await fs.writeFile(path.join(buildDir, 'README_local.md'), readmeContent);
 
