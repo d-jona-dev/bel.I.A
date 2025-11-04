@@ -180,7 +180,7 @@
     "modelFieldsRequired": "Le nom et l'identifiant du modèle sont requis.",
     "llmTitle": "Modèle de Langage (LLM)",
     "openRouterTitle": "OpenRouter (API Externe)",
-    "localLlmTitle": "Local (Ollama)",
+    "localLlmOllamaConfig": "Configuration Locale (Ollama)",
     "openRouterLlmConfig": "Configuration OpenRouter (LLM)",
     "chooseModelPlaceholder": "Choisir un modèle...",
     "openRouterApiKeyPlaceholder": "Clé API OpenRouter",
@@ -401,5 +401,17 @@
     "valueLabel": "Valeur",
     "effectInstructionLabel": "Effet (Instruction pour l'IA)",
     "effectInstructionPlaceholder": "Ex: Lyra devient plus méfiante envers le joueur.",
-    "addConditionButton": "Ajouter une Condition"
+    "addConditionButton": "Ajouter une Condition",
+    "creatorLinksTitle": "Liens du créateur",
+    "platformLabel": "Plateforme",
+    "identifierLabel": "Identifiant / URL",
+    "identifierPlaceholder": "Nom d'utilisateur ou URL complète",
+    "addLinkButton": "Ajouter un lien",
+    "customLocalApiTitle": "API Locale Personnalisée (LM Studio, etc.)",
+    "customLocalApiDesc": "Se connecter à un serveur local compatible OpenAI (LM Studio, Jan...)",
+    "apiUrlLabel": "URL de l'API",
+    "apiUrlPlaceholder": "Ex: http://localhost:1234/v1",
+    "modelNameOptionalLabel": "Nom du modèle (optionnel)",
+    "apiKeyOptionalLabel": "Clé API (optionnel)"
 }
+

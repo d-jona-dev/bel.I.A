@@ -173,7 +173,20 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     });
   };
 
- const handleSelectLlmSource = (source: 'gemini' | 'openrouter' | 'local') => {
+  const handleCustomLocalConfigChange = (field: keyof NonNullable<AiConfig['llm']['customLocal']>, value: string) => {
+    onConfigChange({
+        ...config,
+        llm: {
+            ...config.llm,
+            customLocal: {
+                ...(config.llm.customLocal || { apiUrl: '' }),
+                [field]: value,
+            },
+        },
+    });
+  };
+
+ const handleSelectLlmSource = (source: 'gemini' | 'openrouter' | 'local' | 'custom-local') => {
     let newLlmConfig = { ...config.llm, source };
 
     if (source === 'openrouter') {
@@ -188,6 +201,12 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
         newLlmConfig.local = {
             model: ollamaModels[0] || ''
         };
+    } else if (source === 'custom-local') {
+        newLlmConfig.customLocal = {
+            apiUrl: config.llm.customLocal?.apiUrl || 'http://localhost:1234/v1',
+            model: config.llm.customLocal?.model || '',
+            apiKey: config.llm.customLocal?.apiKey || '',
+        }
     }
     onConfigChange({ ...config, llm: newLlmConfig });
   };
@@ -371,6 +390,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
                         <SelectItem value="openrouter">{lang.openRouterTitle}</SelectItem>
                         <SelectItem value="local">{lang.localLlmTitle}</SelectItem>
+                        <SelectItem value="custom-local">{lang.customLocalApiTitle}</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -463,7 +483,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
             
             {config.llm.source === 'local' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                     <Label>{lang.localLlmConfig}</Label>
+                     <Label>{lang.localLlmOllamaConfig}</Label>
                       {isOllamaLoading ? (
                           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> {lang.searching}...</div>
                       ) : ollamaError ? (
@@ -484,6 +504,25 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                             </SelectContent>
                         </Select>
                       )}
+                 </div>
+            )}
+
+            {config.llm.source === 'custom-local' && (
+                 <div className="space-y-3 p-3 border bg-background rounded-md">
+                    <Label>{lang.customLocalApiTitle}</Label>
+                    <CardDescription className="text-xs">{lang.customLocalApiDesc}</CardDescription>
+                    <div className="space-y-1">
+                        <Label htmlFor="custom-api-url" className="text-xs">{lang.apiUrlLabel}</Label>
+                        <Input id="custom-api-url" type="text" placeholder={lang.apiUrlPlaceholder} value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="custom-model-name" className="text-xs">{lang.modelNameOptionalLabel}</Label>
+                        <Input id="custom-model-name" type="text" placeholder="e.g., Llama-3-8B-Instruct-GGUF" value={config.llm.customLocal?.model || ''} onChange={(e) => handleCustomLocalConfigChange('model', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="custom-api-key" className="text-xs">{lang.apiKeyOptionalLabel}</Label>
+                        <Input id="custom-api-key" type="password" placeholder="API Key (si nécessaire)" value={config.llm.customLocal?.apiKey || ''} onChange={(e) => handleCustomLocalConfigChange('apiKey', e.target.value)} />
+                    </div>
                  </div>
             )}
 

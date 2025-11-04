@@ -157,7 +157,7 @@ export interface ImageModelDefinition {
 
 export interface AiConfig {
     llm: {
-        source: 'gemini' | 'openrouter' | 'local';
+        source: 'gemini' | 'openrouter' | 'local' | 'custom-local';
         openRouter?: {
             model: string;
             apiKey: string;
@@ -166,7 +166,12 @@ export interface AiConfig {
         };
         local?: {
             model: string;
-        }
+        };
+        customLocal?: {
+            apiUrl: string;
+            model?: string;
+            apiKey?: string;
+        };
     },
     image: {
         source: 'gemini' | 'openrouter' | 'huggingface' | 'local-sd';
