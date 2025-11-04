@@ -422,7 +422,7 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
   return (
     <div className="flex flex-col md:flex-row gap-4 h-[calc(100%-4rem)]">
       <div className="flex-1 min-h-0">
-        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", border: "1px solid #ccc", cursor: drag.current.idx !== null ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} />
+        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", border: "1px solid #ccc", cursor: drag.current.idx !== null ? 'grabbing' : 'default' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} />
       </div>
       <div className="w-full md:w-80 space-y-4">
         {activeBubbleData ? (
@@ -430,16 +430,30 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
                 <CardContent className="p-4 space-y-3">
                     <Label htmlFor="bubble-text">{lang.bubbleTextLabel}</Label>
                     <Textarea id="bubble-text" value={activeBubbleData.text} onChange={(e) => updateBubble(activeBubbleId!, { text: e.target.value })} className="h-24" />
-                    <Label>{lang.style}</Label>
-                    <Select value={activeBubbleData.type || 'parole'} onValueChange={(val: Bubble['type']) => updateBubble(activeBubbleId!, {type: val})}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="parole">{lang.parole}</SelectItem>
-                            <SelectItem value="pensée">{lang.pensée}</SelectItem>
-                            <SelectItem value="cri">{lang.cri}</SelectItem>
-                            <SelectItem value="chuchotement">{lang.chuchotement}</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                             <Label>{lang.style}</Label>
+                            <Select value={activeBubbleData.type || 'parole'} onValueChange={(val: Bubble['type']) => updateBubble(activeBubbleId!, {type: val})}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="parole">{lang.parole}</SelectItem>
+                                    <SelectItem value="pensée">{lang.pensée}</SelectItem>
+                                    <SelectItem value="cri">{lang.cri}</SelectItem>
+                                    <SelectItem value="chuchotement">{lang.chuchotement}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor={`bubble-w-${activeBubbleId}`}>Dimensions</Label>
+                            <div className="flex items-center gap-2">
+                                <Input id={`bubble-w-${activeBubbleId}`} type="number" value={activeBubbleData.w} onChange={(e) => updateBubble(activeBubbleId!, { w: Number(e.target.value) })} placeholder="L" />
+                                <span>x</span>
+                                <Input id={`bubble-h-${activeBubbleId}`} type="number" value={activeBubbleData.h} onChange={(e) => updateBubble(activeBubbleId!, { h: Number(e.target.value) })} placeholder="H" />
+                            </div>
+                        </div>
+                    </div>
+
                      <Button variant="destructive" size="sm" className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: p.bubbles.filter(b => b.id !== activeBubbleId)}))}>
                         <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
                     </Button>

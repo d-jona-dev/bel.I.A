@@ -407,7 +407,6 @@
     "identifierLabel": "Identifier / URL",
     "identifierPlaceholder": "Username or full URL",
     "addLinkButton": "Add a link",
-    "localLlmTitle": "Local (Ollama)",
     "customLocalApiTitle": "Custom Local API (LM Studio, etc.)",
     "customLocalApiDesc": "Connect to a local OpenAI-compatible server (LM Studio, Jan...)",
     "apiUrlLabel": "API URL",

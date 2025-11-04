@@ -192,6 +192,7 @@
     "modelIdentifier": "Modellkennung",
     "addModel": "Ein Modell hinzufügen",
     "localLlmConfig": "Lokale Konfiguration (Ollama)",
+    "localLlmOllamaConfig": "Lokale Konfiguration (Ollama)",
     "searching": "Suche...",
     "localServerErrorTitle": "Lokaler Serverfehler",
     "localServerError": "Der lokale LLM-Server antwortet nicht. Bitte starten Sie ihn.",
