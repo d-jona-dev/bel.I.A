@@ -155,11 +155,11 @@ export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast
         outCtx.strokeRect(x, y, panelW, panelH);
         
       } catch (e) {
-        console.error(`Error rendering panel ${i}`, e);
+        console.error(`Error rendering panel '${i}'`, e);
         outCtx.fillStyle = "red";
         outCtx.fillRect(x,y, panelW, panelH);
         outCtx.fillStyle = "white";
-        outCtx.fillText(`${lang.panelError} ${i+1}`, x + 10, y + 20);
+        outCtx.fillText(`Erreur panel ${i+1}`, x + 10, y + 20);
       }
     }
 
