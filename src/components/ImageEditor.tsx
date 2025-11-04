@@ -20,23 +20,34 @@ import { Card } from "./ui/card";
 import { i18n, type Language } from "@/lib/i18n";
 
 
-const bubbleTypes = {
-  parole: { label: "Parole", border: "2px solid black", lineDash: [] },
-  pensée: { label: "Pensée", border: "2px dashed gray", lineDash: [6, 3] },
-  cri: { label: "Cri", border: "3px solid red", lineDash: [] },
-  chuchotement: { label: "Chuchotement", border: "2px dotted blue", lineDash: [2, 2] },
+const bubbleStyles = {
+  // Speech
+  'parole-s': { label: 'Parole (S)', border: '2px solid black', lineDash: [], w: 200, h: 80, fontSize: 28 },
+  'parole-m': { label: 'Parole (M)', border: '2px solid black', lineDash: [], w: 300, h: 120, fontSize: 32 },
+  'parole-l': { label: 'Parole (L)', border: '2px solid black', lineDash: [], w: 450, h: 150, fontSize: 34 },
+  // Thought
+  'pensée-s': { label: 'Pensée (S)', border: '2px dashed gray', lineDash: [6, 3], w: 180, h: 70, fontSize: 26 },
+  'pensée-m': { label: 'Pensée (M)', border: '2px dashed gray', lineDash: [6, 3], w: 280, h: 100, fontSize: 30 },
+  'pensée-l': { label: 'Pensée (L)', border: '2px dashed gray', lineDash: [6, 3], w: 400, h: 130, fontSize: 32 },
+  // Shout
+  'cri-s': { label: 'Cri (S)', border: '3px solid red', lineDash: [], w: 220, h: 90, fontSize: 32 },
+  'cri-m': { label: 'Cri (M)', border: '3px solid red', lineDash: [], w: 320, h: 130, fontSize: 36 },
+  'cri-l': { label: 'Cri (L)', border: '3px solid red', lineDash: [], w: 480, h: 160, fontSize: 40 },
+  // Whisper
+  'chuchotement-s': { label: 'Chuchotement (S)', border: '2px dotted blue', lineDash: [2, 2], w: 180, h: 60, fontSize: 24 },
+  'chuchotement-m': { label: 'Chuchotement (M)', border: '2px dotted blue', lineDash: [2, 2], w: 260, h: 90, fontSize: 28 },
+  'chuchotement-l': { label: 'Chuchotement (L)', border: '2px dotted blue', lineDash: [2, 2], w: 380, h: 120, fontSize: 30 },
 };
-type BubbleType = keyof typeof bubbleTypes;
+
+type BubbleStyleKey = keyof typeof bubbleStyles;
+
 interface Bubble {
   id: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
   text: string;
-  type: BubbleType;
+  style: BubbleStyleKey;
   characterId?: string; // ID of the character speaking
-  fontSize?: number; // Optional font size
 }
 
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
@@ -44,7 +55,6 @@ const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resol
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = (e) => reject(e);
-    img.src = src;
 });
 
 export const compressImage = async (dataUrl: string, quality = 0.85): Promise<string> => {
@@ -59,9 +69,11 @@ export const compressImage = async (dataUrl: string, quality = 0.85): Promise<st
 };
 
 const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: Character[]) => {
+    const style = bubbleStyles[bubble.style];
+    if (!style) return;
+
     const character = characters.find(c => c.id === bubble.characterId);
-    const style = bubbleTypes[bubble.type];
-    const color = character?.factionColor || style.border.split(' ')[2]; // Use faction color if available
+    const color = character?.factionColor || style.border.split(' ')[2];
     
     ctx.fillStyle = "white";
     ctx.strokeStyle = color;
@@ -69,27 +81,26 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: C
     ctx.setLineDash(style.lineDash);
     
     ctx.beginPath();
-    ctx.roundRect(bubble.x, bubble.y, bubble.width, bubble.height, [15]);
+    ctx.roundRect(bubble.x, bubble.y, style.w, style.h, [15]);
     ctx.fill();
     ctx.stroke();
     
     ctx.setLineDash([]);
     ctx.fillStyle = "black";
-    const fontSize = bubble.fontSize || 32;
-    ctx.font = `${fontSize}px 'Comic Sans MS', sans-serif`;
+    ctx.font = `${style.fontSize}px 'Comic Sans MS', sans-serif`;
     ctx.textBaseline = "top";
 
     const words = bubble.text.split(' ');
     let line = '';
     let textY = bubble.y + 15;
-    const lineHeight = fontSize * 1.1; // Adjust line height based on font size
+    const lineHeight = style.fontSize * 1.1; // Adjust line height based on font size
     const padding = 15;
 
     for(let n = 0; n < words.length; n++) {
         const testLine = line + words[n] + ' ';
         const metrics = ctx.measureText(testLine);
         const testWidth = metrics.width;
-        if (testWidth > bubble.width - padding * 2 && n > 0) {
+        if (testWidth > style.w - padding * 2 && n > 0) {
             ctx.fillText(line, bubble.x + padding, textY);
             line = words[n] + ' ';
             textY += lineHeight;
@@ -127,7 +138,7 @@ export default function ImageEditor({
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [currentBubbleType, setCurrentBubbleType] = useState<BubbleType>("parole");
+  const [currentBubbleStyle, setCurrentBubbleStyle] = useState<BubbleStyleKey>("parole-m");
   const { toast } = useToast();
   const lang = i18n[currentLanguage as Language] || i18n.en;
 
@@ -146,7 +157,6 @@ export default function ImageEditor({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    // Set a default canvas size, e.g., 900x1200
     canvas.width = img?.width || 900;
     canvas.height = img?.height || 1200;
 
@@ -155,7 +165,6 @@ export default function ImageEditor({
     if (img) {
       ctx.drawImage(img, 0, 0);
     } else {
-      // Draw a placeholder if no image is loaded
       ctx.fillStyle = '#f0f0f0';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#a0a0a0';
@@ -165,12 +174,13 @@ export default function ImageEditor({
     }
 
     bubbles.forEach((bubble) => {
-      drawBubble(ctx, bubble, characters); // Pass characters to drawBubble
+      drawBubble(ctx, bubble, characters);
+      const style = bubbleStyles[bubble.style];
       if (bubble.id === selectedBubbleId) {
         ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
         ctx.lineWidth = 3;
         ctx.setLineDash([8, 4]);
-        ctx.strokeRect(bubble.x, bubble.y, bubble.width, bubble.height);
+        ctx.strokeRect(bubble.x, bubble.y, style.w, style.h);
         ctx.setLineDash([]);
       }
     });
@@ -184,12 +194,9 @@ export default function ImageEditor({
       id: `bubble-${Date.now()}`,
       x: 50,
       y: 50,
-      width: 300,
-      height: 120,
       text: lang.newBubbleText,
-      type: currentBubbleType,
+      style: currentBubbleStyle,
       characterId: character.id,
-      fontSize: 32,
     };
     setBubbles([...bubbles, newBubble]);
     setSelectedBubbleId(newBubble.id);
@@ -210,7 +217,6 @@ export default function ImageEditor({
         
       let speakerIndex = 0;
 
-      // Extract dialogues
       let match;
       while ((match = dialogueRegex.exec(content)) !== null) {
           const speaker = speakers[speakerIndex % speakers.length];
@@ -218,32 +224,25 @@ export default function ImageEditor({
               id: `bubble-${Date.now()}-${newBubbles.length}`,
               x: 20,
               y: yOffset,
-              width: 400,
-              height: 100,
               text: match[1],
-              type: 'parole',
+              style: 'parole-m',
               characterId: speaker?.id,
-              fontSize: 32,
           });
-          yOffset += 110;
-          speakerIndex++; // Cycle through speakers
+          yOffset += bubbleStyles['parole-m'].h + 10;
+          speakerIndex++;
       }
 
-      // Extract thoughts
       while ((match = thoughtRegex.exec(content)) !== null) {
           const speaker = speakers[speakerIndex % speakers.length];
           newBubbles.push({
               id: `bubble-${Date.now()}-${newBubbles.length}`,
               x: 20,
               y: yOffset,
-              width: 350,
-              height: 80,
               text: match[1],
-              type: 'pensée',
-              characterId: speaker?.id, // Thoughts are also linked to a character
-              fontSize: 30,
+              style: 'pensée-m',
+              characterId: speaker?.id,
           });
-          yOffset += 90;
+          yOffset += bubbleStyles['pensée-m'].h + 10;
       }
 
       if (newBubbles.length > 0) {
@@ -262,9 +261,12 @@ export default function ImageEditor({
     const y = e.clientY - rect.top;
     const canvasX = (x / rect.width) * canvasRef.current.width;
     const canvasY = (y / rect.height) * canvasRef.current.height;
-    const clickedBubble = bubbles.slice().reverse().find(
-      (b) => canvasX >= b.x && canvasX <= b.x + b.width && canvasY >= b.y && canvasY <= b.y + b.height
-    );
+
+    const clickedBubble = bubbles.slice().reverse().find(b => {
+      const style = bubbleStyles[b.style];
+      return canvasX >= b.x && canvasX <= b.x + style.w && canvasY >= b.y && canvasY <= b.y + style.h;
+    });
+
     if (clickedBubble) {
       setSelectedBubbleId(clickedBubble.id);
       setDragging(true);
@@ -384,13 +386,13 @@ export default function ImageEditor({
              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{lang.bubbleStyle}:</span>
-                    <Select value={currentBubbleType} onValueChange={(e) => setCurrentBubbleType(e as BubbleType)}>
+                    <Select value={currentBubbleStyle} onValueChange={(e) => setCurrentBubbleStyle(e as BubbleStyleKey)}>
                         <SelectTrigger className="w-[180px] bg-background">
                             <SelectValue placeholder="Style" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                                <SelectItem key={key} value={key}>{lang[key as keyof typeof i18n.en] || label}</SelectItem>
+                            {Object.entries(bubbleStyles).map(([key, { label }]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -417,37 +419,27 @@ export default function ImageEditor({
             </div>
             {selectedBubble && (
                 <Card className="p-3 border rounded-md bg-background space-y-3">
-                    <h3 className="font-semibold">{lang.editBubble} ({lang[selectedBubble.type as keyof typeof i18n.en] || selectedBubble.type})</h3>
+                    <h3 className="font-semibold">{lang.editBubble}</h3>
                     <Textarea
                     value={selectedBubble.text}
                     onChange={(e) => updateBubble(selectedBubbleId!, { text: e.target.value })}
                     placeholder={lang.bubbleTextPlaceholder}
                     rows={3}
                     />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-1">
                           <Label>{lang.style}</Label>
                           <Select
-                              value={selectedBubble.type}
-                              onValueChange={(value) => updateBubble(selectedBubbleId!, { type: value as BubbleType })}
+                              value={selectedBubble.style}
+                              onValueChange={(value) => updateBubble(selectedBubbleId!, { style: value as BubbleStyleKey })}
                           >
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  {Object.entries(bubbleTypes).map(([key, { label }]) => (
-                                      <SelectItem key={key} value={key}>{lang[key as keyof typeof i18n.en] || label}</SelectItem>
+                                  {Object.entries(bubbleStyles).map(([key, { label }]) => (
+                                      <SelectItem key={key} value={key}>{label}</SelectItem>
                                   ))}
                               </SelectContent>
                           </Select>
-                      </div>
-                      <div className="space-y-1">
-                          <Label>{lang.textSize}: {selectedBubble.fontSize || 32}</Label>
-                          <Slider
-                            value={[selectedBubble.fontSize || 32]}
-                            min={12}
-                            max={72}
-                            step={2}
-                            onValueChange={(value) => updateBubble(selectedBubbleId!, { fontSize: value[0] })}
-                          />
                       </div>
                     </div>
                     <Button onClick={deleteBubble} variant="destructive" size="sm" className="w-full">

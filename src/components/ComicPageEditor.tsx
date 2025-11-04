@@ -81,7 +81,7 @@ const drawBubble = (ctx: CanvasRenderingContext2D, b: Bubble, scale = 1) => {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#000";
-    const fontSize = Math.max(12, Math.min(18, b.w / 10)) * scale;
+    const fontSize = b.fontSize ?? Math.max(12, Math.min(18, b.w / 10)) * scale;
     ctx.font = `${fontSize}px sans-serif`;
     wrapText(ctx, b.text, b.x + 8 * scale, b.y + 22 * scale, b.w - 16 * scale, (fontSize + 4) * scale);
     ctx.restore();
@@ -453,6 +453,14 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
                             </div>
                         </div>
                     </div>
+                     <div className="space-y-2">
+                        <Label>{lang.textSize}: {activeBubbleData.fontSize ?? 18}</Label>
+                        <Input
+                          type="number"
+                          value={activeBubbleData.fontSize ?? 18}
+                          onChange={(e) => updateBubble(activeBubbleId!, { fontSize: Number(e.target.value) })}
+                        />
+                      </div>
 
                      <Button variant="destructive" size="sm" className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: p.bubbles.filter(b => b.id !== activeBubbleId)}))}>
                         <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
@@ -462,7 +470,7 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
         ) : (
             <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">{lang.selectBubbleToEdit}</p>
         )}
-        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: lang.newBubbleText, type: "parole" }] }))}>
+        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: lang.newBubbleText, type: "parole", fontSize: 18 }] }))}>
             <PlusCircle className="mr-2 h-4 w-4"/> {lang.addBubble}
         </Button>
          <DialogFooter className="mt-auto">
