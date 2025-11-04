@@ -55,6 +55,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resol
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = (e) => reject(e);
+    img.src = src;
 });
 
 export const compressImage = async (dataUrl: string, quality = 0.85): Promise<string> => {
