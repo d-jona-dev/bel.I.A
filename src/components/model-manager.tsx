@@ -689,3 +689,5 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     </Card>
   );
 }
+
+    
