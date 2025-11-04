@@ -15,7 +15,7 @@ import type { SuggestQuestHookInput } from "@/ai/flows/suggest-quest-hook";
 import { materializeCharacter } from "@/ai/flows/materialize-character";
 import type { MaterializeCharacterInput } from "@/ai/flows/materialize-character";
 import { memorizeEvent } from "@/ai/flows/summarize-history";
-import type { MemorizeEventInput, MemorizeEventOutput } from "@/ai/flows/summarize-history";
+import type { MemorizeEventInput, MemorizeEventOutput } from "@/ai/flows/summarize-history-schemas";
 import { getLocalizedText } from "@/hooks/systems/useAdventureState";
 
 const PLAYER_ID = "player";

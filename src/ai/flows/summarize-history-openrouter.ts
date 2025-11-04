@@ -5,8 +5,8 @@
  */
 
 import { z } from 'zod';
-import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history';
-import { MemorizeEventOutputSchema } from './summarize-history';
+import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history-schemas';
+import { MemorizeEventOutputSchema } from './summarize-history-schemas';
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 

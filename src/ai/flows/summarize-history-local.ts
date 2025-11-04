@@ -5,8 +5,8 @@
  */
 
 import { z } from 'zod';
-import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history';
-import { MemorizeEventOutputSchema } from './summarize-history';
+import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history-schemas';
+import { MemorizeEventOutputSchema } from './summarize-history-schemas';
 
 const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 

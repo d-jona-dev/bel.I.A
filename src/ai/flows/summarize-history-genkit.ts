@@ -6,13 +6,14 @@
 
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
-import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history';
+import type { MemorizeEventInput, MemorizeEventOutput } from './summarize-history-schemas';
+import { MemorizeEventOutputSchema } from './summarize-history-schemas';
 
 // The prompt definition, now specific to Genkit
 const memorizeEventPrompt = ai.definePrompt({
     name: 'memorizeEventPrompt',
     input: { schema: z.custom<MemorizeEventInput>() },
-    output: { schema: z.custom<MemorizeEventOutput>() },
+    output: { schema: MemorizeEventOutputSchema },
     prompt: `You are a meticulous archivist for a text-based adventure game.
 Your task is to read the provided narrative context and create ONE single, concise summary of the most significant event.
 This summary will be added to the memory of the involved characters.
