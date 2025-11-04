@@ -11,6 +11,8 @@ import { materializeCharacterWithOpenRouter } from './materialize-character-open
 import { materializeCharacterWithLocalLlm } from './materialize-character-local';
 import { z } from 'zod';
 import { NewCharacterSchema } from '@/types';
+// Note: We need a custom-local implementation for this flow as well.
+// For now, it will fallback to Genkit, but ideally it should have its own.
 
 // Main Input Schema, now with aiConfig
 const MaterializeCharacterInputSchema = z.object({
@@ -35,6 +37,11 @@ export async function materializeCharacter(input: MaterializeCharacterInput): Pr
     if (aiConfig?.llm.source === 'local') {
         return materializeCharacterWithLocalLlm(input);
     }
+    
+    // Add the custom-local case here later if a separate implementation is created.
+    // if (aiConfig?.llm.source === 'custom-local') {
+    //     // return materializeCharacterWithCustomLlm(input);
+    // }
     
     // Default to Genkit/Gemini
     return materializeCharacterWithGenkit(input);

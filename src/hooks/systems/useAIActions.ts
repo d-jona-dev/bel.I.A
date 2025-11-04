@@ -308,7 +308,13 @@ export function useAIActions({
       }, [adventureSettings.world, narrativeMessages, characters, currentLanguage, toast, getLocalizedText]);
     
     const materializeCharacterAction = React.useCallback(async (narrativeContext: string) => {
-        const input: MaterializeCharacterInput = { narrativeContext, existingCharacters: characters.map(c => c.name), rpgMode: false, currentLanguage };
+        const input: MaterializeCharacterInput = { 
+            narrativeContext, 
+            existingCharacters: characters.map(c => c.name), 
+            rpgMode: false, 
+            currentLanguage,
+            aiConfig, // Pass the config
+        };
         const newCharData = await materializeCharacter(input);
         if (newCharData?.name) {
             setCharacters(prev => [...prev, { ...newCharData, id: `char-${newCharData.name.toLowerCase().replace(/\s/g, '-')}-${Math.random()}` }]);
@@ -316,12 +322,17 @@ export function useAIActions({
         } else {
              toast({ title: "Erreur de Création", description: "L'IA n'a pas pu créer de personnage à partir du texte.", variant: "destructive" });
         }
-    }, [characters, currentLanguage, setCharacters, toast]);
+    }, [characters, currentLanguage, aiConfig, setCharacters, toast]);
     
     const memorizeEventAction = React.useCallback(async (narrativeContext: string) => {
         setIsLoading(true);
         try {
-            const input: MemorizeEventInput = { narrativeContext, involvedCharacters: characters.map(c => c.name), currentLanguage };
+            const input: MemorizeEventInput = { 
+                narrativeContext, 
+                involvedCharacters: characters.map(c => c.name), 
+                currentLanguage,
+                aiConfig, // Pass the config
+            };
             const memoryUpdate = await memorizeEvent(input);
             if (memoryUpdate?.memory) {
                 handleMemoryUpdate(memoryUpdate);
@@ -331,7 +342,7 @@ export function useAIActions({
         } finally {
             setIsLoading(false);
         }
-    }, [characters, currentLanguage, handleMemoryUpdate, toast, setIsLoading]);
+    }, [characters, currentLanguage, aiConfig, handleMemoryUpdate, toast, setIsLoading]);
 
 
     const generateSceneImageActionWrapper = React.useCallback(async (input: GenerateSceneImageInput): Promise<GenerateSceneImageFlowOutput> => {
