@@ -33,7 +33,7 @@ export function useSaveLoad({
             characters: characters,
             narrative: narrativeMessages,
             currentLanguage,
-            saveFormatVersion: 2.6,
+            saveFormatVersion: 2.7,
             timestamp: new Date().toISOString(),
             aiConfig: aiConfig,
         };

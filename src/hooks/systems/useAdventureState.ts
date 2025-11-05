@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { AdventureSettings, Character, Message, SaveData, AiConfig, LocalizedText } from "@/types";
+import type { AdventureSettings, Character, Message, SaveData, AiConfig, LocalizedText, AdventureCondition } from "@/types";
 
 const createInitialState = (): SaveData => ({
     adventureSettings: {
@@ -23,6 +23,8 @@ const createInitialState = (): SaveData => ({
         playerOrientation: "",
         playerFaceSwapEnabled: false,
         playerLocationId: undefined, 
+        systemPrompt: "",
+        conditions: [],
         timeManagement: {
             enabled: false,
             day: 1,
@@ -96,7 +98,9 @@ export function useAdventureState() {
           timeManagement: {
             ...createInitialState().adventureSettings.timeManagement!,
             ...(data.adventureSettings.timeManagement || {}),
-          }
+          },
+          systemPrompt: data.adventureSettings.systemPrompt || '',
+          conditions: data.adventureSettings.conditions || [],
         };
         
         // Prioritize the language passed with the data (coming from the history page selection).

@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upload, Trash2, Play, PlusCircle, MessageSquare, AlertTriangle, Download, Edit, Brush, BrainCircuit, Bot, Users as UsersIcon, UserCog, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText } from '@/types';
+import type { Character, AdventureSettings, SaveData, MapPointOfInterest, PlayerAvatar, TimeManagementSettings, AiConfig, LocalizedText, AdventureCondition, CreatorLink } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -63,30 +63,13 @@ const createNewAdventureState = (): SaveData => ({
         playerName: "Héros",
         playerClass: "Aventurier",
         playerLevel: 1,
-        playerInitialAttributePoints: 10,
-        playerStrength: 8,
-        playerDexterity: 8,
-        playerConstitution: 8,
-        playerIntelligence: 8,
-        playerWisdom: 8,
-        playerCharisma: 8,
-        playerCurrentHp: 20,
-        playerMaxHp: 20,
-        playerCurrentMp: 0,
-        playerMaxMp: 0,
-        playerCurrentExp: 0,
-        playerExpToNextLevel: 100,
-        playerGold: 10,
-        playerInventory: [],
-        playerSkills: [],
-        equippedItemIds: { weapon: null, armor: null, jewelry: null },
-        familiars: [],
-        mapPointsOfInterest: [],
-        mapImageUrl: null,
         playerPortraitUrl: null,
         playerDetails: "",
         playerDescription: "",
         playerOrientation: "",
+        systemPrompt: "",
+        conditions: [],
+        creatorLinks: [],
         timeManagement: {
             enabled: false,
             day: 1,
@@ -101,7 +84,7 @@ const createNewAdventureState = (): SaveData => ({
     characters: [],
     narrative: [],
     currentLanguage: "fr",
-    saveFormatVersion: 2.6,
+    saveFormatVersion: 2.7,
     timestamp: new Date().toISOString(),
 });
 
@@ -322,6 +305,9 @@ export default function HistoiresPage() {
               adventureSettings: {
                   ...editingStory.adventureState.adventureSettings,
                   ...formValues,
+                  systemPrompt: formValues.systemPrompt || '',
+                  conditions: formValues.conditions || [],
+                  creatorLinks: formValues.creatorLinks || [],
                   rpgMode: formValues.rpgMode ?? editingStory.adventureState.adventureSettings.rpgMode,
                   relationsMode: formValues.relationsMode ?? editingStory.adventureState.adventureSettings.relationsMode,
                   strategyMode: formValues.strategyMode ?? editingStory.adventureState.adventureSettings.strategyMode,
@@ -369,6 +355,9 @@ export default function HistoiresPage() {
         world: formValues.world,
         initialSituation: formValues.initialSituation,
         playerName: formValues.playerName || "Héros",
+        systemPrompt: formValues.systemPrompt || "",
+        conditions: formValues.conditions || [],
+        creatorLinks: formValues.creatorLinks || [],
         rpgMode: formValues.rpgMode ?? true,
         relationsMode: formValues.relationsMode ?? true,
         strategyMode: formValues.strategyMode ?? true,
@@ -415,6 +404,9 @@ export default function HistoiresPage() {
               world: defaultState.adventureSettings.world,
               initialSituation: defaultState.adventureSettings.initialSituation,
               characters: [],
+              systemPrompt: '',
+              conditions: [],
+              creatorLinks: [],
               rpgMode: true,
               relationsMode: true,
               strategyMode: true,
@@ -426,7 +418,6 @@ export default function HistoiresPage() {
               playerDescription: "",
               playerOrientation: "",
               timeManagement: defaultState.adventureSettings.timeManagement,
-              creatorLinks: [],
           };
       }
       
@@ -457,7 +448,9 @@ export default function HistoiresPage() {
           playerPortraitUrl: settings.playerPortraitUrl,
           mapPointsOfInterest: settings.mapPointsOfInterest,
           timeManagement: settings.timeManagement,
-          creatorLinks: settings.creatorLinks || [],
+          systemPrompt: settings.systemPrompt,
+          conditions: settings.conditions,
+          creatorLinks: settings.creatorLinks,
       }
   }
 

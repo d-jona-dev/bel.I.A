@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -116,7 +115,7 @@ const adventureFormSchema = z.object({
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
-  systemPrompt: z.string().optional().describe("Prompt système personnalisé pour le narrateur."), // NOUVEAU
+  systemPrompt: z.string().optional().describe("Prompt système personnalisé pour le narrateur."),
   timeManagement: timeManagementSchema.optional(),
   conditions: z.array(conditionSchema).optional(),
   creatorLinks: z.array(creatorLinkSchema).optional(),

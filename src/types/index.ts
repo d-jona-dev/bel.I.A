@@ -108,7 +108,7 @@ export interface AdventureSettings {
   playerLevel?: number;
   playerLocationId?: string;
   playerFaceSwapEnabled?: boolean;
-  systemPrompt?: string; // NOUVEAU
+  systemPrompt?: string;
   timeManagement?: TimeManagementSettings;
   mapPointsOfInterest?: MapPointOfInterest[]; // Gardé pour la structure, non utilisé
   conditions?: AdventureCondition[];
@@ -256,7 +256,7 @@ export const GenerateAdventureInputSchema = z.object({
   userAction: z.string(),
   currentLanguage: z.string(),
   playerName: z.string(),
-  systemPrompt: z.string().optional().describe("A custom system prompt to guide the AI narrator's persona and style."), // NOUVEAU
+  systemPrompt: z.string().optional().describe("A custom system prompt to guide the AI narrator's persona and style."),
   relationsModeActive: z.boolean().optional().default(true),
   comicModeActive: z.boolean().optional().default(true),
   playerPortraitUrl: z.string().nullable().optional(),

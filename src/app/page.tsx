@@ -340,7 +340,10 @@ export default function Home() {
                      day: clock.getState().day,
                      currentTime: `${String(clock.getState().hour).padStart(2, '0')}:${String(clock.getState().minute).padStart(2, '0')}`,
                      dayName: clock.getState().dayName,
-                 }
+                 },
+                 systemPrompt: formData.systemPrompt || '',
+                 conditions: formData.conditions || [],
+                 creatorLinks: formData.creatorLinks || [],
             };
 
             setBaseAdventureSettings(JSON.parse(JSON.stringify(newLiveSettings)));
@@ -427,6 +430,8 @@ localStorage.setItem('globalAiConfig', JSON.stringify(newConfig));
             memory: c.memory,
         })),
         timeManagement: adventureSettings.timeManagement || createInitialState().adventureSettings.timeManagement,
+        conditions: adventureSettings.conditions || [],
+        creatorLinks: adventureSettings.creatorLinks || [],
     }), [adventureSettings, characters, createInitialState]);
     
     const lang = i18n[currentLanguage as Language] || i18n.fr;
