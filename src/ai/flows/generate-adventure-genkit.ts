@@ -57,15 +57,7 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
     return flowInput;
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateAdventurePrompt',
-  input: {
-    schema: GenerateAdventureInputSchema,
-  },
-  output: {
-    schema: GenerateAdventureOutputSchema,
-  },
-  prompt: `You are an interactive fiction engine for a relationship-focused game. Weave a cohesive and engaging story based on the context provided. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
+const defaultSystemPrompt = `You are an interactive fiction engine for a relationship-focused game. Weave a cohesive and engaging story based on the context provided. The target language for ALL textual outputs (narrative, relation descriptions) is **{{currentLanguage}}**.
 
 **Player Character:**
 - **Name:** {{playerName}}
@@ -127,12 +119,26 @@ User Action (from {{playerName}}): {{{userAction}}}
 **VERY IMPORTANT: You are NO LONGER responsible for detecting new characters. This is handled by a separate user action.**
 
 You must respond with a valid JSON object strictly matching the output schema. No explanations, no Markdown, no text outside this structure.
-`,
+`;
+
+const prompt = ai.definePrompt({
+  name: 'generateAdventurePrompt',
+  input: {
+    schema: GenerateAdventureInputSchema,
+  },
+  output: {
+    schema: GenerateAdventureOutputSchema,
+  },
+  // Use the system prompt from the input if it exists, otherwise use the default
+  system: `{{#if systemPrompt}}{{{systemPrompt}}}{{else}}${defaultSystemPrompt}{{/if}}`,
+  prompt: `User Action (from {{playerName}}): {{{userAction}}}`, // The user prompt is now just the action
 });
 
 export async function generateAdventureWithGenkit(input: GenkitFlowInputType): Promise<GenerateAdventureFlowOutput> {
     try {
         const processedInput = await commonAdventureProcessing(input);
+        
+        // Pass the full processed input to the prompt, including the systemPrompt if it exists
         const { output } = await prompt(processedInput);
         
         if (!output) {

@@ -11,7 +11,7 @@ import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition, Cr
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon, Globe } from "lucide-react";
+import { Upload, User, UserPlus, Languages, Loader2, Rocket, Users as UsersIcon, Globe, FileSignature } from "lucide-react";
 
 import { PlayerCharacterConfig } from './adventure-form-parts/player-character-config';
 import { NpcCharacterConfig } from './adventure-form-parts/npc-character-config';
@@ -44,6 +44,7 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     characters: FormCharacterDefinition[];
     conditions?: AdventureCondition[];
     creatorLinks?: CreatorLink[];
+    systemPrompt?: string; // NOUVEAU
 };
 
 export interface AdventureFormHandle {
@@ -115,6 +116,7 @@ const adventureFormSchema = z.object({
   playerName: z.string().optional().default("Player").describe("Le nom du personnage joueur."),
   playerClass: z.string().optional().default("Aventurier").describe("Classe du joueur."),
   playerLevel: z.number().int().min(1).optional().default(1).describe("Niveau initial du joueur."),
+  systemPrompt: z.string().optional().describe("Prompt système personnalisé pour le narrateur."), // NOUVEAU
   timeManagement: timeManagementSchema.optional(),
   conditions: z.array(conditionSchema).optional(),
   creatorLinks: z.array(creatorLinkSchema).optional(),
@@ -329,6 +331,39 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </AccordionItem>
                         </Accordion>
                     )}
+
+                     <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="system-prompt-config">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-2">
+                                    <FileSignature className="h-5 w-5" /> Prompt Système Personnalisé
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    Modifiez ici les instructions fondamentales données à l'IA pour définir son rôle de narrateur. Laissez vide pour utiliser le prompt par défaut.
+                                </p>
+                                <FormField
+                                    control={form.control}
+                                    name="systemPrompt"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <Textarea
+                                                    placeholder="Ex: Tu es un maître du jeu sarcastique pour un univers de dark fantasy..."
+                                                    className="resize-y min-h-[150px]"
+                                                    {...field}
+                                                    value={field.value || ''}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+
 
                     <NpcCharacterConfig 
                         fields={fields} 

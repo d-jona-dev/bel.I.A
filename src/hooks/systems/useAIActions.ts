@@ -199,6 +199,7 @@ export function useAIActions({
             userAction: userActionText,
             currentLanguage,
             playerName: adventureSettings.playerName || "Player",
+            systemPrompt: adventureSettings.systemPrompt, // NOUVEAU
             relationsModeActive: adventureSettings.relationsMode ?? true,
             comicModeActive: adventureSettings.comicModeActive ?? false,
             playerPortraitUrl: adventureSettings.playerPortraitUrl,
