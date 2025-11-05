@@ -192,6 +192,18 @@ export function useAIActions({
             ? `Contexte Événementiel: ${adventureSettings.timeManagement.currentEvent || 'Aucun'}.`
             : "";
 
+        // Process the system prompt for placeholders
+        let processedSystemPrompt = adventureSettings.systemPrompt;
+        if (processedSystemPrompt) {
+            characters.forEach(char => {
+                if (char.roleInStory) {
+                    const tag = `{${char.roleInStory}}`;
+                    processedSystemPrompt = processedSystemPrompt.replace(new RegExp(tag, 'g'), char.name);
+                }
+            });
+        }
+
+
         const input: GenerateAdventureInput = {
             world: getLocalizedText(adventureSettings.world, currentLanguage),
             initialSituation: `${timeInfo}\n${contextSituation}`,
@@ -199,7 +211,7 @@ export function useAIActions({
             userAction: userActionText,
             currentLanguage,
             playerName: adventureSettings.playerName || "Player",
-            systemPrompt: adventureSettings.systemPrompt, // NOUVEAU
+            systemPrompt: processedSystemPrompt, // Use the processed prompt
             relationsModeActive: adventureSettings.relationsMode ?? true,
             comicModeActive: adventureSettings.comicModeActive ?? false,
             playerPortraitUrl: adventureSettings.playerPortraitUrl,

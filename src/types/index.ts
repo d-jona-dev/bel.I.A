@@ -194,8 +194,8 @@ export interface Bubble {
   id: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
+  w: number;
+  h: number;
   text: string;
   type: 'parole' | 'pensée' | 'cri' | 'chuchotement';
   characterId?: string;
