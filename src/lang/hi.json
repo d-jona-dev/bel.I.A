@@ -137,6 +137,7 @@
     "clothingAppliedTitle": "कपड़े लागू किए गए",
     "clothingDescLoaded": "\"{itemName}\" का विवरण लोड किया गया है।",
     "narrativeFieldsLabel": "संपादन योग्य कथा क्षेत्र",
+    "nameLabel": "नाम",
     "publicDescriptionLabel": "सार्वजनिक विवरण",
     "biographyLabel": "जीवनी / निजी नोट्स",
     "biographyPlaceholder": "पृष्ठभूमि, रहस्य, लक्ष्य... (एआई संदर्भ के लिए)",
@@ -191,6 +192,7 @@
     "modelIdentifier": "मॉडल पहचानकर्ता",
     "addModel": "एक मॉडल जोड़ें",
     "localLlmConfig": "स्थानीय कॉन्फ़िगरेशन (ओलामा)",
+    "localLlmOllamaConfig": "स्थानीय कॉन्फ़िगरेशन (ओलामा)",
     "searching": "खोज कर रहे हैं...",
     "localServerErrorTitle": "स्थानीय सर्वर त्रुटि",
     "localServerError": "स्थानीय एलएलएम सर्वर प्रतिक्रिया नहीं दे रहा है। कृपया इसे प्रारंभ करें।",
@@ -401,5 +403,7 @@
     "valueLabel": "मान",
     "effectInstructionLabel": "प्रभाव (AI के लिए निर्देश)",
     "effectInstructionPlaceholder": "उदाहरण: लायरा खिलाड़ी के प्रति अधिक सतर्क हो जाती है।",
-    "addConditionButton": "शर्त जोड़ें"
+    "addConditionButton": "शर्त जोड़ें",
+    "betweenOperator": "के बीच",
+    "oneTimeTriggerLabel": "एक बार का ट्रिगर"
 }

@@ -191,6 +191,7 @@
     "modelIdentifier": "Identificatore modello",
     "addModel": "Aggiungi un modello",
     "localLlmConfig": "Configurazione Locale (Ollama)",
+    "localLlmOllamaConfig": "Configurazione Locale (Ollama)",
     "searching": "Ricerca...",
     "localServerErrorTitle": "Errore Server Locale",
     "localServerError": "Il server LLM locale non risponde. Avvialo.",
@@ -401,5 +402,7 @@
     "valueLabel": "Valore",
     "effectInstructionLabel": "Effetto (Istruzione per IA)",
     "effectInstructionPlaceholder": "Es: Lyra diventa più diffidente nei confronti del giocatore.",
-    "addConditionButton": "Aggiungi Condizione"
+    "addConditionButton": "Aggiungi Condizione",
+    "betweenOperator": "Tra",
+    "oneTimeTriggerLabel": "Innesco singolo"
 }

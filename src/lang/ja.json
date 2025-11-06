@@ -137,6 +137,7 @@
     "clothingAppliedTitle": "服装が適用されました",
     "clothingDescLoaded": "「{itemName}」の説明が読み込まれました。",
     "narrativeFieldsLabel": "編集可能な物語フィールド",
+    "nameLabel": "名前",
     "publicDescriptionLabel": "公開説明",
     "biographyLabel": "経歴/プライベートノート",
     "biographyPlaceholder": "背景、秘密、目標...（AIコンテキスト用）",
@@ -191,6 +192,7 @@
     "modelIdentifier": "モデル識別子",
     "addModel": "モデルを追加",
     "localLlmConfig": "ローカル構成 (Ollama)",
+    "localLlmOllamaConfig": "ローカル構成 (Ollama)",
     "searching": "検索中...",
     "localServerErrorTitle": "ローカルサーバーエラー",
     "localServerError": "ローカルLLMサーバーが応答しません。起動してください。",
@@ -401,5 +403,7 @@
     "valueLabel": "値",
     "effectInstructionLabel": "効果（AIへの指示）",
     "effectInstructionPlaceholder": "例：ライラはプレイヤーに対してより警戒するようになります。",
-    "addConditionButton": "条件を追加"
+    "addConditionButton": "条件を追加",
+    "betweenOperator": "間",
+    "oneTimeTriggerLabel": "一度きりのトリガー"
 }

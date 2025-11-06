@@ -191,6 +191,7 @@
     "modelIdentifier": "Identificador de modelo",
     "addModel": "Añadir un modelo",
     "localLlmConfig": "Configuración Local (Ollama)",
+    "localLlmOllamaConfig": "Configuración Local (Ollama)",
     "searching": "Buscando...",
     "localServerErrorTitle": "Error del Servidor Local",
     "localServerError": "El servidor LLM local no responde. Por favor, inícielo.",
@@ -401,5 +402,7 @@
     "valueLabel": "Valor",
     "effectInstructionLabel": "Efecto (Instrucción para la IA)",
     "effectInstructionPlaceholder": "Ej: Lyra se vuelve más cautelosa con el jugador.",
-    "addConditionButton": "Añadir Condición"
+    "addConditionButton": "Añadir Condición",
+    "betweenOperator": "Entre",
+    "oneTimeTriggerLabel": "Disparador único"
 }

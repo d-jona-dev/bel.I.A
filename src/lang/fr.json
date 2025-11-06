@@ -137,6 +137,7 @@
     "clothingAppliedTitle": "Vêtement Appliqué",
     "clothingDescLoaded": "La description de \"{itemName}\" a été chargée.",
     "narrativeFieldsLabel": "Champs Narratifs Modifiables",
+    "nameLabel": "Nom",
     "publicDescriptionLabel": "Description Publique",
     "biographyLabel": "Biographie / Notes Privées",
     "biographyPlaceholder": "Passé, secrets, objectifs... (pour contexte IA)",
@@ -180,7 +181,7 @@
     "modelFieldsRequired": "Le nom et l'identifiant du modèle sont requis.",
     "llmTitle": "Modèle de Langage (LLM)",
     "openRouterTitle": "OpenRouter (API Externe)",
-    "localLlmOllamaConfig": "Configuration Locale (Ollama)",
+    "localLlmTitle": "Local (Ollama)",
     "openRouterLlmConfig": "Configuration OpenRouter (LLM)",
     "chooseModelPlaceholder": "Choisir un modèle...",
     "openRouterApiKeyPlaceholder": "Clé API OpenRouter",
@@ -191,6 +192,7 @@
     "modelIdentifier": "Identifiant modèle",
     "addModel": "Ajouter un modèle",
     "localLlmConfig": "Configuration Locale (Ollama)",
+    "localLlmOllamaConfig": "Configuration Locale (Ollama)",
     "searching": "Recherche...",
     "localServerErrorTitle": "Erreur du serveur local",
     "localServerError": "Le serveur LLM local ne répond pas. Veuillez le démarrer.",
@@ -402,6 +404,8 @@
     "effectInstructionLabel": "Effet (Instruction pour l'IA)",
     "effectInstructionPlaceholder": "Ex: Lyra devient plus méfiante envers le joueur.",
     "addConditionButton": "Ajouter une Condition",
+    "betweenOperator": "Entre",
+    "oneTimeTriggerLabel": "Déclencheur unique",
     "creatorLinksTitle": "Liens du créateur",
     "platformLabel": "Plateforme",
     "identifierLabel": "Identifiant / URL",
@@ -414,4 +418,3 @@
     "modelNameOptionalLabel": "Nom du modèle (optionnel)",
     "apiKeyOptionalLabel": "Clé API (optionnel)"
 }
-

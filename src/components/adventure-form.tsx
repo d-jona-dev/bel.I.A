@@ -95,10 +95,12 @@ const conditionSchema = z.object({
   id: z.string(),
   targetCharacterId: z.string().min(1, "Un personnage cible est requis."),
   triggerType: z.enum(['relation', 'day', 'end']),
-  triggerOperator: z.enum(['greater_than', 'less_than']),
+  triggerOperator: z.enum(['greater_than', 'less_than', 'between']),
   triggerValue: z.number(),
+  triggerValueMax: z.number().optional(),
   effect: z.string().min(1, "L'effet de la condition est requis."),
   hasTriggered: z.boolean().default(false),
+  isOneTime: z.boolean().default(true),
 });
 
 const creatorLinkSchema = z.object({

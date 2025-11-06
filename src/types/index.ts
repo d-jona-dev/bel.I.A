@@ -83,12 +83,14 @@ export interface TimeManagementSettings {
 
 export interface AdventureCondition {
   id: string;
-  targetCharacterId: string; // ID of the character or placeholder
+  targetCharacterId: string;
   triggerType: 'relation' | 'day' | 'end';
-  triggerOperator: 'greater_than' | 'less_than';
+  triggerOperator: 'greater_than' | 'less_than' | 'between';
   triggerValue: number;
-  effect: string; // The prompt text to inject
-  hasTriggered: boolean; // Flag to prevent re-triggering
+  triggerValueMax?: number;
+  effect: string;
+  hasTriggered: boolean;
+  isOneTime: boolean;
 }
 
 

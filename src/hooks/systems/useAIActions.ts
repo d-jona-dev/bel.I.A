@@ -110,7 +110,6 @@ export function useAIActions({
         });
     }, [adventureSettings.relationsMode, adventureSettings.playerName, setCharacters]);
     
-    // NOUVEAU: Logique de vérification des conditions
     const checkAndGetActiveConditions = React.useCallback((): { activeEffects: string[], updatedConditions: AdventureCondition[] } => {
         const conditions = adventureSettings.conditions || [];
         if (conditions.length === 0) {
@@ -121,47 +120,39 @@ export function useAIActions({
         const updatedConditions = JSON.parse(JSON.stringify(conditions)) as AdventureCondition[];
 
         updatedConditions.forEach(condition => {
-            if (condition.hasTriggered) return;
+            if (condition.hasTriggered && condition.isOneTime) return;
 
             let isTriggered = false;
             const targetChar = characters.find(c => c.id === condition.targetCharacterId);
-
-            switch (condition.triggerType) {
-                case 'relation':
-                    if (targetChar?.affinity !== undefined) {
-                        if (condition.triggerOperator === 'greater_than' && targetChar.affinity > condition.triggerValue) {
-                            isTriggered = true;
-                        } else if (condition.triggerOperator === 'less_than' && targetChar.affinity < condition.triggerValue) {
-                            isTriggered = true;
-                        }
-                    }
+            const value = condition.triggerType === 'relation' ? targetChar?.affinity ?? 50 : adventureSettings.timeManagement?.day ?? 0;
+            
+            switch (condition.triggerOperator) {
+                case 'greater_than':
+                    if (value > condition.triggerValue) isTriggered = true;
                     break;
-                case 'day':
-                    if (adventureSettings.timeManagement?.enabled) {
-                        const currentDay = adventureSettings.timeManagement.day;
-                         if (condition.triggerOperator === 'greater_than' && currentDay > condition.triggerValue) {
-                            isTriggered = true;
-                        } else if (condition.triggerOperator === 'less_than' && currentDay < condition.triggerValue) {
-                            isTriggered = true;
-                        }
-                    }
+                case 'less_than':
+                    if (value < condition.triggerValue) isTriggered = true;
                     break;
-                case 'end':
-                     if (condition.triggerOperator === 'greater_than' && (narrativeMessages.length > condition.triggerValue)) {
+                case 'between':
+                    if (value >= condition.triggerValue && value <= (condition.triggerValueMax ?? Infinity)) {
                         isTriggered = true;
                     }
                     break;
             }
 
             if (isTriggered) {
-                condition.hasTriggered = true;
-                activeEffects.push(condition.effect);
-                toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
+                if (!condition.hasTriggered) {
+                    activeEffects.push(condition.effect);
+                    toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
+                }
+                condition.hasTriggered = true; 
+            } else {
+                 condition.hasTriggered = false;
             }
         });
         
         return { activeEffects, updatedConditions };
-    }, [adventureSettings.conditions, adventureSettings.timeManagement, characters, narrativeMessages.length, toast]);
+    }, [adventureSettings.conditions, adventureSettings.timeManagement, characters, toast]);
 
     const generateAdventureAction = React.useCallback(async (userActionText: string, isRegeneration = false) => {
         setIsLoading(true);
@@ -177,7 +168,7 @@ export function useAIActions({
             : [...narrativeMessages, { id: 'temp', type: 'user', content: userActionText, timestamp: Date.now() }];
         
         const { activeEffects, updatedConditions } = checkAndGetActiveConditions();
-        if (activeEffects.length > 0) {
+        if (updatedConditions.some((c, i) => JSON.stringify(c) !== JSON.stringify(adventureSettings.conditions?.[i]))) {
             setAdventureSettings(prev => ({
                 ...prev,
                 conditions: updatedConditions

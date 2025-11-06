@@ -403,5 +403,7 @@
     "valueLabel": "Wert",
     "effectInstructionLabel": "Effekt (Anweisung für KI)",
     "effectInstructionPlaceholder": "Z.B.: Lyra wird misstrauischer gegenüber dem Spieler.",
-    "addConditionButton": "Bedingung hinzufügen"
+    "addConditionButton": "Bedingung hinzufügen",
+    "betweenOperator": "Zwischen",
+    "oneTimeTriggerLabel": "Einmaliger Auslöser"
 }

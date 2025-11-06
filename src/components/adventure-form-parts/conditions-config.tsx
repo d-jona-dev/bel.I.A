@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Zap, PlusCircle, Trash2 } from "lucide-react";
 import { i18n, type Language } from "@/lib/i18n";
 import type { AdventureFormValues } from "../adventure-form";
+import { Switch } from "../ui/switch";
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
@@ -46,8 +47,10 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
         triggerType: 'relation',
         triggerOperator: 'greater_than',
         triggerValue: 50,
+        triggerValueMax: undefined,
         effect: "",
-        hasTriggered: false
+        hasTriggered: false,
+        isOneTime: true,
     });
 
     return (
@@ -61,9 +64,13 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
                 <AccordionContent className="pt-2 space-y-4">
                     {fields.map((field, index) => {
                         const triggerType = watch(`conditions.${index}.triggerType`);
+                        const triggerOperator = watch(`conditions.${index}.triggerOperator`);
 
                         return (
                             <div key={field.id} className="p-4 border rounded-lg space-y-3 bg-muted/30 relative">
+                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive" onClick={() => remove(index)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                                 <FormField
                                     control={control}
                                     name={`conditions.${index}.targetCharacterId`}
@@ -82,7 +89,7 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
                                         </FormItem>
                                     )}
                                 />
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-3 gap-2 items-end">
                                      <FormField
                                         control={control}
                                         name={`conditions.${index}.triggerType`}
@@ -102,8 +109,11 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
                                     />
                                     {triggerType !== 'end' && (
                                         <>
-                                            <FormField control={control} name={`conditions.${index}.triggerOperator`} render={({ field }) => (<FormItem><FormLabel>{lang.operatorLabel}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="greater_than">{lang.greaterThanOperator}</SelectItem><SelectItem value="less_than">{lang.lessThanOperator}</SelectItem></SelectContent></Select></FormItem>)}/>
-                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>{lang.valueLabel}</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                            <FormField control={control} name={`conditions.${index}.triggerOperator`} render={({ field }) => (<FormItem><FormLabel>{lang.operatorLabel}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="greater_than">{lang.greaterThanOperator}</SelectItem><SelectItem value="less_than">{lang.lessThanOperator}</SelectItem><SelectItem value="between">{lang.betweenOperator}</SelectItem></SelectContent></Select></FormItem>)}/>
+                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>{triggerOperator === 'between' ? 'Min' : lang.valueLabel}</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                            {triggerOperator === 'between' && (
+                                                <FormField control={control} name={`conditions.${index}.triggerValueMax`} render={({ field }) => (<FormItem><FormLabel>Max</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                            )}
                                         </>
                                     )}
                                 </div>
@@ -118,9 +128,16 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive" onClick={() => remove(index)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <FormField
+                                    control={control}
+                                    name={`conditions.${index}.isOneTime`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex items-center gap-2 space-y-0">
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                            <FormLabel className="text-xs">{lang.oneTimeTriggerLabel}</FormLabel>
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
                         )
                     })}

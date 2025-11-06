@@ -192,6 +192,7 @@
     "modelIdentifier": "Идентификатор модели",
     "addModel": "Добавить модель",
     "localLlmConfig": "Локальная конфигурация (Ollama)",
+    "localLlmOllamaConfig": "Локальная конфигурация (Ollama)",
     "searching": "Поиск...",
     "localServerErrorTitle": "Ошибка локального сервера",
     "localServerError": "Локальный сервер LLM не отвечает. Пожалуйста, запустите его.",
@@ -281,6 +282,7 @@
     "noGlobalCharactersForChat": "Нет глобально сохраненных персонажей. Сохраняйте персонажей из ваших приключений, чтобы общаться с ними.",
     "createNewAdventureTitle": "Создать новое приключение",
     "createNewAdventureDesc": "Настройте все аспекты вашей новой истории.",
+    "createAndLaunchButton": "Создать и запустить",
     "editStoryTitle": "Редактировать историю",
     "editStoryDesc": "Настройте детали вашего приключения.",
     "assignCharactersTitle": "Назначить персонажей",
@@ -401,5 +403,7 @@
     "valueLabel": "Значение",
     "effectInstructionLabel": "Эффект (инструкция для ИИ)",
     "effectInstructionPlaceholder": "Например, Лира становится более осторожной по отношению к игроку.",
-    "addConditionButton": "Добавить условие"
+    "addConditionButton": "Добавить условие",
+    "betweenOperator": "Между",
+    "oneTimeTriggerLabel": "Одноразовый триггер"
 }
