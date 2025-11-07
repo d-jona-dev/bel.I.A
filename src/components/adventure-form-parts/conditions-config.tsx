@@ -47,7 +47,7 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
         triggerType: 'relation',
         triggerOperator: 'greater_than',
         triggerValue: 50,
-        triggerValueMax: undefined,
+        triggerValueMax: 0, // Default to 0 to make it a controlled component
         effect: "",
         hasTriggered: false,
         isOneTime: true,
@@ -110,9 +110,9 @@ export function ConditionsConfig({ currentLanguage }: ConditionsConfigProps) {
                                     {triggerType !== 'end' && (
                                         <>
                                             <FormField control={control} name={`conditions.${index}.triggerOperator`} render={({ field }) => (<FormItem><FormLabel>{lang.operatorLabel}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="greater_than">{lang.greaterThanOperator}</SelectItem><SelectItem value="less_than">{lang.lessThanOperator}</SelectItem><SelectItem value="between">{lang.betweenOperator}</SelectItem></SelectContent></Select></FormItem>)}/>
-                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>{triggerOperator === 'between' ? 'Min' : lang.valueLabel}</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                            <FormField control={control} name={`conditions.${index}.triggerValue`} render={({ field }) => (<FormItem><FormLabel>{triggerOperator === 'between' ? 'Min' : lang.valueLabel}</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
                                             {triggerOperator === 'between' && (
-                                                <FormField control={control} name={`conditions.${index}.triggerValueMax`} render={({ field }) => (<FormItem><FormLabel>Max</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
+                                                <FormField control={control} name={`conditions.${index}.triggerValueMax`} render={({ field }) => (<FormItem><FormLabel>Max</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl></FormItem>)}/>
                                             )}
                                         </>
                                     )}
