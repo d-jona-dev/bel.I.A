@@ -141,9 +141,11 @@ export function useAIActions({
             }
 
             if (isTriggered) {
-                if (!condition.hasTriggered) {
+                if (!condition.hasTriggered || !condition.isOneTime) {
                     activeEffects.push(condition.effect);
-                    toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
+                    if (!condition.hasTriggered) {
+                        toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
+                    }
                 }
                 condition.hasTriggered = true; 
             } else {
