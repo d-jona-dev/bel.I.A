@@ -59,7 +59,7 @@ const createNewAdventureState = (): SaveData => ({
         rpgMode: true,
         relationsMode: true,
         strategyMode: true,
-        comicModeActive: false,
+        comicModeActive: true,
         playerName: "Héros",
         playerClass: "Aventurier",
         playerLevel: 1,
@@ -744,4 +744,3 @@ export default function HistoiresPage() {
     
 
     
-
