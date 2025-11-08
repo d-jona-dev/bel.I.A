@@ -361,7 +361,7 @@ export default function HistoiresPage() {
         rpgMode: formValues.rpgMode ?? true,
         relationsMode: formValues.relationsMode ?? true,
         strategyMode: formValues.strategyMode ?? true,
-        comicModeActive: formValues.comicModeActive ?? false,
+        comicModeActive: formValues.comicModeActive ?? true,
         mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
     };
 
@@ -410,7 +410,7 @@ export default function HistoiresPage() {
               rpgMode: true,
               relationsMode: true,
               strategyMode: true,
-              comicModeActive: false,
+              comicModeActive: true,
               playerName: 'Héros',
               playerClass: 'Aventurier',
               playerPortraitUrl: null,
@@ -744,3 +744,4 @@ export default function HistoiresPage() {
     
 
     
+

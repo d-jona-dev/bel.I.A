@@ -120,7 +120,7 @@ export default function CreationAssisteePage() {
             rpgMode: formValues.rpgMode ?? true,
             relationsMode: formValues.relationsMode ?? true,
             strategyMode: formValues.strategyMode ?? true,
-            comicModeActive: formValues.comicModeActive ?? false,
+            comicModeActive: formValues.comicModeActive ?? true,
             mapPointsOfInterest: (formValues.mapPointsOfInterest as MapPointOfInterest[] || []).map(poi => ({ ...poi, id: poi.id ?? uid() })),
         };
         newAdventureState.characters = (formValues.characters || []).filter(c => c.name && (c.details || c.isPlaceholder)).map(c => ({...c, id: c.id || uid()} as Character));
