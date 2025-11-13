@@ -139,29 +139,33 @@ export function useAIActions({
                     }
                     break;
             }
-
+            
             if (isTriggered) {
-                if (!condition.hasTriggered || !condition.isOneTime) {
-                    activeEffects.push(condition.effect);
-                    if (!condition.hasTriggered) {
-                        toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
-                    }
+                activeEffects.push(condition.effect);
+                if (!condition.hasTriggered) {
+                    toast({ title: "Événement Déclenché!", description: "Une condition de scénario a été remplie, le monde pourrait réagir...", className: "bg-amber-100 border-amber-300" });
                 }
                 condition.hasTriggered = true; 
             } else {
-                 condition.hasTriggered = false;
+                if (condition.hasTriggered) {
+                    // Si ce n'est pas un déclencheur unique, il doit être réévalué
+                    // et on peut considérer sa désactivation pour le tour si besoin
+                    // mais ici, on ne modifie pas hasTriggered à false, 
+                    // car cela pourrait redéclencher des effets non désirés.
+                    // On ne fait rien pour le moment, ce qui est le comportement correct.
+                }
             }
         });
         
         return { activeEffects, updatedConditions };
     }, [adventureSettings.conditions, adventureSettings.timeManagement, characters, toast]);
 
-    const generateAdventureAction = React.useCallback(async (userActionText: string, isRegeneration = false) => {
+    const generateAdventureAction = React.useCallback(async (userActionText: string, attachedImage: string | null = null, isRegeneration = false) => {
         setIsLoading(true);
         
         if (!isRegeneration) {
             onTurnEnd();
-            const userMessage: Message = { id: `user-${Date.now()}`, type: 'user', content: userActionText, timestamp: Date.now() };
+            const userMessage: Message = { id: `user-${Date.now()}`, type: 'user', content: userActionText, timestamp: Date.now(), imageUrl: attachedImage };
             setNarrativeMessages(prev => [...prev, userMessage]);
         }
 
@@ -207,7 +211,7 @@ export function useAIActions({
             systemPrompt: processedSystemPrompt, // Use the processed prompt
             relationsModeActive: adventureSettings.relationsMode ?? true,
             comicModeActive: adventureSettings.comicModeActive ?? false,
-            playerPortraitUrl: adventureSettings.playerPortraitUrl,
+            playerPortraitUrl: attachedImage || adventureSettings.playerPortraitUrl,
             aiConfig,
             timeManagement: adventureSettings.timeManagement,
             activeConditions: activeEffects,
@@ -290,7 +294,7 @@ export function useAIActions({
             return;
         }
         
-        await generateAdventureAction(lastUserMessage.content, true);
+        await generateAdventureAction(lastUserMessage.content, lastUserMessage.imageUrl, true);
 
     }, [narrativeMessages, isLoading, generateAdventureAction, toast]);
 
