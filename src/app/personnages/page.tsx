@@ -205,7 +205,7 @@ export default function PersonnagesPage() {
         const result = await generateSceneImage({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
         if (result.imageUrl) {
             setEditingCharacter(prev => prev ? { ...prev, portraitUrl: result.imageUrl } : null);
-            toast({ title: lang.portraitGeneratedTitle, description: lang.newPortraitDisplayed });
+            toast({ title: lang.portraitGeneratedTitle, description: lang.portraitGeneratedDesc.replace('{charName}', editingCharacter.name) });
         } else {
             throw new Error(result.error || lang.imageGenerationFailed);
         }

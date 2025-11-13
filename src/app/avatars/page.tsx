@@ -104,14 +104,6 @@ export default function AvatarsPage() {
       const savedCurrentId = localStorage.getItem(CURRENT_AVATAR_ID_KEY);
       if (savedAvatars) {
         setAvatars(JSON.parse(savedAvatars));
-      } else {
-        // Set default avatars if none are saved
-        const defaultAvatars: PlayerAvatar[] = [
-          { id: 'avatar1', name: 'Alexandre le Brave', details: 'Guerrier expérimenté, loyal et juste.', portraitUrl: null, description: "Vient d'une longue lignée de protecteurs.", orientation: "Hétérosexuel" },
-          { id: 'avatar2', name: 'Elara l\'Érudite', details: 'Mage curieuse, spécialisée dans les arcanes.', portraitUrl: null, description: "A quitté sa tour pour découvrir le monde.", orientation: "Bisexuelle" },
-        ];
-        setAvatars(defaultAvatars);
-        localStorage.setItem(AVATARS_STORAGE_KEY, JSON.stringify(defaultAvatars));
       }
       if (savedCurrentId) {
         setCurrentAvatarId(JSON.parse(savedCurrentId));
