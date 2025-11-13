@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription as UICardDescription } from "@/components/ui/card";
 import { AvatarImage, AvatarFallback, Avatar } from "@/components/ui/avatar";
-import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart, Gem, HeartCrack, HeartHandshake } from "lucide-react";
+import { ImageIcon, Send, Loader2, Wand2, Copy, Edit, RefreshCw, User as UserIcon, Bot, Trash2 as Trash2Icon, RotateCcw, Lightbulb, Type as FontIcon, Palette, Expand, Save, Download, PlusCircle, Clapperboard, FileUp, PlusSquare, Library, X, UserPlus, BrainCircuit, CalendarDays, Clock, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Heart, Gem, HeartCrack, HeartHandshake, UploadCloud, Link as LinkIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -60,7 +60,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 interface AdventureDisplayProps {
     playerId: string;
-    generateAdventureAction: (userActionText: string) => Promise<void>;
+    generateAdventureAction: (userActionText: string, attachedImage?: string | null) => Promise<void>;
     generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>;
     suggestQuestHookAction: () => Promise<void>;
     onSummarizeHistory: (narrativeContext: string) => Promise<void>;
@@ -250,6 +250,10 @@ export function AdventureDisplay({
   const [customStyleName, setCustomStyleName] = React.useState("");
   const [customStyles, setCustomStyles] = React.useState<CustomImageStyle[]>([]);
 
+  const [attachedImage, setAttachedImage] = React.useState<string | null>(null);
+  const uploadInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = React.useState(false);
+  const [imageUrlFromUrl, setImageUrlFromUrl] = React.useState("");
 
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -314,16 +318,35 @@ export function AdventureDisplay({
 
   const handleSendFromTextarea = async () => {
     const currentTextAction = userAction.trim();
-    if (!currentTextAction || isLoading) return;
+    if (!currentTextAction && !attachedImage || isLoading) return;
+    
     setUserAction("");
+    setAttachedImage(null); // Clear the image after sending
+    
     try {
-        await generateAdventureAction(currentTextAction);
+        await generateAdventureAction(currentTextAction, attachedImage);
     } catch (error) { 
         console.error("Error in AdventureDisplay trying to generate adventure:", error);
          toast({ title: "Erreur Critique de l'IA", description: "Impossible de générer la suite de l'aventure.", variant: "destructive" });
     }
   };
 
+  const handleImageAttachment = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => setAttachedImage(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+  
+   const handleUrlAttachment = () => {
+    if (imageUrlFromUrl.trim()) {
+      setAttachedImage(imageUrlFromUrl);
+      setIsUrlDialogOpen(false);
+      setImageUrlFromUrl("");
+    }
+  };
 
   const handleRegenerate = async () => {
     if (isLoading) return;
@@ -626,7 +649,7 @@ export function AdventureDisplay({
                           </div>
                       </ScrollArea>
                 </CardContent>
-                <CardFooter className="p-4 border-t flex flex-col items-stretch gap-2">
+                <CardFooter className="p-2 border-t flex flex-col items-stretch gap-2">
                     <div className="flex gap-2">
                          <TooltipProvider>
                              <Tooltip>
@@ -680,20 +703,75 @@ export function AdventureDisplay({
                                 <TooltipContent>Suggérer un objectif ou une quête</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
+                         <div className="flex-1 relative">
+                            <Textarea
+                                placeholder={lang.userActionPlaceholder}
+                                value={userAction}
+                                onChange={(e) => setUserAction(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                rows={1}
+                                className="min-h-[40px] max-h-[150px] resize-y pr-24"
+                                disabled={isLoading}
+                            />
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                               <input
+                                  type="file"
+                                  ref={uploadInputRef}
+                                  className="hidden"
+                                  accept="image/*"
+                                  onChange={handleImageAttachment}
+                                />
+                               <TooltipProvider>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button
+                                       size="icon"
+                                       variant="ghost"
+                                       onClick={() => uploadInputRef.current?.click()}
+                                       className="h-7 w-7"
+                                     >
+                                       <UploadCloud className="h-4 w-4" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent side="top">Téléverser une image</TooltipContent>
+                                 </Tooltip>
+                               </TooltipProvider>
 
-                        <Textarea
-                            placeholder={lang.userActionPlaceholder}
-                            value={userAction}
-                            onChange={(e) => setUserAction(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            rows={1}
-                            className="min-h-[40px] max-h-[150px] resize-y flex-1"
-                            disabled={isLoading}
-                        />
+                                <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <DialogTrigger asChild>
+                                           <Button size="icon" variant="ghost" className="h-7 w-7">
+                                            <LinkIcon className="h-4 w-4" />
+                                          </Button>
+                                        </DialogTrigger>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">Attacher une image depuis une URL</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                   <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Attacher une image depuis une URL</DialogTitle>
+                                      </DialogHeader>
+                                      <Input
+                                        value={imageUrlFromUrl}
+                                        onChange={(e) => setImageUrlFromUrl(e.target.value)}
+                                        placeholder="https://example.com/image.png"
+                                      />
+                                      <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsUrlDialogOpen(false)}>Annuler</Button>
+                                        <Button onClick={handleUrlAttachment}>Attacher</Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </div>
+
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || !userAction.trim()}>
+                                    <Button type="button" size="icon" onClick={handleSendFromTextarea} disabled={isLoading || (!userAction.trim() && !attachedImage)}>
                                         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
@@ -701,6 +779,17 @@ export function AdventureDisplay({
                             </Tooltip>
                         </TooltipProvider>
                     </div>
+                     {attachedImage && (
+                        <div className="p-2 border rounded-md flex items-center gap-2 bg-muted/50">
+                            <div className="relative w-12 h-12 rounded-md overflow-hidden">
+                                <Image src={attachedImage} alt="Aperçu de l'image attachée" layout="fill" objectFit="cover" />
+                            </div>
+                            <p className="text-xs text-muted-foreground flex-1 truncate">Image attachée à la prochaine action.</p>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAttachedImage(null)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </CardFooter>
             </Card>
 
