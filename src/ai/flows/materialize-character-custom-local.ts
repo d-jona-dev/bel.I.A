@@ -21,6 +21,8 @@ CRITICAL RULES:
 The JSON schema you must adhere to is:
 ${JSON.stringify(NewCharacterSchema.shape, null, 2)}
 
+VERY IMPORTANT: The 'details' and 'biographyNotes' fields MUST be simple strings, NOT JSON objects. For example: "details": "A grumpy old man".
+
 Generate the character sheet in the language '${input.currentLanguage}'.`;
 
     const userPrompt = `Here is the narrative context where a character might be mentioned:\n\n"${input.narrativeContext}"`;
