@@ -733,7 +733,7 @@ export function AdventureDisplay({
                                        <UploadCloud className="h-4 w-4" />
                                      </Button>
                                    </TooltipTrigger>
-                                   <TooltipContent side="top">Téléverser une image</TooltipContent>
+                                   <TooltipContent side="top">Téléverser une image (expérimental)</TooltipContent>
                                  </Tooltip>
                                </TooltipProvider>
 
@@ -747,7 +747,7 @@ export function AdventureDisplay({
                                           </Button>
                                         </DialogTrigger>
                                       </TooltipTrigger>
-                                      <TooltipContent side="top">Attacher une image depuis une URL</TooltipContent>
+                                      <TooltipContent side="top">Attacher une image depuis une URL (expérimental)</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                    <DialogContent>
