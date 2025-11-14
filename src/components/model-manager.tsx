@@ -159,14 +159,19 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     if (event.target) event.target.value = ''; // Reset input
   };
   
-    const handleGeminiConfigChange = (field: 'apiKey', value: string) => {
-        onConfigChange({
-            ...config,
-            llm: { ...config.llm, gemini: { ...(config.llm.gemini || { apiKey: '' }), [field]: value } },
-            image: { ...config.image, gemini: { ...(config.image.gemini || { apiKey: '' }), [field]: value } },
-        });
-    };
+  const handleLlmGeminiConfigChange = (field: 'apiKey', value: string) => {
+      onConfigChange({
+          ...config,
+          llm: { ...config.llm, source: 'gemini', gemini: { ...(config.llm.gemini || {}), [field]: value } },
+      });
+  };
 
+  const handleImageGeminiConfigChange = (field: 'apiKey', value: string) => {
+      onConfigChange({
+          ...config,
+          image: { ...config.image, source: 'gemini', gemini: { ...(config.image.gemini || {}), [field]: value } },
+      });
+  };
 
   const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['llm']['openRouter']>, value: string | boolean) => {
     onConfigChange({
@@ -410,7 +415,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                         type="password"
                         placeholder="Clé API Gemini"
                         value={config.llm.gemini?.apiKey || ''}
-                        onChange={(e) => handleGeminiConfigChange('apiKey', e.target.value)}
+                        onChange={(e) => handleLlmGeminiConfigChange('apiKey', e.target.value)}
                     />
                 </div>
             )}
@@ -561,6 +566,18 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                     </SelectContent>
                 </Select>
             </div>
+
+            {config.image.source === 'gemini' && (
+                <div className="space-y-3 p-3 border bg-background rounded-md">
+                    <Label>Configuration Gemini (Image)</Label>
+                    <Input
+                        type="password"
+                        placeholder="Clé API Gemini"
+                        value={config.image.gemini?.apiKey || ''}
+                        onChange={(e) => handleImageGeminiConfigChange('apiKey', e.target.value)}
+                    />
+                </div>
+            )}
             
             {config.image.source === 'openrouter' && (
                 <div className="space-y-3 p-3 border bg-background rounded-md">
