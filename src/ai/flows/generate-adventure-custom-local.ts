@@ -65,8 +65,28 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
     try {
         const messages = buildPrompt(input);
         
-        // Ensure the URL ends with the correct endpoint for OpenAI-compatible APIs
-        const apiUrl = new URL(customConfig.apiUrl.endsWith('/v1') ? `${customConfig.apiUrl}/chat/completions` : customConfig.apiUrl.endsWith('/v1/') ? `${customConfig.apiUrl}chat/completions` : customConfig.apiUrl.replace(/\/$/, '') + '/chat/completions').toString();
+        // Construction d'URL simplifiée
+        let apiUrl = customConfig.apiUrl.trim();
+        
+        if (!apiUrl.includes('/chat/completions')) {
+            apiUrl = apiUrl.replace(/\/+$/, '');
+            
+            if (!apiUrl.endsWith('/v1')) {
+                apiUrl += '/v1';
+            }
+            apiUrl += '/chat/completions';
+        }
+
+        // CORRECTION : Supprime response_format ou utilise "text"
+        const requestBody: any = {
+            model: customConfig.model || 'default',
+            messages: messages,
+            temperature: 0.7,
+            stream: false,
+        };
+
+        // Option 2 : Utilise "text" au lieu de "json_object"
+        requestBody.response_format = { type: "text" };
 
         const response = await fetch(apiUrl, {
             method: "POST",
@@ -74,13 +94,7 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
                 "Content-Type": "application/json",
                 ...(customConfig.apiKey && { "Authorization": `Bearer ${customConfig.apiKey}` })
             },
-            body: JSON.stringify({
-                model: customConfig.model || 'default',
-                messages: messages,
-                response_format: { type: "json_object" },
-                temperature: 0.7,
-                stream: false,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -95,18 +109,28 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
             return { error: "La réponse de l'API locale ne contenait pas de contenu valide.", narrative: "" };
         }
 
-        const parsedJson = JSON.parse(content);
-        const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
+        // Essaye de parser le JSON même si c'est du "text"
+        try {
+            const parsedJson = JSON.parse(content);
+            const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
 
-        if (!validationResult.success) {
-            console.error("Zod validation failed (Custom Local):", validationResult.error.errors);
+            if (!validationResult.success) {
+                console.error("Zod validation failed (Custom Local):", validationResult.error.errors);
+                return {
+                    error: `La réponse de l'IA ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}`,
+                    narrative: parsedJson.narrative || ""
+                };
+            }
+                
+            return { ...validationResult.data, error: undefined };
+        } catch (parseError) {
+            // Si le parsing échoue, traite le contenu comme du texte brut
+            console.error("JSON parsing failed, treating as plain text:", parseError);
             return {
-                error: `La réponse de l'IA ne respecte pas le format attendu. Erreurs: ${validationResult.error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}`,
-                narrative: parsedJson.narrative || "" // Try to return narrative even if other fields fail
+                narrative: content,
+                error: "L'IA a retourné du texte brut au lieu du JSON attendu."
             };
         }
-            
-        return { ...validationResult.data, error: undefined };
 
     } catch (error) {
         console.error("Error calling Custom Local LLM Server:", error);
