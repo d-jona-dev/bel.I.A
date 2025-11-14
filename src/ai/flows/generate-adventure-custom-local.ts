@@ -65,7 +65,6 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
     try {
         const messages = buildPrompt(input);
         
-        // Construction d'URL simplifiée
         let apiUrl = customConfig.apiUrl.trim();
         
         if (!apiUrl.includes('/chat/completions')) {
@@ -77,16 +76,12 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
             apiUrl += '/chat/completions';
         }
 
-        // CORRECTION : Supprime response_format ou utilise "text"
         const requestBody: any = {
             model: customConfig.model || 'default',
             messages: messages,
             temperature: 0.7,
             stream: false,
         };
-
-        // Option 2 : Utilise "text" au lieu de "json_object"
-        requestBody.response_format = { type: "text" };
 
         const response = await fetch(apiUrl, {
             method: "POST",
@@ -103,13 +98,15 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
         }
 
         const rawApiResponse = await response.json();
-        const content = rawApiResponse.choices?.[0]?.message?.content;
+        let content = rawApiResponse.choices?.[0]?.message?.content;
         
         if (!content) {
             return { error: "La réponse de l'API locale ne contenait pas de contenu valide.", narrative: "" };
         }
 
-        // Essaye de parser le JSON même si c'est du "text"
+        // Clean potential markdown code blocks before parsing
+        content = content.replace(/^```json\n?/, '').replace(/```$/, '');
+
         try {
             const parsedJson = JSON.parse(content);
             const validationResult = GenerateAdventureOutputSchema.safeParse(parsedJson);
@@ -124,7 +121,6 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
                 
             return { ...validationResult.data, error: undefined };
         } catch (parseError) {
-            // Si le parsing échoue, traite le contenu comme du texte brut
             console.error("JSON parsing failed, treating as plain text:", parseError);
             return {
                 narrative: content,
