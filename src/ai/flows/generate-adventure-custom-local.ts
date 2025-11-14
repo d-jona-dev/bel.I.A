@@ -65,7 +65,10 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
     try {
         const messages = buildPrompt(input);
         
-        const response = await fetch(customConfig.apiUrl, {
+        // Ensure the URL ends with the correct endpoint for OpenAI-compatible APIs
+        const apiUrl = new URL(customConfig.apiUrl.endsWith('/v1') ? `${customConfig.apiUrl}/chat/completions` : customConfig.apiUrl.endsWith('/v1/') ? `${customConfig.apiUrl}chat/completions` : customConfig.apiUrl.replace(/\/$/, '') + '/chat/completions').toString();
+
+        const response = await fetch(apiUrl, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
