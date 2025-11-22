@@ -86,7 +86,7 @@ interface CharacterSidebarProps {
 }
 
 const RelationsEditableCard = ({ charId, data, characters, playerId, playerName, currentLanguage, onUpdate, onRemove, disabled = false }: { charId: string, data?: Record<string, string>, characters: Character[], playerId: string, playerName: string, currentLanguage: string, onUpdate: (charId: string, field: 'relations', key: string, value: string | number | boolean) => void, onRemove: (charId: string, field: 'relations', key: string) => void, disabled?: boolean }) => {
-  const lang = i18n[currentLanguage as Language] || i18n.fr;
+  const lang = i18n[currentLanguage as Language] || i18n.en;
 
   return (
       <div className="space-y-2">
@@ -134,7 +134,7 @@ const RelationsEditableCard = ({ charId, data, characters, playerId, playerName,
 };
 
 const ArrayEditableCard = ({ charId, field, title, icon: Icon, data, addLabel, onUpdate, onRemove, onAdd, currentLanguage, disabled = false, addDialog }: { charId: string, field: 'spells' | 'memory', title: string, icon: React.ElementType, data?: string[], addLabel: string, onUpdate: (charId: string, field: 'spells' | 'memory', index: number, value: string) => void, onRemove: (charId: string, field: 'spells' | 'memory', index: number) => void, onAdd: (charId: string, field: 'spells' | 'memory') => void, currentLanguage: string, disabled?: boolean, addDialog?: React.ReactNode }) => {
-    const lang = i18n[currentLanguage as Language] || i18n.fr;
+    const lang = i18n[currentLanguage as Language] || i18n.en;
 
     const handleAddItem = () => {
         onAdd(charId, field);
@@ -195,7 +195,7 @@ export function CharacterSidebar({
   const [isClient, setIsClient] = React.useState(false);
   const [globalCharactersList, setGlobalCharactersList] = React.useState<Character[]>([]);
   const { toast } = useToast();
-  const lang = i18n[currentLanguage as Language] || i18n.fr;
+  const lang = i18n[currentLanguage as Language] || i18n.en;
 
   const loadGlobalChars = React.useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -377,20 +377,32 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const { toast } = useToast();
     const lang = i18n[currentLanguage as Language] || i18n.fr;
     
-    const [localChar, setLocalChar] = React.useState(char);
     const [describingAppearance, setDescribingAppearance] = React.useState(false);
-
+    
+    // START of the targeted fix
+    const [localClothingDescription, setLocalClothingDescription] = React.useState(char.clothingDescription || '');
+    
     React.useEffect(() => {
-        if (char.id !== localChar.id || JSON.stringify(char) !== JSON.stringify(localChar)) {
-            setLocalChar(char);
-        }
-    }, [char, localChar]);
+        setLocalClothingDescription(char.clothingDescription || '');
+    }, [char.clothingDescription]);
 
-    const handleLocalFieldChange = (field: keyof Character, value: any) => {
-        const updated = { ...localChar, [field]: value };
-        setLocalChar(updated);
-        onCharacterUpdate(updated);
+    const handleFieldChange = (field: keyof Character, value: any) => {
+        onCharacterUpdate({ ...char, [field]: value });
     };
+
+    const handleClothingDescriptionChange = (value: string) => {
+        setLocalClothingDescription(value);
+        handleFieldChange('clothingDescription', value);
+    };
+
+    const handleLoadFromWardrobe = (itemDescription: string) => {
+        handleClothingDescriptionChange(itemDescription);
+        toast({
+            title: lang.clothingAppliedTitle,
+            description: `La description des vêtements de ${char.name} a été mise à jour.`
+        });
+    };
+    // END of the targeted fix
 
     const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
         const character = allCharacters.find(c => c.id === charId);
@@ -426,7 +438,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 if (savedStyles) setCustomStyles(JSON.parse(savedStyles));
 
                 const savedWardrobe = localStorage.getItem("wardrobe_items_v1");
-                if (savedWardrobe) setWardrobe(JSON.parse(savedWardrobe));
+                if (savedWardrobe) {
+                    setWardrobe(JSON.parse(savedWardrobe));
+                }
                 
             } catch (error) {
                 console.error("Failed to load data:", error);
@@ -438,15 +452,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     }, []);
     
     const handleDescribeAppearance = async () => {
-        if (!localChar.portraitUrl || describingAppearance) return;
+        if (!char.portraitUrl || describingAppearance) return;
 
         setDescribingAppearance(true);
-        toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', localChar.name)});
+        toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', char.name)});
 
         try {
-            const result = await describeAppearance({ portraitUrl: localChar.portraitUrl });
-            handleLocalFieldChange('appearanceDescription', result.description);
-            toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', localChar.name) });
+            const result = await describeAppearance({ portraitUrl: char.portraitUrl });
+            handleFieldChange('appearanceDescription', result.description);
+            toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', char.name) });
         } catch (error) {
             console.error("Error describing appearance:", error);
             toast({ title: lang.visionErrorTitle, description: `${lang.describeAppearanceError} ${error instanceof Error ? error.message : ""}`, variant: "destructive" });
@@ -456,30 +470,30 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     };
     
     const handleGeneratePortrait = async () => {
-        if (imageLoadingStates[localChar.id]) return;
-        setImageLoadingStates(prev => ({ ...prev, [localChar.id]: true }));
+        if (imageLoadingStates[char.id]) return;
+        setImageLoadingStates(prev => ({ ...prev, [char.id]: true }));
 
         try {
-          const prompt = `portrait of ${localChar.name}, ${localChar.characterClass}. Description: ${localChar.details}.`;
+          const prompt = `portrait of ${char.name}, ${char.characterClass}. Description: ${char.details}.`;
           const result = await generateImageAction({ sceneDescription: { action: prompt, charactersInScene: [] }, style: imageStyle });
           if(result.imageUrl){
-            handleLocalFieldChange('portraitUrl', result.imageUrl);
+            handleFieldChange('portraitUrl', result.imageUrl);
             toast({
               title: lang.portraitGeneratedTitle,
-              description: lang.portraitGeneratedDesc.replace('{charName}', localChar.name),
+              description: lang.portraitGeneratedDesc.replace('{charName}', char.name),
             });
           } else {
             throw new Error(result.error || lang.imageGenerationFailed);
           }
         } catch (error) {
-          console.error(`Error generating portrait for ${localChar.name}:`, error);
+          console.error(`Error generating portrait for ${char.name}:`, error);
           toast({
             title: lang.generationErrorTitle,
-            description: `${lang.portraitGenerationError.replace('{charName}', localChar.name)}`,
+            description: `${lang.portraitGenerationError.replace('{charName}', char.name)}`,
             variant: "destructive",
           });
         } finally {
-          setImageLoadingStates(prev => ({ ...prev, [localChar.id]: false }));
+          setImageLoadingStates(prev => ({ ...prev, [char.id]: false }));
         }
       };
 
@@ -488,25 +502,17 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         if (!file) return;
         const reader = new FileReader();
         reader.onloadend = () => {
-            handleLocalFieldChange('portraitUrl', reader.result as string);
-            toast({ title: lang.portraitUploadedTitle, description: lang.portraitUploadedDesc.replace('{charName}', localChar.name) });
+            handleFieldChange('portraitUrl', reader.result as string);
+            toast({ title: lang.portraitUploadedTitle, description: lang.portraitUploadedDesc.replace('{charName}', char.name) });
         };
         reader.readAsDataURL(file);
         if(event.target) event.target.value = '';
     };
 
     const handleSaveUrl = () => {
-        handleLocalFieldChange('portraitUrl', portraitUrl);
+        handleFieldChange('portraitUrl', portraitUrl);
         setIsUrlDialogOpen(false);
         toast({ title: lang.portraitUpdatedTitle, description: lang.portraitUrlSaved });
-    };
-
-    const handleLoadFromWardrobe = (itemId: string) => {
-        const item = wardrobe.find(w => w.id === itemId);
-        if (item) {
-            handleLocalFieldChange('clothingDescription', item.description);
-            toast({ title: lang.clothingAppliedTitle, description: lang.clothingDescLoaded.replace('{itemName}', item.name) });
-        }
     };
 
     const getAffinityLabel = (affinity?: number): string => {
@@ -519,8 +525,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         return lang.affinityDevoted;
     };
 
-    const isGloballySaved = isClient && localChar._lastSaved;
-    const currentAffinity = localChar.affinity ?? 50;
+    const isGloballySaved = isClient && char._lastSaved;
+    const currentAffinity = char.affinity ?? 50;
     
     const isValidUrl = (url: string | null | undefined): url is string => {
         if (!url) return false;
@@ -528,21 +534,21 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     };
 
     return (
-        <AccordionItem value={localChar.id}>
+        <AccordionItem value={char.id}>
             <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-8 w-8 flex-shrink-0">
-                        {imageLoadingStates[localChar.id] ? (
+                        {imageLoadingStates[char.id] ? (
                             <AvatarFallback><Loader2 className="h-4 w-4 animate-spin"/></AvatarFallback>
-                        ) : isValidUrl(localChar.portraitUrl) ? (
-                            <AvatarImage src={localChar.portraitUrl} alt={localChar.name} />
+                        ) : isValidUrl(char.portraitUrl) ? (
+                            <AvatarImage src={char.portraitUrl} alt={char.name} />
                         ) : (
-                                <AvatarFallback>{localChar.isPlaceholder ? <UserCog/> : localChar.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                <AvatarFallback>{char.isPlaceholder ? <UserCog/> : char.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         )}
                     </Avatar>
-                    <span className="font-medium truncate">{localChar.isPlaceholder ? (localChar.roleInStory || `${lang.emptyPlaceholderLabel} ${characterIndex + 1}`) : localChar.name}</span>
-                        {localChar.isPlaceholder && (<span className="text-xs text-muted-foreground italic">({lang.placeholderLabelShort})</span>)}
-                    {isGloballySaved && !localChar.isPlaceholder && (
+                    <span className="font-medium truncate">{char.isPlaceholder ? (char.roleInStory || `${lang.emptyPlaceholderLabel} ${characterIndex + 1}`) : char.name}</span>
+                        {char.isPlaceholder && (<span className="text-xs text-muted-foreground italic">({lang.placeholderLabelShort})</span>)}
+                    {isGloballySaved && !char.isPlaceholder && (
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -555,10 +561,10 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                 </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 space-y-4 bg-background">
-                {localChar.isPlaceholder ? (
+                {char.isPlaceholder ? (
                      <Textarea
-                        value={localChar.roleInStory || ''}
-                        onChange={(e) => handleLocalFieldChange('roleInStory', e.target.value)}
+                        value={char.roleInStory || ''}
+                        onChange={(e) => handleFieldChange('roleInStory', e.target.value)}
                         placeholder={lang.placeholderRolePlaceholder}
                     />
                 ) : (
@@ -567,7 +573,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(localChar)}>
+                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => onSaveOrUpdateCharacter(char)}>
                                         {isGloballySaved ? <RefreshCcw className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
                                         {isGloballySaved ? lang.updateButton : lang.saveButton}
                                     </Button>
@@ -581,10 +587,10 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
                     <div className="flex items-start gap-4">
                             <div className="w-24 h-24 relative rounded-md overflow-hidden border bg-muted flex items-center justify-center flex-shrink-0">
-                                {imageLoadingStates[localChar.id] ? (
+                                {imageLoadingStates[char.id] ? (
                                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
-                                ) : isValidUrl(localChar.portraitUrl) ? (
-                                    <Image src={localChar.portraitUrl} alt={`${localChar.name} portrait`} layout="fill" objectFit="cover" />
+                                ) : isValidUrl(char.portraitUrl) ? (
+                                    <Image src={char.portraitUrl} alt={`${char.name} portrait`} layout="fill" objectFit="cover" />
                                 ) : (
                                     <User className="h-10 w-10 text-muted-foreground"/>
                                 )}
@@ -616,7 +622,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[localChar.id]}><Wand2 className="h-4 w-4"/></Button>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleGeneratePortrait} disabled={imageLoadingStates[char.id]}><Wand2 className="h-4 w-4"/></Button>
                                         </TooltipTrigger>
                                         <TooltipContent><p>{lang.generateAIPortraitTooltip}</p></TooltipContent>
                                     </Tooltip>
@@ -624,14 +630,14 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    id={`upload-portrait-${localChar.id}`}
+                                    id={`upload-portrait-${char.id}`}
                                     className="hidden"
-                                    onChange={(e) => handleUploadPortrait(localChar.id, e)}
+                                    onChange={(e) => handleUploadPortrait(char.id, e)}
                                 />
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${localChar.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => document.getElementById(`upload-portrait-${char.id}`)?.click()}><UploadCloud className="h-4 w-4"/></Button>
                                         </TooltipTrigger>
                                         <TooltipContent><p>{lang.uploadCustomPortraitTooltip}</p></TooltipContent>
                                     </Tooltip>
@@ -640,11 +646,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <DialogTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="h-8 w-8">
-                                                        <LinkIcon className="h-4 w-4"/>
-                                                    </Button>
-                                                </DialogTrigger>
+                                                <Button variant="outline" size="icon" className="h-8 w-8">
+                                                    <LinkIcon className="h-4 w-4"/>
+                                                </Button>
                                             </TooltipTrigger>
                                             <TooltipContent><p>{lang.setPortraitFromURLTooltip}</p></TooltipContent>
                                         </Tooltip>
@@ -653,7 +657,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                         <DialogHeader>
                                             <DialogTitle>{lang.setPortraitFromURLDialogTitle}</DialogTitle>
                                             <DialogDescription>
-                                                {lang.setPortraitFromURLDialogDesc.replace('{charName}', localChar.name)}
+                                                {lang.setPortraitFromURLDialogDesc.replace('{charName}', char.name)}
                                             </DialogDescription>
                                         </DialogHeader>
                                         <div className="py-4">
@@ -677,11 +681,59 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 
                         <Separator />
 
-                        <div className="space-y-2">
+                        <div className="space-y-1">
+                            <Label htmlFor={`${char.id}-clothingDescription`} className="flex items-center gap-2">
+                                <Shirt className="h-4 w-4" /> {lang.clothingDescriptionLabel}
+                            </Label>
+                             <div className="flex items-center gap-2">
+                                <Textarea
+                                    id={`${char.id}-clothingDescription`}
+                                    value={localClothingDescription}
+                                    onChange={(e) => handleClothingDescriptionChange(e.target.value)}
+                                    placeholder={lang.clothingDescriptionPlaceholder}
+                                    rows={3}
+                                    className="text-sm bg-background border flex-1"
+                                />
+                                <DropdownMenu>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="flex-shrink-0"><Library className="h-4 w-4"/></Button>
+                                                </DropdownMenuTrigger>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>{lang.loadFromWardrobeTooltip}</p></TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <DropdownMenuContent>
+                                        {wardrobe.length > 0 ? (
+                                            wardrobe.map(item => (
+                                                <DropdownMenuItem key={item.id} onSelect={() => handleLoadFromWardrobe(item.description)}>
+                                                    <div className="flex items-center gap-2">
+                                                        {item.imageUrl && (
+                                                            <img 
+                                                                src={item.imageUrl} 
+                                                                alt={item.name}
+                                                                className="w-6 h-6 object-cover rounded"
+                                                            />
+                                                        )}
+                                                        <span>{item.name}</span>
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            ))
+                                        ) : (
+                                            <DropdownMenuItem disabled>{lang.wardrobeEmpty}</DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
+                        
+                         <div className="space-y-2">
                             <Label className="flex items-center gap-2"><Eye className="h-4 w-4" /> {lang.appearanceDescriptionLabel}</Label>
                              <Textarea
-                                value={localChar.appearanceDescription || ''}
-                                onChange={(e) => handleLocalFieldChange('appearanceDescription', e.target.value)}
+                                value={char.appearanceDescription || ''}
+                                onChange={(e) => handleFieldChange('appearanceDescription', e.target.value)}
                                 placeholder={lang.appearanceDescriptionPlaceholder}
                                 rows={4}
                                 className="text-sm bg-background border"
@@ -694,7 +746,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                             variant="outline"
                                             size="icon"
                                             onClick={handleDescribeAppearance}
-                                            disabled={!isValidUrl(localChar.portraitUrl) || describingAppearance || !visionConsentChecked}
+                                            disabled={!isValidUrl(char.portraitUrl) || describingAppearance || !visionConsentChecked}
                                         >
                                             {describingAppearance ? <Loader2 className="h-4 w-4 animate-spin"/> : <Eye className="h-4 w-4" />}
                                         </Button>
@@ -705,11 +757,11 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     </Tooltip>
                                 </TooltipProvider>
                                 <div className="flex items-center space-x-2">
-                                    <Checkbox id={`vision-consent-${localChar.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
+                                    <Checkbox id={`vision-consent-${char.id}`} checked={visionConsentChecked} onCheckedChange={(checked) => setVisionConsentChecked(!!checked)} />
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Label htmlFor={`vision-consent-${localChar.id}`} className="cursor-pointer">
+                                                <Label htmlFor={`vision-consent-${char.id}`} className="cursor-pointer">
                                                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                                                 </Label>
                                             </TooltipTrigger>
@@ -721,64 +773,36 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                 </div>
                             </div>
                         </div>
-                        
-                         <div className="space-y-2">
-                            <Label className="flex items-center gap-2"><Shirt className="h-4 w-4" /> {lang.clothingDescriptionLabel}</Label>
-                            <div className="flex items-center gap-2">
-                                 <Textarea
-                                    value={localChar.clothingDescription || ''}
-                                    onChange={(e) => handleLocalFieldChange('clothingDescription', e.target.value)}
-                                    placeholder={lang.clothingDescriptionPlaceholder}
-                                    rows={3}
-                                    className="text-sm bg-background border flex-1"
-                                />
-                                <DropdownMenu>
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" size="icon" className="flex-shrink-0"><Library className="h-4 w-4"/></Button>
-                                                </DropdownMenuTrigger>
-                                            </TooltipTrigger>
-                                            <TooltipContent><p>{lang.loadFromWardrobeTooltip}</p></TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <DropdownMenuContent>
-                                        {wardrobe.length > 0 ? (
-                                            wardrobe.map(item => (
-                                                <DropdownMenuItem key={item.id} onSelect={() => handleLoadFromWardrobe(item.id)}>
-                                                    {item.name}
-                                                </DropdownMenuItem>
-                                            ))
-                                        ) : (
-                                            <DropdownMenuItem disabled>{lang.wardrobeEmpty}</DropdownMenuItem>
-                                        )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
 
                         <Separator />
                         <Label className="block mb-2 mt-4 text-sm font-medium">{lang.narrativeFieldsLabel}:</Label>
-                        <div className="space-y-1">
-                            <Label>{lang.nameLabel}</Label>
-                            <Input value={localChar.name} onChange={(e) => handleLocalFieldChange('name', e.target.value)} className="h-8 text-sm bg-background border"/>
-                        </div>
-                        <div className="space-y-1">
-                            <Label>{lang.publicDescriptionLabel}</Label>
-                            <Textarea value={localChar.details} onChange={(e) => handleLocalFieldChange('details', e.target.value)} rows={4} className="text-sm bg-background border"/>
-                        </div>
-                         <div className="space-y-1">
-                            <Label>{lang.biographyLabel}</Label>
-                            <Textarea value={localChar.biographyNotes || ''} onChange={(e) => handleLocalFieldChange('biographyNotes', e.target.value)} placeholder={lang.biographyPlaceholder} rows={5} className="text-sm bg-background border"/>
-                        </div>
+                        
+                         <Textarea 
+                            value={char.name} 
+                            onChange={(e) => handleFieldChange('name', e.target.value)} 
+                            placeholder={lang.npcNamePlaceholder} 
+                         />
+                        
+                         <Textarea 
+                            value={char.details} 
+                            onChange={(e) => handleFieldChange('details', e.target.value)} 
+                            placeholder={lang.npcDetailsPlaceholder} 
+                            rows={4}
+                        />
+
+                         <Textarea 
+                            value={char.biographyNotes || ''} 
+                            onChange={(e) => handleFieldChange('biographyNotes', e.target.value)} 
+                            placeholder={lang.biographyPlaceholder} 
+                            rows={5}
+                        />
                         
                         <div className="space-y-2">
-                            <Label htmlFor={`${localChar.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
+                            <Label htmlFor={`${char.id}-memory`} className="flex items-center gap-1"><MemoryStick className="h-4 w-4"/> {memoryLabel}</Label>
                             <Textarea
-                                id={`${localChar.id}-memory`}
-                                value={localChar.memory || ''}
-                                onChange={(e) => handleLocalFieldChange('memory', e.target.value)}
+                                id={`${char.id}-memory`}
+                                value={char.memory || ''}
+                                onChange={(e) => handleFieldChange('memory', e.target.value)}
                                 placeholder={lang.memoryPlaceholder}
                                 rows={5}
                                 className="text-sm bg-background border"
@@ -788,15 +812,15 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                         {relationsMode && (
                              <>
                                 <div className="space-y-2">
-                                    <Label htmlFor={`${localChar.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {lang.affinityLabel.replace('{playerName}', playerName)}</Label>
+                                    <Label htmlFor={`${char.id}-affinity`} className="flex items-center gap-1"><Heart className="h-4 w-4"/> {lang.affinityLabel.replace('{playerName}', playerName)}</Label>
                                     <div className="flex items-center gap-2">
                                         <Input
-                                            id={`${localChar.id}-affinity`}
+                                            id={`${char.id}-affinity`}
                                             type="number"
                                             min="0"
                                             max="100"
                                             value={currentAffinity}
-                                            onChange={(e) => handleLocalFieldChange('affinity', parseInt(e.target.value,10))}
+                                            onChange={(e) => handleFieldChange('affinity', e.target.value)}
                                             className="h-8 text-sm w-20 flex-none bg-background border"
                                         />
                                         <Progress value={currentAffinity} className="flex-1 h-2" />
@@ -804,8 +828,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                                     </div>
                                 </div>
                                  <RelationsEditableCard
-                                    charId={localChar.id}
-                                    data={localChar.relations}
+                                    charId={char.id}
+                                    data={char.relations}
                                     characters={allCharacters}
                                     playerId={playerId}
                                     playerName={playerName}
@@ -821,3 +845,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         </AccordionItem>
     );
 });
+
+CharacterAccordionItem.displayName = 'CharacterAccordionItem';
+
+
