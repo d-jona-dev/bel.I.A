@@ -22,21 +22,21 @@ import { i18n, type Language } from "@/lib/i18n";
 
 const bubbleStyles = {
   // Speech
-  'parole-s': { label: 'Parole (S)', border: '2px solid black', lineDash: [], w: 200, h: 80, fontSize: 28 },
-  'parole-m': { label: 'Parole (M)', border: '2px solid black', lineDash: [], w: 300, h: 120, fontSize: 32 },
-  'parole-l': { label: 'Parole (L)', border: '2px solid black', lineDash: [], w: 450, h: 150, fontSize: 34 },
+  'parole-s': { langKey: 'bubbleStyleParoleS', border: '2px solid black', lineDash: [], w: 200, h: 80, fontSize: 28 },
+  'parole-m': { langKey: 'bubbleStyleParoleM', border: '2px solid black', lineDash: [], w: 300, h: 120, fontSize: 32 },
+  'parole-l': { langKey: 'bubbleStyleParoleL', border: '2px solid black', lineDash: [], w: 450, h: 150, fontSize: 34 },
   // Thought
-  'pensée-s': { label: 'Pensée (S)', border: '2px dashed gray', lineDash: [6, 3], w: 180, h: 70, fontSize: 26 },
-  'pensée-m': { label: 'Pensée (M)', border: '2px dashed gray', lineDash: [6, 3], w: 280, h: 100, fontSize: 30 },
-  'pensée-l': { label: 'Pensée (L)', border: '2px dashed gray', lineDash: [6, 3], w: 400, h: 130, fontSize: 32 },
+  'pensée-s': { langKey: 'bubbleStylePenseeS', border: '2px dashed gray', lineDash: [6, 3], w: 180, h: 70, fontSize: 26 },
+  'pensée-m': { langKey: 'bubbleStylePenseeM', border: '2px dashed gray', lineDash: [6, 3], w: 280, h: 100, fontSize: 30 },
+  'pensée-l': { langKey: 'bubbleStylePenseeL', border: '2px dashed gray', lineDash: [6, 3], w: 400, h: 130, fontSize: 32 },
   // Shout
-  'cri-s': { label: 'Cri (S)', border: '3px solid red', lineDash: [], w: 220, h: 90, fontSize: 32 },
-  'cri-m': { label: 'Cri (M)', border: '3px solid red', lineDash: [], w: 320, h: 130, fontSize: 36 },
-  'cri-l': { label: 'Cri (L)', border: '3px solid red', lineDash: [], w: 480, h: 160, fontSize: 40 },
+  'cri-s': { langKey: 'bubbleStyleCriS', border: '3px solid red', lineDash: [], w: 220, h: 90, fontSize: 32 },
+  'cri-m': { langKey: 'bubbleStyleCriM', border: '3px solid red', lineDash: [], w: 320, h: 130, fontSize: 36 },
+  'cri-l': { langKey: 'bubbleStyleCriL', border: '3px solid red', lineDash: [], w: 480, h: 160, fontSize: 40 },
   // Whisper
-  'chuchotement-s': { label: 'Chuchotement (S)', border: '2px dotted blue', lineDash: [2, 2], w: 180, h: 60, fontSize: 24 },
-  'chuchotement-m': { label: 'Chuchotement (M)', border: '2px dotted blue', lineDash: [2, 2], w: 260, h: 90, fontSize: 28 },
-  'chuchotement-l': { label: 'Chuchotement (L)', border: '2px dotted blue', lineDash: [2, 2], w: 380, h: 120, fontSize: 30 },
+  'chuchotement-s': { langKey: 'bubbleStyleChuchotementS', border: '2px dotted blue', lineDash: [2, 2], w: 180, h: 60, fontSize: 24 },
+  'chuchotement-m': { langKey: 'bubbleStyleChuchotementM', border: '2px dotted blue', lineDash: [2, 2], w: 260, h: 90, fontSize: 28 },
+  'chuchotement-l': { langKey: 'bubbleStyleChuchotementL', border: '2px dotted blue', lineDash: [2, 2], w: 380, h: 120, fontSize: 30 },
 };
 
 type BubbleStyleKey = keyof typeof bubbleStyles;
@@ -412,11 +412,11 @@ export default function ImageEditor({
                     <span className="text-sm font-medium">{lang.bubbleStyle}:</span>
                     <Select value={currentBubbleStyle} onValueChange={(e) => setCurrentBubbleStyle(e as BubbleStyleKey)}>
                         <SelectTrigger className="w-[180px] bg-background">
-                            <SelectValue placeholder="Style" />
+                            <SelectValue placeholder={lang.style} />
                         </SelectTrigger>
                         <SelectContent>
-                            {Object.entries(bubbleStyles).map(([key, { label }]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                            {Object.entries(bubbleStyles).map(([key, { langKey }]) => (
+                                <SelectItem key={key} value={key}>{lang[langKey as keyof typeof lang] || key}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -458,8 +458,8 @@ export default function ImageEditor({
                         >
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {Object.entries(bubbleStyles).map(([key, { label }]) => (
-                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                {Object.entries(bubbleStyles).map(([key, { langKey }]) => (
+                                    <SelectItem key={key} value={key}>{lang[langKey as keyof typeof lang] || key}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

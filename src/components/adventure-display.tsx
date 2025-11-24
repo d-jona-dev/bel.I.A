@@ -50,7 +50,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import ImageEditor from "./ImageEditor";
 import { Input } from "./ui/input";
-import { createNewPage as createNewComicPage, exportPageAsJpeg } from "./ComicPageEditor";
+import { createNewPage as createNewComicPageUtil, exportPageAsJpeg } from "./ComicPageEditor";
 import type { GameClockState } from "@/lib/game-clock"; // NOUVEAU
 import { Progress } from "@/components/ui/progress";
 import { i18n, type Language } from "@/lib/i18n";
@@ -797,9 +797,9 @@ export function AdventureDisplay({
                  <Dialog open={imageEditorOpen} onOpenChange={setImageEditorOpen}>
                     <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                         <DialogHeader>
-                            <DialogTitle>Éditeur d'Image</DialogTitle>
+                            <DialogTitle>{lang.imageEditorTitle}</DialogTitle>
                             <DialogDescription>
-                                Ajoutez des bulles de dialogue à votre image et ajoutez-la à la BD.
+                                {lang.imageEditorDescription}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex-1 overflow-auto">
