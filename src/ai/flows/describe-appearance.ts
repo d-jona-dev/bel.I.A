@@ -11,7 +11,6 @@
 import { ai } from '@/ai/ai-instance';
 import { z } from 'genkit';
 import type { AiConfig } from '@/types';
-import { googleAI } from '@genkit-ai/googleai';
 
 const DescribeAppearanceInputSchema = z.object({
   portraitUrl: z
@@ -31,7 +30,7 @@ export type DescribeAppearanceOutput = z.infer<typeof DescribeAppearanceOutputSc
 
 const describeAppearancePrompt = ai.definePrompt({
   name: 'describeAppearancePrompt',
-  input: { schema: DescribeAppearanceInputSchema.omit({ aiConfig: true }) }, // Omit aiConfig from prompt input schema
+  input: { schema: DescribeAppearanceInputSchema.omit({ aiConfig: true }) },
   output: { schema: DescribeAppearanceOutputSchema },
   prompt: `You are an expert fashion and character artist, specializing in creating vivid descriptions for game development.
 Your task is to analyze the provided image and generate a detailed, objective description focusing *only* on what is visible.
@@ -56,39 +55,10 @@ export const describeAppearance = ai.defineFlow(
   },
   async (input) => {
     try {
-        let modelToUse: any = googleAI.model('gemini-pro-vision'); // Default
-        
-        if (input.aiConfig?.llm.source === 'openrouter' && input.aiConfig.llm.openRouter?.model) {
-             // For OpenRouter, we need to pass the model name string.
-             // Genkit's GoogleAI plugin won't know how to use it directly,
-             // but if the user has set up a proxy or if Genkit has wider support in the future, this is how it would work.
-             // The underlying call needs to handle this. For now, we'll assume a direct API call or a compatible Genkit setup.
-             // This setup is more conceptual for OpenRouter as Genkit's googleAI plugin is specific to Google models.
-             // Let's assume the user knows they need a vision-compatible model on OpenRouter.
-             // A true implementation would require a different plugin or a direct fetch call.
-             // Let's try to pass the model name string and see if Genkit/OpenRouter handles it.
-             console.log(`Using OpenRouter vision model: ${input.aiConfig.llm.openRouter.model}`);
-             // This won't work as expected with the googleAI plugin, but it's the correct data to have.
-             // A real OpenRouter plugin would be needed. Let's fallback to default for now.
-             // The error 'ai.getModel is not a function' confirms we cannot dynamically switch plugins this way.
-             // The correct way is to specify the model in the call itself.
-             modelToUse = googleAI.model(input.aiConfig.llm.openRouter.model); // This is still using googleAI plugin, which is the issue.
-             // What we need is a generic way to call a model. Since Genkit is modular, this flow
-             // assumes the 'ai' instance is configured for the right plugin.
-             // The error indicates the `ai` instance from `ai-instance` is the problem.
-        } else {
-             modelToUse = googleAI.model('gemini-2.0-flash');
-        }
-
-        const { output } = await describeAppearancePrompt(
-            { portraitUrl: input.portraitUrl },
-            // The correct way to specify a model dynamically is here.
-            // But we must pass a valid model object or string that the configured plugin understands.
-            // Since our ai-instance uses googleAI, we can only pass googleAI models.
-            // The logic to handle OpenRouter needs to be more robust, likely involving a direct fetch.
-            // For now, we will pass the model string, which might work if Genkit has a pass-through mechanism.
-            { model: modelToUse }
-        );
+        // On ne sélectionne plus le modèle dynamiquement ici.
+        // On se fie au modèle par défaut configuré dans `ai-instance.ts`,
+        // qui doit être un modèle avec capacité de vision.
+        const { output } = await describeAppearancePrompt({ portraitUrl: input.portraitUrl });
 
         if (!output?.description) {
             throw new Error("AI failed to generate an appearance description.");

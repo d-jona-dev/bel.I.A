@@ -48,6 +48,10 @@ interface CustomImageStyle {
   prompt: string;
 }
 
+const isValidUrl = (url: string | null | undefined): url is string => {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
 
 export default function PersonnagesPage() {
   const { toast } = useToast();
@@ -279,7 +283,7 @@ export default function PersonnagesPage() {
               <Card key={npc.id}>
                 <CardHeader className="flex flex-row items-center gap-4">
                    <Avatar className="h-12 w-12">
-                      {npc.portraitUrl ? (
+                      {isValidUrl(npc.portraitUrl) ? (
                         <AvatarImage src={npc.portraitUrl} alt={npc.name} data-ai-hint={`${npc.name} npc portrait`} />
                       ) : (
                         <AvatarFallback>{npc.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -313,7 +317,7 @@ export default function PersonnagesPage() {
                              <div className="flex items-center gap-4">
                                 <Avatar className="h-24 w-24">
                                     {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div> :
-                                    editingCharacter.portraitUrl ? <AvatarImage src={editingCharacter.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingCharacter.name.substring(0,2)}</AvatarFallback>}
+                                    isValidUrl(editingCharacter.portraitUrl) ? <AvatarImage src={editingCharacter.portraitUrl} /> : <AvatarFallback className="text-3xl">{editingCharacter.name.substring(0,2)}</AvatarFallback>}
                                 </Avatar>
                                 <div className="flex-1 space-y-2">
                                     <div className="flex gap-2">

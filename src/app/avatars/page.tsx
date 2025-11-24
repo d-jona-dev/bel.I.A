@@ -67,6 +67,10 @@ const AVATARS_STORAGE_KEY = 'playerAvatars_v2'; // increment version
 const CURRENT_AVATAR_ID_KEY = 'currentAvatarId';
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
+const isValidUrl = (url: string | null | undefined): url is string => {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
 
 export default function AvatarsPage() {
   const { toast } = useToast();
@@ -305,7 +309,7 @@ export default function AvatarsPage() {
         <div className="flex items-center gap-4">
             <Avatar className="h-24 w-24">
                 {isGeneratingPortrait ? <div className="flex items-center justify-center h-full w-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div> :
-                avatarData.portraitUrl ? <AvatarImage src={avatarData.portraitUrl} /> : <AvatarFallback className="text-3xl">{avatarData.name?.substring(0,2)}</AvatarFallback>}
+                isValidUrl(avatarData.portraitUrl) ? <AvatarImage src={avatarData.portraitUrl} /> : <AvatarFallback className="text-3xl">{avatarData.name?.substring(0,2)}</AvatarFallback>}
             </Avatar>
             <div className="flex-1 space-y-2">
                 <div className="flex gap-2">
@@ -450,7 +454,7 @@ export default function AvatarsPage() {
               <Card key={avatar.id} className={avatar.id === currentAvatarId ? 'border-primary' : ''}>
                 <CardHeader className="flex flex-row items-start gap-4">
                    <Avatar className="h-20 w-20">
-                      {avatar.portraitUrl ? (
+                      {isValidUrl(avatar.portraitUrl) ? (
                         <AvatarImage src={avatar.portraitUrl} alt={avatar.name} data-ai-hint={`hero portrait`} />
                       ) : (
                         <AvatarFallback>{avatar.name.substring(0, 2).toUpperCase()}</AvatarFallback>

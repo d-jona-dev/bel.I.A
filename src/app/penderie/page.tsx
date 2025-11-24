@@ -42,6 +42,11 @@ import { ModelManager } from '@/components/model-manager';
 const WARDROBE_STORAGE_KEY = 'wardrobe_items_v1';
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
 
+const isValidUrl = (url: string | null | undefined): url is string => {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
+
 export default function PenderiePage() {
   const { toast } = useToast();
   const [items, setItems] = React.useState<ClothingItem[]>([]);
@@ -205,7 +210,7 @@ export default function PenderiePage() {
     <div className="grid gap-4 py-4">
         <div className="flex gap-4 items-start">
             <div className="w-32 h-32 flex-shrink-0 bg-muted rounded-md flex items-center justify-center border">
-                {itemData.imageUrl ? (
+                {isValidUrl(itemData.imageUrl) ? (
                     <Image src={itemData.imageUrl} alt={itemData.name || "Vêtement"} width={128} height={128} className="object-cover w-full h-full rounded-md"/>
                 ): (
                     <Shirt className="h-16 w-16 text-muted-foreground"/>
@@ -315,7 +320,7 @@ export default function PenderiePage() {
               <Card key={item.id} className="flex flex-col">
                 <CardHeader className="p-0">
                     <div className="w-full aspect-square relative bg-muted rounded-t-lg">
-                        {item.imageUrl ? (
+                        {isValidUrl(item.imageUrl) ? (
                              <Image src={item.imageUrl} alt={item.name} layout="fill" objectFit="cover" className="rounded-t-lg"/>
                         ) : (
                             <div className="flex items-center justify-center h-full"><Shirt className="h-16 w-16 text-muted-foreground"/></div>
