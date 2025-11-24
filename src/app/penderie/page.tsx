@@ -181,8 +181,7 @@ export default function PenderiePage() {
     }
     setIsProcessing(true);
     try {
-        // Note: The `describeAppearance` flow is used here. We've updated it to handle clothing.
-        const result = await describeAppearance({ portraitUrl: itemData.imageUrl });
+        const result = await describeAppearance({ portraitUrl: itemData.imageUrl, aiConfig });
         setItemData(prev => ({...prev, description: result.description }));
         toast({ title: lang.descriptionSuccessTitle, description: "La description a été générée par l'IA." });
     } catch (error) {
