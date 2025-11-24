@@ -81,7 +81,7 @@ const drawBubble = (ctx: CanvasRenderingContext2D, b: Bubble, scale = 1) => {
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#000";
-    const fontSize = b.fontSize ?? Math.max(12, Math.min(18, b.w / 10)) * scale;
+    const fontSize = (b.fontSize || Math.max(12, Math.min(18, b.w / 10))) * scale;
     ctx.font = `${fontSize}px sans-serif`;
     wrapText(ctx, b.text, b.x + 8 * scale, b.y + 22 * scale, b.w - 16 * scale, (fontSize + 4) * scale);
     ctx.restore();
@@ -159,7 +159,7 @@ export const exportPageAsJpeg = async (page: ComicPage, pageIndex: number, toast
         outCtx.fillStyle = "red";
         outCtx.fillRect(x,y, panelW, panelH);
         outCtx.fillStyle = "white";
-        outCtx.fillText(`Erreur panel ${i+1}`, x + 10, y + 20);
+        outCtx.fillText(`${lang.panelError} ${i+1}`, x + 10, y + 20);
       }
     }
 
@@ -419,6 +419,44 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
 
   const activeBubbleData = workingPanel.bubbles.find(b => b.id === activeBubbleId);
 
+  const FontSizeSlider = ({
+    bubble,
+    onUpdate,
+    lang,
+  }: {
+    bubble: Bubble;
+    onUpdate: (updates: Partial<Bubble>) => void;
+    lang: any;
+  }) => {
+    const currentSize = bubble.fontSize || 16;
+    return (
+      <div className="space-y-2 p-3 bg-muted/20 rounded-lg border">
+        <Label htmlFor={`font-size-${bubble.id}`} className="flex items-center gap-2 text-sm font-medium">
+          <span>📐</span>
+          {lang.textSize || "Taille du texte"}
+        </Label>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground" style={{ fontSize: "10px" }}>A</span>
+          <input
+            id={`font-size-${bubble.id}`}
+            type="range"
+            min="8"
+            max="36"
+            value={currentSize}
+            onChange={(e) => {
+              const newSize = Number(e.target.value);
+              onUpdate({ fontSize: newSize });
+            }}
+            className="flex-1 h-2 bg-gradient-to-r from-blue-200 to-blue-500 rounded-lg slider"
+          />
+          <span className="text-sm font-mono w-10 text-center bg-background px-2 py-1 rounded border">
+            {currentSize}px
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-4 h-[calc(100%-4rem)]">
       <div className="flex-1 min-h-0">
@@ -427,10 +465,16 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
       <div className="w-full md:w-80 space-y-4">
         {activeBubbleData ? (
             <Card>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-4 space-y-4">
                     <Label htmlFor="bubble-text">{lang.bubbleTextLabel}</Label>
                     <Textarea id="bubble-text" value={activeBubbleData.text} onChange={(e) => updateBubble(activeBubbleId!, { text: e.target.value })} className="h-24" />
                     
+                    <FontSizeSlider
+                        bubble={activeBubbleData}
+                        onUpdate={(updates) => updateBubble(activeBubbleId!, updates)}
+                        lang={lang}
+                    />
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                              <Label>{lang.style}</Label>
@@ -445,22 +489,14 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
                             </Select>
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor={`bubble-w-${activeBubbleId}`}>Dimensions</Label>
+                            <Label>Dimensions</Label>
                             <div className="flex items-center gap-2">
-                                <Input id={`bubble-w-${activeBubbleId}`} type="number" value={activeBubbleData.w} onChange={(e) => updateBubble(activeBubbleId!, { w: Number(e.target.value) })} placeholder="L" />
+                                <Input type="number" value={activeBubbleData.w} onChange={(e) => updateBubble(activeBubbleId!, { w: Number(e.target.value) })} placeholder="L" />
                                 <span>x</span>
-                                <Input id={`bubble-h-${activeBubbleId}`} type="number" value={activeBubbleData.h} onChange={(e) => updateBubble(activeBubbleId!, { h: Number(e.target.value) })} placeholder="H" />
+                                <Input type="number" value={activeBubbleData.h} onChange={(e) => updateBubble(activeBubbleId!, { h: Number(e.target.value) })} placeholder="H" />
                             </div>
                         </div>
                     </div>
-                     <div className="space-y-2">
-                        <Label>{lang.textSize}: {activeBubbleData.fontSize ?? 18}</Label>
-                        <Input
-                          type="number"
-                          value={activeBubbleData.fontSize ?? 18}
-                          onChange={(e) => updateBubble(activeBubbleId!, { fontSize: Number(e.target.value) })}
-                        />
-                      </div>
 
                      <Button variant="destructive" size="sm" className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: p.bubbles.filter(b => b.id !== activeBubbleId)}))}>
                         <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
@@ -470,7 +506,7 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
         ) : (
             <p className="text-sm text-muted-foreground text-center p-4 border rounded-md">{lang.selectBubbleToEdit}</p>
         )}
-        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: lang.newBubbleText, type: "parole", fontSize: 18 }] }))}>
+        <Button className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: [...p.bubbles, { id: uid(), x: 60, y: 60, w: 180, h: 60, text: lang.newBubbleText, type: "parole", fontSize: 16 }] }))}>
             <PlusCircle className="mr-2 h-4 w-4"/> {lang.addBubble}
         </Button>
          <DialogFooter className="mt-auto">

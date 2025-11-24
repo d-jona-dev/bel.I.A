@@ -137,6 +137,7 @@
     "clothingAppliedTitle": "Clothing Applied",
     "clothingDescLoaded": "The description for \"{itemName}\" has been loaded.",
     "narrativeFieldsLabel": "Editable Narrative Fields",
+    "nameLabel": "Name",
     "publicDescriptionLabel": "Public Description",
     "biographyLabel": "Biography / Private Notes",
     "biographyPlaceholder": "Background, secrets, goals... (for AI context)",
