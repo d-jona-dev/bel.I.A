@@ -344,6 +344,44 @@ function PanelPreview({ panel, width, height, lang }: { panel: Panel; width: num
 }
 
 
+const FontSizeSlider = ({
+  bubble,
+  onUpdate,
+  lang,
+}: {
+  bubble: Bubble;
+  onUpdate: (updates: Partial<Bubble>) => void;
+  lang: any;
+}) => {
+  const currentSize = bubble.fontSize || 16;
+  return (
+    <div className="space-y-2 p-3 bg-muted/20 rounded-lg border">
+      <Label htmlFor={`font-size-${bubble.id}`} className="flex items-center gap-2 text-sm font-medium">
+        <span>📐</span>
+        {lang.textSize || "Taille du texte"}
+      </Label>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground" style={{ fontSize: "10px" }}>A</span>
+        <input
+          id={`font-size-${bubble.id}`}
+          type="range"
+          min="8"
+          max="36"
+          value={currentSize}
+          onChange={(e) => {
+            const newSize = Number(e.target.value);
+            onUpdate({ fontSize: newSize });
+          }}
+          className="flex-1 h-2 bg-gradient-to-r from-blue-200 to-blue-500 rounded-lg slider"
+        />
+        <span className="text-sm font-mono w-10 text-center bg-background px-2 py-1 rounded border">
+          {currentSize}px
+        </span>
+      </div>
+    </div>
+  );
+};
+
 
 /* PanelEditor: full editor for a panel (move bubbles and edit text) */
 function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose: () => void; onChange: (p: Panel) => void; lang: any }) {
@@ -419,44 +457,6 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
 
   const activeBubbleData = workingPanel.bubbles.find(b => b.id === activeBubbleId);
 
-  const FontSizeSlider = ({
-    bubble,
-    onUpdate,
-    lang,
-  }: {
-    bubble: Bubble;
-    onUpdate: (updates: Partial<Bubble>) => void;
-    lang: any;
-  }) => {
-    const currentSize = bubble.fontSize || 16;
-    return (
-      <div className="space-y-2 p-3 bg-muted/20 rounded-lg border">
-        <Label htmlFor={`font-size-${bubble.id}`} className="flex items-center gap-2 text-sm font-medium">
-          <span>📐</span>
-          {lang.textSize || "Taille du texte"}
-        </Label>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground" style={{ fontSize: "10px" }}>A</span>
-          <input
-            id={`font-size-${bubble.id}`}
-            type="range"
-            min="8"
-            max="36"
-            value={currentSize}
-            onChange={(e) => {
-              const newSize = Number(e.target.value);
-              onUpdate({ fontSize: newSize });
-            }}
-            className="flex-1 h-2 bg-gradient-to-r from-blue-200 to-blue-500 rounded-lg slider"
-          />
-          <span className="text-sm font-mono w-10 text-center bg-background px-2 py-1 rounded border">
-            {currentSize}px
-          </span>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col md:flex-row gap-4 h-[calc(100%-4rem)]">
       <div className="flex-1 min-h-0">
@@ -469,12 +469,6 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
                     <Label htmlFor="bubble-text">{lang.bubbleTextLabel}</Label>
                     <Textarea id="bubble-text" value={activeBubbleData.text} onChange={(e) => updateBubble(activeBubbleId!, { text: e.target.value })} className="h-24" />
                     
-                    <FontSizeSlider
-                        bubble={activeBubbleData}
-                        onUpdate={(updates) => updateBubble(activeBubbleId!, updates)}
-                        lang={lang}
-                    />
-
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                              <Label>{lang.style}</Label>
@@ -497,6 +491,12 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
                             </div>
                         </div>
                     </div>
+                    
+                    <FontSizeSlider
+                        bubble={activeBubbleData}
+                        onUpdate={(updates) => updateBubble(activeBubbleId!, updates)}
+                        lang={lang}
+                    />
 
                      <Button variant="destructive" size="sm" className="w-full" onClick={() => setWorkingPanel(p => ({...p, bubbles: p.bubbles.filter(b => b.id !== activeBubbleId)}))}>
                         <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
@@ -517,3 +517,5 @@ function PanelEditor({ panel, onClose, onChange, lang }: { panel: Panel; onClose
     </div>
   );
 }
+
+    
