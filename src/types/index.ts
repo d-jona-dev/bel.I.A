@@ -202,10 +202,8 @@ export interface Bubble {
   id: string;
   x: number;
   y: number;
-  w: number;
-  h: number;
   text: string;
-  type: 'parole' | 'pensée' | 'cri' | 'chuchotement';
+  style: string;
   characterId?: string;
   fontSize?: number;
 }
@@ -318,7 +316,7 @@ export const GenerateAdventureOutputSchema = z.object({
 export type GenerateAdventureOutput = z.infer<typeof GenerateAdventureOutputSchema>;
 
 export interface GenerateSceneImageInput {
-  sceneDescription?: SceneDescriptionForImage;
+  sceneDescription?: SceneDescriptionForImage | string;
   style?: string;
 }
 

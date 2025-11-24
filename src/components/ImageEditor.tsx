@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Message, Character } from "@/types";
+import type { Message, Character, Bubble } from "@/types";
 import { MessageSquarePlus, PlusCircle, Trash2, Mic, Settings, User, UploadCloud } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,15 +41,6 @@ const bubbleStyles = {
 
 type BubbleStyleKey = keyof typeof bubbleStyles;
 
-interface Bubble {
-  id: string;
-  x: number;
-  y: number;
-  text: string;
-  style: BubbleStyleKey;
-  characterId?: string; // ID of the character speaking
-}
-
 const loadImage = (src: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -70,7 +61,7 @@ export const compressImage = async (dataUrl: string, quality = 0.85): Promise<st
 };
 
 const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: Character[]) => {
-    const style = bubbleStyles[bubble.style];
+    const style = bubbleStyles[bubble.style as BubbleStyleKey];
     if (!style) return;
 
     const character = characters.find(c => c.id === bubble.characterId);
@@ -88,13 +79,15 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: C
     
     ctx.setLineDash([]);
     ctx.fillStyle = "black";
-    ctx.font = `${style.fontSize}px 'Comic Sans MS', sans-serif`;
+    
+    const fontSize = bubble.fontSize || style.fontSize;
+    ctx.font = `${fontSize}px 'Comic Sans MS', sans-serif`;
     ctx.textBaseline = "top";
 
     const words = bubble.text.split(' ');
     let line = '';
     let textY = bubble.y + 15;
-    const lineHeight = style.fontSize * 1.1; // Adjust line height based on font size
+    const lineHeight = fontSize * 1.1; 
     const padding = 15;
 
     for(let n = 0; n < words.length; n++) {
@@ -110,6 +103,33 @@ const drawBubble = (ctx: CanvasRenderingContext2D, bubble: Bubble, characters: C
         }
     }
     ctx.fillText(line, bubble.x + padding, textY);
+};
+
+const FontSizeSlider = ({ bubble, onUpdate, lang }: { bubble: Bubble; onUpdate: (updates: Partial<Bubble>) => void; lang: any; }) => {
+    const currentSize = bubble.fontSize || 16;
+    return (
+        <div className="space-y-2 p-3 bg-muted/20 rounded-lg border">
+            <Label htmlFor={`font-size-${bubble.id}`} className="flex items-center gap-2 text-sm font-medium">
+                <span>📐</span>
+                {lang.textSize || "Taille du texte"}
+            </Label>
+            <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground" style={{ fontSize: "10px" }}>A</span>
+                <input
+                    id={`font-size-${bubble.id}`}
+                    type="range"
+                    min="8"
+                    max="48"
+                    value={currentSize}
+                    onChange={(e) => onUpdate({ fontSize: Number(e.target.value) })}
+                    className="flex-1 h-2 bg-gradient-to-r from-blue-200 to-blue-500 rounded-lg slider"
+                />
+                <span className="text-sm font-mono w-10 text-center bg-background px-2 py-1 rounded border">
+                    {currentSize}px
+                </span>
+            </div>
+        </div>
+    );
 };
 
 
@@ -176,7 +196,7 @@ export default function ImageEditor({
 
     bubbles.forEach((bubble) => {
       drawBubble(ctx, bubble, characters);
-      const style = bubbleStyles[bubble.style];
+      const style = bubbleStyles[bubble.style as BubbleStyleKey];
       if (bubble.id === selectedBubbleId) {
         ctx.strokeStyle = "rgba(0, 102, 255, 0.7)";
         ctx.lineWidth = 3;
@@ -198,6 +218,7 @@ export default function ImageEditor({
       text: lang.newBubbleText,
       style: currentBubbleStyle,
       characterId: character.id,
+      fontSize: bubbleStyles[currentBubbleStyle].fontSize
     };
     setBubbles([...bubbles, newBubble]);
     setSelectedBubbleId(newBubble.id);
@@ -228,6 +249,7 @@ export default function ImageEditor({
               text: match[1],
               style: 'parole-m',
               characterId: speaker?.id,
+              fontSize: bubbleStyles['parole-m'].fontSize,
           });
           yOffset += bubbleStyles['parole-m'].h + 10;
           speakerIndex++;
@@ -242,6 +264,7 @@ export default function ImageEditor({
               text: match[1],
               style: 'pensée-m',
               characterId: speaker?.id,
+              fontSize: bubbleStyles['pensée-m'].fontSize,
           });
           yOffset += bubbleStyles['pensée-m'].h + 10;
       }
@@ -264,7 +287,7 @@ export default function ImageEditor({
     const canvasY = (y / rect.height) * canvasRef.current.height;
 
     const clickedBubble = bubbles.slice().reverse().find(b => {
-      const style = bubbleStyles[b.style];
+      const style = bubbleStyles[b.style as BubbleStyleKey];
       return canvasX >= b.x && canvasX <= b.x + style.w && canvasY >= b.y && canvasY <= b.y + style.h;
     });
 
@@ -427,22 +450,25 @@ export default function ImageEditor({
                     placeholder={lang.bubbleTextPlaceholder}
                     rows={3}
                     />
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-1">
-                          <Label>{lang.style}</Label>
-                          <Select
-                              value={selectedBubble.style}
-                              onValueChange={(value) => updateBubble(selectedBubbleId!, { style: value as BubbleStyleKey })}
-                          >
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                  {Object.entries(bubbleStyles).map(([key, { label }]) => (
-                                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                      </div>
+                    <div className="space-y-2">
+                        <Label>{lang.style}</Label>
+                        <Select
+                            value={selectedBubble.style}
+                            onValueChange={(value) => updateBubble(selectedBubbleId!, { style: value as BubbleStyleKey })}
+                        >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {Object.entries(bubbleStyles).map(([key, { label }]) => (
+                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
+                     <FontSizeSlider
+                        bubble={selectedBubble}
+                        onUpdate={(updates) => updateBubble(selectedBubbleId!, updates)}
+                        lang={lang}
+                    />
                     <Button onClick={deleteBubble} variant="destructive" size="sm" className="w-full">
                         <Trash2 className="mr-2 h-4 w-4"/>{lang.deleteBubble}
                     </Button>
