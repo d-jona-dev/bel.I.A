@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import type { GenerateSceneImageInput, GenerateSceneImageOutput } from "@/ai/flows/generate-scene-image";
 import { useToast } from "@/hooks/use-toast";
-import type { Character, ClothingItem, AdventureSettings } from "@/types";
+import type { Character, ClothingItem, AdventureSettings, AiConfig } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -447,10 +447,17 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         setDescribingAppearance(true);
         toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', char.name)});
 
+        // This is the fix: load the config from localStorage here.
+        const savedAiConfig = localStorage.getItem('globalAiConfig');
+        const aiConfig = savedAiConfig ? JSON.parse(savedAiConfig) : {
+            llm: { source: 'gemini' },
+            image: { source: 'gemini' }
+        };
+
         try {
             const result = await describeAppearance({ 
               portraitUrl: char.portraitUrl,
-              aiConfig: adventureSettings.aiConfig 
+              aiConfig: aiConfig // Use the loaded config
             });
             handleFieldChange('appearanceDescription', result.description);
             toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', char.name) });
@@ -840,5 +847,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 });
 
 CharacterAccordionItem.displayName = 'CharacterAccordionItem';
-
-    
