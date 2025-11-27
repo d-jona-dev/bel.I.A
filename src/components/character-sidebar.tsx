@@ -283,7 +283,7 @@ export function CharacterSidebar({
                                      </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{lang.globalCharactersCountTooltip}</p>
+                                    <p>{lang.globalCharactersCountTooltip.replace('{count}', String(globalCharactersList.length))}</p>
                                 </TooltipContent>
                             </Tooltip>
                          </TooltipProvider>
@@ -381,31 +381,18 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const lang = i18n[currentLanguage as Language] || i18n.en;
     
     const [describingAppearance, setDescribingAppearance] = React.useState(false);
-    
-    // START of the targeted fix
-    const [localClothingDescription, setLocalClothingDescription] = React.useState(char.clothingDescription || '');
-    
-    React.useEffect(() => {
-        setLocalClothingDescription(char.clothingDescription || '');
-    }, [char.clothingDescription]);
 
     const handleFieldChange = (field: keyof Character, value: any) => {
         onCharacterUpdate({ ...char, [field]: value });
     };
 
-    const handleClothingDescriptionChange = (value: string) => {
-        setLocalClothingDescription(value);
-        handleFieldChange('clothingDescription', value);
-    };
-
     const handleLoadFromWardrobe = (itemDescription: string) => {
-        handleClothingDescriptionChange(itemDescription);
+        handleFieldChange('clothingDescription', itemDescription);
         toast({
             title: lang.clothingAppliedTitle,
             description: `La description des vêtements de ${char.name} a été mise à jour.`
         });
     };
-    // END of the targeted fix
 
     const handleNestedFieldChange = (charId: string, field: 'relations', key: string, value: string | number | boolean) => {
         const character = allCharacters.find(c => c.id === charId);
@@ -461,7 +448,10 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', char.name)});
 
         try {
-            const result = await describeAppearance({ portraitUrl: char.portraitUrl, aiConfig: adventureSettings.aiConfig });
+            const result = await describeAppearance({ 
+              portraitUrl: char.portraitUrl,
+              aiConfig: adventureSettings.aiConfig 
+            });
             handleFieldChange('appearanceDescription', result.description);
             toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', char.name) });
         } catch (error) {
@@ -691,8 +681,8 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
                              <div className="flex items-center gap-2">
                                 <Textarea
                                     id={`${char.id}-clothingDescription`}
-                                    value={localClothingDescription}
-                                    onChange={(e) => handleClothingDescriptionChange(e.target.value)}
+                                    value={char.clothingDescription || ''}
+                                    onChange={(e) => handleFieldChange('clothingDescription', e.target.value)}
                                     placeholder={lang.clothingDescriptionPlaceholder}
                                     rows={3}
                                     className="text-sm bg-background border flex-1"
@@ -850,3 +840,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 });
 
 CharacterAccordionItem.displayName = 'CharacterAccordionItem';
+
+    
