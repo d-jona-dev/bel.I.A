@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -16,6 +17,7 @@ const DescribeAppearanceInputSchema = z.object({
       "An image of a character or a piece of clothing, as a data URI. Format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   aiConfig: z.custom<AiConfig>().optional(),
+  subjectType: z.enum(['person', 'clothing']).optional().default('person').describe("The type of subject to describe in the image."),
 });
 export type DescribeAppearanceInput = z.infer<typeof DescribeAppearanceInputSchema>;
 
@@ -33,9 +35,9 @@ const describeAppearancePrompt = ai.definePrompt({
 Your task is to analyze the provided image and generate a detailed, objective description focusing *only* on what is visible.
 
 **CRITICAL RULES:**
-1.  **Analyze the image content:** Determine if the primary subject is a PERSON or an ITEM OF CLOTHING.
-2.  **If it's a person:** Describe their permanent physical traits (face, hair, build). DO NOT describe clothing, accessories, armor, background, or lighting.
-3.  **If it's an item of clothing:** Describe the clothing exclusively. Detail its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns or notable details. DO NOT describe the person wearing it (if any) or the background.
+1.  **Analyze the subject type:** The subject to describe is a '{{subjectType}}'.
+2.  **If the subject is a 'person':** Describe their permanent physical traits (face, hair, build). DO NOT describe clothing, accessories, armor, background, or lighting.
+3.  **If the subject is 'clothing':** Describe the clothing exclusively. Detail its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns or notable details. DO NOT describe the person wearing it (if any) or the background.
 4.  **DO NOT** invent personality, backstory, or names. Stick strictly to what is visually present.
 5.  The output must be a single block of descriptive text, suitable for an image generation prompt.
 
@@ -46,7 +48,10 @@ Image to describe: {{media url=portraitUrl}}
 
 export async function describeAppearanceWithGenkit(input: DescribeAppearanceInput): Promise<DescribeAppearanceOutput> {
     try {
-        const { output } = await describeAppearancePrompt({ portraitUrl: input.portraitUrl });
+        const { output } = await describeAppearancePrompt({ 
+            portraitUrl: input.portraitUrl,
+            subjectType: input.subjectType || 'person',
+        });
 
         if (!output?.description) {
             throw new Error("AI failed to generate an appearance description.");

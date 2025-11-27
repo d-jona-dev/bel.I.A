@@ -289,7 +289,7 @@ export default function AvatarsPage() {
       }
       setIsProcessingVision(true);
       try {
-          const result = await describeAppearance({ portraitUrl: imageUrl, aiConfig });
+          const result = await describeAppearance({ portraitUrl: imageUrl, aiConfig, subjectType: 'person' });
           setter((prev: any) => ({ ...prev, details: result.description }));
           toast({ title: "Scan Réussi", description: "La description a été générée par l'IA." });
       } catch (error) {

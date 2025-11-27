@@ -186,7 +186,7 @@ export default function PenderiePage() {
     }
     setIsProcessing(true);
     try {
-        const result = await describeAppearance({ portraitUrl: itemData.imageUrl, aiConfig });
+        const result = await describeAppearance({ portraitUrl: itemData.imageUrl, aiConfig, subjectType: 'clothing' });
         setItemData(prev => ({...prev, description: result.description }));
         toast({ title: lang.descriptionSuccessTitle, description: "La description a été générée par l'IA." });
     } catch (error) {

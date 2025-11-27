@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Custom Local API (like LM Studio) implementation for describing an image.
@@ -6,10 +7,18 @@
 import { z } from 'zod';
 import type { DescribeAppearanceInput, DescribeAppearanceOutput } from './describe-appearance-genkit';
 
-function buildPrompt(): string {
-    return `You are an expert fashion and character artist. Analyze the provided image and generate a detailed, objective description.
-- If the image shows a person, describe their permanent physical traits (face, hair, build) ONLY.
-- If the image shows an item of clothing, describe the clothing ONLY.
+function buildPrompt(subjectType: 'person' | 'clothing'): string {
+    if (subjectType === 'clothing') {
+        return `You are an expert fashion artist. Analyze the provided image and generate a detailed, objective description of the clothing ONLY.
+- Describe the clothing exclusively: its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns.
+- DO NOT describe the person wearing it, the background, or any accessories.
+- Your response MUST be a JSON object with a single key "description". Example: {"description": "A long-sleeved blue tunic made of rough linen."}.
+`;
+    }
+    // Default to 'person'
+    return `You are an expert character artist. Analyze the provided image and generate a detailed, objective description of the person's physical traits ONLY.
+- Describe their face, hair, and build.
+- DO NOT describe clothing, accessories, background, or lighting.
 - Your response MUST be a JSON object with a single key "description". Example: {"description": "A tall man with short black hair..."}.
 `;
 }
@@ -39,7 +48,7 @@ export async function describeAppearanceWithCustomLocalLlm(input: DescribeAppear
                     {
                         role: "user",
                         content: [
-                            { type: "text", text: buildPrompt() },
+                            { type: "text", text: buildPrompt(input.subjectType || 'person') },
                             {
                                 type: "image_url",
                                 image_url: {

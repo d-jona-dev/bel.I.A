@@ -9,30 +9,32 @@ import type { DescribeAppearanceInput, DescribeAppearanceOutput } from './descri
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-function buildPrompt(): string {
-    return `You are an expert fashion and character artist, specializing in creating vivid descriptions for game development.
-Your task is to analyze the provided image and generate a detailed, objective description focusing *only* on what is visible.
-
-**CRITICAL RULES:**
-1.  **Analyze the image content:** Determine if the primary subject is a PERSON or an ITEM OF CLOUGHING.
-2.  **If it's a person:** Describe their permanent physical traits (face, hair, build). DO NOT describe clothing, accessories, armor, background, or lighting.
-3.  **If it's an item of clothing:** Describe the clothing exclusively. Detail its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns or notable details. DO NOT describe the person wearing it (if any) or the background.
-4.  **DO NOT** invent personality, backstory, or names. Stick strictly to what is visually present.
-5.  Your response MUST be a JSON object with a single key "description", containing the descriptive text. Example: {"description": "A tall man with short black hair..."}.
+function buildPrompt(subjectType: 'person' | 'clothing'): string {
+    if (subjectType === 'clothing') {
+        return `You are an expert fashion artist. Analyze the provided image and generate a detailed, objective description of the clothing ONLY.
+- Describe the clothing exclusively: its type (e.g., 'tunic', 'dress', 'armor'), cut, color, material, and any patterns.
+- DO NOT describe the person wearing it, the background, or any accessories.
+- Your response MUST be a JSON object with a single key "description". Example: {"description": "A long-sleeved blue tunic made of rough linen."}.
+`;
+    }
+    // Default to 'person'
+    return `You are an expert character artist. Analyze the provided image and generate a detailed, objective description of the person's physical traits ONLY.
+- Describe their face, hair, and build.
+- DO NOT describe clothing, accessories, background, or lighting.
+- Your response MUST be a JSON object with a single key "description". Example: {"description": "A tall man with short black hair..."}.
 `;
 }
 
 export async function describeAppearanceWithOpenRouter(input: DescribeAppearanceInput): Promise<DescribeAppearanceOutput> {
     const openRouterConfig = input.aiConfig?.llm.openRouter;
 
-    if (!openRouterConfig?.apiKey || !openRouterConfig.model) {
-        throw new Error("Clé API OpenRouter ou nom du modèle manquant.");
+    if (!openRouterConfig?.apiKey) {
+        throw new Error("Clé API OpenRouter manquante.");
     }
     
-    // Use the model selected by the user in the LLM config.
     const visionModel = openRouterConfig.model; 
 
-    const systemPrompt = buildPrompt();
+    const systemPrompt = buildPrompt(input.subjectType || 'person');
 
     try {
         const response = await fetch(OPENROUTER_API_URL, {
