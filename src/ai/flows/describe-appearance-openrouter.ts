@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview OpenRouter implementation for describing an image.
@@ -23,12 +24,14 @@ Your task is to analyze the provided image and generate a detailed, objective de
 
 export async function describeAppearanceWithOpenRouter(input: DescribeAppearanceInput): Promise<DescribeAppearanceOutput> {
     const openRouterConfig = input.aiConfig?.llm.openRouter;
-    const visionModel = "google/gemini-pro-vision"; // A common vision model on OpenRouter
 
-    if (!openRouterConfig?.apiKey) {
-        throw new Error("Clé API OpenRouter manquante.");
+    if (!openRouterConfig?.apiKey || !openRouterConfig.model) {
+        throw new Error("Clé API OpenRouter ou nom du modèle manquant.");
     }
     
+    // Use the model selected by the user in the LLM config.
+    const visionModel = openRouterConfig.model; 
+
     const systemPrompt = buildPrompt();
 
     try {
