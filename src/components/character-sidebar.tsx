@@ -336,6 +336,7 @@ export function CharacterSidebar({
                         playerName={playerName}
                         currentLanguage={currentLanguage}
                         allCharacters={initialCharacters}
+                        adventureSettings={adventureSettings}
                     />
                 ))}
             </Accordion>
@@ -359,6 +360,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     playerName,
     currentLanguage,
     allCharacters,
+    adventureSettings,
 }: {
     character: Character;
     characterIndex: number;
@@ -373,9 +375,10 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     playerName: string;
     currentLanguage: string;
     allCharacters: Character[];
+    adventureSettings: AdventureSettings;
 }) {
     const { toast } = useToast();
-    const lang = i18n[currentLanguage as Language] || i18n.fr;
+    const lang = i18n[currentLanguage as Language] || i18n.en;
     
     const [describingAppearance, setDescribingAppearance] = React.useState(false);
     
@@ -458,7 +461,7 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
         toast({ title: lang.imageAnalysisInProgress, description: lang.aiDescribingAppearance.replace('{charName}', char.name)});
 
         try {
-            const result = await describeAppearance({ portraitUrl: char.portraitUrl });
+            const result = await describeAppearance({ portraitUrl: char.portraitUrl, aiConfig: adventureSettings.aiConfig });
             handleFieldChange('appearanceDescription', result.description);
             toast({ title: lang.descriptionSuccessTitle, description: lang.appearanceDescribed.replace('{charName}', char.name) });
         } catch (error) {
@@ -847,5 +850,3 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 });
 
 CharacterAccordionItem.displayName = 'CharacterAccordionItem';
-
-
