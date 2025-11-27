@@ -17,23 +17,21 @@ import { describeAppearanceWithCustomLocalLlm } from './describe-appearance-cust
 export async function describeAppearance(input: DescribeAppearanceInput): Promise<DescribeAppearanceOutput> {
   const { aiConfig } = input;
 
-  // Route to the appropriate implementation based on the image generation source.
-  // We use the image source because vision models are usually tied to image models.
+  // Use the IMAGE model source for routing vision-related tasks.
   const source = aiConfig?.image?.source || 'gemini';
 
   switch (source) {
     case 'openrouter':
       return describeAppearanceWithOpenRouter(input);
-    case 'local-sd': // Assuming local vision runs on the same machine as local SD
-      // We will try to call an Ollama endpoint by convention.
+    case 'local-sd': // We route local Stable Diffusion to the local LLM vision model (Ollama)
       return describeAppearanceWithLocalLlm(input);
     case 'gemini':
     default:
-       // The 'custom-local' for LLM might have a vision model, let's try it.
+       // Check if a custom local LLM is configured; it might be a vision model.
        if (aiConfig?.llm.source === 'custom-local') {
           return describeAppearanceWithCustomLocalLlm(input);
        }
-       // Fallback to Genkit/Gemini
+       // Fallback to the default Genkit/Gemini implementation.
       return describeAppearanceWithGenkit(input);
   }
 }

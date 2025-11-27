@@ -18,18 +18,27 @@ export async function generateSceneImage(
   aiConfig: AiConfig
 ): Promise<GenerateSceneImageFlowOutput> {
   
+  // Use the IMAGE model source configuration for routing.
   const imageConfig = aiConfig.image;
 
-  if (imageConfig?.source === 'openrouter' && imageConfig.openRouter) {
-    return generateSceneImageWithOpenRouter(input, imageConfig.openRouter);
-  }
+  switch (imageConfig?.source) {
+    case 'openrouter':
+      if (imageConfig.openRouter) {
+        return generateSceneImageWithOpenRouter(input, imageConfig.openRouter);
+      }
+      break;
 
-  if (imageConfig?.source === 'huggingface' && imageConfig.huggingface) {
-    return generateSceneImageWithHuggingFace(input, imageConfig.huggingface);
-  }
-  
-  if (imageConfig?.source === 'local-sd' && imageConfig.localSd) {
-    return generateSceneImageWithLocalSd(input, imageConfig.localSd);
+    case 'huggingface':
+      if (imageConfig.huggingface) {
+        return generateSceneImageWithHuggingFace(input, imageConfig.huggingface);
+      }
+      break;
+    
+    case 'local-sd':
+      if (imageConfig.localSd) {
+        return generateSceneImageWithLocalSd(input, imageConfig.localSd);
+      }
+      break;
   }
   
   // Default to Genkit/Gemini if no specific config is found or if it's explicitly set to 'gemini'
