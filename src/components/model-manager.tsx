@@ -216,7 +216,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
         };
     } else if (source === 'custom-local') {
         newLlmConfig.customLocal = {
-            apiUrl: config.llm.customLocal?.apiUrl || 'http://localhost:1234/v1',
+            apiUrl: config.llm.customLocal?.apiUrl || '',
             model: config.llm.customLocal?.model || '',
             apiKey: config.llm.customLocal?.apiKey || '',
         }
@@ -538,15 +538,15 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                     <CardDescription className="text-xs">{lang.customLocalApiDesc}</CardDescription>
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-url" className="text-xs">{lang.apiUrlLabel}</Label>
-                        <Input id="custom-api-url" type="text" placeholder={lang.apiUrlPlaceholder} value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
+                        <Input id="custom-api-url" type="text" placeholder="https://api.openai.com/v1" value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="custom-model-name" className="text-xs">{lang.modelNameOptionalLabel}</Label>
-                        <Input id="custom-model-name" type="text" placeholder="e.g., Llama-3-8B-Instruct-GGUF" value={config.llm.customLocal?.model || ''} onChange={(e) => handleCustomLocalConfigChange('model', e.target.value)} />
+                        <Input id="custom-model-name" type="text" placeholder="gpt-4o" value={config.llm.customLocal?.model || ''} onChange={(e) => handleCustomLocalConfigChange('model', e.target.value)} />
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-key" className="text-xs">{lang.apiKeyOptionalLabel}</Label>
-                        <Input id="custom-api-key" type="password" placeholder="API Key (si nécessaire)" value={config.llm.customLocal?.apiKey || ''} onChange={(e) => handleCustomLocalConfigChange('apiKey', e.target.value)} />
+                        <Input id="custom-api-key" type="password" placeholder="Clé API OpenAI, Groq, etc..." value={config.llm.customLocal?.apiKey || ''} onChange={(e) => handleCustomLocalConfigChange('apiKey', e.target.value)} />
                     </div>
                  </div>
             )}
@@ -726,3 +726,5 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     </Card>
   );
 }
+
+    
