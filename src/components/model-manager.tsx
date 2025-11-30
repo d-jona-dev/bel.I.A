@@ -186,13 +186,13 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     });
   };
 
-  const handleCustomLocalConfigChange = (field: keyof NonNullable<AiConfig['llm']['customLocal']>, value: string) => {
+  const handleCustomLocalConfigChange = (field: keyof NonNullable<AiConfig['llm']['customLocal']>, value: string | boolean) => {
     onConfigChange({
         ...config,
         llm: {
             ...config.llm,
             customLocal: {
-                ...(config.llm.customLocal || { apiUrl: '' }),
+                ...(config.llm.customLocal || { apiUrl: '', compatibilityMode: false }),
                 [field]: value,
             },
         },
@@ -212,24 +212,26 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
         };
     } else if (source === 'local') {
         newLlmConfig.local = {
-            model: ollamaModels[0] || ''
+            model: ollamaModels[0] || '',
+            compatibilityMode: config.llm.local?.compatibilityMode ?? false,
         };
     } else if (source === 'custom-local') {
         newLlmConfig.customLocal = {
             apiUrl: config.llm.customLocal?.apiUrl || '',
             model: config.llm.customLocal?.model || '',
             apiKey: config.llm.customLocal?.apiKey || '',
+            compatibilityMode: config.llm.customLocal?.compatibilityMode ?? false,
         }
     }
     onConfigChange({ ...config, llm: newLlmConfig });
   };
   
-  const handleSelectLocalModel = (modelName: string) => {
+  const handleLocalLlmConfigChange = (field: keyof NonNullable<AiConfig['llm']['local']>, value: string | boolean) => {
       onConfigChange({
           ...config,
-          llm: { ...config.llm, source: 'local', local: { model: modelName } }
+          llm: { ...config.llm, source: 'local', local: { ...(config.llm.local || { model: '' }), [field]: value } }
       });
-  }
+  };
 
   const handleAddNewLlmModel = () => {
     setEditingLlmModel({ id: `new-${Date.now()}`, name: '', source: 'openrouter', modelName: '' });
@@ -522,13 +524,17 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                                 <div><p className="font-semibold">{lang.noLocalModelsTitle}</p><p>{lang.noLocalModelsDesc}</p></div>
                             </div>
                       ) : (
-                        <Select value={config.llm.local?.model || ''} onValueChange={handleSelectLocalModel}>
+                        <Select value={config.llm.local?.model || ''} onValueChange={modelName => handleLocalLlmConfigChange('model', modelName)}>
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
                                 {ollamaModels.map(modelName => (<SelectItem key={modelName} value={modelName}>{modelName}</SelectItem>))}
                             </SelectContent>
                         </Select>
                       )}
+                      <div className="flex items-center space-x-2">
+                        <Switch id="local-compatibility-mode" checked={config.llm.local?.compatibilityMode || false} onCheckedChange={(checked) => handleLocalLlmConfigChange('compatibilityMode', checked)}/>
+                        <Label htmlFor="local-compatibility-mode" className="text-xs">{lang.compatibilityMode}</Label>
+                    </div>
                  </div>
             )}
 
@@ -538,7 +544,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                     <CardDescription className="text-xs">{lang.customLocalApiDesc}</CardDescription>
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-url" className="text-xs">{lang.apiUrlLabel}</Label>
-                        <Input id="custom-api-url" type="text" placeholder="https://api.openai.com/v1" value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
+                        <Input id="custom-api-url" type="text" placeholder={lang.apiUrlPlaceholder} value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="custom-model-name" className="text-xs">{lang.modelNameOptionalLabel}</Label>
@@ -547,6 +553,10 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-key" className="text-xs">{lang.apiKeyOptionalLabel}</Label>
                         <Input id="custom-api-key" type="password" placeholder="Clé API OpenAI, Groq, etc..." value={config.llm.customLocal?.apiKey || ''} onChange={(e) => handleCustomLocalConfigChange('apiKey', e.target.value)} />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch id="custom-local-compatibility-mode" checked={config.llm.customLocal?.compatibilityMode || false} onCheckedChange={(checked) => handleCustomLocalConfigChange('compatibilityMode', checked)}/>
+                        <Label htmlFor="custom-local-compatibility-mode" className="text-xs">{lang.compatibilityMode}</Label>
                     </div>
                  </div>
             )}
@@ -726,5 +736,3 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
     </Card>
   );
 }
-
-    

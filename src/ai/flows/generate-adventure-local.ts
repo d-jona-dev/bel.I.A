@@ -8,8 +8,18 @@ import { GenerateAdventureOutputSchema } from '@/types';
 const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
 function buildOllamaPrompt(input: GenerateAdventureInput): string {
-    const promptSections: string[] = [];
+    const { aiConfig, currentLanguage } = input;
+    const compatibilityMode = aiConfig?.llm?.local?.compatibilityMode;
 
+    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.`;
+    
+    if (compatibilityMode) {
+        const simpleSchema = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" } }`;
+        return `${mainInstruction}\n\nContext:\n${input.initialSituation}\n\nPlayer's Action: ${input.userAction}\n\nYour task: Generate the next part of the story (\`narrative\`) and a brief scene description for an image (\`sceneDescriptionForImage\`) in a JSON object. Your response MUST follow this schema: ${simpleSchema}`;
+    }
+
+    // Full prompt logic (original)
+    const promptSections: string[] = [];
     const addSection = (title: string, content: string | undefined | null | string[]) => {
         if (content && (typeof content !== 'string' || content.trim() !== '') && (!Array.isArray(content) || content.length > 0)) {
             const contentString = Array.isArray(content) ? content.join('\n- ') : content;
@@ -34,29 +44,12 @@ function buildOllamaPrompt(input: GenerateAdventureInput): string {
     
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
 
-    let mainInstruction = `You are an interactive fiction engine for a relationship-focused game. Your task is to generate the continuation of the story. The REQUIRED output language is: ${input.currentLanguage}. NEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
+    const fullInstruction = `${mainInstruction}\nNEVER narrate the player's actions or thoughts (named "${input.playerName}"). Start your narration directly with the consequences of their action. CRITICAL RULE: You are NO LONGER responsible for detecting new characters.`;
     
-    mainInstruction += `\n**NEW RULE: To avoid ambiguity, when an NPC performs an action, start the sentence with their name (e.g., "L'espionne prend une profonde inspiration...").**`;
-    mainInstruction += `\n**COMIC MODE ACTIVE:** Your narrative MUST be structured. Use double quotes ("...") for all character speech. Use asterisks (*...*) for all character thoughts. Unadorned text is for pure narration.`;
-    
-    mainInstruction += "\nFor `sceneDescriptionForImage`, provide a MINIMAL description in ENGLISH focusing on 'who is doing what, where'. Also suggest a `cameraAngle` (e.g., 'dynamic low-angle shot'). DO NOT describe character appearances.";
-    
-    mainInstruction += `\nFor \`newEvent\` : If the narrative implies a change of event (e.g., class ends), describe it briefly. Otherwise, leave this field empty.`;
+    promptSections.unshift(fullInstruction);
 
-    mainInstruction += "\nFocus on narrative and character consistency. The game system handles all other logic internally. Your role is PURELY narrative.";
-
-    const zodSchemaString = `{
-    "narrative": "Le vent glacial balayait les couloirs. L'espionne se frotta les bras. *Il est en retard...* pensa-t-elle, avant de voir le guerrier s'approcher. \\"Tu as l'air soucieuse. Tout va bien ?\\"",
-    "sceneDescriptionForImage": { "action": "A spy and a warrior are talking in a modern university hallway.", "cameraAngle": "dramatic close-up" },
-    "affinityUpdates": [
-        { "characterName": "L'espionne", "change": -1, "reason": "Inquiétude due au retard du joueur." }
-    ],
-    "relationUpdates": [],
-    "newEvent": "Fin du cours"
-}`;
-
-    promptSections.unshift(mainInstruction);
-    promptSections.push(`## EXPECTED JSON OUTPUT EXAMPLE\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
+    const zodSchemaString = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" }, "affinityUpdates": [], "relationUpdates": [], "newEvent": "string" }`;
+    promptSections.push(`## EXPECTED JSON OUTPUT SCHEMA\n\`\`\`json\n${zodSchemaString}\n\`\`\``);
 
     return promptSections.join('\n\n');
 }

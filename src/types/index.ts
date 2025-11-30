@@ -172,11 +172,13 @@ export interface AiConfig {
         };
         local?: {
             model: string;
+            compatibilityMode?: boolean;
         };
         customLocal?: {
             apiUrl: string;
             model?: string;
             apiKey?: string;
+            compatibilityMode?: boolean;
         };
     },
     image: {

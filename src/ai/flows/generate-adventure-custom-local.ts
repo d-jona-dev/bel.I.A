@@ -6,18 +6,32 @@ import { GenerateAdventureOutputSchema } from '@/types';
 import { z } from 'zod';
 
 /**
- * Builds a simplified prompt for custom local LLMs compatible with OpenAI's API.
+ * Builds a prompt for custom local LLMs compatible with OpenAI's API.
+ * Uses a simplified prompt if compatibilityMode is enabled.
  */
 function buildPrompt(input: GenerateAdventureInput): any[] {
-    const promptSections: string[] = [];
+    const { aiConfig, currentLanguage } = input;
+    const compatibilityMode = aiConfig?.llm?.customLocal?.compatibilityMode;
 
+    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.`;
+    
+    if (compatibilityMode) {
+        const simpleSchema = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" } }`;
+        const simplifiedUserPrompt = `Context:\n${input.initialSituation}\n\nPlayer's Action: ${input.userAction}\n\nYour task: Generate the next part of the story (\`narrative\`) and a brief scene description for an image (\`sceneDescriptionForImage\`) in a JSON object. Schema: ${simpleSchema}`;
+        return [{ role: "user", content: simplifiedUserPrompt }];
+    }
+    
+    // Full prompt logic (original)
+    const promptSections: string[] = [];
+    promptSections.push(mainInstruction);
+    
     const addSection = (title: string, content: string | undefined | null | string[]) => {
         if (content && (typeof content !== 'string' || content.trim() !== '') && (!Array.isArray(content) || content.length > 0)) {
             const contentString = Array.isArray(content) ? content.join('\n- ') : content;
             promptSections.push(`## ${title}\n- ${contentString}`);
         }
     };
-
+    
     let playerInfo = `- Name: ${input.playerName}`;
     if (input.playerDetails) playerInfo += `\n- Physical Description: ${input.playerDetails}`;
     if (input.playerDescription) playerInfo += `\n- Background/Personality: ${input.playerDescription}`;
@@ -34,22 +48,10 @@ function buildPrompt(input: GenerateAdventureInput): any[] {
     }
     
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
+    
+    const jsonSchema = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" }, "affinityUpdates": [], "relationUpdates": [], "newEvent": "string" }`;
+    promptSections.push(`The JSON object must conform to the following schema:\n${jsonSchema}\n\nCRITICAL: Start the narration directly from the consequences of the user's action. Do NOT narrate the player's actions.`);
 
-    let mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${input.currentLanguage}.
-    You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.
-    
-    The JSON object must conform to the following schema:
-    {
-        "narrative": "The next part of the story. Use double quotes for speech and asterisks for thoughts.",
-        "sceneDescriptionForImage": { "action": "Minimalist description in ENGLISH of 'who does what, where'", "cameraAngle": "Creative camera angle in ENGLISH" },
-        "affinityUpdates": [ { "characterName": "string", "change": number, "reason": "string" } ],
-        "relationUpdates": [ { "characterName": "string", "targetName": "string", "newRelation": "string", "reason": "string" } ],
-        "newEvent": "A brief string describing a new event, or empty string."
-    }
-    
-    CRITICAL: Start the narration directly from the consequences of the user's action. Do NOT narrate the player's actions.`;
-    
-    promptSections.unshift(mainInstruction);
     return [{ role: "user", content: promptSections.join('\n\n') }];
 }
 
@@ -59,7 +61,7 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
     const customConfig = aiConfig?.llm.customLocal;
 
     if (!customConfig?.apiUrl) {
-        return { error: "L'URL de l'API locale personnalisée est manquante.", narrative: "" };
+        return { error: "L'URL de l'API personnalisée est manquante.", narrative: "" };
     }
 
     try {
@@ -69,7 +71,6 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
         
         if (!apiUrl.includes('/chat/completions')) {
             apiUrl = apiUrl.replace(/\/+$/, '');
-            
             if (!apiUrl.endsWith('/v1')) {
                 apiUrl += '/v1';
             }
@@ -101,7 +102,7 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
         let content = rawApiResponse.choices?.[0]?.message?.content;
         
         if (!content) {
-            return { error: "La réponse de l'API locale ne contenait pas de contenu valide.", narrative: "" };
+            return { error: "La réponse de l'API personnalisée ne contenait pas de contenu valide.", narrative: "" };
         }
 
         // Clean potential markdown code blocks before parsing
@@ -130,6 +131,7 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
 
     } catch (error) {
         console.error("Error calling Custom Local LLM Server:", error);
-        return { error: `Erreur de communication avec le serveur LLM local: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
+        return { error: `Erreur de communication avec le serveur LLM personnalisé: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
+
