@@ -10,15 +10,29 @@ import { z } from 'zod';
  * Uses a simplified prompt if compatibilityMode is enabled.
  */
 function buildPrompt(input: GenerateAdventureInput): any[] {
-    const { aiConfig, currentLanguage } = input;
+    const { aiConfig, currentLanguage, playerPortraitUrl } = input;
     const compatibilityMode = aiConfig?.llm?.customLocal?.compatibilityMode;
 
     const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.`;
     
+    // Build the user message content parts
+    const userContent: any[] = [];
+    
+    // Add image if it exists
+    if (playerPortraitUrl) {
+        userContent.push({
+            type: "image_url",
+            image_url: {
+                url: playerPortraitUrl
+            }
+        });
+    }
+
     if (compatibilityMode) {
         const simpleSchema = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" } }`;
         const simplifiedUserPrompt = `Context:\n${input.initialSituation}\n\nPlayer's Action: ${input.userAction}\n\nYour task: Generate the next part of the story (\`narrative\`) and a brief scene description for an image (\`sceneDescriptionForImage\`) in a JSON object. Schema: ${simpleSchema}`;
-        return [{ role: "user", content: simplifiedUserPrompt }];
+        userContent.push({ type: "text", text: simplifiedUserPrompt });
+        return [{ role: "user", content: userContent }];
     }
     
     // Full prompt logic (original)
@@ -48,11 +62,16 @@ function buildPrompt(input: GenerateAdventureInput): any[] {
     }
     
     addSection(`PLAYER ACTION (${input.playerName})`, input.userAction);
+    if (playerPortraitUrl) {
+        promptSections.push('An image was attached to the player action. Take it into consideration when generating the narrative.');
+    }
     
     const jsonSchema = `{ "narrative": "string", "sceneDescriptionForImage": { "action": "string", "cameraAngle": "string" }, "affinityUpdates": [], "relationUpdates": [], "newEvent": "string" }`;
     promptSections.push(`The JSON object must conform to the following schema:\n${jsonSchema}\n\nCRITICAL: Start the narration directly from the consequences of the user's action. Do NOT narrate the player's actions.`);
 
-    return [{ role: "user", content: promptSections.join('\n\n') }];
+    userContent.push({ type: "text", text: promptSections.join('\n\n') });
+    
+    return [{ role: "user", content: userContent }];
 }
 
 
@@ -134,4 +153,3 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
         return { error: `Erreur de communication avec le serveur LLM personnalisé: ${error instanceof Error ? error.message : String(error)}`, narrative: "" };
     }
 }
-

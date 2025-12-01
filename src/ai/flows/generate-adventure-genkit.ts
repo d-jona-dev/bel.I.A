@@ -106,6 +106,11 @@ Current Situation/Recent Narrative (includes current event if any):
 
 User Action (from {{playerName}}): {{{userAction}}}
 
+{{#if playerPortraitUrl}}
+An image was attached to the user action. Take it into consideration when generating the narrative.
+Attached Image: {{media url=playerPortraitUrl}}
+{{/if}}
+
 --- YOUR TASKS ---
 1.  **Generate Narrative:** Write the next part of the story in {{currentLanguage}}.
 2.  **Describe Scene for Image (in English):** 
