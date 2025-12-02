@@ -16,6 +16,15 @@ function buildOpenRouterPrompt(
     input: z.infer<typeof GenerateAdventureInputSchema>,
 ): any[] {
     
+    const dialogueSymbols = {
+        start: input.narrativeStyle?.dialogueStartSymbol || '"',
+        end: input.narrativeStyle?.dialogueEndSymbol || '"',
+    };
+    const thoughtSymbols = {
+        start: input.narrativeStyle?.thoughtStartSymbol || '*',
+        end: input.narrativeStyle?.thoughtEndSymbol || '*',
+    };
+
     // --- Narrative (Non-Combat) Prompt ---
     const promptSections: string[] = [];
 
@@ -53,7 +62,7 @@ function buildOpenRouterPrompt(
     RÈGLE CRITIQUE : Tu n'es PLUS responsable de la détection de nouveaux personnages.`;
     
     mainInstruction += `\n**NOUVELLE RÈGLE : Pour éviter toute ambiguïté, lorsqu'un PNJ effectue une action, commence la phrase par son nom (par exemple, "L'espionne prend une profonde inspiration...").**`;
-    mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des guillemets doubles ("...") pour les paroles, et des astérisques (*...*) pour les pensées. Le reste est de la narration pure.`;
+    mainInstruction += `\n**MODE BD ACTIF :** Ta narration DOIT être structurée. Utilise des ${dialogueSymbols.start}...${dialogueSymbols.end} pour les paroles, et des ${thoughtSymbols.start}...${thoughtSymbols.end} pour les pensées. Le reste est de la narration pure.`;
     
     mainInstruction += `\n**Pour \`sceneDescriptionForImage\` :**
 - \`action\`: Fournis une description MINIMALE en ANGLAIS. Concentre-toi sur "qui fait quoi, où". N'inclus PAS la description physique des personnages.
@@ -122,6 +131,7 @@ async function commonAdventureProcessing(input: GenerateAdventureInput): Promise
         characters: processedCharacters,
         relationsModeActive: true,
         comicModeActive: true,
+        narrativeStyle: input.narrativeStyle,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
     };
@@ -143,6 +153,17 @@ export async function generateAdventureWithOpenRouter(
         const processedInput = await commonAdventureProcessing(input);
         const messages = buildOpenRouterPrompt(processedInput);
         
+        const requestBody: any = {
+            model: openRouterConfig.model,
+            messages: messages,
+            // Request JSON object for models that support it
+            response_format: { type: "json_object" }
+        };
+
+        if (openRouterConfig.maxTokens) {
+            requestBody.max_tokens = openRouterConfig.maxTokens;
+        }
+
         const response = await fetch(OPENROUTER_API_URL, {
             method: "POST",
             headers: {
@@ -151,12 +172,7 @@ export async function generateAdventureWithOpenRouter(
                 "HTTP-Referer": "http://localhost:3000",
                 "X-Title": "Bel.I.A.",
             },
-            body: JSON.stringify({
-                model: openRouterConfig.model,
-                messages: messages,
-                // Request JSON object for models that support it
-                response_format: { type: "json_object" }
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {

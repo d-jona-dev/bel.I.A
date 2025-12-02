@@ -8,10 +8,21 @@ import { GenerateAdventureOutputSchema } from '@/types';
 const OLLAMA_API_URL = "http://localhost:11434/api/generate";
 
 function buildOllamaPrompt(input: GenerateAdventureInput): { prompt: string, images?: string[] } {
-    const { aiConfig, currentLanguage, playerPortraitUrl } = input;
+    const { aiConfig, currentLanguage, playerPortraitUrl, narrativeStyle } = input;
     const compatibilityMode = aiConfig?.llm?.local?.compatibilityMode;
+    
+    const dialogueSymbols = {
+        start: narrativeStyle?.dialogueStartSymbol || '"',
+        end: narrativeStyle?.dialogueEndSymbol || '"',
+    };
+    const thoughtSymbols = {
+        start: narrativeStyle?.thoughtStartSymbol || '*',
+        end: narrativeStyle?.thoughtEndSymbol || '*',
+    };
 
-    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.`;
+    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.
+Use ${dialogueSymbols.start}...${dialogueSymbols.end} for all character speech.
+Use ${thoughtSymbols.start}...${thoughtSymbols.end} for all character thoughts.`;
     
     let textPrompt: string;
     

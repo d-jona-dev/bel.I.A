@@ -10,10 +10,21 @@ import { z } from 'zod';
  * Uses a simplified prompt if compatibilityMode is enabled.
  */
 function buildPrompt(input: GenerateAdventureInput): any[] {
-    const { aiConfig, currentLanguage, playerPortraitUrl } = input;
+    const { aiConfig, currentLanguage, playerPortraitUrl, narrativeStyle } = input;
     const compatibilityMode = aiConfig?.llm?.customLocal?.compatibilityMode;
 
-    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.`;
+    const dialogueSymbols = {
+        start: narrativeStyle?.dialogueStartSymbol || '"',
+        end: narrativeStyle?.dialogueEndSymbol || '"',
+    };
+    const thoughtSymbols = {
+        start: narrativeStyle?.thoughtStartSymbol || '*',
+        end: narrativeStyle?.thoughtEndSymbol || '*',
+    };
+
+    const mainInstruction = `You are an interactive fiction engine. Your task is to generate the story's continuation. The REQUIRED output language is: ${currentLanguage}. You MUST respond EXCLUSIVELY with a valid JSON object. Do NOT provide any text outside the JSON object.
+Use ${dialogueSymbols.start}...${dialogueSymbols.end} for all character speech.
+Use ${thoughtSymbols.start}...${thoughtSymbols.end} for all character thoughts.`;
     
     // Build the user message content parts
     const userContent: any[] = [];
@@ -102,6 +113,10 @@ export async function generateAdventureWithCustomLocalLlm(input: GenerateAdventu
             temperature: 0.7,
             stream: false,
         };
+
+        if (customConfig.maxTokens) {
+            requestBody.max_tokens = customConfig.maxTokens;
+        }
 
         const response = await fetch(apiUrl, {
             method: "POST",

@@ -1,0 +1,622 @@
+
+
+// src/app/page.structure.tsx
+// This component defines the main layout structure for the adventure page.
+
+import * as React from 'react';
+import Link from 'next/link';
+import Image from 'next/image'; // Import next/image
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Save, Upload, Settings, PanelRight, HomeIcon, Scroll, UserCircle, Users2, FileCog, BrainCircuit, CheckCircle, Lightbulb, Heart, BookOpen, PawPrint, Clapperboard, Download, Link as LinkIcon, Users as UsersIcon, UserPlus, Shirt, User, Youtube, Twitter, Facebook, Rss, Gamepad2, ShoppingCart, Drama, Edit3, MemoryStick, ArrowLeft, ArrowRight, Gem, HeartCrack, HeartHandshake, Instagram, Linkedin, MessageSquare, Pin, Pilcrow, FilePenLine, Coffee, HandCoins, CircleDollarSign } from 'lucide-react';
+import type { TranslateTextInput, TranslateTextOutput } from "@/ai/flows/translate-text";
+import type { Character, AdventureSettings, Message, AiConfig, ComicPage, PlayerAvatar, CreatorLink } from "@/types";
+import { GenerateSceneImageInput, GenerateSceneImageFlowOutput } from "@/ai/flows/generate-scene-image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AdventureForm, type AdventureFormValues, type AdventureFormHandle } from '@/components/adventure-form';
+import { CharacterSidebar } from '@/components/character-sidebar';
+import { ModelManager } from '@/components/model-manager';
+import { AdventureDisplay } from '@/components/adventure-display';
+import { LanguageSelector } from '@/components/language-selector';
+import { cn } from "@/lib/utils";
+import { Dialog } from '../components/ui/dialog';
+import type { NewCharacterSchema } from '@/ai/flows/materialize-character';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import type { GameClockState } from '@/lib/game-clock';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Separator } from '../components/ui/separator';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { i18n, type Language } from "@/lib/i18n";
+import { ThemeToggle } from '@/components/theme-toggle';
+import AdBanner from '@/components/adsense-banner';
+
+
+interface PageStructureProps {
+  adventureSettings: AdventureSettings;
+  characters: Character[];
+  stagedAdventureSettings: AdventureFormValues;
+  handleApplyStagedChanges: () => void;
+  narrativeMessages: Message[];
+  currentLanguage: string;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  adventureFormRef: React.RefObject<AdventureFormHandle>;
+  handleToggleRelationsMode: () => void;
+  handleCharacterUpdate: (updatedCharacter: Character) => void;
+  onMaterializeCharacter: (context: string) => Promise<void>;
+  onSummarizeHistory: (context: string) => Promise<void>;
+  handleSaveNewCharacter: (character: Character) => void;
+  onAddStagedCharacter: (character: Character) => void;
+  handleSave: () => void;
+  handleLoad: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  setCurrentLanguage: (lang: string) => void;
+  translateTextAction: (input: TranslateTextInput) => Promise<TranslateTextOutput>;
+  generateAdventureAction: (userActionText: string) => Promise<void>;
+  generateSceneImageAction: (input: GenerateSceneImageInput) => Promise<GenerateSceneImageFlowOutput>;
+  handleEditMessage: (messageId: string, newContent: string) => void;
+  handleRegenerateLastResponse: () => Promise<void>;
+  handleUndoLastMessage: () => void;
+  playerId: string;
+  playerName: string;
+  onRestartAdventure: () => void;
+  suggestQuestHookAction: () => Promise<void>;
+  isSuggestingQuest: boolean;
+  showRestartConfirm: boolean;
+  setShowRestartConfirm: (open: boolean) => void;
+  useAestheticFont: boolean;
+  onToggleAestheticFont: () => void;
+  onAvatarChange: (avatarId: string) => void; // NOUVEAU
+  currentTurn?: number;
+  aiConfig: AiConfig;
+  onAiConfigChange: (newConfig: AiConfig) => void;
+  comicDraft: ComicPage[];
+  onDownloadComicDraft: () => void;
+  onAddComicPage: () => void;
+  onAddComicPanel: () => void;
+  onRemoveLastComicPanel: () => void;
+  onUploadToComicPanel: (pageIndex: number, panelIndex: number, file: File) => void;
+  currentComicPageIndex: number;
+  onComicPageChange: (index: number) => void;
+  onAddToComicPage: (dataUrl: string) => void;
+  isSaveComicDialogOpen: boolean;
+  setIsSaveComicDialogOpen: (isOpen: boolean) => void;
+  comicTitle: string;
+  setComicTitle: (title: string) => void;
+  comicCoverUrl: string | null;
+  onGenerateCover: () => void;
+  isGeneratingCover: boolean;
+  onSaveToLibrary: () => void;
+  isLoading: boolean;
+  timeState: GameClockState;
+  turnCountForAdRefresh: number;
+}
+
+const HeroCard = ({
+  adventureSettings,
+  onAvatarChange,
+  currentLanguage,
+}: {
+  adventureSettings: AdventureSettings;
+  onAvatarChange: (avatarId: string) => void;
+  currentLanguage: string;
+}) => {
+    const [avatars, setAvatars] = React.useState<PlayerAvatar[]>([]);
+    const lang = i18n[currentLanguage as Language] || i18n.en;
+    
+    React.useEffect(() => {
+        try {
+            const savedAvatars = localStorage.getItem('playerAvatars_v2');
+            if (savedAvatars) {
+                setAvatars(JSON.parse(savedAvatars));
+            }
+        } catch (e) {
+            console.error("Failed to load avatars from local storage.", e);
+        }
+    }, []);
+
+    // Find the current avatar based on the name from adventureSettings
+    const currentAvatar = avatars.find(a => a.name === adventureSettings.playerName);
+    const currentAvatarId = currentAvatar?.id || null;
+
+    return (
+         <Card>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" />{lang.currentHeroTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-16 w-16">
+                        <AvatarImage src={adventureSettings.playerPortraitUrl || undefined} alt={adventureSettings.playerName} />
+                        <AvatarFallback>{adventureSettings.playerName?.substring(0,2) || 'H'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <h3 className="font-semibold">{adventureSettings.playerName}</h3>
+                        <p className="text-xs text-muted-foreground">{adventureSettings.playerClass}</p>
+                    </div>
+                </div>
+                <p className="text-sm text-muted-foreground pt-2 line-clamp-3">
+                    {adventureSettings.playerDetails || lang.noHeroDetails}
+                </p>
+                {avatars.length > 0 ? (
+                     <Select onValueChange={onAvatarChange} value={currentAvatarId || ''}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder={lang.changeAvatarPlaceholder}/>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {avatars.map(avatar => (
+                                <SelectItem key={avatar.id} value={avatar.id}>
+                                    {avatar.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                     <Link href="/avatars" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}>
+                      {lang.manageAvatarsButton}
+                    </Link>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
+const platformIcons: Record<CreatorLink['platform'], React.ElementType> = {
+  youtube: Youtube,
+  x: Twitter,
+  facebook: Facebook,
+  patreon: Rss, // Using RSS icon as a stand-in
+  'ko-fi': Gamepad2, // Using a generic icon
+  tipeee: ShoppingCart, // Using a generic icon
+  instagram: Instagram,
+  threads: MessageSquare,
+  tiktok: Drama,
+  bsky: Drama,
+  linkedin: Linkedin,
+  reddit: MessageSquare,
+  pinterest: Pin,
+  mastodon: Pilcrow,
+  buymeacoffee: Gamepad2,
+  liberapay: Heart,
+  itch: Gamepad2,
+  substack: Rss,
+};
+
+const platformUrls: Record<CreatorLink['platform'], string> = {
+    youtube: 'https://www.youtube.com/',
+    x: 'https://x.com/',
+    facebook: 'https://www.facebook.com/',
+    patreon: 'https://www.patreon.com/',
+    'ko-fi': 'https://ko-fi.com/',
+    tipeee: 'https://www.tipeee.com/',
+    instagram: 'https://www.instagram.com/',
+    threads: 'https://www.threads.net/',
+    tiktok: 'https://www.tiktok.com/@',
+    bsky: 'https://bsky.app/profile/',
+    linkedin: 'https://www.linkedin.com/in/',
+    reddit: 'https://www.reddit.com/user/',
+    pinterest: 'https://www.pinterest.com/',
+    mastodon: 'https://mastodon.social/@',
+    buymeacoffee: 'https://www.buymeacoffee.com/',
+    liberapay: 'https://liberapay.com/',
+    itch: 'https://', // requires FQDN
+    substack: 'https://', // requires FQDN
+};
+
+
+export function PageStructure({
+  adventureSettings,
+  characters,
+  stagedAdventureSettings,
+  handleApplyStagedChanges,
+  narrativeMessages,
+  currentLanguage,
+  fileInputRef,
+  adventureFormRef,
+  handleToggleRelationsMode,
+  handleCharacterUpdate,
+  onMaterializeCharacter,
+  onSummarizeHistory,
+  handleSaveNewCharacter,
+  onAddStagedCharacter,
+  handleSave,
+  handleLoad,
+  setCurrentLanguage,
+  translateTextAction,
+  generateAdventureAction,
+  generateSceneImageAction,
+  handleEditMessage,
+  handleRegenerateLastResponse,
+  handleUndoLastMessage,
+  playerId,
+  playerName,
+  onRestartAdventure,
+  suggestQuestHookAction,
+  isSuggestingQuest,
+  showRestartConfirm,
+  setShowRestartConfirm,
+  useAestheticFont,
+  onToggleAestheticFont,
+  onAvatarChange,
+  isLoading,
+  currentTurn,
+  aiConfig,
+  onAiConfigChange,
+  comicDraft,
+  onDownloadComicDraft,
+  onAddComicPage,
+  onAddComicPanel,
+  onRemoveLastComicPanel,
+  onUploadToComicPanel,
+  currentComicPageIndex,
+  onComicPageChange,
+  onAddToComicPage,
+isSaveComicDialogOpen,
+  setIsSaveComicDialogOpen,
+  comicTitle,
+  setComicTitle,
+  comicCoverUrl,
+  onGenerateCover,
+  isGeneratingCover,
+  onSaveToLibrary,
+  timeState,
+  turnCountForAdRefresh,
+}: PageStructureProps) {
+
+  const stagedCharacters = stagedAdventureSettings?.characters || [];
+  const lang = i18n[currentLanguage as Language] || i18n.en;
+  const adRefreshKey = Math.floor(turnCountForAdRefresh / 10);
+
+  return (
+    <div className="flex w-full h-screen">
+      {/* Left Sidebar: Global Actions & Navigation */}
+      <Sidebar side="left" variant="sidebar" collapsible="icon">
+        <SidebarHeader className="p-4 border-b border-sidebar-border flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-sidebar-foreground">Bel.I.A.</h1>
+           <div className="flex items-center gap-1.5">
+             <TooltipProvider>
+                <Tooltip><TooltipTrigger asChild><a href="https://ko-fi.com/mauganra" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Coffee className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Ko-fi</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.buymeacoffee.com/bel_ia" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Coffee className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Buy Me a Coffee</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.tipeee.com/belia" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><HandCoins className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Tipeee</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.patreon.com/Bel_IA" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><CircleDollarSign className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Patreon</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://www.youtube.com/@BelIA-Adventure" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Youtube className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>Youtube</p></TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><a href="https://x.com/belIA_Adventure" target="_blank" rel="noopener noreferrer"><Button variant="ghost" size="icon" className="h-7 w-7"><Twitter className="h-4 w-4"/></Button></a></TooltipTrigger><TooltipContent><p>X (Twitter)</p></TooltipContent></Tooltip>
+            </TooltipProvider>
+          </div>
+        </SidebarHeader>
+        <ScrollArea className="flex-1">
+           <SidebarContent className="p-4 space-y-4">
+              {/* Navigation Links */}
+              <nav className="space-y-2">
+                 <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link href="/">
+                          <Button variant="secondary" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.currentAdventureTooltip}> 
+                            <HomeIcon className="h-5 w-5" />
+                            <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.adventurePageTitle}</span>
+                          </Button>
+                        </Link>
+                      </TooltipTrigger>
+                       <TooltipContent side="right" align="center">{lang.currentAdventureTooltip}</TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
+                 <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Link href="/histoires">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.manageStoriesTooltip}>
+                               <Scroll className="h-5 w-5" />
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.manageStoriesTooltip}</span>
+                            </Button>
+                         </Link>
+                      </TooltipTrigger>
+                       <TooltipContent side="right" align="center">{lang.manageStoriesTooltip}</TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
+                  <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/bd">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.comicEditorTooltip}>
+                                <Clapperboard className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.comicEditorTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.comicEditorTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                   <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/penderie">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.wardrobeTooltip}>
+                                <Shirt className="h-5 w-5" />
+                                <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.wardrobeTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.wardrobeTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+                <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Link href="/avatars">
+                           <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.playerAvatarsTooltip}>
+                               <UserCircle className="h-5 w-5" />
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.playerAvatarsTooltip}</span>
+                            </Button>
+                         </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="center">{lang.playerAvatarsTooltip}</TooltipContent>
+                    </Tooltip>
+                 </TooltipProvider>
+                 <TooltipProvider>
+                     <Tooltip>
+                       <TooltipTrigger asChild>
+                          <Link href="/personnages">
+                            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" aria-label={lang.secondaryCharactersTooltip}>
+                                <Users2 className="h-5 w-5" />
+                               <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.secondaryCharactersTooltip}</span>
+                            </Button>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">{lang.secondaryCharactersTooltip}</TooltipContent>
+                     </Tooltip>
+                  </TooltipProvider>
+              </nav>
+           </SidebarContent>
+        </ScrollArea>
+        <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col space-y-2">
+            {adventureSettings.creatorLinks && adventureSettings.creatorLinks.length > 0 && (
+                <div className="p-2 border rounded-md">
+                    <Label className="text-xs text-muted-foreground px-2 flex items-center gap-1.5">
+                      <FilePenLine className="h-4 w-4" />
+                      {lang.creatorLinksTitle}
+                    </Label>
+                    <div className="space-y-1 mt-1">
+                        {adventureSettings.creatorLinks.map(link => {
+                           const Icon = platformIcons[link.platform] || LinkIcon;
+                           const baseUrl = platformUrls[link.platform];
+                           const url = baseUrl.endsWith('/') ? `${baseUrl}${link.identifier}` : `${link.identifier}`;
+                           return (
+                                <a key={link.id} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({variant: 'ghost', size: 'sm'}), "w-full justify-start group-data-[collapsible=icon]:justify-center")}>
+                                    <Icon className="h-4 w-4"/>
+                                    <span className="ml-2 group-data-[collapsible=icon]:hidden">{link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}</span>
+                                </a>
+                           )
+                        })}
+                    </div>
+                </div>
+            )}
+            <div className="p-2 border rounded-md">
+                <AdBanner key={adRefreshKey} />
+            </div>
+            <a
+              href="https://github.com/d-jona-dev/bel.I.A#"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start group-data-[collapsible=icon]:justify-center")}
+            >
+              <Download className="h-5 w-5" />
+              <span className="ml-2 group-data-[collapsible=icon]:hidden">Dépôt GitHub</span>
+            </a>
+            <TooltipProvider>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="outline" className="w-full justify-start group-data-[collapsible=icon]:justify-center" onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="h-5 w-5" />
+                            <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.loadButtonLabel}</span>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center">{lang.loadAdventureTooltip}</TooltipContent>
+                 </Tooltip>
+            </TooltipProvider>
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept=".json"
+                onChange={handleLoad}
+                className="hidden"
+            />
+           <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center" disabled>
+                  <Settings className="h-5 w-5" />
+                  <span className="ml-2 group-data-[collapsible=icon]:hidden">{lang.settingsButtonLabel}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center">{lang.globalSettingsTooltip}</TooltipContent>
+            </Tooltip>
+           </TooltipProvider>
+        </SidebarFooter>
+      </Sidebar>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        <SidebarInset className="flex flex-col h-screen">
+            <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
+              <div className="flex items-center space-x-2">
+                <SidebarTrigger /> 
+                <span className="font-semibold">{lang.adventurePageTitle}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <ThemeToggle />
+                <LanguageSelector
+                    translateTextAction={translateTextAction}
+                    currentText={narrativeMessages.map(m => m.content).join('\n\n')}
+                    onLanguageChange={setCurrentLanguage}
+                    currentLanguage={currentLanguage}
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={handleSave}>
+                        <Save className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{lang.saveAdventureTooltip}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <SidebarTrigger data-sidebar-target="right-sidebar">
+                    <PanelRight className="h-5 w-5" />
+                </SidebarTrigger>
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto p-4 flex flex-col gap-4">
+                <AdventureDisplay
+                    playerId={playerId}
+                    generateAdventureAction={generateAdventureAction}
+                    generateSceneImageAction={generateSceneImageAction}
+                    suggestQuestHookAction={suggestQuestHookAction as any}
+                    onSummarizeHistory={onSummarizeHistory}
+                    adventureSettings={adventureSettings}
+                    characters={characters}
+                    initialMessages={narrativeMessages}
+                    currentLanguage={currentLanguage}
+                    onEditMessage={handleEditMessage}
+                    onRegenerateLastResponse={handleRegenerateLastResponse}
+                    onUndoLastMessage={handleUndoLastMessage}
+                    onMaterializeCharacter={onMaterializeCharacter}
+                    onRestartAdventure={onRestartAdventure}
+                    isSuggestingQuest={isSuggestingQuest}
+                    useAestheticFont={useAestheticFont}
+                    onToggleAestheticFont={onToggleAestheticFont}
+                    comicDraft={comicDraft}
+                    onDownloadComicDraft={onDownloadComicDraft}
+                    onAddComicPage={onAddComicPage}
+                    onAddComicPanel={onAddComicPanel}
+                    onRemoveLastComicPanel={onRemoveLastComicPanel}
+                    onUploadToComicPanel={onUploadToComicPanel}
+                    currentComicPageIndex={currentComicPageIndex}
+                    onComicPageChange={onComicPageChange}
+                    onAddToComicPage={onAddToComicPage}
+                    isSaveComicDialogOpen={isSaveComicDialogOpen}
+                    setIsSaveComicDialogOpen={setIsSaveComicDialogOpen}
+                    comicTitle={comicTitle}
+                    setComicTitle={setComicTitle}
+                    comicCoverUrl={comicCoverUrl}
+                    onGenerateCover={onGenerateCover}
+                    onSaveToLibrary={onSaveToLibrary}
+                    isLoading={isLoading}
+                    timeState={timeState}
+                    isGeneratingCover={isGeneratingCover}
+                />
+            </main>
+        </SidebarInset>
+
+        {/* Right Sidebar: Config, Characters, AI Settings */}
+        <Sidebar id="right-sidebar" side="right" variant="sidebar" collapsible="offcanvas">
+              <SidebarHeader className="p-4 border-b border-sidebar-border">
+                  <h2 className="text-lg font-semibold text-sidebar-foreground">{lang.detailsAndConfigTitle}</h2>
+              </SidebarHeader>
+              <ScrollArea className="flex-1">
+                  <SidebarContent className="p-4 space-y-6">
+                      <Accordion type="single" collapsible className="w-full" defaultValue="adventure-config-accordion">
+                          <AccordionItem value="adventure-config-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <FileCog className="h-5 w-5" /> {lang.adventureConfigTitle}
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                <AdventureForm
+                                    ref={adventureFormRef}
+                                    initialValues={stagedAdventureSettings}
+                                    isLiveAdventure={true} // NOUVELLE PROP
+                                    adventureSettings={adventureSettings}
+                                    currentLanguage={currentLanguage as Language}
+                                />
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+                      
+                       <HeroCard adventureSettings={adventureSettings} onAvatarChange={onAvatarChange} currentLanguage={currentLanguage} />
+
+                        <Separator/>
+
+                      <Accordion type="single" collapsible className="w-full" defaultValue='characters-accordion'>
+                          <AccordionItem value="characters-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                      <UsersIcon className="h-5 w-5" /> {lang.presentCharactersTitle}
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                      <CharacterSidebar
+                                          characters={stagedCharacters}
+                                          onCharacterUpdate={handleCharacterUpdate}
+                                          onSaveNewCharacter={handleSaveNewCharacter}
+                                          onAddStagedCharacter={onAddStagedCharacter}
+                                          onRelationUpdate={()=>{}}
+                                          generateImageAction={generateSceneImageAction}
+                                          relationsMode={adventureSettings.relationsMode}
+                                          playerId={playerId}
+                                          playerName={stagedAdventureSettings.playerName || "Player"}
+                                          currentLanguage={currentLanguage}
+                                          adventureSettings={adventureSettings}
+                                      />
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+
+                      <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem value="ai-model-config-accordion">
+                              <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                  <BrainCircuit className="h-5 w-5" /> {lang.aiModelTitle}
+                                  </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-2">
+                                  <ModelManager
+                                    config={aiConfig}
+                                    onConfigChange={onAiConfigChange}
+                                    currentLanguage={currentLanguage as Language}
+                                  />
+                              </AccordionContent>
+                          </AccordionItem>
+                      </Accordion>
+
+                  </SidebarContent>
+              </ScrollArea>
+              <SidebarFooter className="p-4 border-t border-sidebar-border">
+                  <Button onClick={handleApplyStagedChanges} className="w-full">
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      {lang.saveChangesButton}
+                  </Button>
+              </SidebarFooter>
+        </Sidebar>
+      </div>
+
+       <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>{lang.restartAdventureTitle}</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {lang.restartAdventureDescription}
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowRestartConfirm(false)}>{lang.cancelButton}</AlertDialogCancel>
+                <AlertDialogAction onClick={onRestartAdventure}>{lang.restartButton}</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </div>
+  );
+}

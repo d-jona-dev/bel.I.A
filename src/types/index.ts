@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 import { z } from 'genkit';
 
@@ -93,6 +92,13 @@ export interface AdventureCondition {
   isOneTime: boolean;
 }
 
+export interface NarrativeStyleSettings {
+  dialogueStartSymbol: string;
+  dialogueEndSymbol: string;
+  thoughtStartSymbol: string;
+  thoughtEndSymbol: string;
+}
+
 
 export interface AdventureSettings {
   world: LocalizedText;
@@ -101,6 +107,7 @@ export interface AdventureSettings {
   relationsMode: boolean;
   strategyMode: boolean;
   comicModeActive: boolean;
+  narrativeStyle?: NarrativeStyleSettings;
   playerName?: string;
   playerPortraitUrl?: string | null;
   playerDetails?: string;
@@ -122,7 +129,7 @@ export interface MapPointOfInterest {
     name: string;
     description?: string;
     icon: 'Castle' | 'Mountain' | 'Trees' | 'Village' | 'Shield' | 'Landmark';
-    position?: { x: number; y: number };
+    position?: { x: number, y: number };
     ownerId?: string;
     level?: number;
     buildings?: string[];
@@ -169,6 +176,7 @@ export interface AiConfig {
             apiKey: string;
             enforceStructuredResponse: boolean;
             compatibilityMode?: boolean; 
+            maxTokens?: number;
         };
         local?: {
             model: string;
@@ -179,6 +187,7 @@ export interface AiConfig {
             model?: string;
             apiKey?: string;
             compatibilityMode?: boolean;
+            maxTokens?: number;
         };
     },
     image: {
@@ -267,6 +276,7 @@ export const GenerateAdventureInputSchema = z.object({
   systemPrompt: z.string().optional().describe("A custom system prompt to guide the AI narrator's persona and style."),
   relationsModeActive: z.boolean().optional().default(true),
   comicModeActive: z.boolean().optional().default(true),
+  narrativeStyle: z.custom<NarrativeStyleSettings>().optional(),
   playerPortraitUrl: z.string().nullable().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),
