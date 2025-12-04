@@ -173,26 +173,26 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
       });
   };
 
-  const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['llm']['openRouter']>, value: string | boolean) => {
+  const handleOpenRouterConfigChange = (field: keyof NonNullable<AiConfig['llm']['openRouter']>, value: string | boolean | number) => {
     onConfigChange({
       ...config,
       llm: {
         ...config.llm,
         openRouter: {
-            ...(config.llm.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false, compatibilityMode: false }),
+            ...(config.llm.openRouter || { model: '', apiKey: '', enforceStructuredResponse: false }),
             [field]: value
         }
       }
     });
   };
 
-  const handleCustomLocalConfigChange = (field: keyof NonNullable<AiConfig['llm']['customLocal']>, value: string | boolean) => {
+  const handleCustomLocalConfigChange = (field: keyof NonNullable<AiConfig['llm']['customLocal']>, value: string | boolean | number) => {
     onConfigChange({
         ...config,
         llm: {
             ...config.llm,
             customLocal: {
-                ...(config.llm.customLocal || { apiUrl: '', compatibilityMode: false }),
+                ...(config.llm.customLocal || { apiUrl: '' }),
                 [field]: value,
             },
         },
@@ -405,7 +405,7 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                         <SelectItem value="gemini">Gemini (Google)</SelectItem>
                         <SelectItem value="openrouter">{lang.openRouterTitle}</SelectItem>
                         <SelectItem value="local">{lang.localLlmTitle}</SelectItem>
-                        <SelectItem value="custom-local">{lang.customLocalApiTitle}</SelectItem>
+                        <SelectItem value="custom-local">API Personnalisée (OpenAI, Groq...)</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -455,6 +455,10 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                         value={config.llm.openRouter?.apiKey || ''}
                         onChange={(e) => handleOpenRouterConfigChange('apiKey', e.target.value)}
                     />
+                    <div className="space-y-1">
+                        <Label htmlFor="or-max-tokens" className="text-xs">Tokens Max (optionnel)</Label>
+                        <Input id="or-max-tokens" type="number" placeholder="Ex: 2000" value={config.llm.openRouter?.maxTokens || ''} onChange={(e) => handleOpenRouterConfigChange('maxTokens', parseInt(e.target.value,10))} />
+                    </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="structured-response-switch" checked={config.llm.openRouter?.enforceStructuredResponse || false} onCheckedChange={(checked) => handleOpenRouterConfigChange('enforceStructuredResponse', checked)}/>
                         <Label htmlFor="structured-response-switch" className="text-xs">{lang.enforceJsonResponse}</Label>
@@ -540,8 +544,8 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
 
             {config.llm.source === 'custom-local' && (
                  <div className="space-y-3 p-3 border bg-background rounded-md">
-                    <Label>{lang.customLocalApiTitle}</Label>
-                    <CardDescription className="text-xs">{lang.customLocalApiDesc}</CardDescription>
+                    <Label>API Personnalisée (Compatible OpenAI)</Label>
+                    <CardDescription className="text-xs">Pour LM Studio, Groq, OpenAI, etc...</CardDescription>
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-url" className="text-xs">{lang.apiUrlLabel}</Label>
                         <Input id="custom-api-url" type="text" placeholder={lang.apiUrlPlaceholder} value={config.llm.customLocal?.apiUrl || ''} onChange={(e) => handleCustomLocalConfigChange('apiUrl', e.target.value)} />
@@ -553,6 +557,10 @@ export function ModelManager({ config, onConfigChange, currentLanguage }: ModelM
                     <div className="space-y-1">
                         <Label htmlFor="custom-api-key" className="text-xs">{lang.apiKeyOptionalLabel}</Label>
                         <Input id="custom-api-key" type="password" placeholder="Clé API OpenAI, Groq, etc..." value={config.llm.customLocal?.apiKey || ''} onChange={(e) => handleCustomLocalConfigChange('apiKey', e.target.value)} />
+                    </div>
+                     <div className="space-y-1">
+                        <Label htmlFor="cl-max-tokens" className="text-xs">Tokens Max (optionnel)</Label>
+                        <Input id="cl-max-tokens" type="number" placeholder="Ex: 2000" value={config.llm.customLocal?.maxTokens || ''} onChange={(e) => handleCustomLocalConfigChange('maxTokens', parseInt(e.target.value, 10))} />
                     </div>
                     <div className="flex items-center space-x-2">
                         <Switch id="custom-local-compatibility-mode" checked={config.llm.customLocal?.compatibilityMode || false} onCheckedChange={(checked) => handleCustomLocalConfigChange('compatibilityMode', checked)}/>
