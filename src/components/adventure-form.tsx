@@ -179,6 +179,11 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
+            if (isLiveAdventure) {
+                // For live adventure, don't block on validation, just return current values
+                return form.getValues();
+            }
+
             const isValid = await form.trigger();
             if (isValid) {
                 return form.getValues();
