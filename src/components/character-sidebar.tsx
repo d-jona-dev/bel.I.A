@@ -385,9 +385,9 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
     const handleFieldChange = (field: keyof Character, value: any) => {
         onCharacterUpdate({ ...char, [field]: value });
     };
-
+    
     const handleLoadFromWardrobe = (itemDescription: string) => {
-        handleFieldChange('clothingDescription', itemDescription);
+        onCharacterUpdate({ ...char, clothingDescription: itemDescription });
         toast({
             title: lang.clothingAppliedTitle,
             description: `La description des vêtements de ${char.name} a été mise à jour.`
@@ -847,3 +847,5 @@ const CharacterAccordionItem = React.memo(function CharacterAccordionItem({
 });
 
 CharacterAccordionItem.displayName = 'CharacterAccordionItem';
+
+    
