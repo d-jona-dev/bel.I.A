@@ -5,15 +5,20 @@ AI adventure engine created using vibecoding and only natural language
 AI-powered narrative story creation tool Booster.
 
 
-✨ Key Features
+✨ Key Features :
+
 🤖 Use of various templates, LM Studio, Openrouter, Gemini, huggingface... (register your personal API)
 
 👥 NPC management: dynamic evolution of relationships with NPCs and their status, saving NPCs to allow for future adventures, saving and sharing in .JSON format, NPC memory management...
 
-⌚ Advanced time management, preventing time skips. /n
+⌚ Advanced time management, preventing time skips.
+
 📖 Native support for 10 languages ​​(English, French, German, Italian, Spanish, Portuguese, Hindi, Japanese, Chinese, Russian).
+
 🔀 Advanced development for story creation, creation of conditions (if NPC1 has an affinity with the player greater than X%, change their behavior or create an event).
+
 🖼️ Creation of images related to the current scene (if you save a generative image model or Stable Diffusion).
+
 🖌️ Comic creation with automatic speech bubble entry, saving as JPEG or within the comic page.
 
 Framework: Next.js (App Router)
