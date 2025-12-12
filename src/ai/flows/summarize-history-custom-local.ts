@@ -1,3 +1,4 @@
+
 "use server";
 /**
  * @fileOverview Custom local LLM implementation for summarizing a key event.
@@ -32,7 +33,11 @@ export async function memorizeEventWithCustomLocalLlm(input: MemorizeEventInput)
     try {
         let apiUrl = customConfig.apiUrl.trim();
         if (!apiUrl.includes('/chat/completions')) {
-            apiUrl = apiUrl.replace(/\/+$/, '') + '/v1/chat/completions';
+             apiUrl = apiUrl.replace(/\/+$/, '');
+            if (!apiUrl.endsWith('/v1')) {
+                apiUrl += '/v1';
+            }
+            apiUrl += '/chat/completions';
         }
 
         const response = await fetch(apiUrl, {
