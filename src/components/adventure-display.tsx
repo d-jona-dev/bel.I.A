@@ -462,22 +462,39 @@ export function AdventureDisplay({
   
   const lastAiMessageWithScene = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescriptionForImage?.action);
 
-  const renderFormattedNarrative = (text: string) => {
-    const parts = text.split(/(\*.*?\*)|(".*?")/g).filter(Boolean);
-    return (
-      <>
-        {parts.map((part, index) => {
-          if (part.startsWith('"') && part.endsWith('"')) {
-            return <strong key={index}>{part}</strong>;
-          }
-          if (part.startsWith('*') && part.endsWith('*')) {
-            return <em key={index}>{part.slice(1, -1)}</em>;
-          }
-          return <React.Fragment key={index}>{part}</React.Fragment>;
-        })}
-      </>
-    );
-  };
+    const renderFormattedNarrative = React.useCallback((text: string) => {
+        const {
+            dialogueStartSymbol = '"',
+            dialogueEndSymbol = '"',
+            thoughtStartSymbol = '*',
+            thoughtEndSymbol = '*',
+        } = adventureSettings.narrativeStyle || {};
+        
+        // Function to escape special characters for regex
+        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        const dialogueRegex = new RegExp(`(${escapeRegex(dialogueStartSymbol)}.*?${escapeRegex(dialogueEndSymbol)})`, 'g');
+        const thoughtRegex = new RegExp(`(${escapeRegex(thoughtStartSymbol)}.*?${escapeRegex(thoughtEndSymbol)})`, 'g');
+
+        const parts = text.split(new RegExp(`${dialogueRegex.source}|${thoughtRegex.source}`, 'g')).filter(Boolean);
+        
+        return (
+            <>
+                {parts.map((part, index) => {
+                    const isDialogue = part.startsWith(dialogueStartSymbol) && part.endsWith(dialogueEndSymbol);
+                    const isThought = part.startsWith(thoughtStartSymbol) && part.endsWith(thoughtEndSymbol);
+                    
+                    if (isDialogue) {
+                        return <strong key={index}>{part}</strong>;
+                    }
+                    if (isThought) {
+                        return <em key={index}>{part.slice(thoughtStartSymbol.length, -thoughtEndSymbol.length)}</em>;
+                    }
+                    return <React.Fragment key={index}>{part}</React.Fragment>;
+                })}
+            </>
+        );
+    }, [adventureSettings.narrativeStyle]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

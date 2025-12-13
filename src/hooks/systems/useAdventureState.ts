@@ -14,6 +14,12 @@ const createInitialState = (): SaveData => ({
         relationsMode: true, 
         strategyMode: false,
         comicModeActive: true, 
+        narrativeStyle: {
+            dialogueStartSymbol: '"',
+            dialogueEndSymbol: '"',
+            thoughtStartSymbol: '*',
+            thoughtEndSymbol: '*',
+        },
         playerName: "Héros",
         playerClass: "Aventurier", 
         playerLevel: 1, 
@@ -98,6 +104,10 @@ export function useAdventureState() {
           timeManagement: {
             ...createInitialState().adventureSettings.timeManagement!,
             ...(data.adventureSettings.timeManagement || {}),
+          },
+          narrativeStyle: {
+            ...createInitialState().adventureSettings.narrativeStyle!,
+            ...(data.adventureSettings.narrativeStyle || {}),
           },
           systemPrompt: data.adventureSettings.systemPrompt || '',
           conditions: data.adventureSettings.conditions || [],
