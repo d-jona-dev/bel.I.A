@@ -421,12 +421,22 @@ export function AdventureDisplay({
   };
 
    const handleCopyMessage = (content: string) => {
-        navigator.clipboard.writeText(content).then(() => {
-            React.startTransition(() => { toast({ title: "Copié", description: "Message copié dans le presse-papiers." }); });
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-            React.startTransition(() => { toast({ title: "Erreur", description: "Impossible de copier le message.", variant: "destructive" }); });
-        });
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(content).then(() => {
+                React.startTransition(() => { toast({ title: "Copié", description: "Message copié dans le presse-papiers." }); });
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                React.startTransition(() => { toast({ title: "Erreur", description: "Impossible de copier le message.", variant: "destructive" }); });
+            });
+        } else {
+            React.startTransition(() => {
+                toast({
+                    title: "Fonction non supportée",
+                    description: "La copie dans le presse-papiers n'est pas supportée par votre navigateur dans ce contexte (HTTPS requis).",
+                    variant: "destructive",
+                });
+            });
+        }
    };
 
     const openEditDialog = (message: Message) => {
