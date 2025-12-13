@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -473,38 +472,36 @@ export function AdventureDisplay({
   const lastAiMessageWithScene = [...messages].reverse().find(m => m.type === 'ai' && m.sceneDescriptionForImage?.action);
 
     const renderFormattedNarrative = React.useCallback((text: string) => {
-        const {
-            dialogueStartSymbol = '"',
-            dialogueEndSymbol = '"',
-            thoughtStartSymbol = '*',
-            thoughtEndSymbol = '*',
-        } = adventureSettings.narrativeStyle || {};
+        const dialogueRegex = /"([^"]*)"/g;
+        const thoughtRegex = /\*([^*]*)\*/g;
         
-        // Function to escape special characters for regex
-        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-        const dialogueRegex = new RegExp(`(${escapeRegex(dialogueStartSymbol)}.*?${escapeRegex(dialogueEndSymbol)})`, 'g');
-        const thoughtRegex = new RegExp(`(${escapeRegex(thoughtStartSymbol)}.*?${escapeRegex(thoughtEndSymbol)})`, 'g');
-
-        const parts = text.split(new RegExp(`${dialogueRegex.source}|${thoughtRegex.source}`, 'g')).filter(Boolean);
+        let lastIndex = 0;
+        const parts: React.ReactNode[] = [];
         
-        return (
-            <>
-                {parts.map((part, index) => {
-                    const isDialogue = part.startsWith(dialogueStartSymbol) && part.endsWith(dialogueEndSymbol);
-                    const isThought = part.startsWith(thoughtStartSymbol) && part.endsWith(thoughtEndSymbol);
-                    
-                    if (isDialogue) {
-                        return <strong key={index}>{part}</strong>;
-                    }
-                    if (isThought) {
-                        return <em key={index}>{part.slice(thoughtStartSymbol.length, -thoughtEndSymbol.length)}</em>;
-                    }
-                    return <React.Fragment key={index}>{part}</React.Fragment>;
-                })}
-            </>
-        );
-    }, [adventureSettings.narrativeStyle]);
+        // Combine regexes
+        const combinedRegex = new RegExp(`${dialogueRegex.source}|${thoughtRegex.source}`, 'g');
+        
+        text.replace(combinedRegex, (match, dialogue, thought, offset) => {
+            // Add normal text before the match
+            if (offset > lastIndex) {
+                parts.push(text.substring(lastIndex, offset));
+            }
+            if (dialogue) {
+                parts.push(<strong key={`dialogue-${offset}`}>"{dialogue}"</strong>);
+            } else if (thought) {
+                parts.push(<em key={`thought-${offset}`}>*{thought}*</em>);
+            }
+            lastIndex = offset + match.length;
+            return match; // necessary for replace
+        });
+
+        // Add any remaining text after the last match
+        if (lastIndex < text.length) {
+            parts.push(text.substring(lastIndex));
+        }
+
+        return <>{parts}</>;
+    }, []);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

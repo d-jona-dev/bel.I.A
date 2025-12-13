@@ -93,14 +93,6 @@ export interface AdventureCondition {
   isOneTime: boolean;
 }
 
-export interface NarrativeStyleSettings {
-  dialogueStartSymbol: string;
-  dialogueEndSymbol: string;
-  thoughtStartSymbol: string;
-  thoughtEndSymbol: string;
-}
-
-
 export interface AdventureSettings {
   world: LocalizedText;
   initialSituation: LocalizedText;
@@ -108,7 +100,6 @@ export interface AdventureSettings {
   relationsMode: boolean;
   strategyMode: boolean;
   comicModeActive: boolean;
-  narrativeStyle?: NarrativeStyleSettings;
   playerName?: string;
   playerPortraitUrl?: string | null;
   playerDetails?: string;
@@ -277,7 +268,6 @@ export const GenerateAdventureInputSchema = z.object({
   systemPrompt: z.string().optional().describe("A custom system prompt to guide the AI narrator's persona and style."),
   relationsModeActive: z.boolean().optional().default(true),
   comicModeActive: z.boolean().optional().default(true),
-  narrativeStyle: z.custom<NarrativeStyleSettings>().optional(),
   playerPortraitUrl: z.string().nullable().optional(),
   playerDetails: z.string().optional(),
   playerDescription: z.string().optional(),

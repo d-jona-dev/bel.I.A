@@ -6,7 +6,7 @@ import { useForm, FormProvider, useFieldArray, type UseFieldArrayAppend } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition, CreatorLink, NarrativeStyleSettings } from '@/types';
+import type { AdventureSettings, AiConfig, LocalizedText, AdventureCondition, CreatorLink } from '@/types';
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +45,6 @@ export type AdventureFormValues = Partial<Omit<AdventureSettings, 'characters' |
     conditions?: AdventureCondition[];
     creatorLinks?: CreatorLink[];
     systemPrompt?: string; 
-    narrativeStyle?: NarrativeStyleSettings;
 };
 
 export interface AdventureFormHandle {
@@ -111,13 +110,6 @@ const creatorLinkSchema = z.object({
   identifier: z.string().min(1, "L'identifiant est requis."),
 });
 
-const narrativeStyleSchema = z.object({
-    dialogueStartSymbol: z.string().max(2).default('"'),
-    dialogueEndSymbol: z.string().max(2).default('"'),
-    thoughtStartSymbol: z.string().max(2).default('*'),
-    thoughtEndSymbol: z.string().max(2).default('*'),
-}).optional();
-
 
 const adventureFormSchema = z.object({
   world: z.record(z.string()).refine(val => Object.keys(val).length > 0 && Object.values(val).some(v => v.trim() !== ''), { message: "La description du monde est requise dans au moins une langue."}),
@@ -130,7 +122,6 @@ const adventureFormSchema = z.object({
   timeManagement: timeManagementSchema.optional(),
   conditions: z.array(conditionSchema).optional(),
   creatorLinks: z.array(creatorLinkSchema).optional(),
-  narrativeStyle: narrativeStyleSchema.optional(),
 });
 
 const LanguageTextarea = ({
@@ -159,16 +150,7 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
 
     const form = useForm<AdventureFormValues>({
         resolver: zodResolver(adventureFormSchema),
-        defaultValues: {
-            ...initialValues,
-            narrativeStyle: {
-                dialogueStartSymbol: '"',
-                dialogueEndSymbol: '"',
-                thoughtStartSymbol: '*',
-                thoughtEndSymbol: '*',
-                ...initialValues.narrativeStyle
-            }
-        },
+        defaultValues: initialValues,
         mode: "onChange",
     });
 
@@ -180,7 +162,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
     React.useImperativeHandle(ref, () => ({
         getFormData: async () => {
             if (isLiveAdventure) {
-                // For live adventure, don't block on validation, just return current values
                 return form.getValues();
             }
 
@@ -356,62 +337,6 @@ export const AdventureForm = React.forwardRef<AdventureFormHandle, AdventureForm
                             </AccordionItem>
                         </Accordion>
                     )}
-
-                     <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="narrative-style-config">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-2">
-                                    <Mic className="h-5 w-5" /> Style de Narration
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="narrativeStyle.dialogueStartSymbol"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Début Dialogue</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="narrativeStyle.dialogueEndSymbol"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Fin Dialogue</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="narrativeStyle.thoughtStartSymbol"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Début Pensée</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="narrativeStyle.thoughtEndSymbol"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Fin Pensée</FormLabel>
-                                                <FormControl><Input {...field} /></FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
 
                      <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="system-prompt-config">

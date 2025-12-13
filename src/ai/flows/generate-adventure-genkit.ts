@@ -51,7 +51,6 @@ async function commonAdventureProcessing(input: GenkitFlowInputType): Promise<z.
         characters: processedCharacters,
         relationsModeActive: true,
         comicModeActive: true,
-        narrativeStyle: input.narrativeStyle,
         aiConfig: input.aiConfig,
         playerPortraitUrl: input.playerPortraitUrl,
     };
@@ -70,7 +69,7 @@ const defaultSystemPrompt = `You are an interactive fiction engine for a relatio
 **The player ({{playerName}}) makes ALL decisions for their character. DO NOT narrate actions or thoughts for {{playerName}} that they haven't explicitly stated in 'User Action'. Only narrate the consequences of their action and the reactions of NPCs and the environment.**
 **Start the narrative directly from the consequences of the user's action. DO NOT repeat or summarize the user's action.**
 **NEW RULE: To avoid ambiguity, when an NPC performs an action, start the sentence with their name (e.g., "L'espionne prend une profonde inspiration..."). You can use pronouns for subsequent actions in the same paragraph.**
-**COMIC MODE ACTIVE: Your narrative MUST be structured. Use {{narrativeStyle.dialogueStartSymbol}}...{{narrativeStyle.dialogueEndSymbol}} for all character speech. Use {{narrativeStyle.thoughtStartSymbol}}...{{narrativeStyle.thoughtEndSymbol}} for all character thoughts. Unadorned text is for pure narration.**
+**COMIC MODE ACTIVE: Your narrative MUST be structured. Use "..." for all character speech. Use *...* for all character thoughts. Unadorned text is for pure narration.**
 
 World: {{{world}}}
 
